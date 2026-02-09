@@ -1,26 +1,28 @@
 services:
   db:
-    image: postgres:15
-    volumes: 
-    - postgres_data:/var/lib/postgresql/data/
-    environment:
-    - POSTGRES_DB=postgres
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=postgres
-  
-  web:
-    build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    image: mysql:8.0
     volumes:
-    - .:/code
-    ports:
-    - "8000:8000"
+      - mysql_data:/var/lib/mysql
     environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    depends_on:
-      - db
+      - MYSQL_DATABASE=mydatabase
+      - MYSQL_USER=myuser
+      - MYSQL_PASSWORD=mypassword
+      - MYSQL_ROOT_PASSWORD=rootpassword
+
+  web:
+      build: .
+      command: python manage.py runserver 0.0.0.0:8000
+      volumes:
+      - .:/code
+      ports:
+      - "8000:8000"
+      environment:
+        - POSTGRES_NAME=postgres
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+      depends_on:
+        - db
 
 volumes:
-  postgres_data:
+  mysql_data:
+
