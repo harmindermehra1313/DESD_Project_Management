@@ -10,18 +10,21 @@ services:
       - MYSQL_ROOT_PASSWORD=rootpassword
 
   web:
-      build: .
-      command: python manage.py runserver 0.0.0.0:8000
-      volumes:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
       - .:/code
-      ports:
+    ports:
       - "8000:8000"
-      environment:
-        - POSTGRES_NAME=postgres
-        - POSTGRES_USER=postgres
-        - POSTGRES_PASSWORD=postgres
-      depends_on:
-        - db
+    environment:
+      - DATABASE_TYPE=mysql
+      - DB_NAME=mydatabase
+      - DB_USER=myuser
+      - DB_PASSWORD=mypassword
+      - DB_HOST=db
+      - DB_PORT=3306
+    depends_on:
+      - db
 
 volumes:
   mysql_data:
