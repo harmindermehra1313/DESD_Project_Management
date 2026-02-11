@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Placeholder{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 24px; }
+    nav a { margin-right: 12px; }
+    .card { border: 1px solid #ddd; padding: 16px; border-radius: 10px; max-width: 900px; }
+    code { background: #111; color: #eee; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/accounts/">Accounts</a>
+    <a href="/products/">Products</a>
+    <a href="/orders/">Orders</a>
+    <a href="/payments/">Payments</a>
+    <a href="/reviews/">Reviews</a>
+    <a href="/community/">Community</a>
+    <a href="/notifications/">Notifications</a>
+    <a href="/analytics/">Analytics</a>
+  </nav>
+  <hr />
+  {% block content %}{% endblock %}
+</body>
+</html>
