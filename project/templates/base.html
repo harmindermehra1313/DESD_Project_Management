@@ -13,15 +13,15 @@
 </head>
 <body>
   <nav>
-    <a href="/">Home</a>
-    <a href="/accounts/">Accounts</a>
-    <a href="/products/">Products</a>
-    <a href="/orders/">Orders</a>
-    <a href="/payments/">Payments</a>
-    <a href="/reviews/">Reviews</a>
-    <a href="/community/">Community</a>
-    <a href="/notifications/">Notifications</a>
-    <a href="/analytics/">Analytics</a>
+    <a href="{% url 'home:index' %}">Home</a>
+    <a href="{% url 'accounts:index' %}">Accounts</a>
+    <a href="{% url 'products:index' %}">Products</a>
+    <a href="{% url 'orders:index' %}">Orders</a>
+    <a href="{% url 'payments:index' %}">Payments</a>
+    <a href="{% url 'reviews:index' %}">Reviews</a>
+    <a href="{% url 'community:index' %}">Community</a>
+    <a href="{% url 'notifications:index' %}">Notifications</a>
+    <a href="{% url 'analytics:index' %}">Analytics</a>
   </nav>
   <hr />
   {% block content %}{% endblock %}
