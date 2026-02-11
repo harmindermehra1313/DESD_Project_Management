@@ -39,3 +39,25 @@ docker-compose down
 
 ### See running containers
 docker ps
+
+
+
+# [KAN-21] Setting up django apps according to test cases
+- Basic Apps created.
+
+- Made a shared templates base (one navbar for everything).
+    - `templates/base.html`
+- Created a simple app just for general pages (Homepage).
+    - App Name: `home`
+- Created HTML placeholders for the apps.
+  - For each app modified/created:
+    - `views.py`
+    - `urls.py`
+    - `app_name/templates/app_name/index.html`
+
+- Best Practices Followed:
+  - Template Inheritance for consistent UIs.
+  - Named URL reversing instead of hardcoded paths for maintainability.
+  - Namespacing URLs per app to prevent collisions as project grows.
+  - Modular URL routing with `include()` for project organisation and keep routing changes localised.
+  - Keeping views simple and aligned with templates.
