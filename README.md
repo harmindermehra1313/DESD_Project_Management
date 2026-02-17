@@ -37,8 +37,17 @@ docker-compose up -d
 ### Stop containers
 docker-compose down
 
+### Flush database
+docker-composer down --volumes
+
 ### See running containers
 docker ps
+
+### Connect to docker and run migrations
+docker-compose up
+docker exec -it brfn_app bash
+python manage.py makemigrations
+python manage.py migrate
 
 
 
