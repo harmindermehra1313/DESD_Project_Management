@@ -1,0 +1,16 @@
+body {
+    font-family: system-ui, Arial;
+    margin: 0px;
+}
+
+.custom-footer{
+    background-color: #35524a;
+    color: white;
+}
+.navbar{
+    background-color: #779cab;
+    color: white;
+}
+.nav-item a{
+    color: aliceblue;
+}
