@@ -1,0 +1,51 @@
+<!--
+  <nav>
+    <a href="{% url 'home:index' %}">Home</a>
+    <a href="{% url 'accounts:index' %}">Accounts</a>
+    <a href="{% url 'products:index' %}">Products</a>
+    <a href="{% url 'orders:index' %}">Orders</a>
+    <a href="{% url 'payments:index' %}">Payments</a>
+    <a href="{% url 'reviews:index' %}">Reviews</a>
+    <a href="{% url 'community:index' %}">Community</a>
+    <a href="{% url 'notifications:index' %}">Notifications</a>
+    <a href="{% url 'analytics:index' %}">Analytics</a>
+  </nav>
+  <hr />
+  -->
+  <nav class="navbar navbar-expand-lg">
+  <div class="container-fluid">
+
+    <a class="navbar-brand" href="/">Bristol Food Network</a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/products/">Products</a></li>
+        <li class="nav-item"><a class="nav-link" href="/community/">Community</a></li>
+        <li class="nav-item"><a class="nav-link" href="/orders/">Orders</a></li>
+        <li class="nav-item"><a class="nav-link" href="/analytics/">analytics</a></li>
+
+      </ul>
+
+      <!-- Search bar -->
+      <form class="d-flex me-3" method="get" action="/search/">
+        <input class="form-control me-2" type="search" name="q" placeholder="Search products…">
+        <button class="btn btn-outline-light" type="submit">Search</button>
+      </form>
+
+      <!-- Cart -->
+      <a href="/cart/" class="btn btn-warning me-3">
+        Cart <span class="badge bg-dark">0</span>
+      </a>
+
+      <!-- Account -->
+      <a href="/account/" class="btn btn-outline-light">Account</a>
+
+    </div>
+  </div>
+</nav>
