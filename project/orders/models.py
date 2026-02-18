@@ -20,7 +20,7 @@ class Order(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete= models.PROTECT,
+        on_delete= models.CASCADE,
         related_name="orders",
     )
     
@@ -103,13 +103,13 @@ class OrderItem(models.Model):
     
     product = models.ForeignKey(
         'products.Product',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='order_items',
     )
     
     producer = models.ForeignKey(
         'accounts.Producer',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='produced_order_items',
     )
     
@@ -173,7 +173,7 @@ class ProducerOrderSummary(models.Model):
     
     producer = models.ForeignKey(
         'accounts.Producer',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="order_summaries",
     )
     
@@ -226,7 +226,7 @@ class ProducerOrderStatusHistory(models.Model):
 
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="producer_status_updates",
     )
 
@@ -258,13 +258,13 @@ class RecurringOrder(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="recurring_orders",
     )
 
     delivery_address = models.ForeignKey(
         "accounts.Address",          
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="recurring_orders",
     )
 
@@ -311,7 +311,7 @@ class RecurringOrderItem(models.Model):
 
     product = models.ForeignKey(
         "products.Product",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="recurring_order_items",
     )
 
