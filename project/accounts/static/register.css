@@ -1,0 +1,13 @@
+.role-tab {
+        padding: 0.5rem 1rem;
+        margin-right: 0.5rem;
+        text-decoration: none;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        color: #333;
+    }
+.role-tab.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
