@@ -13,7 +13,7 @@ class Product(models.Model):
     id = models.AutoField(primary_key=True)
     producer_id = models.ForeignKey(Producer, on_delete=models.CASCADE, db_column="producer_id")
     category_id = models.ForeignKey(Category, on_delete=models.CASCADE, db_column="category_id")
-    moderated_by_admin_id = models.ForeignKey(ModerationLog, on_delete=models.CASCADE, db_column="moderated_by_admin_id", null=True)
+    moderated_by_admin_id = models.ForeignKey(Admin, on_delete=models.CASCADE, db_column="admin_id", null=True)
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
