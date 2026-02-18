@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Register{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'register.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 700px; margin: 0 auto; padding: 2rem;">
+
+    <h1>Create an Account</h1>
+    <p>Select the type of account you want to create.</p>
+
+    <!-- Role Switcher -->
+    <div class="role-switcher" style="margin-bottom: 1.5rem;">
+        <a href="?role=customer"
+           class="role-tab {% if role == 'customer' %}active{% endif %}">
+            Customer
+        </a>
+
+        <a href="?role=producer"
+           class="role-tab {% if role == 'producer' %}active{% endif %}">
+            Producer
+        </a>
+
+        <a href="?role=business"
+           class="role-tab {% if role == 'business' %}active{% endif %}">
+            Business
+        </a>
+    </div>
+
+    <!-- Registration Form -->
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="role" value="{{ role }}">
+
+        {% if form %}
+            {{ form.as_p }}
+        {% else %}
+            <!-- Placeholder fields until real Django forms are added -->
+            {% if role == "customer" %}
+                <h2>Customer Registration</h2>
+                <p><label>Name</label><input type="text" name="name"></p>
+                <p><label>Email</label><input type="email" name="email"></p>
+                <p><label>Password</label><input type="password" name="password"></p>
+                <p><label>Confirm Password</label><input type="password" name="confirm_password"></p>
+
+            {% elif role == "producer" %}
+                <h2>Producer Registration</h2>
+                <p><label>Farm Name</label><input type="text" name="farm_name"></p>
+                <p><label>Contact Name</label><input type="text" name="contact_name"></p>
+                <p><label>Email</label><input type="email" name="email"></p>
+                <p><label>Phone</label><input type="text" name="phone"></p>
+                <p><label>Farm Postcode</label><input type="text" name="farm_postcode"></p>
+                <p><label>Password</label><input type="password" name="password"></p>
+                <p><label>Confirm Password</label><input type="password" name="confirm_password"></p>
+
+            {% elif role == "business" %}
+                <h2>Business Registration</h2>
+                <p><label>Business Name</label><input type="text" name="business_name"></p>
+                <p><label>Contact Name</label><input type="text" name="contact_name"></p>
+                <p><label>Email</label><input type="email" name="email"></p>
+                <p><label>Phone</label><input type="text" name="phone"></p>
+                <p><label>Password</label><input type="password" name="password"></p>
+                <p><label>Confirm Password</label><input type="password" name="confirm_password"></p>
+            {% endif %}
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+            Register
+        </button>
+    </form>
+</div>
+
+{% endblock %}
