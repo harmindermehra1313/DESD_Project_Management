@@ -12,40 +12,167 @@
   </nav>
   <hr />
   -->
-  <nav class="navbar navbar-expand-lg">
+  <!-- Harminder -->
+<header class="custom-header">
+
+  <!-- ===================== ROW 1 ===================== -->
+<!-- ===================== ROW 1 ===================== -->
+<div class="container-fluid header-row-1">
+  <div class="row align-items-center">
+
+    <!-- LEFT: Website Name -->
+    <div class="col-4 d-flex justify-content-start">
+      <a href="/" class="custom-brand">Bristol Regional Food Network</a>
+    </div>
+
+    <!-- CENTER: Cart (Icon + Text) -->
+    <div class="col-4 d-flex justify-content-center">
+      <a href="/cart/" class="custom-cart-icon d-flex align-items-center">
+        <i class="bi bi-cart3 me-1"></i>
+        <span class="cart-text">Cart</span>
+      </a>
+    </div>
+
+    <!-- RIGHT: Welcome Message + Account Icon -->
+    <div class="col-4 d-flex justify-content-end align-items-center">
+
+      <!-- Welcome Message -->
+      {% if user.is_authenticated %}
+        <span class="welcome-text me-2">Welcome, {{ user.first_name|default:user.username }}</span>
+      {% else %}
+        <span class="welcome-text me-2">Welcome, Guest</span>
+      {% endif %}
+
+      <!-- Account Icon -->
+      {% if user.is_authenticated %}
+        <a href="/account/" class="custom-account-icon">
+          <i class="bi bi-person-circle"></i>
+        </a>
+      {% else %}
+        <a href="/login/" class="custom-account-icon">
+          <i class="bi bi-person-circle"></i>
+        </a>
+      {% endif %}
+
+    </div>
+
+  </div>
+</div>
+
+
+  <!-- ===================== ROW 2 ===================== -->
+<nav class="navbar navbar-expand-lg header-row-2">
   <div class="container-fluid">
 
-    <a class="navbar-brand" href="/">Bristol Food Network</a>
-
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+    <!-- Mobile Toggle -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2">
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div class="collapse navbar-collapse" id="mainNav">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+    <div class="collapse navbar-collapse" id="navRow2">
 
-        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="/products/">Products</a></li>
-        <li class="nav-item"><a class="nav-link" href="/community/">Community</a></li>
-        <li class="nav-item"><a class="nav-link" href="/orders/">Orders</a></li>
-        <li class="nav-item"><a class="nav-link" href="/analytics/">analytics</a></li>
+      <div class="row w-100 align-items-center">
 
-      </ul>
+        <!-- LEFT COLUMN: NAVIGATION -->
+        <div class="col-12 col-xl-8 mb-3 mb-xl-0">
+          <ul class="navbar-nav flex-wrap align-items-center">
 
-      <!-- Search bar -->
-      <form class="d-flex me-3" method="get" action="/search/">
-        <input class="form-control me-2" type="search" name="q" placeholder="Search products…">
-        <button class="btn btn-outline-light" type="submit">Search</button>
-      </form>
+            <!-- Home -->
+            <li class="nav-item mx-2">
+              <a class="nav-link custom-nav-link" href="/">Home</a>
+            </li>
 
-      <!-- Cart -->
-      <a href="/cart/" class="btn btn-warning me-3">
-        Cart <span class="badge bg-dark">0</span>
-      </a>
+            <!-- Products Dropdown -->
+            <li class="nav-item dropdown mx-2">
+              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
+                Products
+              </a>
+              <ul class="dropdown-menu custom-dropdown">
+                <li><a class="dropdown-item" href="/category/vegetables/">Vegetables</a></li>
+                <li><a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a></li>
+                <li><a class="dropdown-item" href="/category/bakery/">Bakery</a></li>
+                <li><a class="dropdown-item" href="/category/preserves/">Preserves</a></li>
+                <li><a class="dropdown-item" href="/category/seasonal/">Seasonal</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/category/organic/">Certified Organic</a></li>
+              </ul>
+            </li>
 
-      <!-- Account -->
-      <a href="/accounts/" class="btn btn-outline-light">Account</a>
+            <!-- Producers -->
+            <li class="nav-item mx-2">
+              <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
+            </li>
 
+            <!-- More Dropdown -->
+            <li class="nav-item dropdown mx-2">
+              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
+                More
+              </a>
+              <ul class="dropdown-menu custom-dropdown">
+                <li><a class="dropdown-item" href="/about/">About Us</a></li>
+                <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
+                <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
+                <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
+              </ul>
+            </li>
+
+            <!-- ROLE‑BASED NAVIGATION -->
+            {% if user.is_authenticated %}
+
+              {% if user.role == "customer" %}
+                <li class="nav-item mx-2"><a class="nav-link custom-nav-link" href="/orders/">My Orders</a></li>
+
+              {% elif user.role == "community" %}
+                <li class="nav-item mx-2"><a class="nav-link custom-nav-link" href="/community/dashboard/">Community Dashboard</a></li>
+
+              {% elif user.role == "business" %}
+                <li class="nav-item mx-2"><a class="nav-link custom-nav-link" href="/business/orders/">Business Orders</a></li>
+
+              {% elif user.role == "producer" %}
+                <li class="nav-item dropdown mx-2">
+                  <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
+                    Producer Panel
+                  </a>
+                  <ul class="dropdown-menu custom-dropdown">
+                    <li><a class="dropdown-item" href="/producer/products/">My Products</a></li>
+                    <li><a class="dropdown-item" href="/producer/products/add/">Add Product</a></li>
+                    <li><a class="dropdown-item" href="/producer/orders/">Incoming Orders</a></li>
+                    <li><a class="dropdown-item" href="/producer/payments/">Payments</a></li>
+                  </ul>
+                </li>
+
+              {% elif user.role == "admin" %}
+                <li class="nav-item dropdown mx-2">
+                  <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
+                    Admin Panel
+                  </a>
+                  <ul class="dropdown-menu custom-dropdown">
+                    <li><a class="dropdown-item" href="/admin/users/">Manage Users</a></li>
+                    <li><a class="dropdown-item" href="/admin/producers/">Manage Producers</a></li>
+                    <li><a class="dropdown-item" href="/admin/products/">Product Approvals</a></li>
+                    <li><a class="dropdown-item" href="/admin/orders/">All Orders</a></li>
+                    <li><a class="dropdown-item" href="/admin/analytics/">Analytics</a></li>
+                  </ul>
+                </li>
+              {% endif %}
+
+            {% endif %}
+
+          </ul>
+        </div>
+
+        <!-- RIGHT COLUMN: SEARCH BAR -->
+        <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
+          <form class="d-flex custom-search w-100" action="/search/">
+            <input class="form-control custom-search-input" name="q" placeholder="Search...">
+            <button class="btn custom-search-btn">Search</button>
+          </form>
+        </div>
+
+      </div>
     </div>
   </div>
 </nav>
+
+</header>
+<!-- Harminder -->
