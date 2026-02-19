@@ -27,9 +27,7 @@ class Order(models.Model):
     
     delivery_address = models.ForeignKey(
         "accounts.Address",
-        on_delete= models.SET_NULL,
-        null= True,
-        blank= True,
+        on_delete= models.CASCADE,
         related_name = 'orders',
     )
 
@@ -120,7 +118,7 @@ class OrderItem(models.Model):
         decimal_places=2
     )
     
-    commision_amount = models.DecimalField(
+    commission_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal("0.00")
