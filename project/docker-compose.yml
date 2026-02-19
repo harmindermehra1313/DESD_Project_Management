@@ -25,6 +25,15 @@ services:
       - .env
     depends_on:
       - db
+  
+  adminer:
+    image: adminer:latest
+    container_name: brfn_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
 
 volumes:
   mysql_data:
