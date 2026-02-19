@@ -49,7 +49,9 @@ docker exec -it brfn_app bash
 python manage.py makemigrations
 python manage.py migrate
 
-
+### Run seeder script for initial data
+docker-compose up
+docker-compose exec web python manage.py seed_database
 
 # [KAN-21] Setting up django apps according to test cases
 - Basic Apps created.

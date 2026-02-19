@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import User, Producer  # adjust import path to your project
+from accounts.models import User, Producer
 
 
 # ============================================================
@@ -66,7 +66,7 @@ class RecipeProduct(models.Model):
         related_name="recipe_products"
     )
     product = models.ForeignKey(
-        "products.Product",   # adjust to your actual Product model path
+        "products.Product",
         on_delete=models.CASCADE,
         related_name="product_recipes"
     )
