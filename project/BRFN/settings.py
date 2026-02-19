@@ -91,6 +91,8 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 #     }
 # }
 
+import os
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -102,6 +104,18 @@ DATABASES = {
         "OPTIONS": {"charset": "utf8mb4"},
     }
 }
+# Harminder EDITS
+#  DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.mysql",
+#         "NAME": os.environ.get("MYSQL_DATABASE", "DESD"),
+#         "USER": os.environ.get("MYSQL_USER", "myuser"),
+#         "PASSWORD": os.environ.get("MYSQL_PASSWORD", "mypass"),
+#         "HOST": os.environ.get("DB_HOST", "db"),
+#         "PORT": int(os.environ.get("DB_PORT", 3306)),
+#         "OPTIONS": {"charset": "utf8mb4"},
+#     }
+# }
 
 
 AUTH_USER_MODEL = "accounts.User"
