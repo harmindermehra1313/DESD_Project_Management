@@ -3,7 +3,7 @@ from django_mysql.models import EnumField
 
 class SecurityLog(models.Model):
     id = models.AutoField(primary_key=True)
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user_id", null=True)
+    user_id = models.ForeignKey("accounts.User", on_delete=models.CASCADE, db_column="user_id", null=True)
     event_type = EnumField(choices=['LOGIN_SUCCESS', 'LOGIN_FAILURE', 'PASSWORD_RESET', 'ACCOUNT_LOCKED', 'TOKEN_REFRESH', 'SUSPICIOUS_ACTIVITY', 'PERMISSION_DENIED', 'LOGOUT'])
     ip_address = models.CharField(max_length=45)
     user_agent = models.TextField()
@@ -13,7 +13,7 @@ class SecurityLog(models.Model):
 
 class AdminPost(models.Model):
     id = models.AutoField(primary_key=True)
-    admin_id = models.ForeignKey(Admin, on_delete=models.CASCADE, db_column="admin_id")
+    admin_id = models.ForeignKey("accounts.Admin", on_delete=models.CASCADE, db_column="admin_id")
     title = models.CharField(max_length=255)
     body = models.TextField()
     category = EnumField(choices=['ANNOUNCEMENT', 'UPDATE', 'MAINTENANCE', 'POLICY', 'PROMOTION'])
@@ -24,8 +24,8 @@ class AdminPost(models.Model):
 
 class ModerationLog(models.Model):
     id = models.AutoField(primary_key=True)
-    admin_id = models.ForeignKey(Admin, on_delete=models.CASCADE, db_column="admin_id")
-    producer_id = models.ForeignKey(Producer, on_delete=models.CASCADE, db_column="producer_id")
+    admin_id = models.ForeignKey("accounts.Admin", on_delete=models.CASCADE, db_column="admin_id")
+    producer_id = models.ForeignKey("accounts.Producer", on_delete=models.CASCADE, db_column="producer_id")
     content_type = EnumField(choices=['RECIPE', 'FARM_STORY', 'PRODUCT', 'RECALL_NOTICE', 'REVIEW', 'OTHER'])
     content_id = models.IntegerField() #May need to be updated to be polymorphic 
     action = EnumField(choices=['FLAGGED', 'APPROVED', 'REJECTED', 'REMOVED', 'RESTORED'])

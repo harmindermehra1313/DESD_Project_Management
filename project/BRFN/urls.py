@@ -21,7 +21,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("", include("home.urls", namespace="home")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
-    path("analytics/", include("analytics.urls", namespace="analytics")),
+    path("admin_records/", include("admin_records.urls", namespace="admin_records")),
     path("community/", include("community.urls", namespace="community")),
     path("notifications/", include("notifications.urls", namespace="notifications")),
     path('orders/', include("orders.urls", namespace="orders")),
