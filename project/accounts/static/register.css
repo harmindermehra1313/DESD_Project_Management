@@ -1,4 +1,4 @@
-.role-tab {
+/* .role-tab {
         padding: 0.5rem 1rem;
         margin-right: 0.5rem;
         text-decoration: none;
@@ -10,4 +10,124 @@
     background-color: #007bff;
     color: white;
     border-color: #007bff;
+} */
+:root{
+  --brand:#35524A;
+  --accent:#32DE8A;
+  --muted:#627C85;
+  --bg:#ffffff;
+  --radius:8px;
+  --gap:12px;
+}
+
+
+/* Card */
+.register-card { border-radius:10px; border:1px solid #e9ecef; box-shadow:0 6px 18px rgba(0,0,0,0.04); background:var(--bg); }
+
+/* Role buttons */
+.role-btn { min-width:140px;
+    color: var(--brand);
+    border-color: var(--brand); 
+}
+.role-btn.active { background:var(--brand); color:#fff; border-color:var(--brand); }
+
+.role-btn:hover { min-width:140px;
+    color: #fff;
+    background-color: var(--muted);
+    border-color: var(--muted); 
+}
+/* Nested fields */
+.nested-fields { padding:10px; border-left:3px solid #f1f1f1; background:#fbfbfb; border-radius:6px; margin-top:8px; }
+
+/* Utility to hide visually and from assistive tech when needed */
+.visually-hidden { display:none !important; }
+
+/* Form text */
+.form-text { color:#6c757d; }
+.btn-primary{
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+.btn-primary:hover{
+    background-color:var(--brand);
+    border-color:var(--brand);
+}
+
+
+/* Container for the Sign in button (separate block) */
+.auth-signin-wrapper {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto 0.5rem;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Sign in button style */
+.auth-btn {
+    min-width: 120px;
+    padding: 0.5rem 4.9rem;
+    border-radius: 8px;
+    margin: 20px 0px 30px 0px;
+    font-weight: 600;
+    color: var(--brand);
+    background: #fff;
+    border: 2px solid rgba(53, 75, 74, 0.12);
+}
+
+/* Container for the OR divider (separate block) */
+.auth-or-divider-wrapper {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto 2rem;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* The horizontal divider with centered "or" */
+.auth-or-divider {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e9ecef 20%, #e9ecef 80%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The "or" pill that sits on the divider */
+.auth-or-text {
+  background: #fff;
+  padding: 0 0.6rem;
+  color: #6c757d;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 999px;
+  margin: 0;
+}
+
+/* Small screens: keep spacing and stacking tidy */
+@media (max-width: 576px) {
+  .auth-signin-wrapper,
+  .auth-or-divider-wrapper {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .auth-or-divider {
+    height: 1px;
+  }
+  .auth-or-text {
+    position: relative;
+    top: -0.6rem;
+    padding: 0 0.5rem;
+  }
+}
+/* Responsive tweaks */
+@media (max-width:767.98px){
+  .role-btn { flex:1 1 auto; }
+  .nested-fields { margin-left:0; }
 }
