@@ -7,70 +7,262 @@
 {% endblock %}
 
 {% block content %}
-<div class="card" style="max-width: 700px; margin: 0 auto; padding: 2rem;">
-
-    <h1>Create an Account</h1>
-    <p>Select the type of account you want to create.</p>
-
-    <!-- Role Switcher -->
-    <div class="role-switcher" style="margin-bottom: 1.5rem;">
-        <a href="?role=customer"
-           class="role-tab {% if role == 'customer' %}active{% endif %}">
-            Customer
-        </a>
-
-        <a href="?role=producer"
-           class="role-tab {% if role == 'producer' %}active{% endif %}">
-            Producer
-        </a>
-
-        <a href="?role=business"
-           class="role-tab {% if role == 'business' %}active{% endif %}">
-            Business
-        </a>
-    </div>
-
-    <!-- Registration Form -->
-    <form method="POST">
-        {% csrf_token %}
-        <input type="hidden" name="role" value="{{ role }}">
-
-        {% if form %}
-            {{ form.as_p }}
-        {% else %}
-            <!-- Placeholder fields until real Django forms are added -->
-            {% if role == "customer" %}
-                <h2>Customer Registration</h2>
-                <p><label>Name</label><input type="text" name="name"></p>
-                <p><label>Email</label><input type="email" name="email"></p>
-                <p><label>Password</label><input type="password" name="password"></p>
-                <p><label>Confirm Password</label><input type="password" name="confirm_password"></p>
-
-            {% elif role == "producer" %}
-                <h2>Producer Registration</h2>
-                <p><label>Farm Name</label><input type="text" name="farm_name"></p>
-                <p><label>Contact Name</label><input type="text" name="contact_name"></p>
-                <p><label>Email</label><input type="email" name="email"></p>
-                <p><label>Phone</label><input type="text" name="phone"></p>
-                <p><label>Farm Postcode</label><input type="text" name="farm_postcode"></p>
-                <p><label>Password</label><input type="password" name="password"></p>
-                <p><label>Confirm Password</label><input type="password" name="confirm_password"></p>
-
-            {% elif role == "business" %}
-                <h2>Business Registration</h2>
-                <p><label>Business Name</label><input type="text" name="business_name"></p>
-                <p><label>Contact Name</label><input type="text" name="contact_name"></p>
-                <p><label>Email</label><input type="email" name="email"></p>
-                <p><label>Phone</label><input type="text" name="phone"></p>
-                <p><label>Password</label><input type="password" name="password"></p>
-                <p><label>Confirm Password</label><input type="password" name="confirm_password"></p>
-            {% endif %}
-        {% endif %}
-
-        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
-            Register
-        </button>
-    </form>
+<div class="container py-4">
+    <!-- AUTH ACTIONS: Login button and OR divider -->
+<!-- Sign in button (separate div, centered) -->
+<div class="auth-signin-wrapper">
+  <a href="/accounts/login/" class="btn btn-outline-secondary auth-btn" role="button" aria-label="Sign in">
+    Sign in
+  </a>
 </div>
 
+<!-- OR divider (separate div, full width line with centered "or") -->
+<div class="auth-or-divider-wrapper" aria-hidden="true">
+  <div class="auth-or-divider">
+    <span class="auth-or-text">or</span>
+  </div>
+</div>
+  <div class="card register-card mx-auto" style="max-width: 980px;">
+    <div class="card-body p-4">
+      <h1 class="mb-2">Create an Account</h1>
+      <p class="text-muted mb-3">Choose Customer or Producer and complete the form. Fields marked <span class="text-danger">*</span> are required.</p>
+
+      <!-- Role Buttons (Customer and Producer only) -->
+      <div class="mb-4 d-flex gap-2" role="tablist" aria-label="Account type">
+        <button id="btnCustomer" class="btn btn-outline-primary role-btn active" data-role="customer" type="button">Customer</button>
+        <button id="btnProducer" class="btn btn-outline-primary role-btn" data-role="producer" type="button">Producer</button>
+      </div>
+
+      <form id="registerForm" method="POST" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="role" id="roleInput" value="{{ role|default:'customer' }}">
+        <!-- organisation_type is stored for the Customer model; kept hidden and set by JS -->
+        <input type="hidden" id="organisation_type" name="organisation_type" value="Individual">
+
+        <div class="row g-3">
+
+          <!-- LEFT COLUMN: Account details (common) -->
+          <div class="col-12 col-md-6">
+
+            <h5 class="mb-2">Account Details</h5>
+
+            <div class="mb-3">
+              <label for="name" class="form-label">Full name <span class="text-danger">*</span></label>
+              <input id="name" name="name" type="text" class="form-control" maxlength="100" required autocomplete="name" placeholder="Jane Doe">
+            </div>
+
+            <div class="mb-3">
+              <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+              <input id="email" name="email" type="email" class="form-control" maxlength="255" required autocomplete="email" placeholder="you@example.com">
+            </div>
+
+            <div class="mb-3">
+              <label for="phone" class="form-label">Phone</label>
+              <input id="phone" name="phone" type="tel" class="form-control" maxlength="20" pattern="^\+?[0-9\s\-()]{7,20}$" placeholder="+44 7700 900123">
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+              <input id="password" name="password" type="password" class="form-control" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="At least 8 characters">
+              <div class="form-text">Use at least 8 characters. Include letters and numbers for stronger password.</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="confirm_password" class="form-label">Confirm password <span class="text-danger">*</span></label>
+              <input id="confirm_password" name="confirm_password" type="password" class="form-control" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Repeat password">
+              <div id="passwordMatch" class="form-text" aria-live="polite"></div>
+            </div>
+
+            <!-- Customer: Select account type (Individual, Business, Community) -->
+            <div id="accountTypeWrapper" class="mb-3">
+              <label for="customer_account_type" class="form-label">Type of account</label>
+              <select id="customer_account_type" name="customer_account_type" class="form-select" aria-describedby="accountTypeHelp">
+                <option value="INDIVIDUAL">Individual</option>
+                <option value="BUSINESS">Business</option>
+                <option value="COMMUNITY_GROUP">Community Group</option>
+              </select>
+              <div id="accountTypeHelp" class="form-text">Choose the customer account type. Additional fields appear after selection.</div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT COLUMN: Role specific + Address -->
+          <div class="col-12 col-md-6">
+
+            <!-- CUSTOMER SECTION (visible when role = customer) -->
+            <section id="customerSection" class="role-section">
+
+              <h5 class="mb-2">Customer Details</h5>
+
+              <!-- organisation_type is hidden; organisation name fields appear only when needed -->
+
+              <!-- Business fields (shown only when Business selected) -->
+              <div id="customerBusinessFields" class="nested-fields mb-3 visually-hidden">
+                <h6 class="mb-2">Business Details</h6>
+                <div class="mb-2">
+                  <label for="business_name" class="form-label">Business name</label>
+                  <input id="business_name" name="business_name" type="text" class="form-control" maxlength="150">
+                </div>
+                <div class="mb-2">
+                  <label for="business_registration_number" class="form-label">Business registration number</label>
+                  <input id="business_registration_number" name="business_registration_number" type="text" class="form-control" maxlength="100">
+                </div>
+                <div class="mb-2">
+                  <label for="business_contact_person" class="form-label">Business contact person</label>
+                  <input id="business_contact_person" name="business_contact_person" type="text" class="form-control" maxlength="150">
+                </div>
+                <!-- <div class="mb-2">
+                  <label for="billing_preferences" class="form-label">Billing preferences</label>
+                  <textarea id="billing_preferences" name="billing_preferences" class="form-control" rows="2" placeholder='{"invoice_method":"email","notes":""}'></textarea>
+                  <div class="form-text">JSON accepted. Server will parse into billing_preferences JSON field.</div>
+                </div> -->
+              </div>
+
+              <!-- Community fields (shown only when Community Group selected) -->
+              <div id="customerCommunityFields" class="nested-fields mb-3 visually-hidden">
+                <h6 class="mb-2">Community Group Details</h6>
+                <div class="mb-2">
+                  <label for="community_name" class="form-label">Organisation name</label>
+                  <input id="community_name" name="community_name" type="text" class="form-control" maxlength="150" placeholder="Community group name">
+                </div>
+                <div class="mb-2">
+                  <label for="community_contact" class="form-label">Contact person</label>
+                  <input id="community_contact" name="community_contact" type="text" class="form-control" maxlength="150">
+                </div>
+                <div class="mb-2">
+                  <label for="community_registration_number" class="form-label">Registration number</label>
+                  <input id="community_registration_number" name="community_registration_number" type="text" class="form-control" maxlength="100">
+                </div>
+                <!-- <div class="mb-2">
+                  <label for="billing_preferences_community" class="form-label">Billing preferences</label>
+                  <textarea id="billing_preferences_community" name="billing_preferences_community" class="form-control" rows="2" placeholder='{"invoice_method":"email","notes":""}'></textarea>
+                </div> -->
+              </div>
+
+            </section>
+
+            <!-- PRODUCER SECTION (visible when role = producer button clicked) -->
+            <section id="producerSection" class="role-section visually-hidden">
+
+              <h5 class="mb-2">Producer Details</h5>
+
+              <div class="mb-3">
+                <label for="farm_name" class="form-label">Farm name <span class="text-danger">*</span></label>
+                <input id="farm_name" name="farm_name" type="text" class="form-control" maxlength="150" placeholder="Your farm or business name">
+              </div>
+
+              <div class="mb-3">
+                <label for="farm_description" class="form-label">Short description</label>
+                <textarea id="farm_description" name="farm_description" class="form-control" rows="3" maxlength="2000"></textarea>
+              </div>
+
+              <div class="mb-3">
+                <label for="organic_certification_number" class="form-label">Organic certification number</label>
+                <input id="organic_certification_number" name="organic_certification_number" type="text" class="form-control" maxlength="100">
+              </div>
+
+              <div class="mb-3">
+                <label for="farm_postcode" class="form-label">Farm postcode</label>
+                <input id="farm_postcode" name="farm_postcode" type="text" class="form-control" maxlength="20" pattern="^[A-Za-z0-9\s\-]{3,20}$">
+              </div>
+
+              <div class="mb-3">
+                <label for="contact_email" class="form-label">Contact email</label>
+                <input id="contact_email" name="contact_email" type="email" class="form-control" maxlength="255">
+              </div>
+
+              <div class="mb-3">
+                <label for="contact_phone" class="form-label">Contact phone</label>
+                <input id="contact_phone" name="contact_phone" type="tel" class="form-control" maxlength="20" pattern="^\+?[0-9\s\-()]{7,20}$">
+              </div>
+
+              <fieldset class="mb-3">
+                <legend class="small">Payout method</legend>
+                <div class="form-check">
+                  <input id="payout_bank" name="payout_method" class="form-check-input" type="radio" value="BANK_TRANSFER" checked>
+                  <label for="payout_bank" class="form-check-label">Bank transfer</label>
+                </div>
+                <div class="form-check">
+                  <input id="payout_paypal" name="payout_method" class="form-check-input" type="radio" value="PAYPAL">
+                  <label for="payout_paypal" class="form-check-label">PayPal</label>
+                </div>
+                <div class="form-check">
+                  <input id="payout_manual" name="payout_method" class="form-check-input" type="radio" value="MANUAL">
+                  <label for="payout_manual" class="form-check-label">Manual</label>
+                </div>
+              </fieldset>
+
+              <div id="bankFields" class="nested-fields mb-3">
+                <div class="mb-2">
+                  <label for="bank_account_name" class="form-label">Bank account name</label>
+                  <input id="bank_account_name" name="bank_account_name" type="text" class="form-control" maxlength="150">
+                </div>
+                <div class="mb-2">
+                  <label for="bank_account_number" class="form-label">Bank account number</label>
+                  <input id="bank_account_number" name="bank_account_number" type="text" class="form-control" maxlength="50" pattern="^[0-9A-Za-z\-]{4,50}$">
+                </div>
+                <div class="mb-2">
+                  <label for="bank_sort_code" class="form-label">Bank sort code</label>
+                  <input id="bank_sort_code" name="bank_sort_code" type="text" class="form-control" maxlength="20">
+                </div>
+              </div>
+
+              <div id="paypalFields" class="nested-fields mb-3 visually-hidden">
+                <div class="mb-2">
+                  <label for="paypal_email" class="form-label">PayPal email</label>
+                  <input id="paypal_email" name="paypal_email" type="email" class="form-control" maxlength="255">
+                </div>
+              </div>
+
+            </section>
+
+            <!-- ADDRESS (common) -->
+            <section id="addressSection" class="mt-3">
+              <h6 class="mb-2">Primary Address</h6>
+
+              <div class="mb-2">
+                <label for="line1" class="form-label">Address line 1</label>
+                <input id="line1" name="line1" type="text" class="form-control" maxlength="255">
+              </div>
+
+              <div class="mb-2">
+                <label for="line2" class="form-label">Address line 2</label>
+                <input id="line2" name="line2" type="text" class="form-control" maxlength="255">
+              </div>
+
+              <div class="mb-2">
+                <label for="city" class="form-label">City</label>
+                <input id="city" name="city" type="text" class="form-control" maxlength="100">
+              </div>
+
+              <div class="mb-2">
+                <label for="postcode" class="form-label">Postcode</label>
+                <input id="postcode" name="postcode" type="text" class="form-control" maxlength="20" pattern="^[A-Za-z0-9\s\-]{3,20}$">
+              </div>
+              <div class="form-check mt-2">
+                <input id="is_default_delivery" name="is_default_delivery" class="form-check-input" type="checkbox" value="1">
+                <label for="is_default_delivery" class="form-check-label">Set as default delivery address</label>
+              </div>
+
+              <div class="form-check">
+                <input id="is_default_billing" name="is_default_billing" class="form-check-input" type="checkbox" value="1">
+                <label for="is_default_billing" class="form-check-label">Set as default billing address</label>
+              </div>
+
+            </section>
+
+          </div> <!-- end right column -->
+
+        </div> <!-- end row -->
+
+        <div class="mt-4 d-flex justify-content-center">
+          <button id="submitBtn" type="submit" class="btn btn-primary">Register</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'register.js' %}"></script>
 {% endblock %}
