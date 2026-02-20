@@ -9,25 +9,25 @@ class Review(models.Model):
         FLAGGED = 'FLG', 'Flagged'
         REMOVED = 'RMV', 'Removed'
 
-    product_id = models.ForeignKey(
+    product = models.ForeignKey(
         "products.Product", 
         on_delete=models.CASCADE, 
         related_name = "product_reviews"
     )
 
-    customer_id = models.ForeignKey(
+    customer = models.ForeignKey(
         "accounts.Customer",
         on_delete=models.CASCADE, 
         related_name = "customer_reviews"
     )
 
-    order_id = models.ForeignKey(
+    order = models.ForeignKey(
         "orders.Order", 
         on_delete=models.CASCADE, 
         related_name = "order_reviews"
     )
 
-    moderated_by_admin_id = models.ForeignKey(
+    moderated_by_admin = models.ForeignKey(
         "accounts.Admin", 
         on_delete=models.CASCADE, 
         related_name = "admin_reviews", 
