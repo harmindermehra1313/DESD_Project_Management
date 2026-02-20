@@ -2,8 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal
-
-
+#from django_extensions.db.fields import ShortUUIDField
+from shortuuidfield import ShortUUIDField
 
 class Order(models.Model):
     class DeliveryOrCollection(models.TextChoices):
@@ -38,7 +38,13 @@ class Order(models.Model):
         blank= True,
         related_name='generated_orders',
     )
-    
+
+    unique_reference = ShortUUIDField(
+        max_length=10,
+        editable=False,
+        unique=True,
+    )
+
     order_date = models.DateTimeField(
         default= timezone.now
     )
