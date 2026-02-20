@@ -1,67 +1,252 @@
 from django.db import models
-from django_mysql.models import EnumField #pip install django-mysql
+from django.contrib.postgres.fields import ArrayField
+
 
 
 class Category(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-    vat = models.DecimalField(max_digits=4, decimal_places=2)
+    name = models.CharField(
+        max_length=100
+    )
+
+    description = models.TextField(
+        blank = True
+    )
+
+    vat = models.DecimalField(
+        max_digits=4, 
+        decimal_places=2
+    )
 
 
 class Product(models.Model):
-    id = models.AutoField(primary_key=True)
-    producer_id = models.ForeignKey("accounts.Producer", on_delete=models.CASCADE, db_column="producer_id")
-    category_id = models.ForeignKey(Category, on_delete=models.CASCADE, db_column="category_id")
-    moderated_by_admin_id = models.ForeignKey("accounts.Admin", on_delete=models.CASCADE, db_column="admin_id", null=True)
-    name = models.CharField(max_length=150)
-    description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    unit = EnumField(choices=['KG', 'G', 'L', 'ML', 'EACH', 'PACK', 'BUNCH', 'BOX'])
-    image = models.CharField(max_length=255)
-    stock_quantity = models.IntegerField(default = 0)
-    low_stock_threshold = models.IntegerField(default = 0)
-    harvest_date = models.DateTimeField(auto_now_add=True)
-    farm_origin = models.CharField(max_length=150)
-    organic_certification_status = EnumField(choices=['CERTIFIED', 'NOT_CERTIFIED'])
-    storage_guidance = models.TextField(null=True)
-    expiry_date = models.DateTimeField(auto_now_add=True)
-    expiry_type = EnumField(choices=['BEST_BEFORE', 'USE_BY'])
-    availability_start = models.DateTimeField(auto_now_add=True)
-    availability_end = models.DateTimeField(auto_now_add=True)
-    availability_status = EnumField(choices=['AVAILABLE', 'OUT_OF_STOCK', 'DISCONTINUED'])
-    surplus_status = EnumField(choices=['NONE','SURPLUS_ACTIVE', 'SURPLUS_EXPIRED'])
-    surplus_discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
-    surplus_expiry = models.DateTimeField(auto_now_add=True, null=True)
-    surplus_note = models.TextField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
-    status = EnumField(choices=['PUBLISHED', 'HIDDEN', 'FLAGGED', 'REMOVED'])
-    moderated_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Unit(models.TextChoices):
+        KILOGRAM = 'KG', 'Kilogram'
+        GRAM     = 'G',  'Gram'
+        LITER    = 'L',  'Liter'
+        MILLILITER  = 'ML', 'Milliliter'
+        EACH     = 'EA', 'Each'
+        PACK     = 'PK', 'Pack'
+        BUNCH    = 'BN', 'Bunch'
+        BOX      = 'BX', 'Box'
+
+    
+    class OrganicStatus(models.TextChoices):
+        CERTIFIED = 'CERTIFIED', 'Certified Organic'
+        NOT_CERTIFIED = 'NOT_CERTIFIED', 'Not Certified'
+
+
+    class Expirty_type(models.TextChoices):
+        BESTBEFORE = 'BB', 'Best Before'
+        USE_BY = 'UB', 'USE BY'
+
+
+    class Availability_status(models.TextChoices):
+        AVAILABLE = 'AV', 'Available'
+        OUT_OF_STOCK = 'OOS', 'Out of Stock'
+        DISCONTINUED = 'DIS', 'Discontinued'
+
+
+    class Surplus_status(models.TextChoices):
+        NONE = 'NN', 'None'
+        SURPLUS_ACTIVE = 'SA', 'Surplus Active'
+        SURPLUS_EXPIRED = 'SE', 'Surplus Expired'
+
+
+    class Status(models.TextChoices):
+        PUBLISHED = 'PUB', 'Published'
+        HIDDEN = 'HID', 'Hidden'
+        FLAGGED = 'FLG', 'Flagged'
+        REMOVED = 'RMV', 'Removed'
+
+
+    producer = models.ForeignKey(
+        "accounts.Producer", 
+        on_delete = models.CASCADE, 
+        related_name = "producer_products"
+    )
+
+    category = models.ForeignKey(
+        Category, 
+        on_delete = models.CASCADE, 
+        related_name = "category_products"
+    )
+
+    moderated_by_admin = models.ForeignKey(
+        "accounts.Admin",
+        on_delete = models.CASCADE, 
+        related_name = "admin_products", 
+        null = True
+    )
+
+    name = models.CharField(
+        max_length=150
+    )
+
+    description = models.TextField(
+        blank = True
+    )
+
+    price = models.DecimalField(
+        max_digits = 10, 
+        decimal_places = 2
+    )
+
+    unit = models.CharField(
+        max_length = 5,
+        choices = Unit.choices,
+        default = Unit.EACH
+    )
+
+    image = models.CharField(
+        max_length = 255
+    )
+
+    stock_quantity = models.IntegerField(
+        default = 0
+    )
+
+    low_stock_threshold = models.IntegerField(
+        default = 0
+    )
+    
+    harvest_date = models.DateTimeField(
+        auto_now_add = True
+    )
+
+    farm_origin = models.CharField(
+        max_length = 150
+    )
+
+    organic_certification_status = models.CharField(
+        max_length = 15,
+        choices = OrganicStatus.choices,
+        default = OrganicStatus.NOT_CERTIFIED
+    )  
+
+    storage_guidance = models.TextField(
+        null = True
+    )
+
+    expiry_date = models.DateTimeField()
+
+    expiry_type = models.CharField(
+        max_length = 10,
+        choices = Expirty_type.choices,
+        default = Expirty_type.BESTBEFORE
+    )
+
+    availability_start = models.DateTimeField(
+        auto_now_add = True
+    )
+
+    availability_end = models.DateTimeField(
+        auto_now_add = True
+    )
+
+    availability_status = models.CharField(
+        max_length = 10,
+        choices = Availability_status.choices,
+        default = Availability_status.OUT_OF_STOCK
+    )
+
+    surplus_status = models.CharField(
+        max_length = 15,
+        choices = Surplus_status.choices,
+        default = Surplus_status.NONE
+    )
+
+    surplus_discount_percentage = models.DecimalField(
+        max_digits = 5, 
+        decimal_places = 2
+    )
+
+    surplus_expiry = models.DateTimeField(
+        auto_now_add = True, 
+        null = True
+    )
+
+    surplus_note = models.TextField(
+        null = True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add = True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now_add = True
+    )
+
+    status = models.CharField(
+        max_length = 10,
+        choices = Status.choices,
+        default = Status.PUBLISHED
+    )
+
+    moderated_at = models.DateTimeField(
+        auto_now_add = True,
+        null = True
+    )
 
 class WholesalePrice(models.Model):
-    id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    min_quantity = models.IntegerField(default=0)
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    product = models.ForeignKey(
+        Product, 
+        on_delete = models.CASCADE, 
+        related_name = "product_wholesale"
+    )
+    
+    min_quantity = models.IntegerField(
+        default = 0
+    )
+
+    unit_price = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2
+    )
 
 class ProductUpdateHistory(models.Model):
-    id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    user_id = models.ForeignKey("accounts.User", on_delete=models.CASCADE, db_column="user_id")
-    field_changed = models.CharField(max_length=100)
+    product = models.ForeignKey(
+        Product,
+        on_delete = models.CASCADE, 
+        related_name = "product_history"
+    )
+
+    user = models.ForeignKey(
+        "accounts.User", 
+        on_delete = models.CASCADE, 
+        related_name = "user_products"
+    )
+
+    field_changed = models.CharField(
+        max_length = 100
+    )
+
     old_value = models.TextField()
+
     new_value = models.TextField()
-    changed_at = models.DateTimeField(auto_now_add=True)
+
+    changed_at = models.DateTimeField(
+        auto_now_add = True
+    )
 
 class Allergen(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
+    name = models.CharField(
+        max_length = 100
+    )
 
 class ProductAllergen(models.Model): 
-    id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    allergen_id = models.ForeignKey(Allergen, on_delete=models.CASCADE, db_column="allergen_id")
+    product = models.ForeignKey(
+        Product, 
+        on_delete = models.CASCADE, 
+        related_name = "product_allergen"
+    )
+    allergen = models.ForeignKey(
+        Allergen, 
+        on_delete = models.CASCADE, 
+        related_name = "allergen_products"
+    )
     
 
 

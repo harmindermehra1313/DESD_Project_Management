@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
-echo "Waiting for db at ${DB_HOST:-db}:${DB_PORT:-3306}..."
+echo "Waiting for db at ${DB_HOST:-db}:${DB_PORT:-5432}..."
 until python - <<'PY'
 import socket,os,sys
 host = os.environ.get("DB_HOST","db")
-port = int(os.environ.get("DB_PORT", 3306))
+port = int(os.environ.get("DB_PORT", 5432))
 s = socket.socket(); s.settimeout(2)
 try:
     s.connect((host, port))
