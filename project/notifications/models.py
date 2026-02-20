@@ -1,42 +1,151 @@
 from django.db import models
-from django_mysql.models import EnumField
 
 class Notification(models.Model):
-    id = models.AutoField(primary_key=True)
-    user_id = models.ForeignKey("accounts.User", on_delete=models.CASCADE, db_column="user_id")
-    product_id = models.ForeignKey("products.Product", on_delete=models.CASCADE, db_column="product_id", null=True)
-    order_id = models.ForeignKey("orders.Order", on_delete=models.CASCADE, db_column="order_id", null=True)
-    type = EnumField(choices=['ORDER_UPDATE', 'PRODUCT_ALERT', 'RECALL', 'SYSTEM', 'PROMOTION', 'MESSAGE'])
+    class Type(models.TextChoices):
+        ORDER_UPDATE = 'OU', 'Order Update'
+        PRODUCT_ALERT = 'PA', 'Product Alert'
+        RECALL = 'RC', 'Recall'
+        SYSTEM = 'SYS', 'System'
+        PROMOTION = 'PRO', 'Promotion'
+        MESSAGE = 'MSG', 'Message'
+
+    user = models.ForeignKey(
+        "accounts.User", 
+        on_delete = models.CASCADE, 
+        related_name = "user_notifications"
+    )
+
+    product = models.ForeignKey(
+        "products.Product", 
+        on_delete = models.CASCADE, 
+        related_name = "product_notifications", 
+        null = True
+    )
+    
+    order = models.ForeignKey(
+        "orders.Order", 
+        on_delete = models.CASCADE, 
+        related_name = "order_notifications", 
+        null = True
+    )
+
+    type = models.CharField(
+        max_length = 15,
+        choices = Type.choices,
+        default = Type.MESSAGE
+    )
+
     message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    read_at = models.DateTimeField(null=True)
-    resolved_at = models.DateTimeField(null=True)
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+    
+    read_at = models.DateTimeField(
+        null=True
+    )
+
+    resolved_at = models.DateTimeField(
+        null=True
+    )
 
 
 class RecallNotice(models.Model):
-    id = models.AutoField(primary_key=True)
-    producer_id = models.ForeignKey("accounts.Producer", on_delete=models.CASCADE, db_column="producer_id")
-    product_id = models.ForeignKey("products.Product", on_delete=models.CASCADE, db_column="product_id")
+    class Severity(models.TextChoices):
+        LOW = 'LOW', 'Low'
+        MEDIUM = 'MED', 'Medium'
+        HIGH = 'HI', 'High'
+    
+    producer = models.ForeignKey(
+        "accounts.Producer", 
+        on_delete = models.CASCADE, 
+        related_name ="producer_notice"
+    )
+
+    product = models.ForeignKey(
+        "products.Product", 
+        on_delete = models.CASCADE, 
+        related_name = "product_notice"
+    )
+
     recall_reason = models.TextField()
-    severity = EnumField(choices=['LOW', 'MEDIUM', 'HIGH'])
+
+    Severity = models.CharField(
+        max_length = 10,
+        choices = Severity.choices
+    )
+
     issued_at = models.DateTimeField()
-    resolved_at = models.DateTimeField(null=True)
+
+    resolved_at = models.DateTimeField(
+        null=True
+    )
 
 
 class RecallNotification(models.Model):
-    id = models.AutoField(primary_key=True)
-    recall_id = models.ForeignKey(RecallNotice, on_delete=models.CASCADE, db_column="recall_id")
-    customer_id = models.ForeignKey("accounts.Customer", on_delete=models.CASCADE, db_column="customer_id")
-    order_id = models.ForeignKey("orders.Order", on_delete=models.CASCADE, db_column="order_id")
-    notified_at = models.DateTimeField(auto_now_add=True)
-    notified_by = EnumField(choices=['EMAIL', 'SMS', 'APP', 'PHONE'])
-    acknowledged = models.BooleanField(default=False)
+    class Notified_by(models.TextChoices):
+        EMAIL = 'EML', 'Email'
+        SMS = 'SMS', 'SMS'
+        APP = 'APP', 'App'
+        PHONE = 'PNE', 'Phone'
+
+    recall = models.ForeignKey(
+        RecallNotice, 
+        on_delete = models.CASCADE, 
+        related_name = "recall_recall"
+    )
+    customer = models.ForeignKey(
+        "accounts.Customer", 
+        on_delete = models.CASCADE, 
+        related_name = "customer_recall"
+    )
+
+    order = models.ForeignKey(
+        "orders.Order", 
+        on_delete = models.CASCADE, 
+        related_name = "order_recall"
+    )
+
+    notified_at = models.DateTimeField(
+        auto_now_add = True
+    )
+
+    Notified_by = models.CharField(
+        max_length = 10,
+        choices = Notified_by.choices,
+        default = Notified_by.EMAIL
+    )
+
+    acknowledged = models.BooleanField(
+        default = False
+    )
 
 
 class TraceabilityRecord(models.Model):
-    id = models.AutoField(primary_key=True)
-    order_item_id = models.ForeignKey("orders.OrderItem", on_delete=models.CASCADE, db_column="order_item_id")
-    product_id = models.ForeignKey("products.Product", on_delete=models.CASCADE, db_column="product_id")
-    producer_id = models.ForeignKey("accounts.Producer", on_delete=models.CASCADE, db_column="producer_id")
-    customer_id = models.ForeignKey("accounts.Customer", on_delete=models.CASCADE, db_column="customer_id")
-    timestamp = models.DateTimeField(auto_now_add=True)
+    order_item = models.ForeignKey(
+        "orders.OrderItem", 
+        on_delete = models.CASCADE, 
+        related_name = "order_tracebility"
+    )
+
+    product = models.ForeignKey(
+        "products.Product", 
+        on_delete = models.CASCADE, 
+        related_name ="product_tracebility"
+    )
+
+    producer = models.ForeignKey(
+        "accounts.Producer", 
+        on_delete = models.CASCADE, 
+        related_name ="producer_tracebility"
+    )
+
+    customer = models.ForeignKey(
+        "accounts.Customer",
+        on_delete = models.CASCADE, 
+        related_name ="customer_tracebility"
+    )
+
+    timestamp = models.DateTimeField(
+        auto_now_add=True
+    )
