@@ -67,9 +67,6 @@ class Address(models.Model):
     city = models.CharField(max_length=100)
     postcode = models.CharField(max_length=20)
 
-    latitude = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
-
     is_default_delivery = models.BooleanField(default=False)
     is_default_billing = models.BooleanField(default=False)
 

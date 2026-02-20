@@ -1,17 +1,4 @@
-<!--
-  <nav>
-    <a href="{% url 'home:index' %}">Home</a>
-    <a href="{% url 'accounts:index' %}">Accounts</a>
-    <a href="{% url 'products:index' %}">Products</a>
-    <a href="{% url 'orders:index' %}">Orders</a>
-    <a href="{% url 'payments:index' %}">Payments</a>
-    <a href="{% url 'reviews:index' %}">Reviews</a>
-    <a href="{% url 'community:index' %}">Community</a>
-    <a href="{% url 'notifications:index' %}">Notifications</a>
-  </nav>
-  <hr />
-  -->
-  <!-- Harminder -->
+<!-- Harminder -->
 <header class="custom-header">
 
   <!-- ===================== ROW 1 ===================== -->
@@ -44,11 +31,11 @@
 
       <!-- Account Icon -->
       {% if user.is_authenticated %}
-        <a href="/account/" class="custom-account-icon">
+        <a href="/login/" class="custom-account-icon">
           <i class="bi bi-person-circle"></i>
         </a>
       {% else %}
-        <a href="/login/" class="custom-account-icon">
+        <a href="/accounts/" class="custom-account-icon">
           <i class="bi bi-person-circle"></i>
         </a>
       {% endif %}
