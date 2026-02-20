@@ -30,28 +30,20 @@ class Product(models.Model):
     availability_start = models.DateTimeField(auto_now_add=True)
     availability_end = models.DateTimeField(auto_now_add=True)
     availability_status = EnumField(choices=['AVAILABLE', 'OUT_OF_STOCK', 'DISCONTINUED'])
-    surplus_status = EnumField(choices=['SURPLUS_ACTIVE', 'SURPLUS_EXPIRED'])
+    surplus_status = EnumField(choices=['NONE','SURPLUS_ACTIVE', 'SURPLUS_EXPIRED'])
     surplus_discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
     surplus_expiry = models.DateTimeField(auto_now_add=True, null=True)
     surplus_note = models.TextField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    status = EnumField(choices=['HIDDEN', 'FLAGGED', 'REMOVED'])
+    status = EnumField(choices=['PUBLISHED', 'HIDDEN', 'FLAGGED', 'REMOVED'])
     moderated_at = models.DateTimeField(auto_now_add=True, null=True)
 
 class WholesalePrice(models.Model):
     id = models.AutoField(primary_key=True)
     product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    mid_quantity = models.IntegerField(default=0)
+    min_quantity = models.IntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-
-class SurplusProduct(models.Model):
-    id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
-    reason = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(auto_now_add=True)
 
 class ProductUpdateHistory(models.Model):
     id = models.AutoField(primary_key=True)

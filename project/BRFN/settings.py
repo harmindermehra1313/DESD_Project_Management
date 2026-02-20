@@ -47,7 +47,6 @@ INSTALLED_APPS = [
     'reviews',
     'community',
     'notifications',
-    'analytics',
     'admin_records'
 ]
 
