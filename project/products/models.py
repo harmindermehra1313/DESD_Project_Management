@@ -11,9 +11,9 @@ class Category(models.Model):
 
 class Product(models.Model):
     id = models.AutoField(primary_key=True)
-    producer_id = models.ForeignKey("accounts.Producer", on_delete=models.CASCADE, db_column="producer_id")
-    category_id = models.ForeignKey(Category, on_delete=models.CASCADE, db_column="category_id")
-    moderated_by_admin_id = models.ForeignKey("accounts.Admin", on_delete=models.CASCADE, db_column="admin_id", null=True)
+    producer = models.ForeignKey("accounts.Producer", on_delete=models.CASCADE, db_column="producer")
+    category= models.ForeignKey(Category, on_delete=models.CASCADE, db_column="category")
+    moderated_by_admin = models.ForeignKey("accounts.Admin", on_delete=models.CASCADE, db_column="admin", null=True)
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -41,14 +41,14 @@ class Product(models.Model):
 
 class WholesalePrice(models.Model):
     id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product")
     min_quantity = models.IntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
 class ProductUpdateHistory(models.Model):
     id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    user_id = models.ForeignKey("accounts.User", on_delete=models.CASCADE, db_column="user_id")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product")
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, db_column="user")
     field_changed = models.CharField(max_length=100)
     old_value = models.TextField()
     new_value = models.TextField()
@@ -60,20 +60,5 @@ class Allergen(models.Model):
 
 class ProductAllergen(models.Model): 
     id = models.AutoField(primary_key=True)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product_id")
-    allergen_id = models.ForeignKey(Allergen, on_delete=models.CASCADE, db_column="allergen_id")
-    
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column="product")
+    allergen = models.ForeignKey(Allergen, on_delete=models.CASCADE, db_column="allergen")

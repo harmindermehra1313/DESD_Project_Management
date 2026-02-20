@@ -47,7 +47,10 @@ INSTALLED_APPS = [
     'reviews',
     'community',
     'notifications',
-    'admin_records'
+    'admin_records',
+    # Rest API
+    'rest_framework',
+    'api',
 ]
 
 MIDDLEWARE = [
