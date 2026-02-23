@@ -47,7 +47,10 @@ INSTALLED_APPS = [
     'reviews',
     'community',
     'notifications',
-    'admin_records'
+    'admin_records',
+    # Rest API
+    'rest_framework',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -90,19 +93,17 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 #     }
 # }
 
-import os
-
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": os.environ.get("MYSQL_DATABASE"),
-        "USER": os.environ.get("MYSQL_USER"),
-        "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
-        "HOST": os.environ.get("DB_HOST"),
-        "PORT": os.environ.get("DB_PORT"),
-        "OPTIONS": {"charset": "utf8mb4"},
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST", "db"),
+        "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }
+
 # Harminder EDITS
 #  DATABASES = {
 #     "default": {

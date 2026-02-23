@@ -1,21 +1,20 @@
 FROM python:3.12-slim
 
-#set enviroment
+# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update && apt-get install -y \
     gcc \
-    default-libmysqlclient-dev \
-    pkg-config \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-#set work directory
+# Set work directory
 WORKDIR /code
 
-#install dependencies
+# Install dependencies
 COPY requirements.txt /code/
 RUN pip install --no-cache-dir -r requirements.txt
 
-#copy project
+# Copy project
 COPY . /code/
