@@ -50,6 +50,8 @@ from api.views.reviews import (
     ReviewResponseViewSet,
 )
 
+app_name = "api"
+
 router = DefaultRouter()
 
 # Accounts
