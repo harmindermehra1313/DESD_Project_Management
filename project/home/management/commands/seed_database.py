@@ -166,9 +166,9 @@ class Command(BaseCommand):
 
         # Product 1 - Organic Carrots
         self.product1 = self.Product.objects.create(
-            producer_id=self.producer,
-            category_id=self.category,
-            moderated_by_admin_id=None, # optional
+            producer=self.producer,
+            category=self.category,
+            moderated_by_admin=None, # optional
 
             name="Organic Carrots",
             description="Fresh organic carrots.",
@@ -204,9 +204,9 @@ class Command(BaseCommand):
 
         # Product 2 - Free-range Eggs
         self.product2 = self.Product.objects.create(
-            producer_id=self.producer,
-            category_id=self.category,
-            moderated_by_admin_id=None,
+            producer=self.producer,
+            category=self.category,
+            moderated_by_admin=None,
 
             name="Free-range Eggs",
             description="A dozen free-range eggs.",
@@ -241,13 +241,13 @@ class Command(BaseCommand):
         )
 
         self.ProductAllergen.objects.create(
-            product_id=self.product2,
-            allergen_id=self.allergens[0] # Eggs
+            product=self.product2,
+            allergen=self.allergens[0] # Eggs
         )
 
         self.ProductUpdateHistory.objects.create(
-            product_id=self.product1,
-            user_id=self.customer_user,
+            product=self.product1,
+            user=self.customer_user,
             field_changed="price",
             old_value="2.00",
             new_value="2.50",
@@ -255,7 +255,7 @@ class Command(BaseCommand):
         )
 
         self.WholesalePrice.objects.create(
-            product_id=self.product1,
+            product=self.product1,
             min_quantity=100,
             unit_price=1.80
         )
@@ -307,10 +307,10 @@ class Command(BaseCommand):
 
         # Add traceability
         self.TraceabilityRecord.objects.create(
-            order_item_id=self.order_item1,
-            product_id=self.product1,
-            producer_id=self.producer,
-            customer_id=self.customer,
+            order_item=self.order_item1,
+            product=self.product1,
+            producer=self.producer,
+            customer=self.customer,
             timestamp=now,
         )
 
@@ -338,10 +338,10 @@ class Command(BaseCommand):
 
         # Traceability for item 2
         self.TraceabilityRecord.objects.create(
-            order_item_id=self.order_item2,
-            product_id=self.product2,
-            producer_id=self.producer,
-            customer_id=self.customer,
+            order_item=self.order_item2,
+            product=self.product2,
+            producer=self.producer,
+            customer=self.customer,
             timestamp=now,
         )
 
@@ -403,9 +403,9 @@ class Command(BaseCommand):
     # Reviews
     def create_reviews(self):
         self.review = self.Review.objects.create(
-            product_id=self.product1,
-            customer_id=self.customer,
-            order_id=self.order,
+            product=self.product1,
+            customer=self.customer,
+            order=self.order,
             rating=5,
             title="Great carrots!",
             text="Really fresh and tasty.",
@@ -415,8 +415,8 @@ class Command(BaseCommand):
         )
 
         self.ReviewResponse.objects.create(
-            review_id=self.review,
-            producer_id=self.producer,
+            review=self.review,
+            producer=self.producer,
             response_text="Thank you for your feedback!",
             status="PUBLISHED",
             created_at=timezone.now(),
@@ -428,7 +428,7 @@ class Command(BaseCommand):
     def create_recipes(self):
         self.recipe = self.Recipe.objects.create(
             producer=self.producer,
-            moderated_by_admin_id=None,
+            moderated_by_admin=None,
             title="Carrot Soup",
             description="A simple carrot soup.",
             ingredients=[{"item": "Carrots", "quantity": "500g"}],
@@ -466,7 +466,7 @@ class Command(BaseCommand):
     # Admin posts
     def create_admin_posts(self):
         self.AdminPost.objects.create(
-            admin_id=self.admin,
+            admin=self.admin,
             title="Platform Update",
             body="New features added.",
             category="UPDATE",
@@ -477,10 +477,10 @@ class Command(BaseCommand):
     # Moderation logs
     def create_moderation_logs(self):
         self.ModerationLog.objects.create(
-            admin_id=self.admin,
-            producer_id=self.producer,
+            admin=self.admin,
+            producer=self.producer,
             content_type="RECIPE",
-            content_id=self.recipe.id,
+            content=self.recipe.id,
             action="APPROVED",
             reason="Meets guidelines",
             created_at=timezone.now(),
@@ -490,7 +490,7 @@ class Command(BaseCommand):
     # Security logs
     def create_security_logs(self):
         self.SecurityLog.objects.create(
-            user_id=self.customer_user,
+            user=self.customer_user,
             event_type="LOGIN_SUCCESS",
             ip_address="127.0.0.1",
             user_agent="Chrome/145",
@@ -517,9 +517,9 @@ class Command(BaseCommand):
 
         # Basic order update notification
         self.notification = self.Notification.objects.create(
-            user_id=self.customer_user,
-            product_id=None,
-            order_id=self.order,
+            user=self.customer_user,
+            product=None,
+            order=self.order,
             type="ORDER_UPDATE",
             message="Your order has been delivered.",
             created_at=now,
@@ -530,8 +530,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("  Notification created."))
 
         self.recall_notice = self.RecallNotice.objects.create(
-            producer_id=self.producer,
-            product_id=self.product1,
+            producer=self.producer,
+            product=self.product1,
             recall_reason="Possible contamination detected.",
             severity="HIGH",
             issued_at=now,
@@ -541,9 +541,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("  Recall notice created."))
 
         self.recall_notification = self.RecallNotification.objects.create(
-            recall_id=self.recall_notice,
-            customer_id=self.customer,
-            order_id=self.order,
+            recall=self.recall_notice,
+            customer=self.customer,
+            order=self.order,
             notified_at=now,
             notified_by="APP",
             acknowledged=False,
