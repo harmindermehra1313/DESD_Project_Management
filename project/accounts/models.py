@@ -30,11 +30,11 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     
     class Role_choices(models.TextChoices):
-        CUSTOMER = 'CUS', "Customer",
-        PRODUCER = 'PRO', " Producer",
-        COMMUNITY_GROUP = 'CG', "Community Group",
-        RESTAURANT = 'RES', "Restaurant",
-        ADMIN = 'AD', "Admin"
+        CUSTOMER = "CUSTOMER", "Customer"
+        PRODUCER = "PRODUCER", "Producer"
+        COMMUNITY_GROUP = "COMMUNITY_GROUP", "Community Group"
+        RESTAURANT = "RESTAURANT", "Restaurant"
+        ADMIN = "ADMIN", "Admin"
 
     name = models.CharField(
         max_length=100
