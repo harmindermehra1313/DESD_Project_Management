@@ -93,7 +93,6 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 #     }
 # }
 
-import os
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
