@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Checkout{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'orders/checkout.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<div class="checkout-container">
+
+    <h1>Checkout</h1>
+
+    <!-- Cart Summary -->
+    <section class="checkout-section">
+        <h2>Your Order</h2>
+
+        {% if cart.items %}
+            <table class="checkout-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Unit Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart.items %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>£{{ item.product.price }}</td>
+                        <td>£{{ item.total_price }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="checkout-total">
+                <strong>Order Total:</strong> £{{ cart.total }}
+            </div>
+
+        {% else %}
+            <p>Your cart is empty.</p>
+        {% endif %}
+    </section>
+
+    {% if cart.items %}
+        <!-- Delivery Address -->
+        <section class="checkout-section">
+            <h3>Delivery Address</h3>
+
+            <p>{{ user.customer.address.line1 }}<br>
+            {{ user.customer.address.city }}<br>
+            {{ user.customer.address.postcode }}</p>
+            
+            <!-- Allow changing address -->
+                {% if user.is_authenticated %}
+                    <a class="btn-secondary">Change Address</a>
+                {% endif %}
+        </section>
+
+        <!-- Order details -->
+        <section class="checkout-section">
+            <form id="checkout-form">
+                {% csrf_token %}
+
+                <!--- Delivery method -->
+                <h3>Delivery or Collection</h3>
+                <label>
+                    <input type="radio" name="delivery_or_collection" value="DEL" checked>
+                    Delivery
+                </label><br>
+
+                <label> 
+                    <input type="radio" name="delivery_or_collection" value="COL"> 
+                    Collection 
+                </label>
+
+                <hr>
+
+                <!-- Delivery date --> 
+                <h3>Choose Delivery / Collection Date</h3> 
+                <input type="datetime-local" name="delivery_date" required > 
+                 
+                <hr>
+
+                <!-- Special instruction --> 
+                <h3>Special Instructions (optional)</h3> 
+                <textarea name="special_instructions" placeholder="Add any notes for the producer or driver." rows="3" ></textarea> 
+                 
+                <hr>
+                
+                <h3>Payment Method</h3>
+                <label>
+                    <input type="radio" name="payment_method" value="CARD" checked>
+                    Pay by Card
+                </label><br>
+
+                <label>
+                    <input type="radio" name="payment_method" value="CASH">
+                    Cash on Delivery
+                </label><br>
+
+                <label>
+                    <input type="radio" name="payment_method" value="ACCOUNT_WALLET">
+                    Wallet Balance
+                </label>
+
+                <button type="submit" class="btn-primary checkout-btn">
+                    Place Order (£{{ cart.total }})
+                </button>
+            </form>
+        </section>
+    {% endif %}
+</div>
+<script src="{% static 'orders/checkout.js' %}"></script>
+{% endblock %}

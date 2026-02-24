@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Order Confirmation{% endblock %}
+
+{% block content %}
+<div class="success-container">
+
+    <h1>Order Confirmed</h1>
+
+    <p>Thank you for your order!</p>
+
+    <p>Your order reference is:</p>
+    <h2>{{ order.unique_reference }}</h2>
+
+    <p>A receipt has been emailed to <strong>{{ order.user.email }}</strong>.</p>
+
+    <hr>
+
+    <h3>Order Summary</h3>
+
+    <ul>
+        {% for item in order.items.all %}
+            <li>
+                {{ item.product.name }} — {{ item.quantity }} × £{{ item.unit_price }}
+                = £{{ item.total_price }}
+            </li>
+        {% endfor %}
+    </ul>
+
+    <p><strong>Total:</strong> £{{ order.total_price }}</p>
+
+    <hr>
+
+    <h3>Delivery Address</h3>
+    <p>
+        {{ order.delivery_address.line1 }}<br>
+        {{ order.delivery_address.city }}<br>
+        {{ order.delivery_address.postcode }}
+    </p>
+
+</div>
+{% endblock %}

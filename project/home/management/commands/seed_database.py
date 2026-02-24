@@ -185,7 +185,7 @@ class Command(BaseCommand):
             storage_guidance="Keep refrigerated.",
 
             expiry_date=today + timezone.timedelta(days=7),
-            expiry_type="BEST_BEFORE",
+            expiry_type="BEST BEFORE",
 
             availability_start=today,
             availability_end=today + timezone.timedelta(days=30),
@@ -223,7 +223,7 @@ class Command(BaseCommand):
             storage_guidance="Store in a cool, dry place.",
 
             expiry_date=today + timezone.timedelta(days=14),
-            expiry_type="USE_BY",
+            expiry_type="USE BY",
 
             availability_start=today,
             availability_end=today + timezone.timedelta(days=60),

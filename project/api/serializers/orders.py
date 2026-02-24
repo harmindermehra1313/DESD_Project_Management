@@ -62,3 +62,9 @@ class RecurringOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecurringOrder
         fields = "__all__"
+    
+
+class CheckoutSerializer(serializers.Serializer):
+    payment_method = serializers.ChoiceField(
+        choices=["CARD", "CASH", "ACCOUNT_WALLET"]
+    )
