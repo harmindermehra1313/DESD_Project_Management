@@ -1,0 +1,67 @@
+/* Brand tokens (edit only when palette changes) */
+:root{
+  --brand-dark: #35524A;
+  --brand-muted: #627C85;
+  --brand-secondary: #779CAB;
+  --brand-info: #A2E8DD;
+  --brand-primary: #32DE8A;
+
+  /* RGB helpers (Bootstrap expects "r, g, b" triplets) */
+  --brand-dark-rgb: 53, 82, 74;
+  --brand-muted-rgb: 98, 124, 133;
+  --brand-secondary-rgb: 119, 156, 171;
+  --brand-info-rgb: 162, 232, 221;
+  --brand-primary-rgb: 50, 222, 138;
+
+  /* background/text */
+  --page-bg: #FFF;
+  --nav-text: #EFFFFB;
+}
+
+/* Bootstrap theme variables (do NOT edit when palette changes) */
+:root{
+  --bs-primary: var(--brand-primary);
+  --bs-primary-rgb: var(--brand-primary-rgb);
+
+  --bs-secondary: var(--brand-secondary);
+  --bs-secondary-rgb: var(--brand-secondary-rgb);
+
+  --bs-info: var(--brand-info);
+  --bs-info-rgb: var(--brand-info-rgb);
+
+  --bs-dark: var(--brand-dark);
+  --bs-dark-rgb: var(--brand-dark-rgb);
+
+  --bs-body-color: var(--brand-dark);
+  --bs-body-bg: var(--page-bg);
+
+  --bs-border-color: rgba(var(--brand-muted-rgb), 0.45);
+  --bs-link-color: var(--brand-primary);
+
+  /* Hover/focus helpers */
+  --bs-link-hover-color: color-mix(in oklab, var(--brand-primary) 85%, black);
+  --bs-focus-ring-color: rgba(var(--brand-primary-rgb), 0.25);
+}
+
+/* Buttons */
+.btn-primary{
+  --bs-btn-color: var(--brand-dark);
+  --bs-btn-bg: var(--brand-primary);
+  --bs-btn-border-color: var(--brand-primary);
+  --bs-btn-hover-bg: color-mix(in oklab, var(--brand-primary) 88%, black);
+  --bs-btn-hover-border-color: color-mix(in oklab, var(--brand-primary) 88%, black);
+  --bs-btn-active-bg: color-mix(in oklab, var(--brand-primary) 78%, black);
+  --bs-btn-active-border-color: color-mix(in oklab, var(--brand-primary) 78%, black);
+  --bs-btn-focus-shadow-rgb: var(--brand-primary-rgb);
+}
+
+.btn-outline-primary{
+  --bs-btn-color: var(--brand-primary);
+  --bs-btn-border-color: var(--brand-primary);
+  --bs-btn-hover-bg: var(--brand-primary);
+  --bs-btn-hover-border-color: var(--brand-primary);
+  --bs-btn-hover-color: var(--brand-dark);
+  --bs-btn-active-bg: color-mix(in oklab, var(--brand-primary) 78%, black);
+  --bs-btn-active-border-color: color-mix(in oklab, var(--brand-primary) 78%, black);
+  --bs-btn-focus-shadow-rgb: var(--brand-primary-rgb);
+}
