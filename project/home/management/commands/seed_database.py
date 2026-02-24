@@ -85,12 +85,14 @@ class Command(BaseCommand):
             name="John Admin Smith",
             email="admin@gmail.com",
             password="adminpass",
+            role="ADMIN",
             is_staff=True,
             is_superuser=True,
         )
 
         self.customer_user = UserModel.objects.create_user(
             name="Mark Greene",
+            role="CUSTOMER",
             email="mark42@hotmail.com",
             password="customerpass",
         )
