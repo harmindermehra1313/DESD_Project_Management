@@ -1,44 +1,56 @@
 {% load static %}
 <header class="custom-header">
 
-<nav class="navbar navbar-dark header-topbar py-2">
-    <div class="container-fluid">
+  <!-- ===================== ROW 1 ===================== -->
+  <nav class="navbar navbar-dark header-topbar">
+    <div class="container-fluid header-belt">
 
-      <!-- LEFT: Logo + Brand -->
-      <a href="/" class="navbar-brand d-flex align-items-center gap-2">
-        <!-- Replace with your real logo path -->
-        <img src="{% static 'img/logo.png' %}" alt="BRFN" class="brand-logo">
-        <span class="d-none d-lg-inline">Bristol Regional Food Network</span>
-      </a>
-
-      <!-- RIGHT: Cart + Welcome/Account -->
-      <div class="d-flex align-items-center gap-3 ms-auto">
-
-        <!-- Cart -->
-        <a href="/cart/" class="nav-link d-flex align-items-center gap-1 position-relative">
-          <i class="bi bi-cart3 fs-5"></i>
-          <span class="d-none d-md-inline">Cart</span>
-
-          {# Optional badge (replace 3 with your cart count) #}
-          {# <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">3</span> #}
+      <!-- LEFT -->
+      <div class="header-left">
+        <a href="/" class="navbar-brand d-flex align-items-center gap-2">
+          <img src="{% static 'img/logo.png' %}" alt="BRFN" class="brand-logo">
+          <span class="brand-text d-none d-lg-inline">Bristol Regional Food Network</span>
         </a>
 
-        <!-- Account dropdown (modern pattern) -->
+        <a href="/accounts/addresses/" class="nav-link d-none d-md-flex flex-column align-items-start">
+          <span class="nav-line1">Deliver to</span>
+          <span class="nav-line2">
+            {% if user.is_authenticated %}
+              {{ user.first_name|default:user.username }}
+            {% else %}
+              Guest
+            {% endif %}
+          </span>
+        </a>
+      </div>
+
+      <!-- CENTER (compact search) -->
+      <form class="header-search header-search--compact" role="search" action="/search/">
+        <div class="input-group">
+          <input class="form-control header-search-input" name="q" placeholder="Search..." aria-label="Search">
+          <button class="btn btn-primary header-search-btn" type="submit" aria-label="Search">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </form>
+
+      <!-- RIGHT -->
+      <div class="header-right">
+
         <div class="dropdown">
-          <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+          <a class="nav-link dropdown-toggle d-flex flex-column align-items-start"
              href="#"
              role="button"
              data-bs-toggle="dropdown"
              aria-expanded="false">
-            <i class="bi bi-person-circle fs-5"></i>
-
-            <span class="d-none d-md-inline">
+            <span class="nav-line1">
               {% if user.is_authenticated %}
-                Welcome, {{ user.first_name|default:user.username }}
+                Hello, {{ user.first_name|default:user.username }}
               {% else %}
-                Welcome, Guest
+                Hello, sign in
               {% endif %}
             </span>
+            <span class="nav-line2">Account</span>
           </a>
 
           <ul class="dropdown-menu dropdown-menu-end">
@@ -52,110 +64,105 @@
           </ul>
         </div>
 
+        <a href="/cart/" class="nav-link d-flex align-items-center gap-2 position-relative">
+          <i class="bi bi-cart3 fs-5"></i>
+          <span class="d-none d-sm-inline nav-line2">Cart</span>
+          {# <span class="badge rounded-pill bg-primary cart-badge">3</span> #}
+        </a>
+
       </div>
     </div>
   </nav>
 
+  <!-- ===================== ROW 2 (subnav) ===================== -->
+  <nav class="navbar navbar-expand-lg navbar-dark header-row-2">
+    <div class="container-fluid">
 
-  <!-- ===================== ROW 2 ===================== -->
-<nav class="navbar navbar-expand-lg navbar-dark header-row-2">
-  <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2"
+              aria-controls="navRow2" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2"
-            aria-controls="navRow2" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+      <div class="collapse navbar-collapse" id="navRow2">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
 
-    <div class="collapse navbar-collapse" id="navRow2">
+          <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
 
-      <!-- LEFT: navigation -->
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
-        <li class="nav-item"><a class="nav-link custom-nav-link" href="/">Home</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Products
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="/category/vegetables/">Vegetables</a></li>
+              <li><a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a></li>
+              <li><a class="dropdown-item" href="/category/bakery/">Bakery</a></li>
+              <li><a class="dropdown-item" href="/category/preserves/">Preserves</a></li>
+              <li><a class="dropdown-item" href="/category/seasonal/">Seasonal</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/category/organic/">Certified Organic</a></li>
+            </ul>
+          </li>
 
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle custom-nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Products
-          </a>
-          <ul class="dropdown-menu custom-dropdown">
-            <li><a class="dropdown-item" href="/category/vegetables/">Vegetables</a></li>
-            <li><a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a></li>
-            <li><a class="dropdown-item" href="/category/bakery/">Bakery</a></li>
-            <li><a class="dropdown-item" href="/category/preserves/">Preserves</a></li>
-            <li><a class="dropdown-item" href="/category/seasonal/">Seasonal</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="/category/organic/">Certified Organic</a></li>
-          </ul>
-        </li>
+          <li class="nav-item"><a class="nav-link" href="/producers/">Producers</a></li>
 
-        <li class="nav-item"><a class="nav-link custom-nav-link" href="/producers/">Producers</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              More
+            </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="/about/">About Us</a></li>
+              <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
+              <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
+              <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
+            </ul>
+          </li>
 
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle custom-nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            More
-          </a>
-          <ul class="dropdown-menu custom-dropdown">
-            <li><a class="dropdown-item" href="/about/">About Us</a></li>
-            <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
-            <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
-            <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
-          </ul>
-        </li>
+          <!-- ROLE-BASED NAVIGATION -->
+          {% if user.is_authenticated %}
 
-            <!-- ROLE‑BASED NAVIGATION -->
-            {% if user.is_authenticated %}
+            {% if user.role == "customer" %}
+              <li class="nav-item"><a class="nav-link" href="/orders/">My Orders</a></li>
 
-              {% if user.role == "customer" %}
-                <li class="nav-item mx-2"><a class="nav-link custom-nav-link" href="/orders/">My Orders</a></li>
+            {% elif user.role == "community" %}
+              <li class="nav-item"><a class="nav-link" href="/community/dashboard/">Community Dashboard</a></li>
 
-              {% elif user.role == "community" %}
-                <li class="nav-item mx-2"><a class="nav-link custom-nav-link" href="/community/dashboard/">Community Dashboard</a></li>
+            {% elif user.role == "business" %}
+              <li class="nav-item"><a class="nav-link" href="/business/orders/">Business Orders</a></li>
 
-              {% elif user.role == "business" %}
-                <li class="nav-item mx-2"><a class="nav-link custom-nav-link" href="/business/orders/">Business Orders</a></li>
+            {% elif user.role == "producer" %}
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                  Producer Panel
+                </a>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/producer/products/">My Products</a></li>
+                  <li><a class="dropdown-item" href="/producer/products/add/">Add Product</a></li>
+                  <li><a class="dropdown-item" href="/producer/orders/">Incoming Orders</a></li>
+                  <li><a class="dropdown-item" href="/producer/payments/">Payments</a></li>
+                </ul>
+              </li>
 
-              {% elif user.role == "producer" %}
-                <li class="nav-item dropdown mx-2">
-                  <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                    Producer Panel
-                  </a>
-                  <ul class="dropdown-menu custom-dropdown">
-                    <li><a class="dropdown-item" href="/producer/products/">My Products</a></li>
-                    <li><a class="dropdown-item" href="/producer/products/add/">Add Product</a></li>
-                    <li><a class="dropdown-item" href="/producer/orders/">Incoming Orders</a></li>
-                    <li><a class="dropdown-item" href="/producer/payments/">Payments</a></li>
-                  </ul>
-                </li>
-
-              {% elif user.role == "admin" %}
-                <li class="nav-item dropdown mx-2">
-                  <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                    Admin Panel
-                  </a>
-                  <ul class="dropdown-menu custom-dropdown">
-                    <li><a class="dropdown-item" href="/admin/users/">Manage Users</a></li>
-                    <li><a class="dropdown-item" href="/admin/producers/">Manage Producers</a></li>
-                    <li><a class="dropdown-item" href="/admin/products/">Product Approvals</a></li>
-                    <li><a class="dropdown-item" href="/admin/orders/">All Orders</a></li>
-                    <li><a class="dropdown-item" href="/admin/admin_records/">Admin Records</a></li>
-                  </ul>
-                </li>
-              {% endif %}
-
+            {% elif user.role == "admin" %}
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                  Admin Panel
+                </a>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/admin/users/">Manage Users</a></li>
+                  <li><a class="dropdown-item" href="/admin/producers/">Manage Producers</a></li>
+                  <li><a class="dropdown-item" href="/admin/products/">Product Approvals</a></li>
+                  <li><a class="dropdown-item" href="/admin/orders/">All Orders</a></li>
+                  <li><a class="dropdown-item" href="/admin/admin_records/">Admin Records</a></li>
+                </ul>
+              </li>
             {% endif %}
 
-          </ul>
-        </div>
+          {% endif %}
 
-        <!-- RIGHT COLUMN: SEARCH BAR -->
-          <form class="d-flex align-items-center gap-2 ms-lg-auto header-search" role="search" action="/search/">
-        <input class="form-control header-search-input" name="q" placeholder="Search..." aria-label="Search">
-        <button class="btn btn-primary header-search-btn" type="submit">Search</button>
-      </form>
-        </div>
-
+        </ul>
       </div>
+
     </div>
-  </div>
-</nav>
+  </nav>
 
 </header>
