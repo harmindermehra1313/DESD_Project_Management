@@ -1,0 +1,173 @@
+/* =========================
+   HEADER ONLY (no rectangles, footer-like hover)
+   ========================= */
+
+/* Sticky header */
+.custom-header{
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+/* Row colours */
+.header-topbar{
+  background: var(--brand-dark) !important;
+  border-bottom: 1px solid rgb(from var(--brand-muted) r g b / 0.35);
+}
+
+.header-row-2{
+  background: color-mix(in oklab, var(--brand-dark) 88%, black) !important;
+  border-bottom: 1px solid rgb(from var(--brand-muted) r g b / 0.25);
+}
+
+/* Layout (prevents wrapping issues on desktop) */
+.header-belt{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  min-height: 60px;
+}
+
+.header-left,
+.header-right{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Logo */
+.brand-logo{
+  height: 36px;
+  width: auto;
+  display: block;
+}
+
+.brand-text{
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* Two-line text */
+.nav-line1{
+  font-size: 0.72rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.nav-line2{
+  font-size: 0.95rem;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+/* Footer-like link behaviour (no boxes) */
+.header-topbar .navbar-brand,
+.header-topbar .nav-link,
+.header-topbar .dropdown-toggle,
+.header-row-2 .nav-link,
+.header-row-2 .dropdown-toggle{
+  color: var(--nav-text) !important;
+  text-decoration: none;
+}
+
+/* Small padding for click area, but not boxy */
+.header-topbar .nav-link,
+.header-topbar .dropdown-toggle,
+.header-row-2 .nav-link,
+.header-row-2 .dropdown-toggle{
+  padding: .25rem .5rem;
+}
+
+/* Hover/focus = footer style */
+.header-topbar .navbar-brand:hover,
+.header-topbar .nav-link:hover,
+.header-topbar .dropdown-toggle:hover,
+.header-row-2 .nav-link:hover,
+.header-row-2 .dropdown-toggle:hover,
+.header-topbar .navbar-brand:focus,
+.header-topbar .nav-link:focus,
+.header-topbar .dropdown-toggle:focus,
+.header-row-2 .nav-link:focus,
+.header-row-2 .dropdown-toggle:focus{
+  color: var(--brand-primary) !important;
+  text-decoration: underline;
+}
+
+/* Keep dropdown menus readable */
+.header-topbar .dropdown-menu,
+.header-row-2 .dropdown-menu{
+  background: var(--page-bg);
+  border-color: rgb(from var(--brand-muted) r g b / 0.35);
+}
+
+/* =========================
+   COMPACT SEARCH (matches site)
+   ========================= */
+.header-search--compact{
+  flex: 0 1 420px;
+  max-width: 520px;
+  min-width: 260px;
+}
+
+.header-search-input{
+  font: inherit;
+  font-size: 1rem;
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  height: 40px;
+}
+
+.header-search-input::placeholder{
+  color: rgb(from var(--brand-muted) r g b / 0.85);
+}
+
+.header-search-input:focus{
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 .25rem var(--bs-focus-ring-color);
+}
+
+/* Button uses your .btn-primary theme; just size it */
+.header-search-btn{
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.9rem;
+}
+
+/* Make the group look like one piece */
+.header-search .input-group > :first-child{
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+.header-search .input-group > :last-child{
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+/* Cart badge (optional) */
+.cart-badge{
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.4rem;
+}
+
+/* Responsive: wrap belt only on smaller screens */
+@media (max-width: 991.98px){
+  .header-belt{
+    flex-wrap: wrap;
+  }
+
+  .header-search{
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+    min-width: 0;
+    margin-top: 8px;
+  }
+}

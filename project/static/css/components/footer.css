@@ -1,0 +1,53 @@
+/* Footer matches navbar */
+.custom-footer{
+  background-color: var(--brand-dark);
+  color: var(--nav-text);
+}
+
+/* Footer links consistent in all states */
+.custom-footer a:link,
+.custom-footer a:visited{
+  color: var(--nav-text) !important;
+  text-decoration: none;
+}
+
+.custom-footer a:hover,
+.custom-footer a:focus{
+  color: var(--brand-primary) !important;
+  text-decoration: underline;
+}
+
+/* Compact footer on small/medium screens */
+@media (max-width: 991.98px){ /* < lg */
+  .custom-footer{
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    font-size: 0.95rem;
+  }
+
+  .custom-footer .row > [class^="col"]{
+    margin-bottom: 0.75rem; /* less gap between stacked sections */
+  }
+
+  .custom-footer h5{
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .custom-footer p{
+    margin-bottom: 0.4rem;
+  }
+
+  .custom-footer ul{
+    margin-bottom: 0;
+  }
+
+  .custom-footer li{
+    margin-bottom: 0.2rem;
+  }
+
+  .custom-footer .text-center{
+    margin-top: 0.75rem !important;
+    font-size: 0.9rem;
+  }
+}

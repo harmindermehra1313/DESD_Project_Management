@@ -1,0 +1,10 @@
+/* Global page spacing / layout */
+.page-shell{
+  width: 100%;
+  padding: 1rem;
+}
+
+/* md+ */
+/* @media (min-width: 768px){
+  .page-shell{ padding: 1.5rem; }
+} */
