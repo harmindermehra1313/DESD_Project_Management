@@ -70,7 +70,7 @@ class RecallNotice(models.Model):
 
     recall_reason = models.TextField()
 
-    Severity = models.CharField(
+    severity = models.CharField(
         max_length = 10,
         choices = Severity.choices
     )
@@ -110,7 +110,7 @@ class RecallNotification(models.Model):
         auto_now_add = True
     )
 
-    Notified_by = models.CharField(
+    notified_by = models.CharField(
         max_length = 10,
         choices = Notified_by.choices,
         default = Notified_by.EMAIL

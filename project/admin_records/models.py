@@ -47,7 +47,7 @@ class AdminPost(models.Model):
         POLICY = 'POL', 'Policy'
         PROMOTION = 'PRO', 'Promotion'
 
-    admin_id = models.ForeignKey("accounts.Admin", 
+    admin = models.ForeignKey("accounts.Admin", 
         on_delete = models.CASCADE, 
         related_name = "admin_post"
     )
@@ -109,7 +109,7 @@ class ModerationLog(models.Model):
         max_length = 20,
         choices = ContentType.choices)
     
-    content_id = models.IntegerField() #May need to be updated to be polymorphic 
+    content = models.IntegerField() #May need to be updated to be polymorphic 
 
     action = models.CharField(
         max_length=15, 

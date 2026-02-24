@@ -36,8 +36,8 @@ class Product(models.Model):
         NOT_CERTIFIED = 'NOT_CERTIFIED', 'Not Certified'
 
 
-    class Expirty_type(models.TextChoices):
-        BESTBEFORE = 'BB', 'Best Before'
+    class Expiry_type(models.TextChoices):
+        BESTBEFORE = 'BB', 'BEST BEFORE'
         USE_BY = 'UB', 'USE BY'
 
 
@@ -131,9 +131,9 @@ class Product(models.Model):
     expiry_date = models.DateTimeField()
 
     expiry_type = models.CharField(
-        max_length = 10,
-        choices = Expirty_type.choices,
-        default = Expirty_type.BESTBEFORE
+        max_length = 11,
+        choices = Expiry_type.choices,
+        default = Expiry_type.BESTBEFORE
     )
 
     availability_start = models.DateTimeField(
