@@ -1,0 +1,27 @@
+.checkout-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+.checkout-section {
+    margin-bottom: 2rem;
+}
+.checkout-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.checkout-table th, .checkout-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #ddd;
+}
+.checkout-total {
+    text-align: right;
+    margin-top: 1rem;
+    font-size: 1.2rem;
+}
+.checkout-btn {
+    margin-top: 1.5rem;
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+}

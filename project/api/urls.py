@@ -31,6 +31,7 @@ from api.views.orders import (
     ProducerOrderStatusHistoryViewSet,
     RecurringOrderViewSet,
     RecurringOrderItemViewSet,
+    CheckoutAPIView
 )
 from api.views.payments import (
     PaymentViewSet,
@@ -49,6 +50,8 @@ from api.views.reviews import (
     ReviewViewSet,
     ReviewResponseViewSet,
 )
+
+from django.urls import path
 
 app_name = "api"
 
@@ -104,4 +107,10 @@ router.register("product-allergens", ProductAllergenViewSet)
 router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
-urlpatterns = router.urls
+#urlpatterns = router.urls
+
+urlpatterns = [
+    path("checkout/", CheckoutAPIView.as_view(), name="checkout"),
+]
+
+urlpatterns += router.urls
