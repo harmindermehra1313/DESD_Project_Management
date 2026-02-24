@@ -90,6 +90,40 @@
   text-decoration: underline;
 }
 
+@media (max-width: 991.98px){ /* < lg */
+  .custom-footer{
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    font-size: 0.95rem;
+  }
+
+  .custom-footer .row > [class^="col"]{
+    margin-bottom: 0.75rem; /* less gap between stacked sections */
+  }
+
+  .custom-footer h5{
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .custom-footer p{
+    margin-bottom: 0.4rem;
+  }
+
+  .custom-footer ul{
+    margin-bottom: 0;
+  }
+
+  .custom-footer li{
+    margin-bottom: 0.2rem;
+  }
+
+  .custom-footer .text-center{
+    margin-top: 0.75rem !important;
+    font-size: 0.9rem;
+  }
+}
+
 .header-topbar{
   background-color: var(--brand-dark) !important;
   border-bottom: 1px solid rgb(from var(--brand-muted) r g b / 0.35);
