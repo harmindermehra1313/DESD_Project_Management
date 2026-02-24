@@ -1,4 +1,5 @@
 from rest_framework.routers import DefaultRouter
+
 from api.views.accounts import (
     UserViewSet,
     AddressViewSet,

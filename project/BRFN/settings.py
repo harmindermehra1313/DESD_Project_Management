@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     # Rest API
     'rest_framework',
     'api',
+    'carts'
 ]
 
 MIDDLEWARE = [
