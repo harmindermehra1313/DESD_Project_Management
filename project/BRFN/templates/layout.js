@@ -1,1 +1,0 @@
-console.log("Layout JS loaded successfully");
