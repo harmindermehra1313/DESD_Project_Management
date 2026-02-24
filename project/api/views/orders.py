@@ -22,6 +22,8 @@ from api.serializers.orders import (
     CheckoutSerializer
 )
 from django.apps import apps
+from time import timezone
+from datetime import timedelta
 
 Product = apps.get_model('products', 'Product')
 Payment = apps.get_model('payments', 'Payment')
@@ -68,16 +70,24 @@ class CheckoutAPIView(APIView):
                 {"error": "Cart is empty"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        delivery_method = serializer.validated_data["delivery_or_collection"]
+        delivery_date = serializer.validated_data["delivery_date"]
+        payment_method = serializer.validated_data["payment_method"]
+        special_instructions = serializer.validated_data.get("special_instructions", "")
 
         with transaction.atomic():
             # Create order
             order = Order.objects.create(
                 user=request.user,
                 delivery_address=request.user.addresses.first(), # TBC fix address so not just first!
-                status="PENDING",
+                delivery_or_collection=delivery_method,
+                delivery_date=delivery_date,
+                status=Order.Status.PENDING,
             )
 
             # Create order items
+            total_amount = 0
             for entry in items:
                 product = Product.objects.get(id=entry["product_id"])
                 quantity = entry["quantity"]
@@ -89,10 +99,19 @@ class CheckoutAPIView(APIView):
                     product=product,
                     producer=product.producer,
                     quantity=quantity,
-                    unit_price=product.price,
+                    original_unit_price=product.price,
+                    final_unit_price=product.price,
+                    commission_amount=0,
+                    discount_amount=0,
                     total_price=line_total,
+                    preparation_deadline=timezone.now() + timedelta(hours=48)
                 )
             
+            # Update order totals
+            order.total_price = total_amount
+            order.final_total_price = total_amount
+            order.save()
+
             # Create payment record
             Payment.objects.create(
                 order=order,
