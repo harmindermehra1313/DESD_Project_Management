@@ -1,106 +1,105 @@
-<!-- Harminder -->
+{% load static %}
 <header class="custom-header">
 
-  <!-- ===================== ROW 1 ===================== -->
-<!-- ===================== ROW 1 ===================== -->
-<div class="container-fluid header-row-1">
-  <div class="row align-items-center">
+<nav class="navbar navbar-dark header-topbar py-2">
+    <div class="container-fluid">
 
-    <!-- LEFT: Website Name -->
-    <div class="col-4 d-flex justify-content-start">
-      <a href="/" class="custom-brand">Bristol Regional Food Network</a>
-    </div>
-
-    <!-- CENTER: Cart (Icon + Text) -->
-    <div class="col-4 d-flex justify-content-center">
-      <a href="/cart/" class="custom-cart-icon d-flex align-items-center">
-        <i class="bi bi-cart3 me-1"></i>
-        <span class="cart-text">Cart</span>
+      <!-- LEFT: Logo + Brand -->
+      <a href="/" class="navbar-brand d-flex align-items-center gap-2">
+        <!-- Replace with your real logo path -->
+        <img src="{% static 'img/logo.png' %}" alt="BRFN" class="brand-logo">
+        <span class="d-none d-lg-inline">Bristol Regional Food Network</span>
       </a>
-    </div>
 
-    <!-- RIGHT: Welcome Message + Account Icon -->
-    <div class="col-4 d-flex justify-content-end align-items-center">
+      <!-- RIGHT: Cart + Welcome/Account -->
+      <div class="d-flex align-items-center gap-3 ms-auto">
 
-      <!-- Welcome Message -->
-      {% if user.is_authenticated %}
-        <span class="welcome-text me-2">Welcome, {{ user.first_name|default:user.username }}</span>
-      {% else %}
-        <span class="welcome-text me-2">Welcome, Guest</span>
-      {% endif %}
+        <!-- Cart -->
+        <a href="/cart/" class="nav-link d-flex align-items-center gap-1 position-relative">
+          <i class="bi bi-cart3 fs-5"></i>
+          <span class="d-none d-md-inline">Cart</span>
 
-      <!-- Account Icon -->
-      {% if user.is_authenticated %}
-        <a href="/login/" class="custom-account-icon">
-          <i class="bi bi-person-circle"></i>
+          {# Optional badge (replace 3 with your cart count) #}
+          {# <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">3</span> #}
         </a>
-      {% else %}
-        <a href="/accounts/" class="custom-account-icon">
-          <i class="bi bi-person-circle"></i>
-        </a>
-      {% endif %}
 
+        <!-- Account dropdown (modern pattern) -->
+        <div class="dropdown">
+          <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+             href="#"
+             role="button"
+             data-bs-toggle="dropdown"
+             aria-expanded="false">
+            <i class="bi bi-person-circle fs-5"></i>
+
+            <span class="d-none d-md-inline">
+              {% if user.is_authenticated %}
+                Welcome, {{ user.first_name|default:user.username }}
+              {% else %}
+                Welcome, Guest
+              {% endif %}
+            </span>
+          </a>
+
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% if user.is_authenticated %}
+              <li><a class="dropdown-item" href="/accounts/">Account</a></li>
+              <li><a class="dropdown-item" href="/logout/">Logout</a></li>
+            {% else %}
+              <li><a class="dropdown-item" href="/login/">Login</a></li>
+              <li><a class="dropdown-item" href="/accounts/">Create account</a></li>
+            {% endif %}
+          </ul>
+        </div>
+
+      </div>
     </div>
-
-  </div>
-</div>
+  </nav>
 
 
   <!-- ===================== ROW 2 ===================== -->
-<nav class="navbar navbar-expand-lg header-row-2">
+<nav class="navbar navbar-expand-lg navbar-dark header-row-2">
   <div class="container-fluid">
 
-    <!-- Mobile Toggle -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2"
+            aria-controls="navRow2" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navRow2">
 
-      <div class="row w-100 align-items-center">
+      <!-- LEFT: navigation -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
+        <li class="nav-item"><a class="nav-link custom-nav-link" href="/">Home</a></li>
 
-        <!-- LEFT COLUMN: NAVIGATION -->
-        <div class="col-12 col-xl-8 mb-3 mb-xl-0">
-          <ul class="navbar-nav flex-wrap align-items-center">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle custom-nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Products
+          </a>
+          <ul class="dropdown-menu custom-dropdown">
+            <li><a class="dropdown-item" href="/category/vegetables/">Vegetables</a></li>
+            <li><a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a></li>
+            <li><a class="dropdown-item" href="/category/bakery/">Bakery</a></li>
+            <li><a class="dropdown-item" href="/category/preserves/">Preserves</a></li>
+            <li><a class="dropdown-item" href="/category/seasonal/">Seasonal</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/category/organic/">Certified Organic</a></li>
+          </ul>
+        </li>
 
-            <!-- Home -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/">Home</a>
-            </li>
+        <li class="nav-item"><a class="nav-link custom-nav-link" href="/producers/">Producers</a></li>
 
-            <!-- Products Dropdown -->
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                Products
-              </a>
-              <ul class="dropdown-menu custom-dropdown">
-                <li><a class="dropdown-item" href="/category/vegetables/">Vegetables</a></li>
-                <li><a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a></li>
-                <li><a class="dropdown-item" href="/category/bakery/">Bakery</a></li>
-                <li><a class="dropdown-item" href="/category/preserves/">Preserves</a></li>
-                <li><a class="dropdown-item" href="/category/seasonal/">Seasonal</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/category/organic/">Certified Organic</a></li>
-              </ul>
-            </li>
-
-            <!-- Producers -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
-            </li>
-
-            <!-- More Dropdown -->
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                More
-              </a>
-              <ul class="dropdown-menu custom-dropdown">
-                <li><a class="dropdown-item" href="/about/">About Us</a></li>
-                <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
-                <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
-                <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
-              </ul>
-            </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle custom-nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            More
+          </a>
+          <ul class="dropdown-menu custom-dropdown">
+            <li><a class="dropdown-item" href="/about/">About Us</a></li>
+            <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
+            <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
+            <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
+          </ul>
+        </li>
 
             <!-- ROLE‑BASED NAVIGATION -->
             {% if user.is_authenticated %}
@@ -148,11 +147,10 @@
         </div>
 
         <!-- RIGHT COLUMN: SEARCH BAR -->
-        <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
-          <form class="d-flex custom-search w-100" action="/search/">
-            <input class="form-control custom-search-input" name="q" placeholder="Search...">
-            <button class="btn custom-search-btn">Search</button>
-          </form>
+          <form class="d-flex align-items-center gap-2 ms-lg-auto header-search" role="search" action="/search/">
+        <input class="form-control header-search-input" name="q" placeholder="Search..." aria-label="Search">
+        <button class="btn btn-primary header-search-btn" type="submit">Search</button>
+      </form>
         </div>
 
       </div>
@@ -161,4 +159,3 @@
 </nav>
 
 </header>
-<!-- Harminder -->
