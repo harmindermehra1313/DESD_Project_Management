@@ -53,10 +53,7 @@ def checkout(request):
     return render(request, "orders/checkout.html", context)
 
 def order_success(request, reference):
-    order = get_object_or_404(
-        Order, 
-        unique_reference=reference, 
-        user=request.user)
+    order = Order.objects.get(unique_reference=reference)
 
     return render(request, "orders/order_confirmed.html", {
         "order": order

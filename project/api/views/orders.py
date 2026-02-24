@@ -22,7 +22,7 @@ from api.serializers.orders import (
     CheckoutSerializer
 )
 from django.apps import apps
-from time import timezone
+from django.utils import timezone
 from datetime import timedelta
 
 Product = apps.get_model('products', 'Product')
@@ -88,13 +88,14 @@ class CheckoutAPIView(APIView):
 
             # Create order items
             total_amount = 0
+            items_by_producer = {}
+
             for entry in items:
                 product = Product.objects.get(id=entry["product_id"])
                 quantity = entry["quantity"]
-                line_total = product.price * quantity
-                total_amount += line_total
+                total_amount += product.price * quantity
 
-                OrderItem.objects.create(
+                item = OrderItem.objects.create(
                     order=order,
                     product=product,
                     producer=product.producer,
@@ -103,20 +104,39 @@ class CheckoutAPIView(APIView):
                     final_unit_price=product.price,
                     commission_amount=0,
                     discount_amount=0,
-                    total_price=line_total,
-                    preparation_deadline=timezone.now() + timedelta(hours=48)
+                    preparation_deadline=timezone.now() + timedelta(hours=48),
                 )
+
+                # Group by producer
+                items_by_producer.setdefault(product.producer, []).append(item)
             
             # Update order totals
             order.total_price = total_amount
             order.final_total_price = total_amount
             order.save()
 
+            # Create ProducerOrderSummary for each producer
+            for producer, producer_items in items_by_producer.items():
+                subtotal = sum(i.final_unit_price * i.quantity for i in producer_items)
+                commission_total = 0
+                payout_amount = subtotal - commission_total
+
+                ProducerOrderSummary.objects.create(
+                    order=order,
+                    producer=producer,
+                    subtotal=subtotal,
+                    commission_total=commission_total,
+                    payout_amount=payout_amount,
+                    delivery_date=delivery_date,
+                    special_instructions=special_instructions,
+                    status=ProducerOrderSummary.Status.PENDING,
+                )
+
             # Create payment record
             Payment.objects.create(
                 order=order,
                 amount=total_amount,
-                payment_method=serializer.validated_data["payment_method"],
+                payment_method=payment_method,
                 payment_status=Payment.Status.PENDING,
                 sandbox_mode=True,
             )
