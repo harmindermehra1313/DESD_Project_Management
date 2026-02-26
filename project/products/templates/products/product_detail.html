@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Product{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div id="alert"></div>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-5">
+      <div class="card">
+        <img id="pImage" class="card-img-top" alt="">
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+      <h1 id="pName" class="h3 mb-2">Loading…</h1>
+      <div class="text-muted mb-3">
+        <span id="pFarm"></span>
+        <span class="mx-2">·</span>
+        <span id="pCategory"></span>
+      </div>
+
+      <p id="pDesc" class="mb-3"></p>
+
+      <div class="d-flex align-items-center justify-content-between border rounded p-3 mb-3">
+        <div>
+          <div class="text-muted small">Price</div>
+          <div class="h5 mb-0">
+            <span id="pPrice"></span>
+            <span class="text-muted small"> / <span id="pUnit"></span></span>
+          </div>
+        </div>
+
+        <div class="text-end">
+          <div class="text-muted small">Total</div>
+          <div class="h5 mb-0" id="pTotal">£—</div>
+        </div>
+      </div>
+
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-12 col-sm-5">
+          <label class="form-label" for="qty">Quantity</label>
+          <input id="qty" type="number" class="form-control" min="1" step="1" value="1">
+        </div>
+
+        <div class="col-12 col-sm-7 d-grid">
+          <button id="addToCart" class="btn btn-primary btn-lg">
+            Add to cart
+          </button>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <h2 class="h6 mb-2">Allergens</h2>
+          <ul id="pAllergens" class="mb-0"></ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 mb-2">Wholesale pricing</h2>
+          <div id="pWholesale" class="small text-muted">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="productConfig"
+     data-product-id="{{ view.kwargs.pk }}"
+     data-product-api-base="/api/products/"
+     data-cart-base="/api/cart/"></div>
+
+<script src="{% static 'products/product_detail.js' %}"></script>
+{% endblock %}

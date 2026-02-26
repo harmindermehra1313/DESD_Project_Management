@@ -44,7 +44,6 @@ from api.views.products import (
     CategoryViewSet,
     ProductViewSet,
     WholesalePriceViewSet,
-    ProductUpdateHistoryViewSet,
     AllergenViewSet,
     ProductAllergenViewSet,
 )
@@ -104,7 +103,6 @@ router.register("settlement-line-items", SettlementLineItemViewSet)
 router.register("categories", CategoryViewSet)
 router.register("products", ProductViewSet)
 router.register("wholesale-prices", WholesalePriceViewSet)
-router.register("product-update-history", ProductUpdateHistoryViewSet)
 router.register("allergens", AllergenViewSet)
 router.register("product-allergens", ProductAllergenViewSet)
 
@@ -113,7 +111,7 @@ router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
 # Carts
-router.register("carts", CartViewSet, basename="cart")
+router.register("cart", CartViewSet, basename="cart")
 
 #urlpatterns = router.urls
 

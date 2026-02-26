@@ -1,5 +1,8 @@
+from django.views.generic import TemplateView
 from django.shortcuts import render
 
-# Create your views here.
-def index(request):
-    return render(request, 'products/index.html')
+def products_page(request):
+    return render(request, "products/index.html")
+
+class ProductDetailPage(TemplateView):
+    template_name = "products/product_detail.html"

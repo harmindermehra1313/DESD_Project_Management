@@ -15,8 +15,8 @@
         <a href="/accounts/addresses/" class="nav-link d-none d-md-flex flex-column align-items-start">
           <span class="nav-line1">Deliver to</span>
           <span class="nav-line2">
-            {% if user.is_authenticated %}
-              {{ user.first_name|default:user.username }}
+            {% if user.is_authenticated and not user.is_staff %}
+              {% firstof user.first_name user.get_username "Customer" %}
             {% else %}
               Guest
             {% endif %}
@@ -44,11 +44,11 @@
              data-bs-toggle="dropdown"
              aria-expanded="false">
             <span class="nav-line1">
-              {% if user.is_authenticated %}
-                Hello, {{ user.first_name|default:user.username }}
-              {% else %}
-                Hello, sign in
-              {% endif %}
+              {% if user.is_authenticated and not user.is_staff %}
+  Hello, {% firstof user.first_name user.get_username "Customer" %}
+{% elif not user.is_authenticated %}
+  Guest
+{% endif %}
             </span>
             <span class="nav-line2">Account</span>
           </a>
@@ -65,9 +65,8 @@
         </div>
 
         <a href="/cart/" class="nav-link d-flex align-items-center gap-2 position-relative">
-          <i class="bi bi-cart3 fs-5"></i>
-          <span class="d-none d-sm-inline nav-line2">Cart</span>
-          {# <span class="badge rounded-pill bg-primary cart-badge">3</span> #}
+           Cart
+  <span id="cartCount" class="badge rounded-pill text-bg-success ms-1">0</span>
         </a>
 
       </div>
@@ -164,5 +163,5 @@
 
     </div>
   </nav>
-
+<script defer src="{% static 'carts/cart.js' %}"></script>
 </header>

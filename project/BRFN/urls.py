@@ -30,4 +30,5 @@ urlpatterns = [
     path('reviews/', include('reviews.urls', namespace='reviews')),
     path('api/', include('api.urls', namespace='api')),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
+     path("cart/", include("carts.urls", namespace="carts")),
 ]

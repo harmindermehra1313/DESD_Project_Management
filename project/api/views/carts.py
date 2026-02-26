@@ -119,7 +119,7 @@ class CartViewSet(viewsets.ViewSet):
     @action(
         detail=False,
         methods=["patch"],
-        url_path=r"items/(?P<product_id>\d+)",
+        url_path=r"items/(?P<product_id>\d+)/quantity",
     )
     def set_item_quantity(self, request, product_id: str):
         """
