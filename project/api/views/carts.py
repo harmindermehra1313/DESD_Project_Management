@@ -1,4 +1,3 @@
-# api/views/carts.py
 from __future__ import annotations
 
 import uuid
@@ -18,7 +17,7 @@ from carts.services import (
     cart_merge_guest_into_user,
     cart_new_guest_token,
 )
-from api.serializers.cart import (  
+from api.serializers.carts import (  
     CartAddItemSerializer,
     CartRemoveItemSerializer,
     CartSerializer,
@@ -39,6 +38,10 @@ class CartViewSet(viewsets.ViewSet):
         if getattr(self, "action", None) in {"merge_guest"}:
             return [IsAuthenticated()]
         return [AllowAny()]
+    
+    def list(self, request):
+        # Make /api/cart/ behave like “get my current cart”
+        return self.me(request)
 
     def _parse_guest_token(self, request) -> uuid.UUID:
         token_str = (

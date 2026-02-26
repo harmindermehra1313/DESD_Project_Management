@@ -113,7 +113,7 @@ router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
 # Carts
-router.register("cart", CartViewSet, basename="cart")
+router.register("carts", CartViewSet, basename="cart")
 
 #urlpatterns = router.urls
 
