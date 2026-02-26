@@ -3,39 +3,51 @@
 
 {% block content %}
 <div class="success-container">
-
-    <h1>Order Confirmed</h1>
-
-    <p>Thank you for your order!</p>
-
-    <p>Your order reference is:</p>
-    <h2>{{ order.unique_reference }}</h2>
-
-    <p>A receipt has been emailed to <strong>{{ order.user.email }}</strong>.</p>
-
-    <hr>
-
     <h3>Order Summary</h3>
+    {% for summary in producer_summaries %}
+        <div class="producer-block">
+            <h4>{{ summary.producer.name }}</h4>
 
-    <ul>
-        {% for item in order.items.all %}
-            <li>
-                {{ item.product.name }} — {{ item.quantity }} × £{{ item.unit_price }}
-                = £{{ item.total_price }}
-            </li>
-        {% endfor %}
-    </ul>
+            <p>
+                <strong>Delivery method:</strong>
+                {% if summary.delivery_or_collection == "DEL" %}
+                    Delivery
+                {% else %}
+                    Collection
+                {% endif %}
+            </p>
 
-    <p><strong>Total:</strong> £{{ order.total_price }}</p>
+            <p>
+                <strong>Date:</strong> {{ summary.delivery_date }}<br>
+                <strong>Time slot:</strong> {{ summary.delivery_time_slot }}
+            </p>
 
-    <hr>
+            <p>
+                <strong>Address:</strong><br>
+                {{ summary.address_line1 }}<br>
+                {% if summary.address_line2 %}{{ summary.address_line2 }}<br>{% endif %}
+                {{ summary.city }}<br>
+                {{ summary.postcode }}
+            </p>
 
-    <h3>Delivery Address</h3>
-    <p>
-        {{ order.delivery_address.line1 }}<br>
-        {{ order.delivery_address.city }}<br>
-        {{ order.delivery_address.postcode }}
-    </p>
+            <h5>Items from this producer</h5>
+            <ul>
+                {% for item in items_by_producer.summary.producer %}
+                    <li>
+                        {{ item.product.name }} — {{ item.quantity }} × £{{ item.final_unit_price }}
+                        = £{{ item.line_total }}
+                    </li>
+                {% endfor %}
+            </ul>
 
-</div>
+            <p>
+                <strong>Subtotal:</strong> £{{ summary.subtotal }}<br>
+                <strong>VAT:</strong> £{{ summary.vat_total }}<br>
+                <strong>Commission:</strong> £{{ summary.commission_total }}<br>
+                <strong>Payout to producer:</strong> £{{ summary.payout_amount }}
+            </p>
+
+            <hr>
+        </div>
+    {% endfor %}
 {% endblock %}

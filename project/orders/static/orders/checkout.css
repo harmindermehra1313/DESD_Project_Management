@@ -1,27 +1,305 @@
+/* ============================
+   BRAND VARIABLES
+   ============================ */
+:root {
+    --brand: var(--brand-dark);
+    --accent: var(--brand-primary);
+    --muted: var(--brand-muted);
+    --bg: #ffffff;
+    --radius: 8px;
+    --gap: 12px;
+}
+
+/* ============================
+   LAYOUT
+   ============================ */
 .checkout-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 2rem;
+    color: var(--brand);
 }
+
 .checkout-section {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
+
+/* ============================
+   HEADINGS
+   ============================ */
+.checkout-container h1,
+.checkout-container h2,
+.checkout-container h3 {
+    color: var(--brand);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+/* ============================
+   TABLE
+   ============================ */
+.checkout-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.checkout-table th {
+    background: rgba(var(--brand-muted-rgb), 0.1);
+    color: var(--brand);
+    font-weight: 600;
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(var(--brand-muted-rgb), 0.3);
+}
+
+.checkout-table td {
+    padding: 0.9rem;
+    border-bottom: 1px solid rgba(var(--brand-muted-rgb), 0.25);
+}
+
+/* ============================
+   PRICE STYLING
+   ============================ */
+.price-discount {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.price-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.vat-note {
+    font-size: 0.8rem;
+    color: var(--brand-secondary);
+}
+
+.savings-note {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ============================
+   ORDER TOTAL BOX
+   ============================ */
+.checkout-total {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-top: 2px solid rgba(var(--brand-muted-rgb), 0.4);
+    background: rgba(var(--brand-info-rgb), 0.08);
+    border-radius: var(--radius);
+}
+
+.final-order-price {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 0.75rem;
+}
+
+.order-breakdown summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.order-breakdown ul {
+    margin: 0.5rem 0;
+    padding-left: 1.2rem;
+    color: var(--brand);
+}
+
+.savings-line {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.order-savings {
+    margin-top: 0.5rem;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* ============================
+   FORM ELEMENTS
+   ============================ */
+input[type="text"],
+input[type="date"],
+textarea,
+select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(var(--brand-muted-rgb), 0.4);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: var(--brand);
+    background: #fff;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
+/* Labels */
+label {
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+/* Radio buttons */
+input[type="radio"] {
+    accent-color: var(--accent);
+    margin-right: 0.4rem;
+}
+
+/* HR */
+hr {
+    border: none;
+    border-top: 1px solid rgba(var(--brand-muted-rgb), 0.4);
+    margin: 1.5rem 0;
+}
+
+/* ============================
+   ADDRESS BLOCKS
+   ============================ */
+#selected-delivery-address,
+#selected-billing-address {
+    padding: 1rem;
+    border: 1px solid rgba(var(--brand-muted-rgb), 0.3);
+    border-radius: var(--radius);
+    background: #fbfbfb;
+    margin-bottom: 1rem;
+}
+
+#new-delivery-address-form,
+#new-billing-address-form {
+    padding: 1rem;
+    border: 1px solid rgba(var(--brand-muted-rgb), 0.3);
+    border-radius: var(--radius);
+    background: #fbfbfb;
+}
+
+/* ============================
+   BUTTONS
+   ============================ */
+.btn-primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--brand);
+    font-weight: 600;
+    border-radius: var(--radius);
+}
+
+.btn-primary:hover {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+
+.checkout-btn {
+    margin-top: 2rem;
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+}
+
+/* ============================
+   Card layout for each producer
+   ============================ */
+/* Outer card */
+.producer-box {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Title spacing */
+.producer-box h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+/* Two-column layout */
+.producer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+/* Left column: product list */
+.producer-products {
+    border-right: 1px solid #ddd;
+    padding-right: 1.5rem;
+}
+
+/* Right column: delivery/collection form */
+.producer-delivery {
+    padding-left: 1.5rem;
+}
+
+/* Form styling */
+.producer-delivery h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.producer-delivery label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.producer-delivery input[type="date"],
+.producer-delivery select {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+/* Table styling */
 .checkout-table {
     width: 100%;
     border-collapse: collapse;
 }
-.checkout-table th, .checkout-table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #ddd;
+
+.checkout-table th,
+.checkout-table td {
+    padding: 0.6rem 0.4rem;
+    border-bottom: 1px solid #eee;
+    text-align: left;
 }
-.checkout-total {
-    text-align: right;
+
+.checkout-table th {
+    font-weight: 600;
+    background: #fafafa;
+}
+
+.producer-subtotal {
     margin-top: 1rem;
-    font-size: 1.2rem;
-}
-.checkout-btn {
-    margin-top: 1.5rem;
-    width: 100%;
-    padding: 1rem;
-    font-size: 1.1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+    font-size: 0.95rem;
+    line-height: 1.5;
 }

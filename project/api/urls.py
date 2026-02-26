@@ -31,7 +31,6 @@ from api.views.orders import (
     ProducerOrderStatusHistoryViewSet,
     RecurringOrderViewSet,
     RecurringOrderItemViewSet,
-    CheckoutAPIView
 )
 from api.views.payments import (
     PaymentViewSet,
@@ -59,7 +58,7 @@ router = DefaultRouter()
 
 # Accounts
 router.register("users", UserViewSet)
-router.register("addresses", AddressViewSet)
+router.register("addresses", AddressViewSet, basename="address")
 router.register("producers", ProducerViewSet)
 router.register("admins", AdminViewSet)
 router.register("customers", CustomerViewSet)
@@ -107,10 +106,4 @@ router.register("product-allergens", ProductAllergenViewSet)
 router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
-#urlpatterns = router.urls
-
-urlpatterns = [
-    path("checkout/", CheckoutAPIView.as_view(), name="checkout"),
-]
-
-urlpatterns += router.urls
+urlpatterns = router.urls

@@ -24,7 +24,6 @@ class Order(models.Model):
         related_name = "orders_for_users",
     )
     
-    
     delivery_address = models.ForeignKey(
         "accounts.Address",
         on_delete = models.CASCADE,
@@ -49,13 +48,6 @@ class Order(models.Model):
         default = timezone.now
     )
     
-    delivery_or_collection = models.CharField(
-        max_length = 20,
-        choices = DeliveryOrCollection.choices,
-    )
-    
-    delivery_date = models.DateTimeField()
-    
     total_price = models.DecimalField(
         max_digits = 10,
         decimal_places = 2,
@@ -63,6 +55,12 @@ class Order(models.Model):
     )
     
     total_discount = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
+
+    total_vat = models.DecimalField(
         max_digits = 10,
         decimal_places = 2,
         default = Decimal("0.00")
@@ -141,6 +139,18 @@ class OrderItem(models.Model):
         blank = True,
         default = ""
     )
+
+    vat_amount = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
+
+    vat_rate = models.DecimalField(
+        max_digits = 4,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
     
     final_unit_price = models.DecimalField(
         max_digits = 10,
@@ -193,13 +203,36 @@ class ProducerOrderSummary(models.Model):
         default = Decimal("0.00")
         
         )
+    
+    vat_total = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
+
     payout_amount = models.DecimalField(
         max_digits = 10, 
         decimal_places = 2, 
         default = Decimal("0.00")
         )
 
-    delivery_date = models.DateTimeField()
+    delivery_date = models.DateField()
+
+    delivery_or_collection = models.CharField(
+        max_length=20,
+        choices=Order.DeliveryOrCollection.choices,
+    )
+
+    delivery_time_slot = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+
+    address_line1 = models.CharField(max_length=255)
+    address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100)
+    postcode = models.CharField(max_length=20)
 
     special_instructions = models.TextField(
         null=True, 

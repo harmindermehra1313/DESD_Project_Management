@@ -7,7 +7,6 @@ from orders.models import (
     RecurringOrder,
     RecurringOrderItem,
 )
-from payments.models import Payment
 from api.serializers.accounts import UserSerializer, ProducerSerializer
 from api.serializers.accounts import AddressSerializer
 from api.serializers.products import ProductSerializer
@@ -63,24 +62,3 @@ class RecurringOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecurringOrder
         fields = "__all__"
-    
-
-class CheckoutSerializer(serializers.Serializer):
-    # Payment method
-    payment_method = serializers.ChoiceField(
-        choices=Payment.Method.choices
-    )
-
-    # Delivery or collection
-    delivery_or_collection = serializers.ChoiceField(
-        choices=Order.DeliveryOrCollection.choices
-    )
-
-    # Delivery date
-    delivery_date = serializers.DateTimeField()
-
-    # Optional field
-    special_instructions = serializers.CharField(
-        allow_blank=True,
-        required=False
-    )

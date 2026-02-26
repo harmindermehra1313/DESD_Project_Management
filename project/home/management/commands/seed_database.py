@@ -97,6 +97,20 @@ class Command(BaseCommand):
             password="customerpass",
         )
 
+        self.producer_user = UserModel.objects.create_user(
+            name="Lyle Blue",
+            role="PRODUCER",
+            email="lyleblue00@gmail.com",
+            password="customerpass00",
+        )
+
+        self.producer_user2 = UserModel.objects.create_user(
+            name="Tim Cricket",
+            role="PRODUCER",
+            email="crickets23@gmail.com",
+            password="customerpass23",
+        )
+
         self.admin = self.Admin.objects.create(
             user=self.admin_user,
             permissions_json={
@@ -123,7 +137,7 @@ class Command(BaseCommand):
     # Producers
     def create_producers(self):
         self.producer = self.Producer.objects.create(
-            user=self.admin_user,
+            user=self.producer_user,
             farm_name="Blue Cow Farm",
             farm_description="A small family-run organic farm.",
             farm_postcode="BS1 4AB",
@@ -141,7 +155,25 @@ class Command(BaseCommand):
             organic_certification_number="ORG-12345",
         )
 
-        self.stdout.write(self.style.SUCCESS("  Producer created."))
+        self.producer2 = self.Producer.objects.create(
+            user=self.producer_user2,
+            farm_name="Cricket Ranch",
+            farm_description="A small family-run farm.",
+            farm_postcode="BS1 4AK",
+            contact_email="cricketranch@gmail.com",
+            contact_phone="07123456789",
+            approved_by_admin=self.admin_user,
+            is_approved=True,
+            approved_at=timezone.now(),
+            payout_method="BANK_TRANSFER",
+            bank_account_name="Cricket Ranch Ltd",
+            bank_account_number="12345678",
+            bank_sort_code="12-34-56",
+            paypal_email=None,
+            payout_notes="Initial setup for testing.",
+        )
+
+        self.stdout.write(self.style.SUCCESS("  Producer x2 created."))
 
     # Categories
     def create_categories(self):
@@ -150,7 +182,12 @@ class Command(BaseCommand):
             description="Fresh produce",
             vat="0.0"
         )
-        self.stdout.write(self.style.SUCCESS("  Category created."))
+        self.category2 = self.Category.objects.create(
+            name="Poultry",
+            description="Fresh poultry",
+            vat="0.0"
+        )
+        self.stdout.write(self.style.SUCCESS("  Category x2 created."))
 
     # Allergens
     def create_allergens(self):
@@ -174,7 +211,7 @@ class Command(BaseCommand):
 
             name="Organic Carrots",
             description="Fresh organic carrots.",
-            price=2.50,
+            price=1.05,
             unit="KG",
             image="carrots.jpg",
 
@@ -187,7 +224,7 @@ class Command(BaseCommand):
             storage_guidance="Keep refrigerated.",
 
             expiry_date=today + timezone.timedelta(days=7),
-            expiry_type="BEST BEFORE",
+            expiry_type="BB",
 
             availability_start=today,
             availability_end=today + timezone.timedelta(days=30),
@@ -207,13 +244,13 @@ class Command(BaseCommand):
         # Product 2 - Free-range Eggs
         self.product2 = self.Product.objects.create(
             producer=self.producer,
-            category=self.category,
+            category=self.category2,
             moderated_by_admin=None,
 
             name="Free-range Eggs",
             description="A dozen free-range eggs.",
             price=3.00,
-            unit="EACH",
+            unit="BX",
             image="eggs.jpg",
 
             stock_quantity=50,
@@ -225,7 +262,7 @@ class Command(BaseCommand):
             storage_guidance="Store in a cool, dry place.",
 
             expiry_date=today + timezone.timedelta(days=14),
-            expiry_type="USE BY",
+            expiry_type="BB",
 
             availability_start=today,
             availability_end=today + timezone.timedelta(days=60),
@@ -242,6 +279,44 @@ class Command(BaseCommand):
             moderated_at=None,
         )
 
+        # Product 3 - Apples
+        self.product3 = self.Product.objects.create(
+            producer=self.producer2,
+            category=self.category,
+            moderated_by_admin=None,
+
+            name="Braeburn Apples",
+            description="A kilogram of braeburn apples.",
+            price=2.50,
+            unit="KG",
+            image="braeburn_apples.jpg",
+
+            stock_quantity=42,
+            low_stock_threshold=10,
+
+            harvest_date=today,
+            farm_origin="Cricket Ranch",
+            organic_certification_status="NOT_CERTIFIED",
+            storage_guidance="Store in a cool, dry place.",
+
+            expiry_date=today + timezone.timedelta(days=14),
+            expiry_type="BB",
+
+            availability_start=today,
+            availability_end=today + timezone.timedelta(days=60),
+            availability_status="AVAILABLE",
+
+            surplus_status="SA",
+            surplus_discount_percentage=10,
+            surplus_expiry=None,
+            surplus_note="End of season sale.",
+
+            created_at=now,
+            updated_at=now,
+            status="PUBLISHED",
+            moderated_at=None,
+        )
+
         self.ProductAllergen.objects.create(
             product=self.product2,
             allergen=self.allergens[0] # Eggs
@@ -251,15 +326,15 @@ class Command(BaseCommand):
             product=self.product1,
             user=self.customer_user,
             field_changed="price",
-            old_value="2.00",
-            new_value="2.50",
+            old_value="1.05",
+            new_value="1.09",
             changed_at=timezone.now(),
         )
 
         self.WholesalePrice.objects.create(
             product=self.product1,
             min_quantity=100,
-            unit_price=1.80
+            unit_price=0.80,
         )
 
         self.stdout.write(self.style.SUCCESS("  Products + related tables created."))
