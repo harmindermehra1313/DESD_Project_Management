@@ -33,7 +33,8 @@
         <button id="btnProducer" class="btn btn-outline-primary role-btn" data-role="producer" type="button">Producer</button>
       </div>
 
-      <form id="registerForm" method="POST" novalidate>
+      <div id="formErrors" class="alert alert-danger visually-hidden"></div>
+      <form id="registerForm" method="POST" action="/accounts/api/register/" novalidate>
         {% csrf_token %}
         <input type="hidden" name="role" id="roleInput" value="{{ role|default:'customer' }}">
         <!-- organisation_type is stored for the Customer model; kept hidden and set by JS -->
@@ -48,7 +49,7 @@
 
             <div class="mb-3">
               <label for="name" class="form-label">Full name <span class="text-danger">*</span></label>
-              <input id="name" name="name" type="text" class="form-control" maxlength="100" required autocomplete="name" placeholder="Jane Doe">
+              <input id="name" name="name" type="text" class="form-control" maxlength="100" required autocomplete="name" placeholder="Jane Doe" pattern="^[A-Za-z]+(?:\s+[A-Za-z]+)+$">
             </div>
 
             <div class="mb-3">
@@ -58,12 +59,15 @@
 
             <div class="mb-3">
               <label for="phone" class="form-label">Phone</label>
-              <input id="phone" name="phone" type="tel" class="form-control" maxlength="20" pattern="^\+?[0-9\s\-()]{7,20}$" placeholder="+44 7700 900123">
+              <input id="phone" name="phone" type="tel" class="form-control"
+                  maxlength="13"
+                  pattern="^(07\d{9}|\+44\d{10})$"
+                  placeholder="+447700900123">
             </div>
 
             <div class="mb-3">
               <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-              <input id="password" name="password" type="password" class="form-control" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="At least 8 characters">
+              <input id="password" name="password" type="password" class="form-control" minlength="8" maxlength="128" required autocomplete="new-password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$" placeholder="At least 8 characters">
               <div class="form-text">Use at least 8 characters. Include letters and numbers for stronger password.</div>
             </div>
 
@@ -101,21 +105,24 @@
                 <h6 class="mb-2">Business Details</h6>
                 <div class="mb-2">
                   <label for="business_name" class="form-label">Business name</label>
-                  <input id="business_name" name="business_name" type="text" class="form-control" maxlength="150">
+                  <input id="business_name" name="business_name" type="text" class="form-control" maxlength="150" placeholder=" e.g. Whisperwind Acres" required pattern="^[A-Za-z0-9\s\-&,.'()]{2,}$">
                 </div>
-                <div class="mb-2">
-                  <label for="business_registration_number" class="form-label">Business registration number</label>
-                  <input id="business_registration_number" name="business_registration_number" type="text" class="form-control" maxlength="100">
-                </div>
+               <div class="mb-2">
+                <label for="business_registration_number" class="form-label">Business registration number</label>
+                <input id="business_registration_number"
+                      name="business_registration_number"
+                      type="text"
+                      class="form-control"
+                      maxlength="10"
+                      required
+                      pattern="^(\d{8}|[A-Z]\d{7}|[A-Z]{2}\d{6}|[A-Z]{2}\d{5}[A-Z])$"
+                      placeholder="e.g. 01234567 or SC123456">
+                <div class="form-text">Enter a valid UK Companies House registration number.</div>
+              </div>
                 <div class="mb-2">
                   <label for="business_contact_person" class="form-label">Business contact person</label>
-                  <input id="business_contact_person" name="business_contact_person" type="text" class="form-control" maxlength="150">
+                  <input id="business_contact_person" name="business_contact_person" type="text" class="form-control" placeholder=" e.g. Jon Smith" maxlength="150" required pattern="^[A-Za-z]+(?:\s+[A-Za-z]+)+$">
                 </div>
-                <!-- <div class="mb-2">
-                  <label for="billing_preferences" class="form-label">Billing preferences</label>
-                  <textarea id="billing_preferences" name="billing_preferences" class="form-control" rows="2" placeholder='{"invoice_method":"email","notes":""}'></textarea>
-                  <div class="form-text">JSON accepted. Server will parse into billing_preferences JSON field.</div>
-                </div> -->
               </div>
 
               <!-- Community fields (shown only when Community Group selected) -->
@@ -123,94 +130,191 @@
                 <h6 class="mb-2">Community Group Details</h6>
                 <div class="mb-2">
                   <label for="community_name" class="form-label">Organisation name</label>
-                  <input id="community_name" name="community_name" type="text" class="form-control" maxlength="150" placeholder="Community group name">
+                  <input id="community_name" name="community_name" type="text" class="form-control" maxlength="150" placeholder="e.g. Friendship Factory" required pattern="^[A-Za-z0-9\s\-&,.'()]{2,}$">
                 </div>
                 <div class="mb-2">
                   <label for="community_contact" class="form-label">Contact person</label>
-                  <input id="community_contact" name="community_contact" type="text" class="form-control" maxlength="150">
+                  <input id="community_contact" name="community_contact" type="text" class="form-control" placeholder=" e.g. Jon Smith" maxlength="150" required pattern="^[A-Za-z]+(?:\s+[A-Za-z]+)+$">
                 </div>
                 <div class="mb-2">
-                  <label for="community_registration_number" class="form-label">Registration number</label>
-                  <input id="community_registration_number" name="community_registration_number" type="text" class="form-control" maxlength="100">
+                  <label for="community_registration_number" class="form-label">Registration number (Optional)</label>
+                  <input id="community_registration_number"
+                        name="community_registration_number"
+                        type="text"
+                        class="form-control"
+                        maxlength="10"
+                        pattern="^(\d{4,6}|SC\d{4}|NIC\d{6})$"
+                        placeholder="e.g. 12345 or SC0123 or NIC123456">
+                  <div class="form-text">Enter a valid UK charity or community registration number.</div>
                 </div>
-                <!-- <div class="mb-2">
-                  <label for="billing_preferences_community" class="form-label">Billing preferences</label>
-                  <textarea id="billing_preferences_community" name="billing_preferences_community" class="form-control" rows="2" placeholder='{"invoice_method":"email","notes":""}'></textarea>
-                </div> -->
               </div>
 
             </section>
 
             <!-- PRODUCER SECTION (visible when role = producer button clicked) -->
-            <section id="producerSection" class="role-section visually-hidden">
+            <section id="producerSection" class="role-section nested-fields visually-hidden">
 
               <h5 class="mb-2">Producer Details</h5>
 
+              <!-- Farm Name -->
               <div class="mb-3">
                 <label for="farm_name" class="form-label">Farm name <span class="text-danger">*</span></label>
-                <input id="farm_name" name="farm_name" type="text" class="form-control" maxlength="150" placeholder="Your farm or business name">
+                <input id="farm_name"
+                      name="farm_name"
+                      type="text"
+                      class="form-control"
+                      maxlength="50"
+                      required
+                      pattern="^[A-Za-z0-9\s,.'()\-]{2,150}$"
+                      placeholder="Your farm or business name">
               </div>
 
+              <!-- Farm Description -->
               <div class="mb-3">
                 <label for="farm_description" class="form-label">Short description</label>
-                <textarea id="farm_description" name="farm_description" class="form-control" rows="3" maxlength="2000"></textarea>
+                <textarea id="farm_description"
+                          name="farm_description"
+                          class="form-control"
+                          rows="3"
+                          maxlength="2000"
+                          placeholder="Describe your farm, products, or practices (optional)"></textarea>
               </div>
 
+              <!-- Organic Certification Number -->
               <div class="mb-3">
                 <label for="organic_certification_number" class="form-label">Organic certification number</label>
-                <input id="organic_certification_number" name="organic_certification_number" type="text" class="form-control" maxlength="100">
+                <input id="organic_certification_number"
+                    name="organic_certification_number"
+                    type="text"
+                    class="form-control"
+                    maxlength="15"
+                    pattern="^[A-Za-z0-9\-\/]{2,15}$"
+                    placeholder="e.g. GB-ORG-05 or AB-12345">
               </div>
 
+              <!-- Farm Postcode (UK Format) -->
               <div class="mb-3">
                 <label for="farm_postcode" class="form-label">Farm postcode</label>
-                <input id="farm_postcode" name="farm_postcode" type="text" class="form-control" maxlength="20" pattern="^[A-Za-z0-9\s\-]{3,20}$">
+                <input id="farm_postcode"
+                      name="farm_postcode"
+                      type="text"
+                      class="form-control"
+                      maxlength="10"
+                      pattern="^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$"
+                      placeholder="e.g. B66 3EX">
               </div>
 
+              <!-- Contact Email -->
               <div class="mb-3">
                 <label for="contact_email" class="form-label">Contact email</label>
-                <input id="contact_email" name="contact_email" type="email" class="form-control" maxlength="255">
+                <input id="contact_email"
+                      name="contact_email"
+                      type="email"
+                      class="form-control"
+                      maxlength="25"
+                      placeholder="farmer@example.com">
               </div>
 
+              <!-- Contact Phone -->
               <div class="mb-3">
                 <label for="contact_phone" class="form-label">Contact phone</label>
-                <input id="contact_phone" name="contact_phone" type="tel" class="form-control" maxlength="20" pattern="^\+?[0-9\s\-()]{7,20}$">
+                <input id="contact_phone"
+                      name="contact_phone"
+                      type="tel"
+                      class="form-control"
+                      maxlength="13"
+                      pattern="^(07\d{9}|\+44\d{10})$"
+                      placeholder="+447700900123">
               </div>
 
+              <!-- Payout Method -->
               <fieldset class="mb-3">
                 <legend class="small">Payout method</legend>
+
                 <div class="form-check">
                   <input id="payout_bank" name="payout_method" class="form-check-input" type="radio" value="BANK_TRANSFER" checked>
                   <label for="payout_bank" class="form-check-label">Bank transfer</label>
                 </div>
+
                 <div class="form-check">
                   <input id="payout_paypal" name="payout_method" class="form-check-input" type="radio" value="PAYPAL">
                   <label for="payout_paypal" class="form-check-label">PayPal</label>
                 </div>
+
                 <div class="form-check">
-                  <input id="payout_manual" name="payout_method" class="form-check-input" type="radio" value="MANUAL">
-                  <label for="payout_manual" class="form-check-label">Manual</label>
+                  <input id="payout_cheque" name="payout_method" class="form-check-input" type="radio" value="CHEQUE">
+                  <label for="payout_cheque" class="form-check-label">Cheque</label>
                 </div>
               </fieldset>
 
-              <div id="bankFields" class="nested-fields mb-3">
+              <!-- Bank Transfer Fields -->
+              <div id="bankFields" class="nested-fields mb-3 visually-hidden">
                 <div class="mb-2">
                   <label for="bank_account_name" class="form-label">Bank account name</label>
-                  <input id="bank_account_name" name="bank_account_name" type="text" class="form-control" maxlength="150">
+                  <input id="bank_account_name"
+                        name="bank_account_name"
+                        type="text"
+                        class="form-control"
+                        maxlength="150"
+                        pattern="^[A-Za-z\s\-']{2,150}$"
+                        placeholder="Account holder name">
                 </div>
+
                 <div class="mb-2">
                   <label for="bank_account_number" class="form-label">Bank account number</label>
-                  <input id="bank_account_number" name="bank_account_number" type="text" class="form-control" maxlength="50" pattern="^[0-9A-Za-z\-]{4,50}$">
+                  <input id="bank_account_number"
+                        name="bank_account_number"
+                        type="text"
+                        class="form-control"
+                        maxlength="8"
+                        pattern="^\d{8}$"
+                        placeholder="8-digit account number">
                 </div>
+
                 <div class="mb-2">
                   <label for="bank_sort_code" class="form-label">Bank sort code</label>
-                  <input id="bank_sort_code" name="bank_sort_code" type="text" class="form-control" maxlength="20">
+                  <input id="bank_sort_code"
+                        name="bank_sort_code"
+                        type="text"
+                        class="form-control"
+                        maxlength="8"
+                        pattern="^\d{2}-\d{2}-\d{2}$"
+                        placeholder="12-34-56">
                 </div>
               </div>
 
+              <!-- PayPal Fields -->
               <div id="paypalFields" class="nested-fields mb-3 visually-hidden">
                 <div class="mb-2">
                   <label for="paypal_email" class="form-label">PayPal email</label>
-                  <input id="paypal_email" name="paypal_email" type="email" class="form-control" maxlength="255">
+                  <input id="paypal_email"
+                        name="paypal_email"
+                        type="email"
+                        class="form-control"
+                        maxlength="255"
+                        placeholder="your-paypal@example.com">
+                </div>
+              </div>
+
+              <!-- Cheque Fields -->
+              <div id="chequeFields" class="nested-fields mb-3 visually-hidden">
+                <div class="mb-3">
+                  <label for="cheque_payee_name">Payee name</label>
+                  <input id="cheque_payee_name"
+                        name="cheque_payee_name"
+                        class="form-control"
+                        maxlength="150"
+                        pattern="^[A-Za-z\s\-']{2,150}$"
+                        placeholder="Name to appear on cheque">
+                </div>
+
+                <div class="mb-3">
+                  <label for="cheque_postal_address">Postal address</label>
+                  <textarea id="cheque_postal_address"
+                            name="cheque_postal_address"
+                            class="form-control"
+                            maxlength="500"
+                            placeholder="Address where cheque should be sent"></textarea>
                 </div>
               </div>
 
@@ -220,33 +324,63 @@
             <section id="addressSection" class="mt-3">
               <h6 class="mb-2">Primary Address</h6>
 
+              <!-- Address Line 1 -->
               <div class="mb-2">
-                <label for="line1" class="form-label">Address line 1</label>
-                <input id="line1" name="line1" type="text" class="form-control" maxlength="255">
+                <label for="line1" class="form-label">Address line 1 <span class="text-danger">*</span></label>
+                <input id="line1"
+                  name="line1"
+                  type="text"
+                  class="form-control"
+                  maxlength="255"
+                  required
+                  pattern="^[A-Za-z0-9\s,.'#/ -]{3,255}$"
+                  placeholder="123 High Street">
               </div>
 
+              <!-- Address Line 2 (optional) -->
               <div class="mb-2">
                 <label for="line2" class="form-label">Address line 2</label>
-                <input id="line2" name="line2" type="text" class="form-control" maxlength="255">
+                <input id="line2"
+                  name="line2"
+                  type="text"
+                  class="form-control"
+                  maxlength="255"
+                  pattern="^[A-Za-z0-9\s,.'#/ -]{0,255}$"
+                  placeholder="Apartment, Suite, etc. (optional)">
               </div>
 
+              <!-- City -->
               <div class="mb-2">
-                <label for="city" class="form-label">City</label>
-                <input id="city" name="city" type="text" class="form-control" maxlength="100">
+                <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                <input id="city"
+                      name="city"
+                      type="text"
+                      class="form-control"
+                      maxlength="100"
+                      required
+                      pattern="^[A-Za-z\s\-]{2,100}$"
+                      placeholder="Birmingham">
               </div>
 
+              <!-- UK Postcode -->
               <div class="mb-2">
-                <label for="postcode" class="form-label">Postcode</label>
-                <input id="postcode" name="postcode" type="text" class="form-control" maxlength="20" pattern="^[A-Za-z0-9\s\-]{3,20}$">
+                <label for="postcode" class="form-label">Postcode <span class="text-danger">*</span></label>
+                <input id="postcode"
+                      name="postcode"
+                      type="text"
+                      class="form-control"
+                      maxlength="10"
+                      required
+                      pattern="^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$"
+                      placeholder="B66 3EX">
               </div>
-              <div class="form-check mt-2">
-                <input id="is_default_delivery" name="is_default_delivery" class="form-check-input" type="checkbox" value="1">
-                <label for="is_default_delivery" class="form-check-label">Set as default delivery address</label>
-              </div>
-
-              <div class="form-check">
-                <input id="is_default_billing" name="is_default_billing" class="form-check-input" type="checkbox" value="1">
-                <label for="is_default_billing" class="form-check-label">Set as default billing address</label>
+            </section>
+              <!-- TERMS ACCEPTANCE -->
+              <div class="form-check mb-3">
+                  <input id="accept_terms" name="accept_terms" class="form-check-input" type="checkbox" value="true" required>
+                  <label for="accept_terms" class="form-check-label">
+                      I accept the terms and conditions
+                  </label>
               </div>
 
             </section>

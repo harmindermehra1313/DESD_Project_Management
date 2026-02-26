@@ -23,7 +23,11 @@
                     Invalid email or password. Please try again.
                 </div>
             {% endif %}
-
+            {% if request.GET.registered %}
+            <div class="alert alert-success">
+                Your account has been created successfully. Please sign in.
+            </div>
+            {% endif %}
             <form method="POST" novalidate>
                 {% csrf_token %}
 
