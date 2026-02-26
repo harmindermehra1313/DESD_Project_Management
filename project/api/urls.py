@@ -1,5 +1,6 @@
 from rest_framework.routers import DefaultRouter
 
+
 from api.views.accounts import (
     UserViewSet,
     AddressViewSet,
@@ -51,6 +52,9 @@ from api.views.reviews import (
     ReviewViewSet,
     ReviewResponseViewSet,
 )
+
+from api.views.carts import CartViewSet
+
 
 from django.urls import path
 
@@ -108,7 +112,12 @@ router.register("product-allergens", ProductAllergenViewSet)
 router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
+# Carts
+router.register("cart", CartViewSet, basename="cart")
+
 #urlpatterns = router.urls
+
+
 
 urlpatterns = [
     path("checkout/", CheckoutAPIView.as_view(), name="checkout"),

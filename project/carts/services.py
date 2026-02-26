@@ -218,7 +218,7 @@ def cart_merge_guest_into_user(
         guest_token=guest_token
     ).first()
     if not guest_cart:
-        # No guest cart => just return/get user cart
+        # No guest cart - > just return/get user cart
         return cart_get_or_create_active(owner=CartOwner(user_id=user_id))
 
     if guest_cart.status != CartStatus.ACTIVE:
@@ -227,30 +227,30 @@ def cart_merge_guest_into_user(
     user_cart = cart_get_or_create_active(owner=CartOwner(user_id=user_id))
 
     # Lock both carts in a stable order
-    cart_ids = sorted([guest_cart.id, user_cart.id])
+    cart_ids = sorted([guest_cart.pk, user_cart.pk])
     list(Cart.objects.select_for_update().filter(id__in=cart_ids).order_by("id"))
 
     guest_items = list(
-        CartItem.objects.select_for_update().filter(cart_id=guest_cart.id)
+        CartItem.objects.select_for_update().filter(cart_id=guest_cart.pk)
     )
 
     for gi in guest_items:
         # Try update existing first (atomic increment), else create
         updated = CartItem.objects.filter(
-            cart_id=user_cart.id, product_id=gi.product_id
+            cart_id=user_cart.pk, product_id=gi.product.pk
         ).update(quantity=F("quantity") + gi.quantity, updated_at=_now())
         if not updated:
             try:
                 CartItem.objects.create(
-                    cart_id=user_cart.id, product_id=gi.product_id, quantity=gi.quantity
+                    cart_id=user_cart.pk, product_id=gi.product.pk, quantity=gi.quantity
                 )
             except IntegrityError:
                 CartItem.objects.filter(
-                    cart_id=user_cart.id, product_id=gi.product_id
+                    cart_id=user_cart.pk, product_id=gi.product.pk
                 ).update(quantity=F("quantity") + gi.quantity, updated_at=_now())
 
     guest_cart.status = CartStatus.MERGED
-    guest_cart.merged_into_cart_id = user_cart.id
+    guest_cart.merged_into_cart_id = user_cart.pk
     guest_cart.save(update_fields=["status", "merged_into_cart", "updated_at"])
 
     return user_cart
@@ -258,12 +258,17 @@ def cart_merge_guest_into_user(
 
 
 @transaction.atomic
-def cart_mark_checked_out(*, cart: Cart) -> None:
-    """
-    Marks cart as checked out. Order creation should happen in the same outer atomic()
-    in the checkout service to keep consistency. :contentReference[oaicite:6]{index=6}
-    """
-    Cart.objects.select_for_update().filter(pk=cart.pk).get()
-    if cart.status != CartStatus.ACTIVE:
-        raise CartNotActive("Only ACTIVE carts can be checked out.")
-    Cart.objects.filter(pk=cart.pk).update(status=CartStatus.CHECKED_OUT, updated_at=_now())
+def cart_mark_checked_out(*, cart: Cart) -> Cart:
+    now = _now()
+    updated = (
+        Cart.objects
+        .filter(pk=cart.pk, status=CartStatus.ACTIVE)
+        .update(status=CartStatus.CHECKED_OUT, updated_at = now)
+    )
+    if updated != 1:
+        raise CartNotActive("Only ACTIVE carts can be checked out")
+
+    # keep in-memory instance consistent for callers
+    cart.status = CartStatus.CHECKED_OUT
+    cart.updated_at = now
+    return cart

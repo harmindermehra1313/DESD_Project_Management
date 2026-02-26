@@ -72,7 +72,7 @@ class Cart(models.Model):
         ]
 
     def __str__(self) -> str:
-        who = f"user={self.user_id}" if self.user_id else f"guest={self.guest_token}"
+        who = f"user={self.pk}" if self.pk else f"guest={self.guest_token}"
         return f"Cart({self.pk}) {who} [{self.status}]"
 
     @classmethod
@@ -116,4 +116,4 @@ class CartItem(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"CartItem(cart={self.cart_id}, product={self.product_id}, qty={self.quantity})"
+        return f"CartItem(cart={self.pk}, product={self.pk}, qty={self.quantity})"
