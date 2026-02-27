@@ -1,4 +1,6 @@
 from rest_framework.routers import DefaultRouter
+
+
 from api.views.accounts import (
     UserViewSet,
     AddressViewSet,
@@ -42,7 +44,6 @@ from api.views.products import (
     CategoryViewSet,
     ProductViewSet,
     WholesalePriceViewSet,
-    ProductUpdateHistoryViewSet,
     AllergenViewSet,
     ProductAllergenViewSet,
 )
@@ -50,6 +51,9 @@ from api.views.reviews import (
     ReviewViewSet,
     ReviewResponseViewSet,
 )
+
+from api.views.carts import CartAPIView, CartItemAddView, CartItemDetailView
+
 
 from django.urls import path
 
@@ -99,7 +103,6 @@ router.register("settlement-line-items", SettlementLineItemViewSet)
 router.register("categories", CategoryViewSet)
 router.register("products", ProductViewSet)
 router.register("wholesale-prices", WholesalePriceViewSet)
-router.register("product-update-history", ProductUpdateHistoryViewSet)
 router.register("allergens", AllergenViewSet)
 router.register("product-allergens", ProductAllergenViewSet)
 
@@ -107,10 +110,17 @@ router.register("product-allergens", ProductAllergenViewSet)
 router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
+
+
 #urlpatterns = router.urls
+
+
 
 urlpatterns = [
     path("checkout/", CheckoutAPIView.as_view(), name="checkout"),
+    path("cart/", CartAPIView.as_view(), name="cart"),
+    path("cart/items/", CartItemAddView.as_view(), name="cart-item-add"),
+    path("cart/items/<int:pk>/", CartItemDetailView.as_view(), name="cart-item-detail"),
 ]
 
 urlpatterns += router.urls

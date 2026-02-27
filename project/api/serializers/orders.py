@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from orders.models import (
     Order,
     OrderItem,
@@ -10,12 +11,12 @@ from orders.models import (
 from payments.models import Payment
 from api.serializers.accounts import UserSerializer, ProducerSerializer
 from api.serializers.accounts import AddressSerializer
-from api.serializers.products import ProductSerializer
+from api.serializers.products import ProductInlineSerializer
 
 # Validation should happen here! TBC remove when added
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
+    product = ProductInlineSerializer(read_only=True)
     producer = ProducerSerializer(read_only=True)
 
     class Meta:
@@ -49,7 +50,7 @@ class ProducerOrderStatusHistorySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class RecurringOrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
+    product = ProductInlineSerializer(read_only=True)
 
     class Meta:
         model = RecurringOrderItem

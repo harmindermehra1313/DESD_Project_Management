@@ -1,0 +1,13 @@
+/* static/css/toast.css */
+
+#toast-container {
+  pointer-events: none; 
+}
+
+#toast-container .toast {
+  pointer-events: auto; 
+}
+
+#toast-container .toast {
+  min-width: 280px;
+}
