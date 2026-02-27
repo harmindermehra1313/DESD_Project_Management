@@ -10,7 +10,7 @@ from typing import Optional, Union
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -21,6 +21,7 @@ Product = apps.get_model("products", "Product")
 
 class CartError(Exception):
     """Base domain exception for cart operations."""
+
     pass
 
 
@@ -39,6 +40,7 @@ class CartItemNotFound(CartError):
 @dataclass(frozen=True)
 class CartOwner:
     """Identifies exactly one of: authenticated user OR anonymous session."""
+
     user_id: Optional[int] = None
     session_key: Optional[str] = None
 
@@ -56,7 +58,9 @@ def _to_decimal(q: Union[int, str, Decimal]) -> Decimal:
 def _assert_owner(owner: CartOwner) -> None:
     # Exactly one must be set
     if bool(owner.user_id) == bool(owner.session_key):
-        raise ValueError("CartOwner must have exactly one of user_id or session_key set.")
+        raise ValueError(
+            "CartOwner must have exactly one of user_id or session_key set."
+        )
 
 
 def _get_product_data(*, product_id: int) -> tuple[Decimal, Decimal]:
@@ -103,9 +107,8 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
     # User cart
     if owner.user_id:
         try:
-            cart = (
-                Cart.objects.select_for_update()
-                .get(user_id=owner.user_id, status=CartStatus.ACTIVE)
+            cart = Cart.objects.select_for_update().get(
+                user_id=owner.user_id, status=CartStatus.ACTIVE
             )
             cart_touch(cart, at=now)
             return cart
@@ -121,9 +124,8 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
             )
             return cart
         except IntegrityError:
-            cart = (
-                Cart.objects.select_for_update()
-                .get(user_id=owner.user_id, status=CartStatus.ACTIVE)
+            cart = Cart.objects.select_for_update().get(
+                user_id=owner.user_id, status=CartStatus.ACTIVE
             )
             cart_touch(cart, at=now)
             return cart
@@ -148,7 +150,9 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
     if cart.status != CartStatus.ACTIVE:
         raise CartNotActive(f"Guest cart is not active (status={cart.status}).")
     if cart.expires_at and cart.expires_at <= now:
-        Cart.objects.filter(pk=cart.pk).update(status=CartStatus.ABANDONED, updated_at=now)
+        Cart.objects.filter(pk=cart.pk).update(
+            status=CartStatus.ABANDONED, updated_at=now
+        )
         raise CartNotActive("Guest cart has expired.")
 
     cart_touch(cart, at=now)
@@ -156,7 +160,9 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
 
 
 @transaction.atomic
-def cart_add_item(*, cart: Cart, product_id: int, quantity: Union[int, str, Decimal]) -> CartItem:
+def cart_add_item(
+    *, cart: Cart, product_id: int, quantity: Union[int, str, Decimal]
+) -> CartItem:
     """
     Add quantity to an item.
     - If item exists: increment quantity only (do NOT change unit_price).
@@ -174,19 +180,15 @@ def cart_add_item(*, cart: Cart, product_id: int, quantity: Union[int, str, Deci
     # Lock cart row to keep merges/checkout consistent
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
 
-    existing_qty = (
-        CartItem.objects.filter(cart_id=cart.pk, product_id=product_id)
-        .values_list("quantity", flat=True)
-        .first()
-        or Decimal("0")
-    )
+    existing_qty = CartItem.objects.filter(
+        cart_id=cart.pk, product_id=product_id
+    ).values_list("quantity", flat=True).first() or Decimal("0")
 
     validate_stock(product_id=product_id, requested_quantity=existing_qty + quantity)
 
     # Try atomic update first (existing line)
-    updated = (
-        CartItem.objects.filter(cart_id=cart.pk, product_id=product_id)
-        .update(quantity=F("quantity") + quantity, updated_at=_now())
+    updated = CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).update(
+        quantity=F("quantity") + quantity, updated_at=_now()
     )
     if updated:
         return CartItem.objects.get(cart_id=cart.pk, product_id=product_id)
@@ -229,7 +231,9 @@ def cart_set_item_quantity(
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
 
     if quantity == 0:
-        deleted, _ = CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).delete()
+        deleted, _ = CartItem.objects.filter(
+            cart_id=cart.pk, product_id=product_id
+        ).delete()
         if not deleted:
             raise CartItemNotFound("Item not in cart.")
         return None
@@ -263,14 +267,18 @@ def cart_remove_item(*, cart: Cart, product_id: int) -> None:
         raise CartNotActive("Cannot modify a non-active cart.")
 
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
-    deleted, _ = CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).delete()
+    deleted, _ = CartItem.objects.filter(
+        cart_id=cart.pk, product_id=product_id
+    ).delete()
     if not deleted:
         raise CartItemNotFound("Item not in cart.")
 
 
 # Owner-level wrappers: one service call per endpoint (thin views)
 @transaction.atomic
-def cart_add_item_for_owner(*, owner: CartOwner, product_id: int, quantity: Union[int, str, Decimal]) -> CartItem:
+def cart_add_item_for_owner(
+    *, owner: CartOwner, product_id: int, quantity: Union[int, str, Decimal]
+) -> CartItem:
     cart = cart_get_or_create_active(owner=owner)
     return cart_add_item(cart=cart, product_id=product_id, quantity=quantity)
 
@@ -292,9 +300,7 @@ def cart_remove_item_for_owner(*, owner: CartOwner, product_id: int) -> None:
 @transaction.atomic
 def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     guest_cart = (
-        Cart.objects.select_for_update()
-        .filter(session_key=session_key)
-        .first()
+        Cart.objects.select_for_update().filter(session_key=session_key).first()
     )
     if not guest_cart:
         return cart_get_or_create_active(owner=CartOwner(user_id=user_id))
@@ -308,7 +314,9 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     cart_ids = sorted([guest_cart.pk, user_cart.pk])
     list(Cart.objects.select_for_update().filter(id__in=cart_ids).order_by("id"))
 
-    guest_items = list(CartItem.objects.select_for_update().filter(cart_id=guest_cart.pk))
+    guest_items = list(
+        CartItem.objects.select_for_update().filter(cart_id=guest_cart.pk)
+    )
 
     for gi in guest_items:
         # Increment existing first; else create preserving unit_price snapshot from guest line
@@ -339,9 +347,8 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
 @transaction.atomic
 def cart_mark_checked_out(*, cart: Cart) -> Cart:
     now = _now()
-    updated = (
-        Cart.objects.filter(pk=cart.pk, status=CartStatus.ACTIVE)
-        .update(status=CartStatus.CHECKED_OUT, updated_at=now)
+    updated = Cart.objects.filter(pk=cart.pk, status=CartStatus.ACTIVE).update(
+        status=CartStatus.CHECKED_OUT, updated_at=now
     )
     if updated != 1:
         raise CartNotActive("Only ACTIVE carts can be checked out")
@@ -351,50 +358,94 @@ def cart_mark_checked_out(*, cart: Cart) -> Cart:
     return cart
 
 
+def _safe_image_url(product) -> str | None:
+    img = getattr(product, "image", None)
+    if not img:
+        return None
+
+    # If it's a FileField/ImageField, it usually has .url
+    url = getattr(img, "url", None)
+    if url:
+        return url
+
+    # If factory stored a string path/url
+    if isinstance(img, str):
+        return img
+
+    # Last resort: try string conversion
+    try:
+        s = str(img)
+        return s or None
+    except Exception:
+        return None
+
+
 def get_cart_summary(cart) -> dict:
     qs = cart.items.select_related("product")
 
-    # total quantity across all lines
-    item_count = qs.aggregate(
-        total=Coalesce(Sum("quantity"), 0)
+    money_field = DecimalField(max_digits=12, decimal_places=2)
+    qty_field = DecimalField(max_digits=10, decimal_places=2)
+
+    item_count = qs.count()
+
+    total_quantity = qs.aggregate(
+        total=Coalesce(
+            Sum("quantity"),
+            Value(Decimal("0.00"), output_field=qty_field),
+            output_field=qty_field,
+        )
     )["total"]
 
-    # subtotal = sum(unit_price * quantity)
     subtotal = qs.aggregate(
         total=Coalesce(
             Sum(
                 ExpressionWrapper(
                     F("unit_price") * F("quantity"),
-                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                    output_field=money_field,
                 )
             ),
-            Decimal("0.00"),
+            Value(Decimal("0.00"), output_field=money_field),
+            output_field=money_field,
         )
     )["total"]
 
     items = []
     for it in qs:
-        line_total = (it.unit_price or Decimal("0.00")) * (it.quantity or 0)
-        items.append({
-            "id": it.id,
-            "product": {
-                "id": it.product_id,
-                "name": it.product.name,
-                "unit": getattr(it.product, "unit", "") or "",
-                "producer_name": getattr(it.product, "producer_name", "") or "",
-                "image": getattr(it.product, "image", None) and it.product.image.url,
-            },
-            "quantity": it.quantity,
-            "unit_price": it.unit_price,
-            "line_total": line_total,
-        })
+        line_total = (it.unit_price or Decimal("0.00")) * (
+            it.quantity or Decimal("0.00")
+        )
+        items.append(
+            {
+                "id": it.id,
+                "product_id": it.product_id,  # ✅ add this
+                "product": {  # optional but fine
+                    "id": it.product_id,
+                    "name": it.product.name,
+                    "unit": getattr(it.product, "unit", "") or "",
+                    "producer_name": getattr(it.product, "producer_name", "") or "",
+                    "image": _safe_image_url(it.product),
+                },
+                "quantity": it.quantity,
+                "unit_price": it.unit_price,
+                "line_total": line_total,
+            }
+        )
+
+    # total_quantity formatting (int if integral else string)
+    total_quantity_out = (
+        int(total_quantity)
+        if total_quantity == total_quantity.to_integral()
+        else str(total_quantity)
+    )
 
     return {
         "items": items,
-        "item_count": int(item_count),        
+        "item_count": item_count,
+        "total_quantity": total_quantity_out,
         "subtotal": subtotal,
         "currency": "GBP",
     }
+
 
 def cart_get_cart_summary(*, owner: CartOwner) -> dict:
     """Convenience: resolve active cart for owner and return summary."""

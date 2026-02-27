@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 from carts.services import CartOwner, cart_get_or_create_active
 
 
-# ---------- Required by 5.2 ----------
+
 
 @pytest.fixture
 def authenticated_client(user):
@@ -30,6 +30,7 @@ def _make_product(*, name: str, price: Decimal, unit: str, stock: Decimal):
     # Prefer model_bakery if present
     try:
         from model_bakery import baker  # type: ignore
+
         return baker.make(
             Product,
             name=name,
@@ -100,6 +101,7 @@ def active_cart(user, db):
 # ---------- Backwards-compatibility layer ----------
 # These fixtures are what your existing test suite is asking for.
 # If your original conftest already defines them, DELETE these aliases.
+
 
 @pytest.fixture
 def user(db):

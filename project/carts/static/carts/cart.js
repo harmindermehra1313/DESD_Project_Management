@@ -13,7 +13,8 @@ function getCookie(name) {
   const cookies = document.cookie ? document.cookie.split(";") : [];
   for (const c of cookies) {
     const v = c.trim();
-    if (v.startsWith(name + "=")) return decodeURIComponent(v.slice(name.length + 1));
+    if (v.startsWith(name + "="))
+      return decodeURIComponent(v.slice(name.length + 1));
   }
   return null;
 }
@@ -38,7 +39,8 @@ async function request(method, path, { body } = {}) {
   const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method);
   if (isMutating) {
     const csrf = getCsrfToken();
-    if (!csrf) throw new Error("CSRF token not found (csrftoken cookie missing)");
+    if (!csrf)
+      throw new Error("CSRF token not found (csrftoken cookie missing)");
     headers["X-CSRFToken"] = csrf;
   }
 
@@ -54,7 +56,9 @@ async function request(method, path, { body } = {}) {
   const data = await parseJsonSafe(res);
 
   if (!res.ok) {
-    const msg = (data && (data.detail || data.error)) || `Request failed (HTTP ${res.status})`;
+    const msg =
+      (data && (data.detail || data.error)) ||
+      `Request failed (HTTP ${res.status})`;
     const err = new Error(msg);
     err.status = res.status;
     err.payload = data;
@@ -84,7 +88,9 @@ export async function addToCart({ productId, quantity = 1 } = {}) {
     body: { product_id: productId, quantity: q },
   });
 
-  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "add" } }));
+  document.dispatchEvent(
+    new CustomEvent("cart:updated", { detail: { action: "add" } }),
+  );
   await getCartBadgeCount().catch(() => {});
   return data;
 }
@@ -103,7 +109,9 @@ export async function setItemQuantity({ productId, quantity } = {}) {
     body: { quantity: q },
   });
 
-  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "set_qty" } }));
+  document.dispatchEvent(
+    new CustomEvent("cart:updated", { detail: { action: "set_qty" } }),
+  );
   await getCartBadgeCount().catch(() => {});
   if (res.status === 204) return null;
   return data;
@@ -116,7 +124,9 @@ export async function removeItem({ productId } = {}) {
   }
 
   await request("DELETE", `/cart/items/${productId}/`);
-  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "remove" } }));
+  document.dispatchEvent(
+    new CustomEvent("cart:updated", { detail: { action: "remove" } }),
+  );
   await getCartBadgeCount().catch(() => {});
   return { ok: true };
 }
@@ -127,7 +137,7 @@ export async function getCartBadgeCount() {
   if (!badge) return 0;
 
   const cart = await getCart();
-  const count = Number(cart?.item_count ?? 0);
+  const count = Number(cart?.total_quantity ?? 0);
 
   badge.textContent = String(count);
   badge.classList.toggle("is-hidden", count <= 0);

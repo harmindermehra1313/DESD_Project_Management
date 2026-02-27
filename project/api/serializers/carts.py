@@ -5,6 +5,7 @@ from django.db.models import Sum
 from rest_framework import serializers
 from django.db.models.functions import Coalesce
 from carts.models import Cart, CartItem
+from django.db.models import DecimalField, Value
 
 
 class ProductMiniSerializer(serializers.Serializer):
@@ -12,6 +13,7 @@ class ProductMiniSerializer(serializers.Serializer):
     Minimal product snapshot for cart lines (multi-vendor awareness).
     Includes producer display name.
     """
+
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(read_only=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
@@ -36,6 +38,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     """
     Cart line serializer for API read responses.
     """
+
     product_id = serializers.IntegerField(source="product.id", read_only=True)
     product = ProductMiniSerializer(read_only=True)
     line_total = serializers.SerializerMethodField()
@@ -52,7 +55,15 @@ class CartItemSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "product_id", "product", "unit_price", "line_total", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "product_id",
+            "product",
+            "unit_price",
+            "line_total",
+            "created_at",
+            "updated_at",
+        ]
 
     def get_line_total(self, obj: CartItem) -> Decimal:
         unit_price = obj.unit_price or Decimal("0.00")
@@ -63,9 +74,13 @@ class CartSerializer(serializers.ModelSerializer):
     """
     Cart serializer for API read responses.
     """
+
     items = CartItemSerializer(many=True, read_only=True)
     item_count = serializers.SerializerMethodField()
-    total_price = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
+    total_quantity = serializers.SerializerMethodField()
+    total_price = serializers.DecimalField(
+        max_digits=18, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = Cart
@@ -76,6 +91,7 @@ class CartSerializer(serializers.ModelSerializer):
             "status",
             "items",
             "item_count",
+            "total_quantity",
             "total_price",
             "created_at",
             "updated_at",
@@ -83,15 +99,27 @@ class CartSerializer(serializers.ModelSerializer):
             "expires_at",
         ]
         read_only_fields = fields
+
     def get_item_count(self, obj):
-        # sum of quantities across all cart lines
+        # distinct lines
+        return obj.items.count()
+
+    def get_total_quantity(self, obj):
         total = obj.items.aggregate(
-            total=Coalesce(Sum("quantity"), Decimal("0.00"))
+            total=Coalesce(
+                Sum("quantity"),
+                Value(
+                    Decimal("0.00"),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
         )["total"]
 
+        # if integral, return int for nicer UX
         if total == total.to_integral():
             return int(total)
-        return str(total)  # keeps 2-decimal precision for fractional quantities    
+        return str(total)
 
 
 class AddToCartSerializer(serializers.Serializer):
@@ -99,6 +127,7 @@ class AddToCartSerializer(serializers.Serializer):
     Payload for adding an item:
     - service: cart_add_item(cart=..., product_id=..., quantity=...)
     """
+
     product_id = serializers.IntegerField(min_value=1)
     quantity = serializers.DecimalField(
         max_digits=10,
@@ -112,6 +141,7 @@ class UpdateQuantitySerializer(serializers.Serializer):
     Payload for setting quantity (0 removes line):
     - service: cart_set_item_quantity(cart=..., product_id=..., quantity=...)
     """
+
     quantity = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,

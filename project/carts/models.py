@@ -7,6 +7,7 @@ from django.db.models import Q, F, Sum, ExpressionWrapper, DecimalField
 from django.utils import timezone
 from django.db.models.functions import Coalesce
 
+
 class CartStatus(models.TextChoices):
     ACTIVE = "ACTIVE", "Active"
     MERGED = "MERGED", "Merged"
@@ -77,7 +78,9 @@ class Cart(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["status", "updated_at"], name="cart_status_updated_idx"),
+            models.Index(
+                fields=["status", "updated_at"], name="cart_status_updated_idx"
+            ),
         ]
 
     def __str__(self) -> str:
@@ -112,7 +115,6 @@ class CartItem(models.Model):
         Cart,
         on_delete=models.CASCADE,
         related_name="items",
-        
     )
     product = models.ForeignKey(
         "products.Product",
@@ -131,7 +133,7 @@ class CartItem(models.Model):
     unit_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        null=True,   # keep nullable for easier migration of existing rows
+        null=True,  # keep nullable for easier migration of existing rows
         blank=True,
     )
 

@@ -12,7 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const checkoutBtn = document.getElementById("checkoutBtn");
 
-  const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+  const GBP = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  });
 
   function money(v) {
     const n = Number(v);
@@ -25,7 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return Math.floor(n);
   }
 
-  function flash(text, variant = "danger", { persist = false, timeout = 3000 } = {}) {
+  function flash(
+    text,
+    variant = "danger",
+    { persist = false, timeout = 3000 } = {},
+  ) {
     if (!cartMsg) return;
     cartMsg.innerHTML = `<div class="alert alert-${variant} py-2 mb-0" role="alert">${text}</div>`;
     if (!persist) {
@@ -49,7 +56,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchCart() {
     if (!window.CartAPI?.getCart) {
-      throw new Error("CartAPI not found. Ensure carts/cart.js is loaded in base.html");
+      throw new Error(
+        "CartAPI not found. Ensure carts/cart.js is loaded in base.html",
+      );
     }
     return window.CartAPI.getCart();
   }
@@ -66,11 +75,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const qty = Number(item.quantity ?? 1);
     const unitPrice = Number(item.unit_price ?? 0);
-    const lineTotal = Number(item.line_total ?? (qty * unitPrice));
+    const lineTotal = Number(item.line_total ?? qty * unitPrice);
 
     const row = document.createElement("div");
-    row.className = "cart-row border rounded p-3 mb-3 d-flex gap-3 align-items-start";
-    row.dataset.itemId = String(itemId ?? ""); 
+    row.className =
+      "cart-row border rounded p-3 mb-3 d-flex gap-3 align-items-start";
+    row.dataset.itemId = String(itemId ?? "");
     row.dataset.productId = String(productId ?? "");
 
     // image (optional)
@@ -145,7 +155,11 @@ document.addEventListener("DOMContentLoaded", () => {
       setDisabled(true);
       try {
         await window.CartAPI.setItemQuantity({ productId, quantity: q });
-        window.CartAPI.showToast?.(`Updated quantity to ${q}`, { title: "Cart", variant: "success", delay: 1800 });
+        window.CartAPI.showToast?.(`Updated quantity to ${q}`, {
+          title: "Cart",
+          variant: "success",
+          delay: 1800,
+        });
         await refresh();
       } catch (e) {
         const msg = e?.message ? e.message : String(e);
@@ -155,27 +169,37 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    minus.addEventListener("click", () => commitQty(clampQty(qtyInput.value) - 1));
-    plus.addEventListener("click", () => commitQty(clampQty(qtyInput.value) + 1));
-    qtyInput.addEventListener("change", () => commitQty(clampQty(qtyInput.value)));
+    minus.addEventListener("click", () =>
+      commitQty(clampQty(qtyInput.value) - 1),
+    );
+    plus.addEventListener("click", () =>
+      commitQty(clampQty(qtyInput.value) + 1),
+    );
+    qtyInput.addEventListener("change", () =>
+      commitQty(clampQty(qtyInput.value)),
+    );
 
     removeBtn.addEventListener("click", async () => {
-  // Confirmation prompt
-  const ok = window.confirm(`Remove “${name}” from your cart?`);
-  if (!ok) return;
+      // Confirmation prompt
+      const ok = window.confirm(`Remove “${name}” from your cart?`);
+      if (!ok) return;
 
-  setDisabled(true);
-  try {
-    await window.CartAPI.removeItem({ productId });
-    window.CartAPI.showToast?.(`Removed “${name}”`, { title: "Cart", variant: "success", delay: 1800 });
-    await refresh();
-  } catch (e) {
-    const msg = e?.message ? e.message : String(e);
-    flash(`Remove failed: ${msg}`, "danger", { persist: true });
-  } finally {
-    setDisabled(false);
-  }
-});
+      setDisabled(true);
+      try {
+        await window.CartAPI.removeItem({ productId });
+        window.CartAPI.showToast?.(`Removed “${name}”`, {
+          title: "Cart",
+          variant: "success",
+          delay: 1800,
+        });
+        await refresh();
+      } catch (e) {
+        const msg = e?.message ? e.message : String(e);
+        flash(`Remove failed: ${msg}`, "danger", { persist: true });
+      } finally {
+        setDisabled(false);
+      }
+    });
 
     row.append(imgWrap, meta, qtyWrap, prices, removeBtn);
     return row;
@@ -195,13 +219,16 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     const distinct = items.length;
-    const totalQty = Number(cart?.item_count ?? 0);
-    const subtotal = items.reduce((acc, it) => acc + Number(it.line_total ?? 0), 0);
+    const totalQty = Number(cart?.total_quantity ?? 0);
+    const subtotal = items.reduce(
+      (acc, it) => acc + Number(it.line_total ?? 0),
+      0,
+    );
 
     distinctItemsEl && (distinctItemsEl.textContent = String(distinct));
     totalQtyEl && (totalQtyEl.textContent = String(totalQty));
     subtotalEl && (subtotalEl.textContent = money(subtotal));
-    totalEl && (totalEl.textContent = money(subtotal)); 
+    totalEl && (totalEl.textContent = money(subtotal));
   }
 
   async function refresh() {
