@@ -1,9 +1,12 @@
 from django.urls import path
 from . import views
+from accounts.views import UnifiedRegistrationView
 
 app_name = "accounts"
 
 urlpatterns = [
-     path("", views.register, name="register"),
-     path("login/", views.login, name="login"),
+     path("", views.register, name="register"),              # renders the form
+     path("login/", views.login_view, name="login"),              # renders login
+     path("logout/", views.logout_view, name="logout"),
+     path("api/register/", UnifiedRegistrationView.as_view(), name="api-register"),  # handles POST
 ]

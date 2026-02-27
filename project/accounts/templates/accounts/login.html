@@ -18,12 +18,16 @@
         <div class="card-body p-4">
 
             <!-- Django form errors -->
-            {% if form.errors %}
-                <div class="alert alert-danger">
-                    Invalid email or password. Please try again.
-                </div>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger">{{ message }}</div>
+                {% endfor %}
             {% endif %}
-
+            {% if request.GET.registered %}
+            <div class="alert alert-success">
+                Your account has been created successfully. Please sign in.
+            </div>
+            {% endif %}
             <form method="POST" novalidate>
                 {% csrf_token %}
 
