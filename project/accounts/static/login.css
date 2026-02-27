@@ -6,6 +6,25 @@
   --radius:8px;
   --gap:12px;
 }
+:root {
+    /* Deep Atmospheric Palette */
+    --headback:#39a396;
+    --ink-black: #0d1b2a;        /* Ultra-dark blue-black */
+    --prussian-blue: #1b263b;    /* Deep academic blue */
+    --dusk-blue: #415a77;        /* Twilight blue */
+    --lavender-grey: #778da9;    /* Muted purple-grey */
+    --alabaster-grey: #e0e1dd;   /* Soft light grey */
+
+
+    /* Text Colors */
+    --text-dark: #333;
+    --text-light: #fff;
+
+    /* Fonts */
+    --font-main: system-ui, Arial, sans-serif;
+    --font-brand: 'Cream cake', cursive;
+    --font-welcome: 'Cookie', cursive;
+}
 
 .login-container {
     max-width: 480px;
@@ -15,14 +34,14 @@
 
 .login-card {
     border-radius: 10px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--alabaster-grey);
     box-shadow: 0 6px 18px rgba(0,0,0,0.04);
 }
 
 .login-divider {
     width: 100%;
     text-align: center;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--ink-black);
     line-height: 0.1em;
     margin: 20px 0;
 }
@@ -30,16 +49,26 @@
 .login-divider span {
     background: #fff;
     padding: 0 10px;
-    color: #6c757d;
+    color: var(--text-dark);
     font-weight: 600;
 }
 
 .btn-primary{
-    border-color: var(--accent);
-    background-color: var(--accent);
+    border-color: var(--dusk-blue);
+    background-color: var(--dusk-blue);
 }
 
 .btn-primary:hover{
-    border-color: var(--brand);
-    background-color: var(--brand);
+    border-color: var(--ink-black);
+    background-color: var(--ink-black);
+}
+
+.btn-outline-secondary {
+    background-color: #fff;
+    border-color: #6c757d;
+}
+.btn-outline-secondary:hover {
+    background-color: var(--ink-black);
+    border-color:var(--ink-black);
+    color: #fff;
 }

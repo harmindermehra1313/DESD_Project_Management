@@ -513,6 +513,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   autoUppercase(postcode);
   autoUppercase(farm_postcode);
+  autoUppercase(businessReg);
+  autoUppercase(communityReg);
   
   function normaliseUKPhone(input) {
     if (!input) return;
