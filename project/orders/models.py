@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from decimal import Decimal
-#from django_extensions.db.fields import ShortUUIDField
+# from django_extensions.db.fields import ShortUUIDField
 from shortuuidfield import ShortUUIDField
 
 class Order(models.Model):

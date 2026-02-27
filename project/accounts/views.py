@@ -1,60 +1,45 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 from django.shortcuts import render, redirect
-from django.contrib.auth import login as auth_login
-from django.http import HttpResponse
-from orders.models import ProducerOrderSummary, OrderItem
-from django.db.models import Prefetch
-from accounts.models import Producer
+from django.contrib.auth import authenticate, login
+from django.contrib import messages
+from django.contrib.auth import logout
+
+from accounts.serializers.registration_customer import CustomerRegistrationSerializer
+from accounts.serializers.registration_producer import ProducerRegistrationSerializer
 
 # Create your views here.
 def register(request):
     return render(request, "accounts/register.html")
 
-def login(request):
+
+def logout_view(request):
+    logout(request)
+    return redirect("home:index")
+
+def login_view(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        remember = request.POST.get("remember")  
+
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
+            login(request, user)
+
+            # If "Remember me" is NOT checked -> session ends when browser closes
+            if not remember:
+                request.session.set_expiry(0)  # expires on browser close
+            else:
+                request.session.set_expiry(60 * 60 * 24 * 1)  # 30 days
+
+            return redirect("home:index")
+        else:
+            messages.error(request, "Invalid email or password.")
+
     return render(request, "accounts/login.html")
-
-
-
-
-
-
-
-def producer_dashboard(request):
-    
-    # the first existing producer in PostgreSQL database
-    producer = Producer.objects.first()
-
-    # Checks if database is empty
-    if not producer:
-        return HttpResponse(
-            "No producers found in the database! "
-            "Please create a Producer (and some orders) via the Django Admin or shell before testing this page."
-        )
-    
-    #Temp auto-login 
-    if request.user != producer.user:
-        auth_login(request, producer.user)
-        print(f"Auto-logged in as EXISTING producer: {producer.user.email}")
-
-    # Fetch orders for logged in producer
-    summaries = ProducerOrderSummary.objects.filter(
-        producer=producer
-    ).select_related(
-        'order', 
-        'order__user', 
-        'order__delivery_address'
-    ).prefetch_related(
-        Prefetch(
-            'order__items', 
-            queryset=OrderItem.objects.filter(producer=producer).select_related('product'),
-            to_attr='my_items' 
-        )
-    ).order_by('delivery_date')
-
-    context = {
-        'summaries': summaries,
-    }
-    
-    return render(request, "accounts/producer_dashboard.html", context)
 
 # TBC - loads placeholder form based on selected role but doesn't save anything
 # def register(request):
