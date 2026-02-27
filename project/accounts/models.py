@@ -119,9 +119,9 @@ class Address(models.Model):
 # ============================================================
 class Producer(models.Model):
     class Payout_methods(models.TextChoices):
-        BANK_TRANSFER = 'BT', 'Bank Transfer',
-        PAY_PAL = 'PP', 'Pay Pal',
-        MANUAL = 'MAN', 'Manual'
+        BANK_TRANSFER = 'BT', 'Bank Transfer'
+        PAY_PAL = 'PP', 'Pay Pal'
+        CHEQUE = 'CHQ', 'Cheque'
 
     user = models.OneToOneField(
         User, 
@@ -204,6 +204,8 @@ class Producer(models.Model):
         null=True, 
         blank=True
     )
+    cheque_payee_name = models.CharField(max_length=150, null=True, blank=True)
+    cheque_postal_address = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.farm_name
