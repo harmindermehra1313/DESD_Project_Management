@@ -16,7 +16,7 @@
           <span class="nav-line1">Deliver to</span>
           <span class="nav-line2">
             {% if user.is_authenticated %}
-              {{ user.first_name|default:user.username }}
+              {{ user.first_name|default:user.name }}
             {% else %}
               Guest
             {% endif %}
@@ -45,7 +45,7 @@
              aria-expanded="false">
             <span class="nav-line1">
               {% if user.is_authenticated %}
-                Hello, {{ user.first_name|default:user.username }}
+                Hello, {{ user.first_name|default:user.name }}
               {% else %}
                 Hello, sign in
               {% endif %}

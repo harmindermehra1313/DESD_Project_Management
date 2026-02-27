@@ -1,0 +1,80 @@
+:root {
+  --brand: #35524A;
+  --accent: #32DE8A;
+  --muted: #627C85;
+  --bg: #ffffff;
+  --radius: 8px;
+  --gap: 12px;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Table Styling */
+.order-table th {
+    background-color: var(--brand);
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: none;
+}
+
+.order-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.order-row:hover {
+    background-color: #f8f9fa;
+}
+
+.order-row.selected {
+    background-color: #e9ecef;
+    border-left: 4px solid var(--accent);
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 0.4rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.status-pending { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.status-confirmed { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+.status-ready { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--brand);
+}
+
+/* Details Section */
+.details-card {
+    border-radius: var(--radius);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.details-header {
+    background-color: #fbfbfb;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    color: var(--brand);
+}
+
+.details-body {
+    padding: 1.5rem;
+    min-height: 150px;
+}

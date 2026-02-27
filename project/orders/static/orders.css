@@ -1,0 +1,113 @@
+:root {
+  --brand: #35524A;
+  --accent: #32DE8A;
+  --muted: #627C85;
+  --bg: #ffffff;
+  --radius: 8px;
+  --gap: 12px;
+}
+
+/* Container & Cards */
+.order-management-container {
+    max-width: 1200px;
+}
+
+.table-card, .detail-card {
+    border-radius: var(--radius);
+    border: 1px solid #e9ecef;
+    background: var(--bg);
+}
+
+/* Table Styling */
+.order-table thead th {
+    background-color: #f8f9fa;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+    padding: 12px 16px;
+}
+
+.order-table tbody td {
+    padding: 16px;
+    vertical-align: middle;
+    color: #333;
+}
+
+/* Interactive Rows */
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.clickable-row:hover, .clickable-row:focus {
+    background-color: rgba(50, 222, 138, 0.05); /* Very light accent tint */
+    outline: none;
+}
+
+/* The active state when a row is clicked */
+.clickable-row.active-row {
+    background-color: rgba(53, 82, 74, 0.08); /* Light brand tint */
+    border-left: 4px solid var(--brand);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--brand);
+    font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: white;
+}
+
+.custom-filter-btn {
+    color: var(--brand);
+    border-color: #e9ecef;
+    background: white;
+}
+
+.custom-filter-btn:hover {
+    background-color: #f8f9fa;
+    color: var(--brand);
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.status-ready {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-shipped {
+    background-color: #cce5ff;
+    color: #004085;
+    border: 1px solid #b8daff;
+}
+
+/* Utility to add a border on medium screens and up inside the details pane */
+@media (min-width: 768px) {
+    .border-end-md {
+        border-right: 1px solid #e9ecef;
+    }
+}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Order Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'producer_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 dashboard-container">
+    <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">Order Management</h2>
+
+    <h5 class="mb-3">Incoming Orders</h5>
+    <div class="table-responsive mb-4 shadow-sm" style="border-radius: var(--radius); overflow: hidden;">
+        <table class="table table-hover mb-0 order-table align-middle text-center">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer Name</th>
+                    <th>Order Date</th>
+                    <th>Delivery Date</th>
+                    <th>Items</th>
+                    <th>Total Value</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="orderTableBody">
+                {% for summary in summaries %}
+                <tr class="order-row" onclick="showOrderDetails('{{ summary.id }}', this)">
+                    <td>{{ summary.order.unique_reference }}</td>
+                    <td>{{ summary.order.user.name }}</td>
+                    <td>{{ summary.order.order_date|date:"d/m/Y" }}</td>
+                    <td>{{ summary.delivery_date|date:"d/m/Y" }}</td>
+                    <td>{{ summary.my_items|length }} items</td>
+                    <td>£{{ summary.subtotal }}</td>
+                    <td>
+                        <span class="status-badge status-{{ summary.get_status_display|lower|default:'pending' }}">
+                            {{ summary.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+
+                <template id="details-template-{{ summary.id }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Customer Contact:</strong><br> 
+                            {{ summary.order.user.name }}<br>
+                            <a href="mailto:{{ summary.order.user.email }}">{{ summary.order.user.email }}</a><br>
+                            {{ summary.order.user.phone }}<br><br>
+                            
+                            <strong>Delivery Address:</strong><br> 
+                            {{ summary.order.delivery_address.line1 }}<br>
+                            {% if summary.order.delivery_address.line2 %}{{ summary.order.delivery_address.line2 }}<br>{% endif %}
+                            {{ summary.order.delivery_address.city }}<br>
+                            {{ summary.order.delivery_address.postcode }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Itemised Product List:</strong><br> 
+                            <ul class="list-unstyled mb-3">
+                                {% for item in summary.my_items %}
+                                    <li>{{ item.quantity }}x {{ item.product.name }} ({{ item.product.get_unit_display }})</li>
+                                {% endfor %}
+                            </ul>
+                            
+                            <strong>Special Instructions:</strong><br> 
+                            <span class="fst-italic">{{ summary.special_instructions|default:"None provided." }}</span>
+                        </div>
+                    </div>
+                </template>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">No incoming orders found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-5">
+        <button class="btn btn-outline-secondary">Filter</button>
+        <button class="btn btn-outline-secondary">View Completed</button>
+        <button class="btn btn-primary ms-auto">Update Status</button>
+    </div>
+
+    <div class="details-card bg-white">
+        <div class="details-header">
+            Further Details: <span id="detailOrderId" class="text-muted fw-normal">Select an order</span>
+        </div>
+        <div class="details-body" id="detailsContent">
+            <p class="text-muted mb-0">Click on a specific order from the table above to view complete customer details, delivery address, itemised product list, and special instructions.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showOrderDetails(summaryId, rowElement) {
+        // 1. Highlight the active row
+        document.querySelectorAll('.order-row').forEach(row => row.classList.remove('selected'));
+        rowElement.classList.add('selected');
+
+        // 2. Get the unique order reference from the first cell of the clicked row
+        const orderRef = rowElement.cells[0].innerText;
+        document.getElementById('detailOrderId').textContent = `Order ${orderRef}`;
+
+        // 3. Grab the HTML from the hidden template and inject it into the details box
+        const templateContent = document.getElementById(`details-template-${summaryId}`).innerHTML;
+        document.getElementById('detailsContent').innerHTML = templateContent;
+    }
+</script>
+{% endblock %}

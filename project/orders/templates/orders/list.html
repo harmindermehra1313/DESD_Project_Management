@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Order Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'orders/orders.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 order-management-container">
+    
+    <h1 class="mb-4">Order Management</h1>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary custom-filter-btn" type="button">Filter by Date</button>
+            <button class="btn btn-outline-secondary custom-filter-btn" type="button">View Completed</button>
+        </div>
+        <div>
+            <button class="btn btn-primary" id="markCompleteBtn" disabled>Mark as Complete</button>
+        </div>
+    </div>
+
+    <div class="card table-card mb-4 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 order-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer Name</th>
+                        <th>Order Date</th>
+                        <th>Delivery Date</th>
+                        <th>Items</th>
+                        <th>Total Value</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTableBody">
+                    <tr class="clickable-row" tabindex="0"
+                        data-order-id="ORD-001"
+                        data-customer="Sample Community Kitchen"
+                        data-phone="+44 7700 900123"
+                        data-email="hello@samplekitchen.co.uk"
+                        data-address="123 Food Street, Bristol, BS1 1AA"
+                        data-instructions="Please deliver to the back door before 10 AM."
+                        data-items='[{"name":"Organic Carrots","qty":10,"price":"£15.00"},{"name":"Potatoes","qty":5,"price":"£10.00"}]'>
+                        
+                        <td class="fw-bold">ORD-001</td>
+                        <td>Sample Community Kitchen</td>
+                        <td>01/01/2026</td>
+                        <td>03/01/2026</td>
+                        <td>2 items</td>
+                        <td>£25.00</td>
+                        <td><span class="status-badge status-pending">Pending</span></td>
+                    </tr>
+                    
+                    <tr class="clickable-row" tabindex="0"
+                        data-order-id="ORD-002"
+                        data-customer="Local Restaurant"
+                        data-phone="+44 7700 900456"
+                        data-email="chef@localrest.com"
+                        data-address="45 High St, Bristol, BS2 2BB"
+                        data-instructions="None"
+                        data-items='[{"name":"Kale","qty":20,"price":"£30.00"}]'>
+                        
+                        <td class="fw-bold">ORD-002</td>
+                        <td>Local Restaurant</td>
+                        <td>01/01/2026</td>
+                        <td>04/01/2026</td>
+                        <td>1 item</td>
+                        <td>£30.00</td>
+                        <td><span class="status-badge status-ready">Ready</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <h4 class="mb-3">Further Details: <span id="detailOrderId" class="text-muted">Select an order</span></h4>
+    
+    <div class="card detail-card shadow-sm p-4">
+        <div id="emptyDetailState" class="text-center text-muted py-4">
+            <p>Click on an order from the list above to view its full details.</p>
+        </div>
+        
+        <div id="populatedDetailState" class="visually-hidden">
+            <div class="row g-4">
+                <div class="col-12 col-md-4 border-end-md">
+                    <h6 class="text-uppercase text-muted small mb-3">Customer Information</h6>
+                    <p class="mb-1 fw-bold" id="detailCustomerName">-</p>
+                    <p class="mb-1 small"><a href="#" id="detailCustomerEmail">-</a></p>
+                    <p class="mb-0 small" id="detailCustomerPhone">-</p>
+                </div>
+                
+                <div class="col-12 col-md-4 border-end-md">
+                    <h6 class="text-uppercase text-muted small mb-3">Delivery Address</h6>
+                    <p class="mb-2 small" id="detailAddress">-</p>
+                    <h6 class="text-uppercase text-muted small mb-2 mt-3">Special Instructions</h6>
+                    <p class="mb-0 small fst-italic text-danger" id="detailInstructions">-</p>
+                </div>
+                
+                <div class="col-12 col-md-4">
+                    <h6 class="text-uppercase text-muted small mb-3">Itemised Product List</h6>
+                    <ul class="list-group list-group-flush small" id="detailItemList">
+                        </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
