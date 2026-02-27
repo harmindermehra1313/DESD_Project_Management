@@ -21,22 +21,22 @@ def fixed_now(monkeypatch):
 
 def test_merge_no_guest_cart_returns_existing_user_active_cart(user, user_cart):
     new_token = uuid.uuid4()
-    assert not Cart.objects.filter(guest_token=new_token).exists()
+    assert not Cart.objects.filter(session_key=new_token).exists()
 
-    got = cart_merge_guest_into_user(guest_token=new_token, user_id=user.id)
+    got = cart_merge_guest_into_user(session_key=new_token, user_id=user.id)
 
     assert got.id == user_cart.id
     assert got.status == CartStatus.ACTIVE
 
 
-def test_merge_non_active_guest_cart_returns_user_cart_and_does_not_change_guest(user, guest_token):
+def test_merge_non_active_guest_cart_returns_user_cart_and_does_not_change_guest(user, session_key):
     guest_cart = Cart.objects.create(
         user=None,
-        guest_token=guest_token,
+        session_key=session_key,
         status=CartStatus.CHECKED_OUT,
     )
 
-    got = cart_merge_guest_into_user(guest_token=guest_token, user_id=user.id)
+    got = cart_merge_guest_into_user(session_key=session_key, user_id=user.id)
 
     assert got.status == CartStatus.ACTIVE
     guest_cart.refresh_from_db()
@@ -53,7 +53,7 @@ def test_merge_combines_items_and_marks_guest_merged(user, user_cart, guest_cart
     CartItem.objects.create(cart=guest_cart, product=product, quantity=3)
     CartItem.objects.create(cart=guest_cart, product=other_product, quantity=2)
 
-    got = cart_merge_guest_into_user(guest_token=guest_cart.guest_token, user_id=user.id)
+    got = cart_merge_guest_into_user(session_key=guest_cart.session_key, user_id=user.id)
     assert got.id == user_cart.id
 
     # same product should be incremented (5 + 3)
@@ -89,7 +89,7 @@ def test_merge_handles_integrityerror_race_on_create(user, user_cart, guest_cart
     pytest.monkeypatch.setattr(CartItem.objects, "create", create_then_raise)
 
     try:
-        got = cart_merge_guest_into_user(guest_token=guest_cart.guest_token, user_id=user.id)
+        got = cart_merge_guest_into_user(session_key=guest_cart.session_key, user_id=user.id)
     finally:
         pytest.monkeypatch.undo()
 

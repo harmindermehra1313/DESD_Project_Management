@@ -1,201 +1,117 @@
 from __future__ import annotations
 
-import uuid
-
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView
 
 from carts.services import (
+    CartOwner,
     CartItemNotFound,
     CartNotActive,
-    CartOwner,
     cart_get_or_create_active,
-    cart_mark_checked_out,
-    cart_merge_guest_into_user,
-    cart_new_guest_token,
+    cart_add_item,
+    cart_set_item_quantity,
+    cart_remove_item,
 )
-from api.serializers.carts import (  
-    CartAddItemSerializer,
-    CartRemoveItemSerializer,
+
+from api.serializers.carts import (
+    AddToCartSerializer,
+    UpdateQuantitySerializer,
     CartSerializer,
-    CartSetItemQuantitySerializer,
+    CartItemSerializer,
 )
 
 
-class CartViewSet(viewsets.ViewSet):
+def _owner(request) -> CartOwner:
+    return CartOwner(user_id=request.user.id)
+
+
+def _translate_service_error(exc: Exception) -> Exception:
+    if isinstance(exc, DjangoValidationError):
+        return ValidationError(detail=exc.message)
+    if isinstance(exc, CartItemNotFound):
+        return NotFound(detail=str(exc) or "Cart item not found.")
+    if isinstance(exc, CartNotActive):
+        return ValidationError(detail=str(exc) or "Cart is not active.")
+    if isinstance(exc, ValueError):
+        return ValidationError(detail=str(exc))
+    return exc
+
+
+class CartAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            cart = cart_get_or_create_active(owner=_owner(request))
+        except Exception as exc:
+            raise _translate_service_error(exc)
+        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+
+
+class CartItemAddView(CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddToCartSerializer
+
+    def create(self, request, *args, **kwargs):
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        try:
+            cart = cart_get_or_create_active(owner=_owner(request))
+            item = cart_add_item(
+                cart=cart,
+                product_id=ser.validated_data["product_id"],
+                quantity=ser.validated_data["quantity"],
+            )
+        except Exception as exc:
+            raise _translate_service_error(exc)
+
+        return Response(CartItemSerializer(item).data, status=status.HTTP_201_CREATED)
+
+
+class CartItemDetailView(APIView):
     """
-    Single-cart endpoints (user cart or guest cart).
-    Uses service layer for all mutations.
+    /cart/items/<pk>/
+    pk is treated as product_id.
     """
+    permission_classes = [IsAuthenticated]
 
-    permission_classes = [AllowAny]
+    def patch(self, request, pk: int, *args, **kwargs):
+        return self._set_quantity(request, pk)
 
-    def get_permissions(self):
-        # Only merge requires authenticated user explicitly
-        if getattr(self, "action", None) in {"merge_guest"}:
-            return [IsAuthenticated()]
-        return [AllowAny()]
-    
-    def list(self, request):
-        # Make /api/cart/ behave like “get my current cart”
-        return self.me(request)
+    def put(self, request, pk: int, *args, **kwargs):
+        return self._set_quantity(request, pk)
 
-    def _parse_guest_token(self, request) -> uuid.UUID:
-        token_str = (
-            request.headers.get("X-Guest-Token")
-            or request.query_params.get("guest_token")
-        )
-        if not token_str:
-            raise ValidationError(
-                {"guest_token": "Provide X-Guest-Token header (or ?guest_token=...)." }
+    def delete(self, request, pk: int, *args, **kwargs):
+        try:
+            cart = cart_get_or_create_active(owner=_owner(request))
+            cart_remove_item(cart=cart, product_id=int(pk))
+        except Exception as exc:
+            raise _translate_service_error(exc)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _set_quantity(self, request, product_id: int):
+        ser = UpdateQuantitySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        try:
+            cart = cart_get_or_create_active(owner=_owner(request))
+            item = cart_set_item_quantity(
+                cart=cart,
+                product_id=int(product_id),
+                quantity=ser.validated_data["quantity"],
             )
-        try:
-            return uuid.UUID(str(token_str))
-        except ValueError as e:
-            raise ValidationError({"guest_token": "Invalid UUID."}) from e
-
-    def _get_owner(self, request) -> CartOwner:
-        if request.user and request.user.is_authenticated:
-            return CartOwner(user_id=request.user.id)
-        return CartOwner(guest_token=self._parse_guest_token(request))
-
-    def _serialize_cart(self, cart):
-        return CartSerializer(cart).data
-
-    def _handle_cart_error(self, exc: Exception):
-        # Map service-layer errors to HTTP responses
-        if isinstance(exc, CartItemNotFound):
-            raise NotFound(str(exc))
-        if isinstance(exc, CartNotActive):
-            raise ValidationError({"cart": str(exc)})
-        if isinstance(exc, ValueError):
-            raise ValidationError({"detail": str(exc)})
-        raise exc
-
-    @action(detail=False, methods=["post"], url_path="guest-token")
-    def guest_token(self, request):
-        """
-        Create a guest token + active guest cart.
-        Client should store token and send it as X-Guest-Token on subsequent calls.
-        """
-        token = cart_new_guest_token()
-        cart = cart_get_or_create_active(owner=CartOwner(guest_token=token))
-        payload = self._serialize_cart(cart)
-        payload["guest_token"] = str(token)
-        return Response(payload, status=status.HTTP_201_CREATED)
-
-    @action(detail=False, methods=["get"], url_path="me")
-    def me(self, request):
-        """
-        Return the active cart for the authenticated user, or the guest cart if anonymous.
-        """
-        owner = self._get_owner(request)
-        try:
-            cart = cart_get_or_create_active(owner=owner)
         except Exception as exc:
-            self._handle_cart_error(exc)
-        return Response(self._serialize_cart(cart), status=status.HTTP_200_OK)
+            raise _translate_service_error(exc)
 
-    @action(detail=False, methods=["post"], url_path="items")
-    def add_item(self, request):
-        """
-        Add an item to cart (increments quantity if exists).
-        Body: { product_id, quantity }
-        """
-        owner = self._get_owner(request)
-        try:
-            cart = cart_get_or_create_active(owner=owner)
-            ser = CartAddItemSerializer(data=request.data, context={"cart": cart})
-            ser.is_valid(raise_exception=True)
-            cart = ser.save()
-        except Exception as exc:
-            self._handle_cart_error(exc)
+        # Service returns None if it removed the line
+        if item is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
-        return Response(self._serialize_cart(cart), status=status.HTTP_200_OK)
-
-    @action(
-        detail=False,
-        methods=["patch"],
-        url_path=r"items/(?P<product_id>\d+)/quantity",
-    )
-    def set_item_quantity(self, request, product_id: str):
-        """
-        Set absolute item quantity (0 removes).
-        Body: { quantity }
-        """
-        owner = self._get_owner(request)
-        try:
-            cart = cart_get_or_create_active(owner=owner)
-            ser = CartSetItemQuantitySerializer(
-                data={"product_id": int(product_id), "quantity": request.data.get("quantity")},
-                context={"cart": cart},
-            )
-            ser.is_valid(raise_exception=True)
-            cart = ser.save()
-        except Exception as exc:
-            self._handle_cart_error(exc)
-
-        return Response(self._serialize_cart(cart), status=status.HTTP_200_OK)
-
-    @action(
-        detail=False,
-        methods=["delete"],
-        url_path=r"items/(?P<product_id>\d+)",
-    )
-    def remove_item(self, request, product_id: str):
-        """
-        Remove item from cart.
-        """
-        owner = self._get_owner(request)
-        try:
-            cart = cart_get_or_create_active(owner=owner)
-            ser = CartRemoveItemSerializer(
-                data={"product_id": int(product_id)},
-                context={"cart": cart},
-            )
-            ser.is_valid(raise_exception=True)
-            cart = ser.save()
-        except Exception as exc:
-            self._handle_cart_error(exc)
-
-        return Response(self._serialize_cart(cart), status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=["post"], url_path="checkout")
-    def checkout(self, request):
-        """
-        Mark active cart as CHECKED_OUT.
-        """
-        owner = self._get_owner(request)
-        try:
-            cart = cart_get_or_create_active(owner=owner)
-            cart = cart_mark_checked_out(cart=cart)
-            cart.refresh_from_db()
-        except Exception as exc:
-            self._handle_cart_error(exc)
-
-        return Response(self._serialize_cart(cart), status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=["post"], url_path="merge-guest")
-    def merge_guest(self, request):
-        """
-        Merge a guest cart into the authenticated user's active cart.
-        Body: { guest_token }
-        """
-        guest_token = request.data.get("guest_token")
-        if not guest_token:
-            raise ValidationError({"guest_token": "This field is required."})
-        try:
-            token = uuid.UUID(str(guest_token))
-        except ValueError as e:
-            raise ValidationError({"guest_token": "Invalid UUID."}) from e
-
-        try:
-            cart = cart_merge_guest_into_user(guest_token=token, user_id=request.user.id)
-            cart.refresh_from_db()
-        except Exception as exc:
-            self._handle_cart_error(exc)
-
-        return Response(self._serialize_cart(cart), status=status.HTTP_200_OK)
+        return Response(CartItemSerializer(item).data, status=status.HTTP_200_OK)

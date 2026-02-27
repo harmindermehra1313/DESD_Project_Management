@@ -3,9 +3,13 @@
 
 {% block title %}Cart{% endblock %}
 
-{% block content %}
-<link rel="stylesheet" href="{% static 'carts/cart_page.css' %}">
+{% block extra_css %}
+  {{ block.super }}
+  {# Optional page-specific css if you have it #}
+  <link rel="stylesheet" href="{% static 'carts/cart_page.css' %}">
+{% endblock %}
 
+{% block content %}
 <section class="py-4 py-lg-5">
   <div class="container">
     <div class="p-3 p-md-4 p-lg-5 bg-white rounded shadow-sm">
@@ -34,23 +38,32 @@
             <h2 class="h5 mb-3">Summary</h2>
 
             <div class="d-flex justify-content-between mb-2">
-              <span>Items</span>
-              <span id="sumDistinct">0</span>
+              <span>Distinct items</span>
+              <span id="distinctItems">0</span>
             </div>
+
             <div class="d-flex justify-content-between mb-2">
               <span>Total quantity</span>
-              <span id="sumQty">0</span>
+              <span id="totalQty">0</span>
             </div>
+
             <div class="d-flex justify-content-between mb-2">
               <span>Subtotal</span>
-              <span id="sumSubtotal">£0.00</span>
+              <span id="subtotal">£0.00</span>
+            </div>
+
+            {# Optional rows (cart_page.js references these IDs) #}
+            <div class="d-none">
+              <span id="discount">£0.00</span>
+              <span id="tax">£0.00</span>
+              <span id="shipping">£0.00</span>
             </div>
 
             <hr>
 
             <div class="d-flex justify-content-between fw-semibold mb-3">
               <span>Total</span>
-              <span id="sumTotal">£0.00</span>
+              <span id="total">£0.00</span>
             </div>
 
             <button id="checkoutBtn" class="btn btn-success w-100" type="button">
@@ -67,4 +80,9 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+<script src="{% static 'carts/cart_page.js' %}"></script>
 {% endblock %}

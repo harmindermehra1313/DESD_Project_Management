@@ -63,11 +63,11 @@
             {% endif %}
           </ul>
         </div>
-
-        <a href="/cart/" class="nav-link d-flex align-items-center gap-2 position-relative">
-           Cart
-  <span id="cartCount" class="badge rounded-pill text-bg-success ms-1">0</span>
-        </a>
+<a href="/cart/" class="nav-link d-flex align-items-center gap-2 position-relative">
+  <i class="bi bi-cart3 fs-5"></i>
+  <span>Cart</span>
+  <span id="cartCount" class="cart-badge">0</span>
+</a>
 
       </div>
     </div>
@@ -163,5 +163,4 @@
 
     </div>
   </nav>
-<script defer src="{% static 'carts/cart.js' %}"></script>
 </header>

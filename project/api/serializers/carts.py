@@ -1,57 +1,50 @@
-
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
-
-from django.apps import apps
+from django.db.models import Sum
 from rest_framework import serializers
-
+from django.db.models.functions import Coalesce
 from carts.models import Cart, CartItem
-from carts.services import cart_add_item, cart_remove_item, cart_set_item_quantity
 
 
-Product = apps.get_model("products", "Product")  
-
-
-class ProductMiniSerializer(serializers.ModelSerializer):
+class ProductMiniSerializer(serializers.Serializer):
     """
-    Small product payload for cart display:
-    - price/unit for calculations
-    - producer info for multi-vendor awareness
+    Minimal product snapshot for cart lines (multi-vendor awareness).
+    Includes producer display name.
     """
-    producer = serializers.SerializerMethodField()
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    unit = serializers.CharField(read_only=True)
+    producer_name = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Product
-        fields = ["id", "name", "price", "unit", "image", "producer"]
-
-    def get_producer(self, obj) -> dict[str, Any] | None:
-        p = getattr(obj, "producer", None)
-        if not p:
+    def get_producer_name(self, obj):
+        # obj is Product
+        producer = getattr(obj, "producer", None)
+        if not producer:
             return None
-        return {
-            "id": getattr(p, "id", None),
-            # producer model fields may vary; keep this resilient
-            "farm_name": getattr(p, "farm_name", None),
-            "contact_email": getattr(p, "contact_email", None),
-        }
+
+        # Prefer business_name if it exists, otherwise fall back safely.
+        if hasattr(producer, "business_name"):
+            return producer.business_name
+        if hasattr(producer, "name"):
+            return producer.name
+        return str(producer)
 
 
 class CartItemSerializer(serializers.ModelSerializer):
+    """
+    Cart line serializer for API read responses.
+    """
+    product_id = serializers.IntegerField(source="product.id", read_only=True)
     product = ProductMiniSerializer(read_only=True)
-    unit_price = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        read_only=True,
-        source="product.price",
-    )
     line_total = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
         fields = [
             "id",
+            "product_id",
             "product",
             "quantity",
             "unit_price",
@@ -59,96 +52,68 @@ class CartItemSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "unit_price", "line_total", "product"]
+        read_only_fields = ["id", "product_id", "product", "unit_price", "line_total", "created_at", "updated_at"]
 
     def get_line_total(self, obj: CartItem) -> Decimal:
-        price = getattr(obj.product, "price", None)
-        if price is None:
-            return Decimal("0.00")
-        return price * obj.quantity
+        unit_price = obj.unit_price or Decimal("0.00")
+        return unit_price * obj.quantity
 
 
 class CartSerializer(serializers.ModelSerializer):
+    """
+    Cart serializer for API read responses.
+    """
     items = CartItemSerializer(many=True, read_only=True)
-
-    distinct_items = serializers.SerializerMethodField()
-    total_quantity = serializers.SerializerMethodField()
-
-    subtotal = serializers.SerializerMethodField()
-    total = serializers.SerializerMethodField()  # alias for now (no shipping/tax modeled here)
+    item_count = serializers.SerializerMethodField()
+    total_price = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
 
     class Meta:
         model = Cart
         fields = [
             "id",
+            "user",
+            "session_key",
             "status",
+            "items",
+            "item_count",
+            "total_price",
             "created_at",
             "updated_at",
+            "last_seen_at",
             "expires_at",
-            "distinct_items",
-            "total_quantity",
-            "subtotal",
-            "total",
-            "items",
         ]
         read_only_fields = fields
+    def get_item_count(self, obj):
+        # sum of quantities across all cart lines
+        total = obj.items.aggregate(
+            total=Coalesce(Sum("quantity"), Decimal("0.00"))
+        )["total"]
 
-    def _items_qs(self, cart: Cart):
-        # Avoid N+1 queries when computing totals / nested product+producer
-        return cart.items.select_related("product", "product__producer").all()
-
-    def get_distinct_items(self, obj: Cart) -> int:
-        return self._items_qs(obj).count()
-
-    def get_total_quantity(self, obj: Cart) -> int:
-        return sum(i.quantity for i in self._items_qs(obj))
-
-    def get_subtotal(self, obj: Cart) -> Decimal:
-        total = Decimal("0.00")
-        for i in self._items_qs(obj):
-            price = getattr(i.product, "price", None) or Decimal("0.00")
-            total += price * i.quantity
-        return total
-
-    def get_total(self, obj: Cart) -> Decimal:
-        # [TODO: Change is later for tax, etc]
-        return self.get_subtotal(obj)
+        if total == total.to_integral():
+            return int(total)
+        return str(total)  # keeps 2-decimal precision for fractional quantities    
 
 
-# Serializers for TC-006 
-
-
-class CartAddItemSerializer(serializers.Serializer):
+class AddToCartSerializer(serializers.Serializer):
+    """
+    Payload for adding an item:
+    - service: cart_add_item(cart=..., product_id=..., quantity=...)
+    """
     product_id = serializers.IntegerField(min_value=1)
-    quantity = serializers.IntegerField(min_value=1)
-
-    def save(self, **kwargs) -> Cart:
-        cart: Cart = self.context["cart"]
-        cart_add_item(cart=cart, product_id=self.validated_data["product_id"], quantity=self.validated_data["quantity"])
-        cart.refresh_from_db()
-        return cart
+    quantity = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
 
 
-class CartSetItemQuantitySerializer(serializers.Serializer):
-    product_id = serializers.IntegerField(min_value=1)
-    quantity = serializers.IntegerField(min_value=0)  # 0 removes item per service docstring :contentReference[oaicite:2]{index=2}
-
-    def save(self, **kwargs) -> Cart:
-        cart: Cart = self.context["cart"]
-        cart_set_item_quantity(
-            cart=cart,
-            product_id=self.validated_data["product_id"],
-            quantity=self.validated_data["quantity"],
-        )
-        cart.refresh_from_db()
-        return cart
-
-
-class CartRemoveItemSerializer(serializers.Serializer):
-    product_id = serializers.IntegerField(min_value=1)
-
-    def save(self, **kwargs) -> Cart:
-        cart: Cart = self.context["cart"]
-        cart_remove_item(cart=cart, product_id=self.validated_data["product_id"])
-        cart.refresh_from_db()
-        return cart
+class UpdateQuantitySerializer(serializers.Serializer):
+    """
+    Payload for setting quantity (0 removes line):
+    - service: cart_set_item_quantity(cart=..., product_id=..., quantity=...)
+    """
+    quantity = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+    )

@@ -52,7 +52,7 @@ from api.views.reviews import (
     ReviewResponseViewSet,
 )
 
-from api.views.carts import CartViewSet
+from api.views.carts import CartAPIView, CartItemAddView, CartItemDetailView
 
 
 from django.urls import path
@@ -110,8 +110,7 @@ router.register("product-allergens", ProductAllergenViewSet)
 router.register("reviews", ReviewViewSet)
 router.register("review-responses", ReviewResponseViewSet)
 
-# Carts
-router.register("cart", CartViewSet, basename="cart")
+
 
 #urlpatterns = router.urls
 
@@ -119,6 +118,9 @@ router.register("cart", CartViewSet, basename="cart")
 
 urlpatterns = [
     path("checkout/", CheckoutAPIView.as_view(), name="checkout"),
+    path("cart/", CartAPIView.as_view(), name="cart"),
+    path("cart/items/", CartItemAddView.as_view(), name="cart-item-add"),
+    path("cart/items/<int:pk>/", CartItemDetailView.as_view(), name="cart-item-detail"),
 ]
 
 urlpatterns += router.urls

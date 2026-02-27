@@ -1,3 +1,5 @@
+// carts/static/carts/cart_page.js
+
 document.addEventListener("DOMContentLoaded", () => {
   const cartMsg = document.getElementById("cartMsg");
   const cartItemsEl = document.getElementById("cartItems");
@@ -8,10 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const subtotalEl = document.getElementById("subtotal");
   const totalEl = document.getElementById("total");
 
-  const discountEl = document.getElementById("discount");
-  const taxEl = document.getElementById("tax");
-  const shippingEl = document.getElementById("shipping");
-
   const checkoutBtn = document.getElementById("checkoutBtn");
 
   const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -21,240 +19,208 @@ document.addEventListener("DOMContentLoaded", () => {
     return GBP.format(Number.isFinite(n) ? n : 0);
   }
 
-  // Best-practice flash: safe textContent, aria-live, success auto-dismiss, errors persist
-  function flash(text, variant = "success", { timeout = 2500, persist = false } = {}) {
-    cartMsg.replaceChildren();
-
-    const alert = document.createElement("div");
-    alert.className = `alert alert-${variant} py-2 mb-0`;
-    alert.setAttribute("role", variant === "danger" ? "alert" : "status");
-    alert.textContent = text;
-
-    cartMsg.appendChild(alert);
-
-    if (!persist && timeout > 0) {
-      window.setTimeout(() => {
-        if (cartMsg.contains(alert)) alert.remove();
-      }, timeout);
-    }
-  }
-
-  function resolveProductImage(imageValue) {
-    // API returns "eggs.jpg" => we serve from /static/cart/eggs.jpg
-    if (!imageValue) return "";
-    if (imageValue.startsWith("http")) return imageValue;
-    if (imageValue.startsWith("/")) return imageValue;
-    return `/static/cart/${imageValue}`;
-  }
-
   function clampQty(v) {
-    const n = Number(v);
+    const n = Number(String(v ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
     return Math.floor(n);
   }
 
-  function setCheckoutEnabled(enabled) {
-    if (!enabled) {
-      checkoutBtn.classList.add("disabled");
-      checkoutBtn.setAttribute("aria-disabled", "true");
-      checkoutBtn.tabIndex = -1;
-    } else {
-      checkoutBtn.classList.remove("disabled");
-      checkoutBtn.removeAttribute("aria-disabled");
-      checkoutBtn.tabIndex = 0;
+  function flash(text, variant = "danger", { persist = false, timeout = 3000 } = {}) {
+    if (!cartMsg) return;
+    cartMsg.innerHTML = `<div class="alert alert-${variant} py-2 mb-0" role="alert">${text}</div>`;
+    if (!persist) {
+      window.setTimeout(() => {
+        if (cartMsg) cartMsg.innerHTML = "";
+      }, timeout);
     }
   }
 
-  function iconTrash() {
-    return `
-      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="currentColor" d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 7h2v9h-2v-9zm4 0h2v9h-2v-9zM6 8h12l-1 13H7L6 8z"/>
-      </svg>
-    `;
+  function setEmpty(isEmpty) {
+    if (cartEmptyEl) cartEmptyEl.classList.toggle("d-none", !isEmpty);
+    if (cartItemsEl) cartItemsEl.classList.toggle("d-none", isEmpty);
+    if (checkoutBtn) checkoutBtn.disabled = isEmpty;
   }
 
-  // Your cart JSON is stable now, so normalize is simple
-  function normalizeCart(cart) {
-    return {
-      items: Array.isArray(cart.items) ? cart.items : [],
-      distinct_items: Number(cart.distinct_items ?? 0),
-      total_quantity: Number(cart.total_quantity ?? 0),
-      subtotal: Number(cart.subtotal ?? 0),
-      total: Number(cart.total ?? 0),
-    };
+  function resolveProductImage(imageValue) {
+    if (!imageValue) return "";
+    const s = String(imageValue);
+    return s;
   }
 
+  async function fetchCart() {
+    if (!window.CartAPI?.getCart) {
+      throw new Error("CartAPI not found. Ensure carts/cart.js is loaded in base.html");
+    }
+    return window.CartAPI.getCart();
+  }
+
+  // ---- REQUIRED: each row has name, producer, qty input, unit label, unit_price, line_total, remove btn, data-item-id
   function buildItemRow(item) {
     const product = item.product || {};
-    const productId = product.id; // IMPORTANT: your API has product.id
+    const itemId = item.id; // cart line id from API
+    const productId = product.id; // product id (used for PATCH/DELETE)
+
     const name = product.name ?? "Product";
+    const producer = product.producer_name ?? "";
     const unit = product.unit ?? "";
-    const unitPrice = Number(item.unit_price ?? product.price ?? 0);
+
     const qty = Number(item.quantity ?? 1);
-    const imgUrl = resolveProductImage(product.image);
+    const unitPrice = Number(item.unit_price ?? 0);
+    const lineTotal = Number(item.line_total ?? (qty * unitPrice));
 
     const row = document.createElement("div");
-    row.className = "cart-item";
+    row.className = "cart-row border rounded p-3 mb-3 d-flex gap-3 align-items-start";
+    row.dataset.itemId = String(itemId ?? ""); 
+    row.dataset.productId = String(productId ?? "");
 
-    // image
+    // image (optional)
+    const imgUrl = resolveProductImage(product.image);
     const imgWrap = document.createElement("div");
-    imgWrap.className = "cart-item__img";
+    imgWrap.className = "bg-light rounded flex-shrink-0 overflow-hidden";
+    imgWrap.style.width = "64px";
+    imgWrap.style.height = "64px";
     if (imgUrl) {
-      const img = document.createElement("img");
-      img.src = imgUrl;
-      img.alt = name;
-      img.loading = "lazy";
-      imgWrap.appendChild(img);
-    } else {
-      imgWrap.innerHTML = `<div class="text-muted small">No image</div>`;
+      imgWrap.innerHTML = `<img src="${imgUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`;
     }
 
-    // details
-    const details = document.createElement("div");
-
-    const title = document.createElement("div");
-    title.className = "cart-item__title";
-    title.textContent = name;
-
+    // meta (name + producer)
     const meta = document.createElement("div");
-    meta.className = "cart-item__meta";
-    const metaUnit = document.createElement("span");
-    metaUnit.textContent = `Unit: ${unit}`;
-    meta.appendChild(metaUnit);
+    meta.className = "flex-grow-1";
+    meta.innerHTML = `
+      <div class="fw-semibold">${name}</div>
+      ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+    `;
 
-    const price = document.createElement("div");
-    price.className = "cart-item__price";
-    price.textContent = money(unitPrice);
-
-    details.appendChild(title);
-    details.appendChild(meta);
-    details.appendChild(price);
-
-    // actions
-    const actions = document.createElement("div");
-    actions.className = "cart-item__actions";
-
-    // qty controls
+    // qty editor + unit label
     const qtyWrap = document.createElement("div");
-    qtyWrap.className = "qty";
+    qtyWrap.className = "d-flex align-items-center gap-2";
 
     const minus = document.createElement("button");
     minus.type = "button";
-    minus.textContent = "–";
+    minus.className = "btn btn-outline-secondary btn-sm";
+    minus.textContent = "−";
 
     const qtyInput = document.createElement("input");
     qtyInput.type = "text";
+    qtyInput.className = "form-control form-control-sm text-center";
+    qtyInput.style.width = "72px";
     qtyInput.value = String(qty);
     qtyInput.inputMode = "numeric";
     qtyInput.autocomplete = "off";
 
     const plus = document.createElement("button");
     plus.type = "button";
+    plus.className = "btn btn-outline-secondary btn-sm";
     plus.textContent = "+";
 
-    qtyWrap.appendChild(minus);
-    qtyWrap.appendChild(qtyInput);
-    qtyWrap.appendChild(plus);
+    const unitLabel = document.createElement("span");
+    unitLabel.className = "text-muted small";
+    unitLabel.textContent = unit;
 
-    // delete
-    const iconRow = document.createElement("div");
-    iconRow.className = "d-flex gap-2";
+    qtyWrap.append(minus, qtyInput, plus, unitLabel);
 
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "icon-btn";
-    delBtn.title = "Remove";
-    delBtn.innerHTML = iconTrash();
+    // prices
+    const prices = document.createElement("div");
+    prices.className = "text-end";
+    prices.innerHTML = `
+      <div class="small text-muted">Unit: ${money(unitPrice)}</div>
+      <div class="fw-semibold">Line: ${money(lineTotal)}</div>
+    `;
 
-    iconRow.appendChild(delBtn);
+    // remove
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn-outline-danger btn-sm";
+    removeBtn.textContent = "Remove";
 
-    actions.appendChild(qtyWrap);
-    actions.appendChild(iconRow);
-
-    function disableRow(disabled) {
+    function setDisabled(disabled) {
       minus.disabled = disabled;
       plus.disabled = disabled;
       qtyInput.disabled = disabled;
-      delBtn.disabled = disabled;
+      removeBtn.disabled = disabled;
     }
 
-    async function setQty(newQty) {
+    async function commitQty(newQty) {
       const q = clampQty(newQty);
-      disableRow(true);
+      setDisabled(true);
       try {
-        await window.CartAPI.setItemQuantity({ product: { id: productId } }, q);
-        flash(`Updated “${name}” quantity to ${q}.`, "success", { timeout: 1800 });
+        await window.CartAPI.setItemQuantity({ productId, quantity: q });
+        window.CartAPI.showToast?.(`Updated quantity to ${q}`, { title: "Cart", variant: "success", delay: 1800 });
         await refresh();
       } catch (e) {
-        flash(`Update quantity failed: ${e.message}`, "danger", { persist: true });
+        const msg = e?.message ? e.message : String(e);
+        flash(`Update failed: ${msg}`, "danger", { persist: true });
       } finally {
-        disableRow(false);
+        setDisabled(false);
       }
     }
 
-    minus.addEventListener("click", () => setQty(clampQty(qtyInput.value) - 1));
-    plus.addEventListener("click", () => setQty(clampQty(qtyInput.value) + 1));
-    qtyInput.addEventListener("change", () => setQty(clampQty(qtyInput.value)));
+    minus.addEventListener("click", () => commitQty(clampQty(qtyInput.value) - 1));
+    plus.addEventListener("click", () => commitQty(clampQty(qtyInput.value) + 1));
+    qtyInput.addEventListener("change", () => commitQty(clampQty(qtyInput.value)));
 
-    delBtn.addEventListener("click", async () => {
-      disableRow(true);
-      try {
-        await window.CartAPI.removeItem({ product: { id: productId } });
-        flash(`Removed “${name}” from your cart.`, "success", { timeout: 2200 });
-        await refresh();
-      } catch (e) {
-        flash(`Remove failed: ${e.message}`, "danger", { persist: true });
-      } finally {
-        disableRow(false);
-      }
-    });
+    removeBtn.addEventListener("click", async () => {
+  // Confirmation prompt
+  const ok = window.confirm(`Remove “${name}” from your cart?`);
+  if (!ok) return;
 
-    row.appendChild(imgWrap);
-    row.appendChild(details);
-    row.appendChild(actions);
+  setDisabled(true);
+  try {
+    await window.CartAPI.removeItem({ productId });
+    window.CartAPI.showToast?.(`Removed “${name}”`, { title: "Cart", variant: "success", delay: 1800 });
+    await refresh();
+  } catch (e) {
+    const msg = e?.message ? e.message : String(e);
+    flash(`Remove failed: ${msg}`, "danger", { persist: true });
+  } finally {
+    setDisabled(false);
+  }
+});
 
+    row.append(imgWrap, meta, qtyWrap, prices, removeBtn);
     return row;
   }
 
   function render(cart) {
-    const c = normalizeCart(cart);
+    const items = cart?.items ?? [];
 
-    // Summary
-    distinctItemsEl.textContent = String(c.distinct_items);
-    totalQtyEl.textContent = String(c.total_quantity);
-    subtotalEl.textContent = money(c.subtotal);
-    totalEl.textContent = money(c.total);
+    cartItemsEl?.replaceChildren();
 
-    // If you don't implement these yet, keep them explicit/consistent:
-    discountEl.textContent = money(0);
-    taxEl.textContent = money(0);
-    shippingEl.textContent = "Free";
-
-    const isEmpty = c.items.length === 0;
-
-    cartItemsEl.innerHTML = "";
-    cartEmptyEl.classList.toggle("d-none", !isEmpty);
-    setCheckoutEnabled(!isEmpty);
-
-    if (!isEmpty) {
-      for (const it of c.items) {
+    if (!items.length) {
+      setEmpty(true);
+    } else {
+      setEmpty(false);
+      for (const it of items) {
         cartItemsEl.appendChild(buildItemRow(it));
       }
     }
+    const distinct = items.length;
+    const totalQty = Number(cart?.item_count ?? 0);
+    const subtotal = items.reduce((acc, it) => acc + Number(it.line_total ?? 0), 0);
+
+    distinctItemsEl && (distinctItemsEl.textContent = String(distinct));
+    totalQtyEl && (totalQtyEl.textContent = String(totalQty));
+    subtotalEl && (subtotalEl.textContent = money(subtotal));
+    totalEl && (totalEl.textContent = money(subtotal)); 
   }
 
   async function refresh() {
-    try {
-      if (!window.CartAPI) {
-        flash("CartAPI not found. Ensure static/carts/cart.js is loaded in base.html.", "danger", { persist: true });
-        return;
-      }
-      const cart = await window.CartAPI.getCart();
-      render(cart);
-    } catch (e) {
-      flash(`Failed to load cart: ${e.message}`, "danger", { persist: true });
-    }
+    const cart = await fetchCart();
+    render(cart);
   }
 
-  refresh();
+  checkoutBtn?.addEventListener("click", () => {
+    window.location.href = "/orders/checkout";
+  });
+
+  refresh().catch((e) => {
+    const msg = e?.message ? e.message : String(e);
+    flash(`Failed to load cart: ${msg}`, "danger", { persist: true });
+    setEmpty(true);
+  });
+
+  // Optional: refresh cart page if other pages add items
+  document.addEventListener("cart:updated", () => {
+    refresh().catch(() => {});
+  });
 });

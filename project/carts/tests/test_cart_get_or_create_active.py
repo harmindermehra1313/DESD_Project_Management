@@ -26,7 +26,7 @@ def test_owner_must_have_exactly_one_identifier():
         cart_get_or_create_active(owner=CartOwner())
 
     with pytest.raises(ValueError, match="exactly one"):
-        cart_get_or_create_active(owner=CartOwner(user_id=1, guest_token=uuid.uuid4()))
+        cart_get_or_create_active(owner=CartOwner(user_id=1, session_key=uuid.uuid4()))
 
 
 def test_user_owner_returns_existing_active_and_touches(user, fixed_now):
@@ -34,7 +34,7 @@ def test_user_owner_returns_existing_active_and_touches(user, fixed_now):
     existing = baker.make(
         "carts.Cart",
         user=user,
-        guest_token=None,
+        session_key=None,
         status=CartStatus.ACTIVE,
         last_seen_at=old,
         expires_at=None,
@@ -54,7 +54,7 @@ def test_user_owner_creates_active_when_missing(user, fixed_now):
 
     assert got.user_id == user.id
     assert got.status == CartStatus.ACTIVE
-    assert got.guest_token is None
+    assert got.session_key is None
     got.refresh_from_db()
     assert got.last_seen_at == fixed_now
 
@@ -63,7 +63,7 @@ def test_user_owner_ignores_non_active_and_creates_new_active(user, fixed_now):
     old_cart = baker.make(
         "carts.Cart",
         user=user,
-        guest_token=None,
+        session_key=None,
         status=CartStatus.CHECKED_OUT,
     )
 
@@ -72,32 +72,32 @@ def test_user_owner_ignores_non_active_and_creates_new_active(user, fixed_now):
     assert got.id != old_cart.id
 
 
-def test_guest_owner_creates_cart_when_missing(guest_token, fixed_now):
+def test_guest_owner_creates_cart_when_missing(session_key, fixed_now):
     got = cart_get_or_create_active(
-        owner=CartOwner(guest_token=guest_token),
+        owner=CartOwner(session_key=session_key),
         guest_ttl_days=7,
     )
 
     assert got.user_id is None
-    assert got.guest_token == guest_token
+    assert got.session_key == session_key
     assert got.status == CartStatus.ACTIVE
     got.refresh_from_db()
     assert got.last_seen_at == fixed_now
     assert got.expires_at == fixed_now + timedelta(days=7)
 
 
-def test_guest_owner_returns_existing_active_and_touches(guest_token, fixed_now):
+def test_guest_owner_returns_existing_active_and_touches(session_key, fixed_now):
     old = fixed_now - timedelta(days=2)
     existing = baker.make(
         "carts.Cart",
         user=None,
-        guest_token=guest_token,
+        session_key=session_key,
         status=CartStatus.ACTIVE,
         last_seen_at=old,
         expires_at=fixed_now + timedelta(days=10),
     )
 
-    got = cart_get_or_create_active(owner=CartOwner(guest_token=guest_token))
+    got = cart_get_or_create_active(owner=CartOwner(session_key=session_key))
     assert got.id == existing.id
 
     existing.refresh_from_db()
@@ -105,33 +105,33 @@ def test_guest_owner_returns_existing_active_and_touches(guest_token, fixed_now)
     assert existing.updated_at == fixed_now
 
 
-def test_guest_owner_rejects_non_active_guest_cart(guest_token):
+def test_guest_owner_rejects_non_active_guest_cart(session_key):
     baker.make(
         "carts.Cart",
         user=None,
-        guest_token=guest_token,
+        session_key=session_key,
         status=CartStatus.MERGED,
     )
 
     with pytest.raises(CartNotActive, match=r"Guest cart is not active"):
-        cart_get_or_create_active(owner=CartOwner(guest_token=guest_token))
+        cart_get_or_create_active(owner=CartOwner(session_key=session_key))
 
 
-def test_guest_owner_rejects_expired_guest_cart(guest_token, fixed_now):
+def test_guest_owner_rejects_expired_guest_cart(session_key, fixed_now):
     # expires_at <= now triggers expiry path
     baker.make(
         "carts.Cart",
         user=None,
-        guest_token=guest_token,
+        session_key=session_key,
         status=CartStatus.ACTIVE,
         expires_at=fixed_now,
     )
 
     with pytest.raises(CartNotActive, match="Guest cart has expired"):
-        cart_get_or_create_active(owner=CartOwner(guest_token=guest_token))
+        cart_get_or_create_active(owner=CartOwner(session_key=session_key))
 
     # NOTE: Because cart_get_or_create_active is wrapped in transaction.atomic,
     # any DB update done right before raising will be rolled back.
     # So don't assert status changed here unless you change the service behavior.
-    cart = Cart.objects.get(guest_token=guest_token)
+    cart = Cart.objects.get(session_key=session_key)
     assert cart.status == CartStatus.ACTIVE
