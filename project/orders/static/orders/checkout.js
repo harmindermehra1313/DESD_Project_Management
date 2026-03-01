@@ -332,6 +332,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isGuest) {
             deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
         }
+        let billingAddressId = null;
+        if (!isGuest) {
+            billingAddressId = document.querySelector('select[name="billing_address_id"]').value;
+        }
 
         // Producer delivery/collection
         const producerBlocks = document.querySelectorAll('.producer-delivery');
@@ -396,6 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             body: JSON.stringify({
                 delivery_address_id: deliveryAddressId,
+                billing_address_id: billingAddressId,
                 payment_method: paymentMethod,
                 special_instructions: specialInstructions,
                 is_guest: isGuest,
