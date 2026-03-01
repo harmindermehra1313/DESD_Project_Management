@@ -361,6 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Validation for required fields
         if (!paymentMethod || missingFields) {
+            wrapper.classList.add("submitted");
             alert("Please complete all required fields before placing your order.");
             return;
         }
@@ -368,6 +369,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Logged-in users must select an address
         if (!isGuest && !deliveryAddressId) {
             alert("Please select a delivery address.");
+            return;
+        }
+        if (!isGuest && !billingAddressId) {
+            alert("Please select a billing address.");
             return;
         }
 
