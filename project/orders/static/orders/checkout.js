@@ -106,12 +106,41 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
+        // function updateSlotOptions() {
+        //     const slots = deliveryRadio.checked ? deliverySlots : collectionSlots;
+
+        //     timeField.innerHTML = '<option value="">Select a time slot</option>';
+
+        //     slots.forEach(slot => {
+        //         const opt = document.createElement("option");
+        //         opt.value = slot;
+        //         opt.textContent = slot;
+        //         timeField.appendChild(opt);
+        //     });
+        // }
         function updateSlotOptions() {
             const slots = deliveryRadio.checked ? deliverySlots : collectionSlots;
 
+            // Clear existing options
             timeField.innerHTML = '<option value="">Select a time slot</option>';
 
-            slots.forEach(slot => {
+            const selectedDate = dateInput.value;
+            const minStr = deliveryRadio.checked ? deliveryMin : collectionMin;
+            const [minDate, minTime] = minStr.split("T");
+            const earliestTime = minTime.slice(0, 5);
+
+            let filteredSlots = slots;
+
+            // If user picked the earliest allowed date, filter invalid slots
+            if (selectedDate === minDate) {
+                filteredSlots = slots.filter(slot => {
+                    const start = slot.split("-")[0];
+                    return start >= earliestTime;
+                });
+            }
+
+            // Add filtered slots
+            filteredSlots.forEach(slot => {
                 const opt = document.createElement("option");
                 opt.value = slot;
                 opt.textContent = slot;
@@ -152,12 +181,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Bind events for this producer
         deliveryRadio.addEventListener("change", () => {
+            dateInput.value = "";          // Clear old date
+            timeField.innerHTML = "";      // Clear old time slots
             updateDateConstraints();
             updateSlotOptions();
             autoSelectEarliestSlot();
         });
 
         collectionRadio.addEventListener("change", () => {
+            dateInput.value = "";          // Clear old date
+            timeField.innerHTML = "";      // Clear old time slots
             updateDateConstraints();
             updateSlotOptions();
             autoSelectEarliestSlot();
@@ -179,6 +212,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const collectionSection = document.getElementById("collection-address-section");
 
     function recomputeAddressVisibility() {
+        if (!deliverySection || !collectionSection) {
+            return; // Guest checkout: skip this logic
+        }
         const checkedRadios = document.querySelectorAll(
             '.producer-delivery input[type="radio"]:checked'
         );
@@ -222,17 +258,82 @@ document.addEventListener("DOMContentLoaded", () => {
     recomputeAddressVisibility();
 
     // ===============================
+    // Billing same as delivery for guest
+    // ===============================
+    const sameAsDelivery = document.getElementById("billing-same-as-delivery");
+    const billingFields = document.getElementById("guest-billing-fields");
+
+    const deliveryInputs = [
+        "guest_delivery_line1",
+        "guest_delivery_line2",
+        "guest_delivery_city",
+        "guest_delivery_postcode"
+    ];
+
+    const billingInputs = [
+        "guest_billing_line1",
+        "guest_billing_line2",
+        "guest_billing_city",
+        "guest_billing_postcode"
+    ];
+
+    function syncBillingToDelivery() {
+        billingInputs.forEach((billingName, index) => {
+            const deliveryName = deliveryInputs[index];
+            form[billingName].value = form[deliveryName].value;
+        });
+    }
+
+    if (sameAsDelivery) {
+        sameAsDelivery.addEventListener("change", () => {
+            if (sameAsDelivery.checked) {
+                syncBillingToDelivery();
+                billingFields.style.display = "none";
+
+                // Start live syncing
+                deliveryInputs.forEach(name => {
+                    form[name].addEventListener("input", syncBillingToDelivery);
+                });
+            } else {
+                billingFields.style.display = "";
+
+                // Stop syncing
+                deliveryInputs.forEach(name => {
+                    form[name].removeEventListener("input", syncBillingToDelivery);
+                });
+            }
+        });
+    }
+
+    // ===============================
+    // Error messages
+    // ===============================
+    const wrapper = document.getElementById("checkout-wrapper");
+    const form = document.getElementById("checkout-form");
+
+    form.addEventListener("invalid", () => {
+        wrapper.classList.add("submitted");
+    }, true);
+
+    // ===============================
     // Order form
     // ===============================
-    const form = document.getElementById("checkout-form");
+    const isGuest = document.getElementById("is-authenticated").value === "0";
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const paymentMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
         const specialInstructions = form.special_instructions.value;
-        const deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
+        
+        //const deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
+        // Use saved address for users
+        let deliveryAddressId = null;
+        if (!isGuest) {
+            deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
+        }
 
+        // Producer delivery/collection
         const producerBlocks = document.querySelectorAll('.producer-delivery');
         const producerData = {};
         let missingFields = false;
@@ -254,11 +355,39 @@ document.addEventListener("DOMContentLoaded", () => {
             producerData[`delivery_time_${producerId}`] = time;
         });
 
-        if (!paymentMethod || !deliveryAddressId || missingFields) {
+        // Validation for required fields
+        if (!paymentMethod || missingFields) {
             alert("Please complete all required fields before placing your order.");
             return;
         }
 
+        // Logged-in users must select an address
+        if (!isGuest && !deliveryAddressId) {
+            alert("Please select a delivery address.");
+            return;
+        }
+
+        // Guest fields
+        let guestData = {};
+        if (isGuest) {
+            guestData = {
+                guest_name: form.guest_name.value,
+                guest_email: form.guest_email.value,
+                guest_phone: form.guest_phone.value,
+
+                guest_delivery_line1: form.guest_delivery_line1.value,
+                guest_delivery_line2: form.guest_delivery_line2.value,
+                guest_delivery_city: form.guest_delivery_city.value,
+                guest_delivery_postcode: form.guest_delivery_postcode.value,
+
+                guest_billing_line1: form.guest_billing_line1.value,
+                guest_billing_line2: form.guest_billing_line2.value,
+                guest_billing_city: form.guest_billing_city.value,
+                guest_billing_postcode: form.guest_billing_postcode.value,
+            };
+        }
+
+        // Send request
         const response = await fetch("/orders/checkout/api/", {
             method: "POST",
             headers: {
@@ -269,6 +398,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 delivery_address_id: deliveryAddressId,
                 payment_method: paymentMethod,
                 special_instructions: specialInstructions,
+                is_guest: isGuest,
+                ...guestData,
                 ...producerData
             })
         });

@@ -2,12 +2,18 @@
    BRAND VARIABLES
    ============================ */
 :root {
-    --brand: var(--brand-dark);
-    --accent: var(--brand-primary);
-    --muted: var(--brand-muted);
+    --brand: var(--dark-green);              /* Main text + headings */
+    --accent: var(--bright-green);           /* Buttons + highlights */
+    --muted: var(--blue-grey);               /* Subtle text + borders */
     --bg: #ffffff;
+
     --radius: 8px;
     --gap: 12px;
+
+    /* RGB versions for transparency */
+    --brand-rgb: 53, 82, 74;                 /* dark-green */
+    --muted-rgb: 98, 124, 133;               /* blue-grey */
+    --accent-rgb: 50, 222, 138;              /* bright-green */
 }
 
 /* ============================
@@ -48,16 +54,16 @@
 }
 
 .checkout-table th {
-    background: rgba(var(--brand-muted-rgb), 0.1);
+    background: rgba(var(--muted-rgb), 0.12);
     color: var(--brand);
     font-weight: 600;
     padding: 0.75rem;
-    border-bottom: 1px solid rgba(var(--brand-muted-rgb), 0.3);
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.3);
 }
 
 .checkout-table td {
     padding: 0.9rem;
-    border-bottom: 1px solid rgba(var(--brand-muted-rgb), 0.25);
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
 }
 
 /* ============================
@@ -75,7 +81,7 @@
 
 .vat-note {
     font-size: 0.8rem;
-    color: var(--brand-secondary);
+    color: var(--muted);
 }
 
 .savings-note {
@@ -90,8 +96,8 @@
 .checkout-total {
     margin-top: 2rem;
     padding: 1.5rem;
-    border-top: 2px solid rgba(var(--brand-muted-rgb), 0.4);
-    background: rgba(var(--brand-info-rgb), 0.08);
+    border-top: 2px solid rgba(var(--muted-rgb), 0.4);
+    background: rgba(var(--accent-rgb), 0.08);
     border-radius: var(--radius);
 }
 
@@ -131,11 +137,13 @@
    ============================ */
 input[type="text"],
 input[type="date"],
+input[type="email"],
+input[type="tel"],
 textarea,
 select {
     width: 100%;
     padding: 0.6rem 0.75rem;
-    border: 1px solid rgba(var(--brand-muted-rgb), 0.4);
+    border: 1px solid var(--soft-blue);
     border-radius: var(--radius);
     margin-bottom: 1rem;
     font-size: 1rem;
@@ -167,7 +175,7 @@ input[type="radio"] {
 /* HR */
 hr {
     border: none;
-    border-top: 1px solid rgba(var(--brand-muted-rgb), 0.4);
+    border-top: 1px solid rgba(var(--muted-rgb), 0.4);
     margin: 1.5rem 0;
 }
 
@@ -177,7 +185,7 @@ hr {
 #selected-delivery-address,
 #selected-billing-address {
     padding: 1rem;
-    border: 1px solid rgba(var(--brand-muted-rgb), 0.3);
+    border: 1px solid rgba(var(--muted-rgb), 0.3);
     border-radius: var(--radius);
     background: #fbfbfb;
     margin-bottom: 1rem;
@@ -186,7 +194,7 @@ hr {
 #new-delivery-address-form,
 #new-billing-address-form {
     padding: 1rem;
-    border: 1px solid rgba(var(--brand-muted-rgb), 0.3);
+    border: 1px solid rgba(var(--muted-rgb), 0.3);
     border-radius: var(--radius);
     background: #fbfbfb;
 }
@@ -197,7 +205,7 @@ hr {
 .btn-primary {
     background-color: var(--accent);
     border-color: var(--accent);
-    color: var(--brand);
+    color: var(--dark-green);
     font-weight: 600;
     border-radius: var(--radius);
 }
@@ -205,7 +213,7 @@ hr {
 .btn-primary:hover {
     background-color: var(--brand);
     border-color: var(--brand);
-    color: #fff;
+    color: var(--text-light);
 }
 
 .checkout-btn {
@@ -216,24 +224,23 @@ hr {
 }
 
 /* ============================
-   Card layout for each producer
+   CARD LAYOUT FOR EACH PRODUCER
    ============================ */
-/* Outer card */
 .producer-box {
     background: #fff;
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--soft-blue);
     border-radius: 10px;
     padding: 1.5rem;
     margin-bottom: 2rem;
     box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
-/* Title spacing */
 .producer-box h2 {
     margin-top: 0;
     margin-bottom: 1rem;
     font-size: 1.4rem;
     font-weight: 600;
+    color: var(--brand);
 }
 
 /* Two-column layout */
@@ -246,7 +253,7 @@ hr {
 
 /* Left column: product list */
 .producer-products {
-    border-right: 1px solid #ddd;
+    border-right: 1px solid rgba(var(--muted-rgb), 0.3);
     padding-right: 1.5rem;
 }
 
@@ -255,11 +262,11 @@ hr {
     padding-left: 1.5rem;
 }
 
-/* Form styling */
 .producer-delivery h3 {
     margin-top: 0;
     font-size: 1.1rem;
     font-weight: 600;
+    color: var(--brand);
 }
 
 .producer-delivery label {
@@ -273,33 +280,82 @@ hr {
     width: 100%;
     padding: 0.45rem 0.6rem;
     margin-bottom: 1rem;
-    border: 1px solid #ccc;
+    border: 1px solid var(--soft-blue);
     border-radius: 6px;
     font-size: 0.95rem;
 }
 
-/* Table styling */
-.checkout-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
+/* Table styling inside producer card */
 .checkout-table th,
 .checkout-table td {
     padding: 0.6rem 0.4rem;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
     text-align: left;
 }
 
 .checkout-table th {
     font-weight: 600;
-    background: #fafafa;
+    background: rgba(var(--muted-rgb), 0.1);
 }
 
 .producer-subtotal {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid rgba(var(--muted-rgb), 0.3);
     font-size: 0.95rem;
     line-height: 1.5;
+}
+
+/* ============================
+   ERROR MESSAGES
+   ============================ */
+
+/* Inline error messages, hide by default */
+.error-message {
+    display: none;
+    font-size: 0.85rem;
+    color: #d9534f; /* standard red */
+    margin-top: -0.4rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Show message when field is invalid */
+#checkout-wrapper.submitted input:invalid + .error-message,
+#checkout-wrapper.submitted select:invalid + .error-message,
+#checkout-wrapper.submitted textarea:invalid + .error-message {
+    display: block;
+}
+
+/* Highlight invalid fields only after submit */
+#checkout-wrapper.submitted input:invalid,
+#checkout-wrapper.submitted select:invalid,
+#checkout-wrapper.submitted textarea:invalid {
+    border-color: #d9534f !important;
+    outline-color: #d9534f !important;
+}
+
+/* Force invalid date fields to show a red border */
+#checkout-wrapper.submitted input[type="date"]:invalid {
+    border: 1px solid #d9534f !important;
+    outline: none;
+}
+#checkout-wrapper.submitted input[type="date"]:focus:invalid {
+    border-color: #d9534f !important;
+    box-shadow: 0 0 4px rgba(217, 83, 79, 0.4);
+}
+
+/* Match green focus styling for date fields */
+input[type="date"]:focus,
+input[type="date"]:focus-visible,
+input[type="date"]:focus-within {
+    border: 1px solid var(--accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 4px rgba(var(--accent-rgb), 0.4) !important;
+}
+
+/* Required asterisk for required fields */
+label.required::after {
+    content: " *";
+    color: #d9534f;
+    font-weight: bold;
 }

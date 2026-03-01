@@ -20,7 +20,13 @@ Address = apps.get_model('accounts', 'Address')
 class CheckoutAPIView(APIView):
     def post(self, request):
         # TBC - set user as customer from seeder
-        request.user = User.objects.get(email="mark42@hotmail.com")
+        #request.user = User.objects.get(email="mark42@hotmail.com")
+        if request.user.is_authenticated:
+            user = request.user
+            is_guest = False
+        else:
+            user = None
+            is_guest = True
 
         serializer = CheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -33,15 +39,78 @@ class CheckoutAPIView(APIView):
                 {"error": "Cart is empty"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # -----------------------------
+        # Validate stock for each item
+        # -----------------------------
+        for entry in items:
+            product = Product.objects.get(id=entry["product_id"])
+            quantity = entry["quantity"]
+
+            if product.stock_quantity < quantity:
+                return Response(
+                    {
+                        "error": f"Insufficient stock for {product.name}. "
+                                f"Available: {product.stock_quantity}, "
+                                f"Requested: {quantity}"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
 
         # -----------------------------
         # Extract global checkout fields
         # -----------------------------
-        delivery_address_id = serializer.validated_data["delivery_address_id"]
-        delivery_address = Address.objects.get(id=delivery_address_id)
+        #delivery_address_id = serializer.validated_data["delivery_address_id"]
+        #delivery_address = Address.objects.get(id=delivery_address_id)
 
         payment_method = serializer.validated_data["payment_method"]
         special_instructions = serializer.validated_data.get("special_instructions", "")
+
+        # -----------------------------
+        # Resolve delivery & billing address
+        # -----------------------------
+
+        if not is_guest:
+            # Logged-in user: use saved addresses
+            delivery_address_id = serializer.validated_data["delivery_address_id"]
+            delivery_address = Address.objects.get(id=delivery_address_id)
+            
+            billing_address_id = serializer.validated_data.get("billing_address_id")
+            billing_address = Address.objects.get(id=billing_address_id)
+        
+        else:
+            # Guest: create delivery & billing addresses
+            delivery_address = Address.objects.create(
+                user = None,
+                line1 = serializer.validated_data["guest_delivery_line1"],
+                line2 = serializer.validated_data.get("guest_delivery_line2"),
+                city = serializer.validated_data["guest_delivery_city"],
+                postcode = serializer.validated_data["guest_delivery_postcode"],
+            )
+            
+            # Check if billing = delivery (store once)
+            same_as_delivery = (
+                serializer.validated_data["guest_billing_line1"] == serializer.validated_data["guest_delivery_line1"] and
+                serializer.validated_data.get("guest_billing_line2") == serializer.validated_data.get("guest_delivery_line2") and
+                serializer.validated_data["guest_billing_city"] == serializer.validated_data["guest_delivery_city"]
+                and serializer.validated_data["guest_billing_postcode"] == serializer.validated_data["guest_delivery_postcode"]
+            )
+
+            if same_as_delivery:
+                billing_address = delivery_address
+            else:        
+                billing_address = Address.objects.create(
+                    user = None,
+                    line1 = serializer.validated_data["guest_billing_line1"],
+                    line2 = serializer.validated_data.get("guest_billing_line2"),
+                    city = serializer.validated_data["guest_billing_city"],
+                    postcode = serializer.validated_data["guest_billing_postcode"],
+                )
+
+        # -----------------------------
+        # Get dynamic producer fields
+        # -----------------------------
 
         # Per‑producer fields come in as:
         # delivery_or_collection_<producer_id>
@@ -71,9 +140,14 @@ class CheckoutAPIView(APIView):
             # Create order (global)
             # -----------------------------
             order = Order.objects.create(
-                user=request.user,
-                delivery_address=delivery_address,  # correct selected address
+                user=user,
+                is_guest=is_guest,
+                delivery_address=delivery_address,
+                billing_address=billing_address,
                 status=Order.Status.PENDING,
+                guest_name=serializer.validated_data.get("guest_name") if is_guest else None,
+                guest_email=serializer.validated_data.get("guest_email") if is_guest else None,
+                guest_phone=serializer.validated_data.get("guest_phone") if is_guest else None,
             )
 
             # -----------------------------
@@ -128,6 +202,10 @@ class CheckoutAPIView(APIView):
                     discount_amount=discount_amount,
                     preparation_deadline=timezone.now() + timedelta(hours=48),
                 )
+
+                # Reduce stock
+                product.stock_quantity = max(product.stock_quantity - quantity, 0)
+                product.save(update_fields=["stock_quantity"])
 
                 items_by_producer.setdefault(product.producer, []).append(item)
 
@@ -347,7 +425,7 @@ def checkout(request):
     collection_earliest = now + timedelta(hours=48)
     delivery_earliest = now + timedelta(hours=72)
     # Time windows
-    delivery_start = time(8,0)
+    delivery_start = time(10,0)
     delivery_end = time(18,0)
     collection_start = time(9,0)
     collection_end = time(17,0)
@@ -396,24 +474,55 @@ def checkout(request):
 def order_success(request, reference):
     order = Order.objects.get(unique_reference=reference)
 
-    # Fetch producer summaries (each producer's delivery/collection info)
+    # Fetch producer summaries
     producer_summaries = (
         order.producer_summaries
         .select_related("producer")
         .all()
     )
 
-    # Group items by producer and compute line totals
+    # Group items by producer
     items_by_producer = {}
     for item in order.items.select_related("producer", "product"):
-        # Add line total for display
+        # Line total after discount, before VAT
         item.line_total = item.final_unit_price * item.quantity
+        items_by_producer.setdefault(item.producer_id, []).append(item)
 
-        # Group by producer
-        items_by_producer.setdefault(item.producer, []).append(item)
+    # Recalc monetary values from items
+    for summary in producer_summaries:
+        items = items_by_producer.get(summary.producer_id, [])
+        summary.items = items
+
+        # Total (no discounts/wholesale)
+        summary.original_subtotal = sum( 
+            item.original_unit_price * item.quantity for item in items
+        )
+
+        # Subtotal (after discount, before VAT)
+        summary.discounted_subtotal = sum(
+            item.final_unit_price * item.quantity for item in items
+        )
+
+        # Total discount (difference between original and final)
+        summary.discount_total = summary.original_subtotal - summary.discounted_subtotal
+
+        # VAT
+        summary.vat_total = sum(
+            item.vat_amount for item in items
+        )
+
+        # What the customer paid for this producer
+        summary.customer_paid = summary.discounted_subtotal + summary.vat_total
+
+        # Commission (per item)
+        summary.commission_total = sum(
+            item.commission_amount for item in items
+        )
+
+        # What the producer receives
+        summary.payout_amount = summary.discounted_subtotal - summary.commission_total
 
     return render(request, "orders/order_confirmed.html", {
         "order": order,
         "producer_summaries": producer_summaries,
-        "items_by_producer": items_by_producer,
     })

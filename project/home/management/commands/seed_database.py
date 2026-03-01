@@ -351,9 +351,6 @@ class Command(BaseCommand):
             recurring_order=None, # optional
 
             order_date=now,
-            delivery_or_collection="DELIVERY",
-            delivery_date=now + timezone.timedelta(days=1),
-
             total_price=5.50,
             total_discount=0.00,
             final_total_price=5.50,
@@ -431,6 +428,7 @@ class Command(BaseCommand):
             commission_total=round(5.50 * 0.05, 2),
             payout_amount=5.50 - round(5.50 * 0.05, 2),
 
+            delivery_or_collection="DEL",
             delivery_date=timezone.now() + timezone.timedelta(days=1),
 
             special_instructions=None,

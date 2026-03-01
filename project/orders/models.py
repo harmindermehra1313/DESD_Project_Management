@@ -22,6 +22,8 @@ class Order(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete = models.CASCADE,
         related_name = "orders_for_users",
+        null=True,
+        blank=True
     )
     
     delivery_address = models.ForeignKey(
@@ -36,6 +38,14 @@ class Order(models.Model):
         null = True,
         blank= True,
         related_name = 'generated_orders',
+    )
+
+    billing_address = models.ForeignKey(
+        "accounts.Address",
+        on_delete=models.CASCADE,
+        related_name="billing_orders",
+        null=True,
+        blank=True,
     )
 
     unique_reference = ShortUUIDField(
@@ -89,6 +99,12 @@ class Order(models.Model):
         choices = Status.choices,
         default = Status.PENDING
     )
+
+    # Handle guests
+    guest_name = models.CharField(max_length=150, null=True, blank=True)
+    guest_email = models.EmailField(null=True, blank=True)
+    guest_phone = models.CharField(max_length=20, null=True, blank=True)
+    is_guest = models.BooleanField(default=False)
     
     def __str__(self):
         return f"Order #{self.pk} ({self.status})"
