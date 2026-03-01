@@ -3,8 +3,22 @@ from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
 
 class Category(models.Model):
+    class FoodGroups(models.TextChoices):
+        MEAT = 'MT', 'Meat'
+        DAIRY_AND_EGGS = 'DAE', 'Dairy and Eggs'
+        FRUIT = 'FR', 'Fruit'
+        VEGETABLES = 'VEG', 'Vegetables'
+        SEASONAL = 'SEA', 'Seasonal'
+
     name = models.CharField(
         max_length=100
+    )
+
+    food_groups = models.CharField(
+        max_length = 20,
+        choices = FoodGroups.choices,
+        default=FoodGroups.SEASONAL
+
     )
 
     description = models.TextField(
@@ -97,8 +111,8 @@ class Product(models.Model):
         default = Unit.EACH
     )
 
-    image = models.CharField(
-        max_length = 255
+    image = models.ImageField(
+        upload_to = 'products/'
     )
 
     stock_quantity = models.IntegerField(
@@ -109,9 +123,7 @@ class Product(models.Model):
         default = 0
     )
     
-    harvest_date = models.DateTimeField(
-        auto_now_add = True
-    )
+    harvest_date = models.DateTimeField()
 
     farm_origin = models.CharField(
         max_length = 150
