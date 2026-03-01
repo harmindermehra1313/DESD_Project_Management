@@ -86,11 +86,11 @@ def add_product(request):
 
     return render(request, 'products/add_product.html')
 
-# not linked these yet
-def product_detail(request, product_id):
-    # This ensures the product ID passed in the URL actually exists
-    product = get_object_or_404(Product, pk=product_id)
-    return HttpResponse(f"Placeholder page for: {product.name}. (Template coming soon!)")
+# # not linked these yet
+# def product_detail(request, product_id):
+#     # This ensures the product ID passed in the URL actually exists
+#     product = get_object_or_404(Product, pk=product_id)
+#     return HttpResponse(f"Placeholder page for: {product.name}. (Template coming soon!)")
 
 def add_to_cart(request, product_id):
     print(f"TODO: Logic to add product {product_id} to the cart session.")

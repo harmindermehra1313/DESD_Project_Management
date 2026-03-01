@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
@@ -25,9 +25,24 @@ from api.serializers.carts import (
     CartItemSerializer,
 )
 
+def _ensure_session_key(request) -> str:
+    """
+    Ensures request.session has a usable session_key.
+    For guests, the cart is tied to this session_key.
+    """
+    if not request.session.session_key:
+        request.session.save()  # generates a session_key
+    return request.session.session_key
 
 def _owner(request) -> CartOwner:
-    return CartOwner(user_id=request.user.id)
+    """
+    Auth user -> CartOwner(user_id=...)
+    Guest -> CartOwner(session_key=...)
+    """
+    if request.user and request.user.is_authenticated:
+        return CartOwner(user_id=request.user.id)
+
+    return CartOwner(session_key=_ensure_session_key(request))
 
 
 def _translate_service_error(exc: Exception) -> Exception:
@@ -43,7 +58,7 @@ def _translate_service_error(exc: Exception) -> Exception:
 
 
 class CartAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny] # AlloweAny / IsAuthenticated 
 
     def get(self, request, *args, **kwargs):
         try:
@@ -54,7 +69,7 @@ class CartAPIView(APIView):
 
 
 class CartItemAddView(CreateAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny] # AlloweAny / IsAuthenticated 
     serializer_class = AddToCartSerializer
 
     def create(self, request, *args, **kwargs):
@@ -79,7 +94,7 @@ class CartItemDetailView(APIView):
     /cart/items/<pk>/
     pk is treated as product_id.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny] # AlloweAny / IsAuthenticated 
 
     def patch(self, request, pk: int, *args, **kwargs):
         return self._set_quantity(request, pk)
