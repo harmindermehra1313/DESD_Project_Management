@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% load static %}{% block title %}List New Product | Bristol Regional Food Network{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="page-title mb-5">List New Product</h1>
+
+    <form method="POST" action="{% url 'add_product' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="row g-4 mb-4">
+            
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_name" class="form-label custom-form-label">Product Name</label>
+                    <input type="text" class="form-control" name="name" id="id_name" placeholder="Sample Text" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_price" class="form-label custom-form-label">Price</label>
+                    <div class="input-group">
+                        <span class="input-group-text">£</span>
+                        <input type="number" class="form-control" name="price" id="id_price" step="0.01" placeholder="3.00" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_availability_status" class="form-label custom-form-label">Availability</label>
+                    <select class="form-select" name="availability_status" id="id_availability_status">
+                        <option value="AV">In Season / Available</option>
+                        <option value="OOS">Out of Stock</option>
+                        <option value="DIS">Discontinued</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_harvest_date" class="form-label custom-form-label">Harvest Date</label>
+                    <input type="datetime-local" class="form-control" name="harvest_date" id="id_harvest_date" required>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_category" class="form-label custom-form-label">Product Category</label>
+                    <select class="form-select" name="category" id="id_category" required>
+                        <option value="" selected disabled>Select a category...</option>
+                        
+                        <option value="MT">Meat</option>
+                        <option value="DAE">Dairy and Eggs</option>
+                        <option value="FR">Fruit</option>
+                        <option value="VEG">Vegetables</option>
+                        <option value="SEA">Seasonal</option>
+                        
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_unit" class="form-label custom-form-label">Units</label>
+                    <select class="form-select" name="unit" id="id_unit">
+                        <option value="EA">Each</option>
+                        <option value="PK">Pack</option>
+                        <option value="KG">Kilogram</option>
+                        <option value="G">Gram</option>
+                        <option value="L">Liter</option>
+                        <option value="ML">Milliliter</option>
+                        <option value="BX">Box</option>
+                        <option value="BN">Bunch</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_stock_quantity" class="form-label custom-form-label">Stock</label>
+                    <input type="number" class="form-control" name="stock_quantity" id="id_stock_quantity" placeholder="100" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_allergens" class="form-label custom-form-label">Allergen Information</label>
+                    <input type="text" class="form-control" name="allergen_info_placeholder" id="id_allergens" placeholder="E.g., Contains Nuts">
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_image" class="form-label custom-form-label">Product Image</label>
+                    <div class="image-upload-box px-3">
+                        <input class="form-control" type="file" name="image" id="id_image" accept="image/*" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_description" class="form-label custom-form-label">Product Description</label>
+                    <textarea class="form-control" name="description" id="id_description" rows="5" placeholder="Enter product details..."></textarea>
+                </div>
+            </div>
+            
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-submit">List New Item</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
