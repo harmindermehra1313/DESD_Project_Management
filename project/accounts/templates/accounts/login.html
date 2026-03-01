@@ -39,11 +39,17 @@
                 </div>
 
                 <!-- Password -->
-                <div class="mb-3">
+                <div class="mb-3 position-relative">
                     <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+
                     <input id="password" name="password" type="password" class="form-control"
-                           placeholder="Your password" required>
+                        placeholder="Your password" required>
+
+                    <i class="bi bi-eye-slash toggle-password"
+                    data-target="password"
+                    style="position:absolute; right:12px; top:40px; cursor:pointer;"></i>
                 </div>
+
 
                 <!-- Remember me -->
                 <div class="form-check mb-3">
@@ -72,5 +78,5 @@
     </div>
 
 </div>
-
+<script src="{% static 'register.js' %}"></script>
 {% endblock %}

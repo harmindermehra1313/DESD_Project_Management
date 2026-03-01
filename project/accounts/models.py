@@ -81,7 +81,10 @@ class Address(models.Model):
     user = models.ForeignKey(
         User, 
         on_delete=models.CASCADE, 
-        related_name = "addresses"
+        related_name = "addresses",
+        null=True, #allow guest orders
+        blank=True,
+        db_index=True
     )
 
     line1 = models.CharField(

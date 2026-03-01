@@ -1,11 +1,24 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
-
-
+from decimal import Decimal
 
 class Category(models.Model):
+    class FoodGroups(models.TextChoices):
+        MEAT = 'MT', 'Meat'
+        DAIRY_AND_EGGS = 'DAE', 'Dairy and Eggs'
+        FRUIT = 'FR', 'Fruit'
+        VEGETABLES = 'VEG', 'Vegetables'
+        SEASONAL = 'SEA', 'Seasonal'
+
     name = models.CharField(
         max_length=100
+    )
+
+    food_groups = models.CharField(
+        max_length = 20,
+        choices = FoodGroups.choices,
+        default=FoodGroups.SEASONAL
+
     )
 
     description = models.TextField(
@@ -98,8 +111,8 @@ class Product(models.Model):
         default = Unit.EACH
     )
 
-    image = models.CharField(
-        max_length = 255
+    image = models.ImageField(
+        upload_to = 'products/'
     )
 
     stock_quantity = models.IntegerField(
@@ -110,9 +123,7 @@ class Product(models.Model):
         default = 0
     )
     
-    harvest_date = models.DateTimeField(
-        auto_now_add = True
-    )
+    harvest_date = models.DateTimeField()
 
     farm_origin = models.CharField(
         max_length = 150
@@ -188,6 +199,28 @@ class Product(models.Model):
         auto_now_add = True,
         null = True
     )
+
+    # Return the wholesale unit price for a given quantity or None if quantity insufficient
+    def get_wholesale_price(self, quantity):
+        tier = (
+            self.product_wholesale
+            .filter(min_quantity__lte=quantity)
+            .order_by('-min_quantity')
+            .first()
+        )
+
+        if tier:
+            return tier.unit_price
+        else:
+            return None
+    
+    # Return the discounted price if surplus is active else normal price
+    def get_discounted_price(self):
+        if self.surplus_status == Product.Surplus_status.SURPLUS_ACTIVE:
+            discount_factor = (Decimal('100') - self.surplus_discount_percentage) / Decimal('100')
+            return self.price * discount_factor
+        else:
+            return self.price
 
 class WholesalePrice(models.Model):
 
