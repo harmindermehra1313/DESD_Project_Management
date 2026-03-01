@@ -258,7 +258,90 @@ document.addEventListener('DOMContentLoaded', function () {
   const contactname = document.getElementById('business_contact_person')
   const contactname2 = document.getElementById('community_contact')
 
+
+
   // ------------------------------------------------------------
+// SMART EMAIL TYPO DETECTION (gmail, outlook, yahoo, etc.)
+// ------------------------------------------------------------
+const email = document.getElementById('email');
+const emailFeedback = document.getElementById('emailFeedback');
+
+if (email && emailFeedback) {
+    email.addEventListener('input', () => {
+        const value = email.value.trim().toLowerCase();
+
+        if (!value) {
+            emailFeedback.textContent = '';
+            return;
+        }
+
+        // Basic format check
+        const basicValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        if (!basicValid) {
+            emailFeedback.textContent = 'Invalid email format';
+            emailFeedback.style.color = 'red';
+            return;
+        }
+
+        // Common domain corrections
+        const commonDomains = [
+            'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
+            'icloud.com', 'live.com', 'proton.me'
+        ];
+
+        const typedDomain = value.split('@')[1];
+
+        // Detect close matches (typos)
+        let suggestion = null;
+        commonDomains.forEach(domain => {
+            if (levenshteinDistance(typedDomain, domain) <= 2) {
+                suggestion = domain;
+            }
+        });
+
+        if (suggestion && suggestion !== typedDomain) {
+            emailFeedback.innerHTML = `Did you mean <strong>${value.split('@')[0]}@${suggestion}</strong>?`;
+            emailFeedback.style.color = 'orange';
+        } else {
+            emailFeedback.textContent = 'Email looks good';
+            emailFeedback.style.color = 'green';
+        }
+    });
+}
+
+// Levenshtein distance (string similarity)
+function levenshteinDistance(a, b) {
+    const matrix = Array.from({ length: a.length + 1 }, (_, i) =>
+        Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+    );
+
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    return matrix[a.length][b.length];
+}
+  
+  // ------------------------------------------------------------
+// PASSWORD VISIBILITY TOGGLE
+// ------------------------------------------------------------
+document.querySelectorAll(".toggle-password").forEach(icon => {
+    icon.addEventListener("click", () => {
+        const input = document.getElementById(icon.dataset.target);
+        if (!input) return;
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        icon.classList.toggle("bi-eye");
+        icon.classList.toggle("bi-eye-slash");
+    });
+});
+// ------------------------------------------------------------
   // Helper functions — show/hide, errors, etc.
   // ------------------------------------------------------------
 
@@ -327,6 +410,35 @@ document.addEventListener('DOMContentLoaded', function () {
     errorBox.classList.remove('visually-hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  // ------------------------------------------------------------
+// PHONE VALIDATION ON BLUR
+// ------------------------------------------------------------
+if (phone) {
+    phone.addEventListener("blur", () => {
+        const value = phone.value.trim();
+        const valid = /^\+44\d{10}$/.test(value);
+
+        if (!valid) {
+            showFieldError(phone, "Phone must be in the format +44XXXXXXXXXX");
+        } else {
+            clearFieldError(phone);
+        }
+    });
+}
+if (phone) {
+    phone.addEventListener("blur", () => {
+        const value = phone.value.trim();
+
+        const ukPhonePattern = /^\+44(7\d{9}|1\d{9}|2\d{9}|3\d{9}|8\d{9}|55\d{8}|56\d{8})$/;
+
+        if (!ukPhonePattern.test(value)) {
+            showFieldError(phone, "Enter a valid UK phone number starting with +44 and a valid UK prefix.");
+        } else {
+            clearFieldError(phone);
+        }
+    });
+}
+
 
   // ------------------------------------------------------------
   // SECTION 1 — Role switching
@@ -409,6 +521,109 @@ document.addEventListener('DOMContentLoaded', function () {
   // ------------------------------------------------------------
   // SECTION 4 — Password match feedback
   // ------------------------------------------------------------
+  // ------------------------------------------------------------
+// LIVE FULL NAME VALIDATION (3 clear cases)
+// -----------------------------------------------------------
+const nameFeedback = document.getElementById('nameFeedback');
+
+if (fullName && nameFeedback) {
+    fullName.addEventListener('input', () => {
+        const value = fullName.value.trim();
+
+        if (!value) {
+            nameFeedback.textContent = '';
+            return;
+        }
+
+        // Case 2: Name contains numbers
+        if (/\d/.test(value)) {
+            nameFeedback.textContent = 'Name cannot contain numbers.';
+            nameFeedback.style.color = 'red';
+            return;
+        }
+
+        const parts = value.split(/\s+/);
+
+        // Case 1: Only first name typed
+        if (parts.length === 1) {
+            nameFeedback.textContent = 'Please enter your last name, or write your first name twice if you don’t have a last name.';
+            nameFeedback.style.color = 'orange';
+            return;
+        }
+
+        // Case 3: Valid first + last name
+        nameFeedback.textContent = 'Name looks good ✔';
+        nameFeedback.style.color = 'green';
+    });
+}
+
+ // ------------------------------------------------------------
+// EMAIL AUTO-COMPLETE
+// ------------------------------------------------------------
+if (email) {
+    const domainSuggestions = {
+        "gma": "gmail.com",
+        "gmai": "gmail.com",
+        "gmail": "gmail.com",
+
+        "hot": "hotmail.com",
+        "hotm": "hotmail.com",
+        "hotma": "hotmail.com",
+        "hotmai": "hotmail.com",
+        "hotmail": "hotmail.com",
+
+        "out": "outlook.com",
+        "outl": "outlook.com",
+        "outlo": "outlook.com",
+        "outloo": "outlook.com",
+        "outlook": "outlook.com",
+
+        "yah": "yahoo.com",
+        "yaho": "yahoo.com",
+        "yahoo": "yahoo.com"
+    };
+
+    let lastEmailValue = "";
+
+    email.addEventListener('input', () => {
+        const current = email.value.toLowerCase();
+        const isDeleting = current.length < lastEmailValue.length;
+        lastEmailValue = current;
+
+        if (isDeleting) {
+            emailFeedback.textContent = "";
+            return; // allow backspace
+        }
+
+        if (!current.includes('@')) {
+            emailFeedback.textContent = "";
+            return;
+        }
+
+        const [local, domainPart] = current.split('@');
+
+        if (!domainPart || domainPart.length < 3) {
+            emailFeedback.textContent = "";
+            return;
+        }
+
+        let suggestion = null;
+        for (const key in domainSuggestions) {
+            if (domainPart.startsWith(key)) {
+                suggestion = domainSuggestions[key];
+                break;
+            }
+        }
+
+        if (suggestion && domainPart !== suggestion) {
+            email.value = `${local}@${suggestion}`;
+            emailFeedback.innerHTML = `Auto-completed to <strong>${local}@${suggestion}</strong>`;
+            emailFeedback.style.color = 'green';
+        } else {
+            emailFeedback.textContent = "";
+        }
+    });
+}
 
   function checkPasswordMatch() {
     if (!password.value && !confirm.value) {
@@ -426,6 +641,67 @@ document.addEventListener('DOMContentLoaded', function () {
 
   password.addEventListener('input', checkPasswordMatch);
   confirm.addEventListener('input', checkPasswordMatch);
+  // ------------------------------------------------------------
+// PASSWORD RULE VALIDATION (LIVE)
+// ------------------------------------------------------------
+const passwordRules = document.getElementById("passwordRules");
+
+password.addEventListener("input", () => {
+    const value = password.value;
+    let errors = [];
+
+    if (value.length < 8) errors.push("8+ characters");
+    if (!/[A-Z]/.test(value)) errors.push("1 uppercase letter");
+    if (!/[a-z]/.test(value)) errors.push("1 lowercase letter");
+    if (!/[0-9]/.test(value)) errors.push("1 number");
+    if (!/[@$!%*?&]/.test(value)) errors.push("1 symbol (@$!%*?&)");
+
+    if (errors.length) {
+        passwordRules.innerHTML = "Missing: " + errors.join(", ");
+        passwordRules.style.color = "red";
+    } else {
+        passwordRules.innerHTML = "Password looks strong ✔";
+        passwordRules.style.color = "green";
+    }
+});
+  // ------------------------------------------------------------
+  // LIVE UK POSTCODE VALIDATION + AUTO SPACE INSERT
+  // ------------------------------------------------------------
+  const postcodeFeedback = document.getElementById('postcodeFeedback');
+
+  if (postcode && postcodeFeedback) {
+
+      const ukPostcodeRegex =
+          /^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$/;
+
+      postcode.addEventListener('input', () => {
+          let value = postcode.value.toUpperCase().replace(/\s+/g, '');
+
+          // Auto-insert space before last 3 characters when length allows
+          if (value.length > 3) {
+              value = value.slice(0, value.length - 3) + ' ' + value.slice(value.length - 3);
+          }
+
+          postcode.value = value;
+
+          // Early stage: too short to validate
+          if (value.length < 5) {
+              postcodeFeedback.textContent = 'Keep typing your postcode…';
+              postcodeFeedback.style.color = 'orange';
+              return;
+          }
+
+          // Full validation
+          if (ukPostcodeRegex.test(value)) {
+              postcodeFeedback.textContent = 'Postcode looks good ✔';
+              postcodeFeedback.style.color = 'green';
+          } else {
+              postcodeFeedback.textContent = 'Invalid UK postcode format.';
+              postcodeFeedback.style.color = 'red';
+          }
+      });
+  }
+
 
   // ------------------------------------------------------------
   // SECTION 5 — Auto-format sort code (UK: 12-34-56)

@@ -50,11 +50,13 @@
             <div class="mb-3">
               <label for="name" class="form-label">Full name <span class="text-danger">*</span></label>
               <input id="name" name="name" type="text" class="form-control" maxlength="100" required autocomplete="name" placeholder="Jane Doe" pattern="^[A-Za-z]+(?:\s+[A-Za-z]+)+$">
+              <div id="nameFeedback" class="form-text"></div>
             </div>
 
             <div class="mb-3">
               <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-              <input id="email" name="email" type="email" class="form-control" maxlength="255" required autocomplete="email" placeholder="you@example.com">
+              <input id="email" name="email" type="email" class="form-control" maxlength="25" required autocomplete="email" placeholder="you@example.com">
+              <div id="emailFeedback" class="form-text"></div>
             </div>
 
             <div class="mb-3">
@@ -64,18 +66,46 @@
                   pattern="^(07\d{9}|\+44\d{10})$"
                   placeholder="+447700900123">
             </div>
-
-            <div class="mb-3">
+            <div class="mb-3 position-relative">
               <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-              <input id="password" name="password" type="password" class="form-control" minlength="8" maxlength="128" required autocomplete="new-password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$" placeholder="At least 8 characters">
-              <div class="form-text">Use at least 8 characters. Include letters and numbers for stronger password.</div>
-            </div>
 
-            <div class="mb-3">
-              <label for="confirm_password" class="form-label">Confirm password <span class="text-danger">*</span></label>
-              <input id="confirm_password" name="confirm_password" type="password" class="form-control" minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Repeat password">
-              <div id="passwordMatch" class="form-text" aria-live="polite"></div>
-            </div>
+              <input id="password" name="password" type="password" class="form-control"
+                    minlength="8" maxlength="128" required autocomplete="new-password"
+                    pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$"
+                    placeholder="At least 8 characters">
+
+              <!-- Show/Hide icon -->
+              <i class="bi bi-eye-slash toggle-password"
+                data-target="password"
+                style="position:absolute; right:12px; top:40px; cursor:pointer;"></i>
+
+              <div id="passwordRules" class="form-text mt-1"></div>
+              <small class="text-muted" id="password-rules">
+                Password must include:
+                <ul>
+                    <li>At least 8 characters</li>
+                    <li>1 uppercase letter</li>
+                    <li>1 lowercase letter</li>
+                    <li>1 number</li>
+                    <li>1 symbol (!@#$%^&*)</li>
+                </ul>
+            </small>
+
+          </div>
+
+          <div class="mb-3 position-relative">
+            <label for="confirm_password" class="form-label">Confirm password <span class="text-danger">*</span></label>
+
+            <input id="confirm_password" name="confirm_password" type="password"
+                  class="form-control" minlength="8" maxlength="128"
+                  required autocomplete="new-password" placeholder="Repeat password">
+
+            <i class="bi bi-eye-slash toggle-password"
+              data-target="confirm_password"
+              style="position:absolute; right:12px; top:40px; cursor:pointer;"></i>
+
+            <div id="passwordMatch" class="form-text mt-1"></div>
+        </div>
 
             <!-- Customer: Select account type (Individual, Business, Community) -->
             <div id="accountTypeWrapper" class="mb-3">
@@ -369,11 +399,12 @@
                       name="postcode"
                       type="text"
                       class="form-control"
-                      maxlength="7"
+                      maxlength="8"
                       required
                       pattern="^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$"
                       placeholder="B66 3EX">
               </div>
+              <div id="postcodeFeedback" class="form-text"></div>
             </section>
               <!-- TERMS ACCEPTANCE -->
               <div class="form-check mb-3">

@@ -1,30 +1,3 @@
-:root{
-  --brand:#35524A;
-  --accent:#32DE8A;
-  --muted:#627C85;
-  --bg:#ffffff;
-  --radius:8px;
-  --gap:12px;
-}
-:root {
-    /* Deep Atmospheric Palette */
-    --headback:#39a396;
-    --ink-black: #0d1b2a;        /* Ultra-dark blue-black */
-    --prussian-blue: #1b263b;    /* Deep academic blue */
-    --dusk-blue: #415a77;        /* Twilight blue */
-    --lavender-grey: #778da9;    /* Muted purple-grey */
-    --alabaster-grey: #e0e1dd;   /* Soft light grey */
-
-
-    /* Text Colors */
-    --text-dark: #333;
-    --text-light: #fff;
-
-    /* Fonts */
-    --font-main: system-ui, Arial, sans-serif;
-    --font-brand: 'Cream cake', cursive;
-    --font-welcome: 'Cookie', cursive;
-}
 
 .login-container {
     max-width: 480px;
