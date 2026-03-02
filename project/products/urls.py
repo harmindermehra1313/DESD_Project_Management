@@ -14,4 +14,6 @@ urlpatterns = [
     
     # 4. Add to Cart Action: yourwebsite.com/products/cart/add/1/
     path('cart/add/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
+    # Harminder Edits
+    path("category/<int:category_id>/", views.product_view, name="product_view"),
 ]

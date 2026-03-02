@@ -82,13 +82,18 @@
                 Products
               </a>
               <ul class="dropdown-menu custom-dropdown">
-                <li><a class="dropdown-item" href="/category/vegetables/">Vegetables</a></li>
-                <li><a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a></li>
-                <li><a class="dropdown-item" href="/category/bakery/">Bakery</a></li>
-                <li><a class="dropdown-item" href="/category/preserves/">Preserves</a></li>
-                <li><a class="dropdown-item" href="/category/seasonal/">Seasonal</a></li>
+                <li><a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a></li>
+                {% for cat in header_categories %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'product_view' cat.id %}">
+                    {{ cat.name }}
+                  </a>
+                </li>
+                {% endfor %}
+
+
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/category/organic/">Certified Organic</a></li>
+                <li><a class="dropdown-item" href="{% url 'product_view' 999 %}">Certified Organic</a></li>
               </ul>
             </li>
 
