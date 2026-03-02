@@ -104,56 +104,68 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
     _assert_owner(owner)
     now = _now()
 
-    # User cart
+    # Authenticated user cart
     if owner.user_id:
-        try:
-            cart = Cart.objects.select_for_update().get(
-                user_id=owner.user_id, status=CartStatus.ACTIVE
-            )
+        cart = (
+            Cart.objects.select_for_update()
+            .filter(user_id=owner.user_id, status=CartStatus.ACTIVE)
+            .first()
+        )
+        if cart:
             cart_touch(cart, at=now)
             return cart
-        except Cart.DoesNotExist:
-            pass
 
+        # Create (race-safe)
         try:
-            cart = Cart.objects.create(
+            return Cart.objects.create(
                 user_id=owner.user_id,
                 session_key=None,
                 status=CartStatus.ACTIVE,
                 last_seen_at=now,
             )
-            return cart
         except IntegrityError:
-            cart = Cart.objects.select_for_update().get(
-                user_id=owner.user_id, status=CartStatus.ACTIVE
+            cart = (
+                Cart.objects.select_for_update()
+                .get(user_id=owner.user_id, status=CartStatus.ACTIVE)
             )
             cart_touch(cart, at=now)
             return cart
 
-    # Guest cart
+    # Guest cart (session_key)
+   
     token = owner.session_key
     if not token:
         raise ValueError("session_key must be set for guest carts.")
 
-    try:
-        cart = Cart.objects.select_for_update().get(session_key=token)
-    except Cart.DoesNotExist:
-        expires_at = now + timedelta(days=guest_ttl_days)
+    cart = (
+        Cart.objects.select_for_update()
+        .filter(session_key=token, status=CartStatus.ACTIVE)   # IMPORTANT
+        .first()
+    )
+
+    # No ACTIVE guest cart -> create one
+    if not cart:
         return Cart.objects.create(
             user=None,
             session_key=token,
             status=CartStatus.ACTIVE,
             last_seen_at=now,
-            expires_at=expires_at,
+            expires_at=now + timedelta(days=guest_ttl_days),
         )
 
-    if cart.status != CartStatus.ACTIVE:
-        raise CartNotActive(f"Guest cart is not active (status={cart.status}).")
+    # ACTIVE but expired -> abandon + create new ACTIVE cart
     if cart.expires_at and cart.expires_at <= now:
         Cart.objects.filter(pk=cart.pk).update(
-            status=CartStatus.ABANDONED, updated_at=now
+            status=CartStatus.ABANDONED,
+            updated_at=now,
         )
-        raise CartNotActive("Guest cart has expired.")
+        return Cart.objects.create(
+            user=None,
+            session_key=token,
+            status=CartStatus.ACTIVE,
+            last_seen_at=now,
+            expires_at=now + timedelta(days=guest_ttl_days),
+        )
 
     cart_touch(cart, at=now)
     return cart
@@ -348,8 +360,7 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
 def cart_mark_checked_out(*, cart: Cart) -> Cart:
     now = _now()
     updated = Cart.objects.filter(pk=cart.pk, status=CartStatus.ACTIVE).update(
-        status=CartStatus.CHECKED_OUT, updated_at=now
-    )
+        status=CartStatus.CHECKED_OUT, updated_at=now)
     if updated != 1:
         raise CartNotActive("Only ACTIVE carts can be checked out")
 
@@ -417,7 +428,7 @@ def get_cart_summary(cart) -> dict:
         items.append(
             {
                 "id": it.id,
-                "product_id": it.product_id,  # ✅ add this
+                "product_id": it.product_id, 
                 "product": {  # optional but fine
                     "id": it.product_id,
                     "name": it.product.name,

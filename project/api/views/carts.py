@@ -40,10 +40,13 @@ def _owner(request) -> CartOwner:
     Auth user -> CartOwner(user_id=...)
     Guest -> CartOwner(session_key=...)
     """
-    if request.user and request.user.is_authenticated:
+    if request.user.is_authenticated:
         return CartOwner(user_id=request.user.id)
+    # Guest: ensure the Django session exists so session_key is not None
+    if not request.session.session_key:
+        request.session.save()  # generates a session_key
 
-    return CartOwner(session_key=_ensure_session_key(request))
+    return CartOwner(session_key=request.session.session_key)
 
 
 def _translate_service_error(exc: Exception) -> Exception:
