@@ -136,11 +136,15 @@ export async function getCartBadgeCount() {
   const badge = document.getElementById("cartCount");
   if (!badge) return 0;
 
+  badge.textContent = "0";
+  badge.classList.remove("is-hidden"); // always visible
+
   const cart = await getCart();
-  const count = Number(cart?.total_quantity ?? 0);
+  const count = Number(cart?.item_count ?? 0);
 
   badge.textContent = String(count);
-  badge.classList.toggle("is-hidden", count <= 0);
+  // Do NOT hide when 0
+  badge.classList.remove("is-hidden");
 
   return count;
 }
