@@ -1,4 +1,4 @@
-from django.views.generic import TemplateView
+from django.shortcuts import render
 
-class CartPageView(TemplateView):
-    template_name = "carts/cart_page.html"
+def cart_page(request):
+    return render(request, "carts/cart_page.html")

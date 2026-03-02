@@ -435,6 +435,7 @@ def get_cart_summary(cart) -> dict:
                     "unit": getattr(it.product, "unit", "") or "",
                     "producer_name": getattr(it.product, "producer_name", "") or "",
                     "image": _safe_image_url(it.product),
+                    "stock_quantity": getattr(it.product, "stock_quantity", None),
                 },
                 "quantity": it.quantity,
                 "unit_price": it.unit_price,
