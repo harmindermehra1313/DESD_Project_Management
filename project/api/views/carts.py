@@ -16,6 +16,7 @@ from carts.services import (
     cart_add_item,
     cart_set_item_quantity,
     cart_remove_item,
+    cart_merge_guest_into_user
 )
 
 from api.serializers.carts import (
@@ -130,3 +131,28 @@ class CartItemDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         return Response(CartItemSerializer(item).data, status=status.HTTP_200_OK)
+    
+    
+class CartMergeAPIView(APIView):
+    """
+    POST /api/cart/merge/
+
+    Merge the current anonymous session cart into the authenticated user's cart.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        # Ensure session key exists
+        if not request.session.session_key:
+            request.session.save()
+
+        session_key = request.session.session_key
+        if not session_key:
+            return Response({"detail": "No session key found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cart = cart_merge_guest_into_user(session_key=session_key, user_id=request.user.id)
+        except Exception as exc:
+            raise _translate_service_error(exc)
+
+        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)

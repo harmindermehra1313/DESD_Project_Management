@@ -51,7 +51,7 @@ from api.views.reviews import (
     ReviewResponseViewSet,
 )
 
-from api.views.carts import CartAPIView, CartItemAddView, CartItemDetailView
+from api.views.carts import CartAPIView, CartItemAddView, CartItemDetailView, CartMergeAPIView
 
 
 from django.urls import path
@@ -117,6 +117,7 @@ urlpatterns = [
     path("cart/", CartAPIView.as_view(), name="cart"),
     path("cart/items/", CartItemAddView.as_view(), name="cart-item-add"),
     path("cart/items/<int:pk>/", CartItemDetailView.as_view(), name="cart-item-detail"),
+    path("cart/merge/", CartMergeAPIView.as_view(), name="cart-merge"),
 ]
 
 urlpatterns += router.urls
