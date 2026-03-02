@@ -196,7 +196,10 @@ document.addEventListener("DOMContentLoaded", () => {
             autoSelectEarliestSlot();
         });
 
-        dateInput.addEventListener("change", autoSelectEarliestSlot);
+        dateInput.addEventListener("change", () => {
+            updateSlotOptions();
+            autoSelectEarliestSlot();
+        });
 
         // Initialise on page load
         updateDateConstraints();

@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from orders.serializers.checkout import CheckoutSerializer
+from carts.services import CartOwner, cart_get_or_create_active, cart_merge_guest_into_user, cart_mark_checked_out
 
 Product = apps.get_model('products', 'Product')
 Order = apps.get_model('orders', 'Order')
@@ -19,8 +20,7 @@ Address = apps.get_model('accounts', 'Address')
 
 class CheckoutAPIView(APIView):
     def post(self, request):
-        # TBC - set user as customer from seeder
-        #request.user = User.objects.get(email="mark42@hotmail.com")
+        # Get user either guest or logged in
         if request.user.is_authenticated:
             user = request.user
             is_guest = False
@@ -31,8 +31,17 @@ class CheckoutAPIView(APIView):
         serializer = CheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        cart = request.session.get("cart", {})
-        items = cart.get("items", [])
+        # cart = request.session.get("cart", {})
+        # items = cart.get("items", [])
+        if request.user.is_authenticated:
+            owner = CartOwner(user_id=request.user.id)
+        else:
+            if not request.session.session_key:
+                request.session.create()
+            owner = CartOwner(session_key=request.session.session_key)
+        
+        cart = cart_get_or_create_active(owner=owner)
+        items = cart.items.select_related("product", "product__producer")
 
         if not items:
             return Response(
@@ -44,8 +53,10 @@ class CheckoutAPIView(APIView):
         # Validate stock for each item
         # -----------------------------
         for entry in items:
-            product = Product.objects.get(id=entry["product_id"])
-            quantity = entry["quantity"]
+            # product = Product.objects.get(id=entry["product_id"])
+            # quantity = entry["quantity"]
+            product = entry.product
+            quantity = entry.quantity
 
             if product.stock_quantity < quantity:
                 return Response(
@@ -112,28 +123,6 @@ class CheckoutAPIView(APIView):
         # Get dynamic producer fields
         # -----------------------------
 
-        # Per‑producer fields come in as:
-        # delivery_or_collection_<producer_id>
-        # delivery_date_<producer_id>
-        # delivery_time_<producer_id>
-        producer_choices = {
-            key: value
-            for key, value in serializer.validated_data.items()
-            if key.startswith("delivery_or_collection_")
-        }
-
-        producer_dates = {
-            key: value
-            for key, value in serializer.validated_data.items()
-            if key.startswith("delivery_date_")
-        }
-
-        producer_times = {
-            key: value
-            for key, value in serializer.validated_data.items()
-            if key.startswith("delivery_time_")
-        }
-
         with transaction.atomic():
 
             # -----------------------------
@@ -162,8 +151,10 @@ class CheckoutAPIView(APIView):
             commission_per = Decimal("0.05")
 
             for entry in items:
-                product = Product.objects.get(id=entry["product_id"])
-                quantity = entry["quantity"]
+                # product = Product.objects.get(id=entry["product_id"])
+                # quantity = entry["quantity"]
+                product = entry.product
+                quantity = entry.quantity
 
                 # Pricing logic
                 discounted_price = product.get_discounted_price()
@@ -181,8 +172,7 @@ class CheckoutAPIView(APIView):
                 vat_per_unit = unit_price * vat_fraction
                 vat_amount = vat_per_unit * quantity
 
-                commission_base = line_total
-                commission_amount = commission_base * commission_per
+                commission_amount = line_total * commission_per
 
                 total_excl_vat += line_total
                 total_vat += vat_amount
@@ -288,7 +278,8 @@ class CheckoutAPIView(APIView):
             )
 
             # Clear cart
-            request.session["cart"] = {"items": []}
+            #request.session["cart"] = {"items": []}
+            cart = cart_mark_checked_out(cart=cart)
 
         return Response(
             {
@@ -314,8 +305,17 @@ def fake_add_to_cart(request):
 
 def checkout(request):
     # Get cart
-    cart = request.session.get("cart", {})
-    items = cart.get("items", [])
+    # cart = request.session.get("cart", {})
+    # items = cart.get("items", [])
+    if request.user.is_authenticated:
+        owner = CartOwner(user_id=request.user.id)
+    else:
+        if not request.session.session_key:
+            request.session.create()
+        owner = CartOwner(session_key=request.session.session_key)
+    
+    cart = cart_get_or_create_active(owner=owner)
+    items = cart.items.select_related("product", "product__producer")
 
     enriched_items = []
     producers = {}
@@ -324,8 +324,10 @@ def checkout(request):
     order_savings_total = Decimal("0")
 
     for entry in items:
-        product = Product.objects.get(id=entry["product_id"])
-        quantity = entry["quantity"]
+        # product = Product.objects.get(id=entry["product_id"])
+        # quantity = entry["quantity"]
+        product = entry.product
+        quantity = entry.quantity
         producer = product.producer
         
         # Price
@@ -413,43 +415,72 @@ def checkout(request):
     # Get original total before vat or discounts
     original_total = total + order_savings_total
 
-    # Get addresses for user
-    # TBC fix this for real user session!
-    user = User.objects.get(email="mark42@hotmail.com")
-    addresses = user.addresses.all()
-    default_address = addresses.filter(is_default_delivery=True).first() or addresses.first()
-    default_billing = addresses.filter(is_default_billing=True).first() or addresses.first()
+    # Logged‑in user: load real addresses
+    if request.user.is_authenticated:
+        user = request.user
+        addresses = user.addresses.all()
+
+        default_address = (
+            addresses.filter(is_default_delivery=True).first()
+            or addresses.first()
+        )
+
+        default_billing = (
+            addresses.filter(is_default_billing=True).first()
+            or addresses.first()
+        )
+
+    # Guest user: no saved addresses
+    else:
+        user = None
+        addresses = []
+        default_address = None
+        default_billing = None
 
     # Dates for date validation
     now = datetime.now()
     collection_earliest = now + timedelta(hours=48)
     delivery_earliest = now + timedelta(hours=72)
-    # Time windows
-    delivery_start = time(10,0)
-    delivery_end = time(18,0)
-    collection_start = time(9,0)
-    collection_end = time(17,0)
 
-    # Snap collection earliest into window
-    if collection_earliest.time() < collection_start:
-        collection_earliest = collection_earliest.replace(
-            hour=collection_start.hour, minute=0, second=0, microsecond=0
-        )
-    elif collection_earliest.time() > collection_end:
-        # move to next day at opening time
-        collection_earliest = (collection_earliest + timedelta(days=1)).replace(
-            hour=collection_start.hour, minute=0, second=0, microsecond=0
+    def round_up_to_next_slot(dt, slot_hours):
+        """
+        dt: datetime
+        slot_hours: list of integers representing slot start hours (e.g. [9, 11, 13, 15])
+        """
+        minutes = dt.hour * 60 + dt.minute
+        slot_minutes = [h * 60 for h in slot_hours]
+
+        # Find the next slot today
+        for sm in slot_minutes:
+            if sm >= minutes:
+                return dt.replace(
+                    hour=sm // 60,
+                    minute=0,
+                    second=0,
+                    microsecond=0
+                )
+
+        # If no slot left today, next day at first slot
+        first = slot_minutes[0]
+        next_day = dt + timedelta(days=1)
+        return next_day.replace(
+            hour=first // 60,
+            minute=0,
+            second=0,
+            microsecond=0
         )
 
-    # Snap delivery earliest into window
-    if delivery_earliest.time() < delivery_start:
-        delivery_earliest = delivery_earliest.replace(
-            hour=delivery_start.hour, minute=0, second=0, microsecond=0
-        )
-    elif delivery_earliest.time() > delivery_end:
-        delivery_earliest = (delivery_earliest + timedelta(days=1)).replace(
-            hour=delivery_start.hour, minute=0, second=0, microsecond=0
-        )
+    # Round collection earliest to next valid slot
+    collection_earliest = round_up_to_next_slot(
+        collection_earliest,
+        slot_hours=[9, 11, 13, 15]   # collection slots
+    )
+
+    # Round delivery earliest to next valid slot
+    delivery_earliest = round_up_to_next_slot(
+        delivery_earliest,
+        slot_hours=[10, 12, 14, 16]  # delivery slots
+    )
 
     context = {
         "cart": {
