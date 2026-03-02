@@ -17,6 +17,9 @@ class ProductMiniSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(read_only=True)
     price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    stock_quantity = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
     unit = serializers.CharField(read_only=True)
     producer_name = serializers.SerializerMethodField()
 

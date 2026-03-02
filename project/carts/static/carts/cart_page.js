@@ -77,6 +77,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const unitPrice = Number(item.unit_price ?? 0);
     const lineTotal = Number(item.line_total ?? qty * unitPrice);
 
+    const stockQty = Number(product.stock_quantity ?? 0);
+    const isOutOfStock = stockQty <= 0;
+
     const row = document.createElement("div");
     row.className =
       "cart-row border rounded p-3 mb-3 d-flex gap-3 align-items-start";
@@ -95,11 +98,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // meta (name + producer)
     const meta = document.createElement("div");
-    meta.className = "flex-grow-1";
     meta.innerHTML = `
-      <div class="fw-semibold">${name}</div>
-      ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
-    `;
+  <div class="fw-semibold d-flex align-items-center gap-2">
+    <span>${name}</span>
+    ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
+  </div>
+  ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+`;
 
     // qty editor + unit label
     const qtyWrap = document.createElement("div");
@@ -148,6 +153,14 @@ document.addEventListener("DOMContentLoaded", () => {
       plus.disabled = disabled;
       qtyInput.disabled = disabled;
       removeBtn.disabled = disabled;
+    }
+    if (isOutOfStock) {
+      row.classList.add("is-oos"); // optional CSS styling hook
+      minus.disabled = true;
+      plus.disabled = true;
+      qtyInput.disabled = true;
+      // keep remove enabled so user can remove it
+      removeBtn.disabled = false;
     }
 
     async function commitQty(newQty) {
@@ -207,6 +220,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function render(cart) {
     const items = cart?.items ?? [];
+    const hasOutOfStock = items.some(
+      (it) => Number(it?.product?.stock_quantity ?? 0) <= 0,
+    );
 
     cartItemsEl?.replaceChildren();
 
@@ -217,6 +233,17 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const it of items) {
         cartItemsEl.appendChild(buildItemRow(it));
       }
+    }
+
+    if (checkoutBtn) {
+      checkoutBtn.disabled = !items.length || hasOutOfStock;
+    }
+    if (hasOutOfStock) {
+      flash(
+        "Some items are out of stock. Remove them to proceed to checkout.",
+        "warning",
+        { persist: true },
+      );
     }
     const distinct = items.length;
     const totalQty = Number(cart?.total_quantity ?? 0);

@@ -54,11 +54,38 @@ async function request(method, path, { body } = {}) {
   });
 
   const data = await parseJsonSafe(res);
+  
+
+  function extractErrorMessage(data, fallback) {
+    if (!data) return fallback;
+
+    // DRF detail/error
+    if (typeof data.detail === "string") return data.detail;
+    if (typeof data.error === "string") return data.error;
+
+    // DRF field errors: {field: ["msg1", "msg2"]} or {field: "msg"}
+    if (typeof data === "object") {
+      const parts = [];
+      for (const [key, val] of Object.entries(data)) {
+        if (Array.isArray(val)) {
+          for (const msg of val) {
+            parts.push(
+              key === "non_field_errors" ? String(msg) : `${key}: ${msg}`
+            );
+          }
+        } else if (typeof val === "string") {
+          parts.push(key === "non_field_errors" ? val : `${key}: ${val}`);
+        }
+      }
+      if (parts.length) return parts.join(" | ");
+    }
+
+    return fallback;
+  }
 
   if (!res.ok) {
-    const msg =
-      (data && (data.detail || data.error)) ||
-      `Request failed (HTTP ${res.status})`;
+    const fallback = `Request failed (HTTP ${res.status})`;
+    const msg = extractErrorMessage(data, fallback);
     const err = new Error(msg);
     err.status = res.status;
     err.payload = data;

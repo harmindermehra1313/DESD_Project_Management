@@ -91,13 +91,13 @@ def cart_touch(cart: Cart, *, at=None) -> None:
 
 
 def validate_stock(*, product_id: int, requested_quantity: Decimal) -> None:
-    """
-    Raises ValidationError("Insufficient stock") if product.stock_quantity < requested_quantity.
-    """
     _, stock = _get_product_data(product_id=product_id)
-    if stock < requested_quantity:
-        raise ValidationError("Insufficient stock")
 
+    if stock <= 0:
+        raise ValidationError("This product is out of stock.")
+
+    if stock < requested_quantity:
+        raise ValidationError(f"Only {stock} left in stock.")
 
 @transaction.atomic
 def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> Cart:
