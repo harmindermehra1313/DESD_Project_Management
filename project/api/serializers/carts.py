@@ -76,7 +76,8 @@ class CartSerializer(serializers.ModelSerializer):
     """
 
     items = CartItemSerializer(many=True, read_only=True)
-    item_count = serializers.SerializerMethodField()
+    # distinct lines (from model property)
+    item_count = serializers.IntegerField(read_only=True)
     total_quantity = serializers.SerializerMethodField()
     total_price = serializers.DecimalField(
         max_digits=18, decimal_places=2, read_only=True

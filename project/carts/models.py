@@ -97,7 +97,7 @@ class Cart(models.Model):
 
     @property
     def item_count(self) -> int:
-        # count of distinct lines (CartItems), per your requirement
+        # count of distinct lines (CartItems)
         return self.items.count()
 
     @property
@@ -108,6 +108,12 @@ class Cart(models.Model):
         )
         total = self.items.aggregate(total=Sum(expr))["total"]
         return total or Decimal("0.00")
+    
+    @property
+    def total_quantity(self) -> int:
+        total = self.items.aggregate(total=Coalesce(Sum("quantity"), Decimal("0")))["total"]
+        # quantity is DecimalField; badge wants int
+        return int(total)
 
 
 class CartItem(models.Model):

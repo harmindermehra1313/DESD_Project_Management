@@ -140,7 +140,7 @@ export async function getCartBadgeCount() {
   badge.classList.remove("is-hidden"); // always visible
 
   const cart = await getCart();
-  const count = Number(cart?.item_count ?? 0);
+  const count = Number(cart?.total_quantity  ?? 0);
 
   badge.textContent = String(count);
   // Do NOT hide when 0
