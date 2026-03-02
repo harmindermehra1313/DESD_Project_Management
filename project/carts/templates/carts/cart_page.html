@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Cart{% endblock %}
+{% block extra_css %}
+  {{ block.super }}
+  {# Optional page-specific css if you have it #}
+  <link rel="stylesheet" href="{% static 'carts/cart_page.css' %}">
+{% endblock %}
+{% block content %}
+  <section class="py-4 py-lg-5">
+    <div class="container">
+      <div class="p-3 p-md-4 p-lg-5 bg-white rounded shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="h3 mb-0">Cart</h1>
+          <a class="btn btn-outline-secondary" href="/products/">Continue shopping</a>
+        </div>
+        <div id="cartMsg" class="mb-3" aria-live="polite"></div>
+        <div class="row g-4">
+          <!-- LEFT: items -->
+          <div class="col-lg-8">
+            <div id="cartItems"></div>
+            <div id="cartEmpty" class="d-none border rounded p-4 text-center">
+              <p class="mb-2 fw-semibold">Your cart is empty.</p>
+              <a class="btn btn-primary" href="/products/">Browse products</a>
+            </div>
+          </div>
+          <!-- RIGHT: summary -->
+          <div class="col-lg-4">
+            <div class="border rounded p-3">
+              <h2 class="h5 mb-3">Summary</h2>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Distinct items</span>
+                <span id="distinctItems">0</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Total quantity</span>
+                <span id="totalQty">0</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Subtotal</span>
+                <span id="subtotal">£0.00</span>
+              </div>
+              {% comment %} Might implement these later {% endcomment %}
+              <div class="d-none">
+                <span id="discount">£0.00</span>
+                <span id="tax">£0.00</span>
+                <span id="shipping">£0.00</span>
+              </div>
+              <hr>
+              <div class="d-flex justify-content-between fw-semibold mb-3">
+                <span>Total</span>
+                <span id="total">£0.00</span>
+              </div>
+              <button id="checkoutBtn" class="btn btn-success w-100" type="button">Checkout</button>
+              <p class="text-muted small mt-3 mb-0">
+                You’ll be redirected to checkout at <code>/orders/checkout</code>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'carts/cart_page.js' %}"></script>
+{% endblock %}

@@ -4,6 +4,9 @@ from django.utils import timezone
 from django.http import HttpResponse # Imported for the placeholder view
 from .models import Product, Category
 from accounts.models import Producer
+from django.views.generic import DetailView, ListView
+from django.shortcuts import get_object_or_404
+from .models import Product
 
 def is_producer_or_admin(user):
     if not user.is_authenticated:
@@ -83,12 +86,34 @@ def add_product(request):
 
     return render(request, 'products/add_product.html')
 
-# not linked these yet
-def product_detail(request, product_id):
-    # This ensures the product ID passed in the URL actually exists
-    product = get_object_or_404(Product, pk=product_id)
-    return HttpResponse(f"Placeholder page for: {product.name}. (Template coming soon!)")
+# # not linked these yet
+# def product_detail(request, product_id):
+#     # This ensures the product ID passed in the URL actually exists
+#     product = get_object_or_404(Product, pk=product_id)
+#     return HttpResponse(f"Placeholder page for: {product.name}. (Template coming soon!)")
 
 def add_to_cart(request, product_id):
     print(f"TODO: Logic to add product {product_id} to the cart session.")
     return redirect('products_list')
+# products/views.py
+
+class ProductListView(ListView):
+    template_name = "products/index.html"
+    context_object_name = "products"
+    paginate_by = 24
+
+    def get_queryset(self):
+        return Product.objects.filter(
+            status=Product.Status.PUBLISHED
+        ).order_by("-created_at")
+
+class ProductDetailView(DetailView):
+    model = Product
+    template_name = "products/detail.html"
+    context_object_name = "product"
+
+    def get_queryset(self):
+        return Product.objects.filter(status__in=["PUBLISHED", Product.Status.PUBLISHED])
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
