@@ -86,11 +86,6 @@ def add_product(request):
 
     return render(request, 'products/add_product.html')
 
-# # not linked these yet
-# def product_detail(request, product_id):
-#     # This ensures the product ID passed in the URL actually exists
-#     product = get_object_or_404(Product, pk=product_id)
-#     return HttpResponse(f"Placeholder page for: {product.name}. (Template coming soon!)")
 
 def add_to_cart(request, product_id):
     print(f"TODO: Logic to add product {product_id} to the cart session.")
@@ -117,7 +112,10 @@ class ProductDetailView(DetailView):
             Product.objects
             .filter(status__in=["PUBLISHED", Product.Status.PUBLISHED])
             .select_related("producer", "category")
-            .prefetch_related("product_wholesale")
+            .prefetch_related(
+                "product_wholesale",
+                "product_allergen__allergen",   # 👈 ADD THIS
+            )
         )
 
     def get_object(self, queryset=None):
@@ -127,6 +125,10 @@ class ProductDetailView(DetailView):
         ctx = super().get_context_data(**kwargs)
         p = self.object
 
-        tiers = list(p.product_wholesale.order_by("min_quantity").values("min_quantity", "unit_price"))
+        tiers = list(
+            p.product_wholesale
+             .order_by("min_quantity")
+             .values("min_quantity", "unit_price")
+        )
         ctx["wholesale_tiers"] = tiers
         return ctx

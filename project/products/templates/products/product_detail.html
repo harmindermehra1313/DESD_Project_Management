@@ -62,6 +62,19 @@
               <!-- Wholesale tiers data for JS -->
               {{ wholesale_tiers|json_script:"wholesaleTiersJson" }}
             </div>
+            {% comment %} Allergens information {% endcomment %}
+            <div class="mt-3">
+              <div class="fw-semibold mb-1">Allergens</div>
+              {% with allergens=product.product_allergen.all %}
+                {% if allergens %}
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for line in allergens %}<span class="badge bg-warning text-dark">{{ line.allergen.name }}</span>{% endfor %}
+                  </div>
+                {% else %}
+                  <div class="text-muted small">No known allergens.</div>
+                {% endif %}
+              {% endwith %}
+            </div>
             {% if product.description %}<p class="mb-4">{{ product.description }}</p>{% endif %}
             <div class="d-flex flex-wrap align-items-center gap-3">
               <!-- Quantity selector -->
