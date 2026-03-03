@@ -22,18 +22,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Values injected from template via data-*
   const stockQty = Number(btn?.dataset.stockQty ?? "0");
-
   const isOutOfStock = !Number.isFinite(stockQty) || stockQty <= 0;
 
   function clampQty(v) {
     const n = Number(String(v ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
-    return Math.floor(n);
+    return Math.floor(n); // integer-only
   }
 
-  function setMsg(text, variant = "success") {
+  function setMsg(text, variant = "success", { timeout = 2000 } = {}) {
     if (!msg) return;
-    msg.innerHTML = `<div class="alert alert-${variant} py-2 mb-0">${text}</div>`;
+
+    msg.innerHTML = `<div class="alert alert-${variant} py-2 mb-0" role="alert">${text}</div>`;
+
+    // auto-dismiss
+    window.clearTimeout(setMsg._t);
+    setMsg._t = window.setTimeout(() => {
+      if (msg) msg.innerHTML = "";
+    }, timeout);
   }
 
   function setLoading(isLoading) {
@@ -79,64 +85,52 @@ document.addEventListener("DOMContentLoaded", () => {
     return best ? best.price : baseUnitPrice;
   }
 
-  function renderUnitPrice() {
-    if (!unitPriceEl) return;
-
-    const qty = clampQty(qtyInput?.value ?? 1);
-
-    // Tier-aware unit price
-    const tierPrice = effectiveUnitPriceForQty(qty);
-    const wholesaleActive = tierPrice !== baseUnitPrice;
-
-    // Decide which price is actually applied to the unit label:
-    // 1) wholesale tier (if applicable)
-    // 2) else surplus discounted (if active)
-    // 3) else base price
-    let appliedPrice = baseUnitPrice;
-    let appliedMode = "none"; // "none" | "surplus" | "wholesale"
-
-    if (wholesaleActive) {
-      appliedPrice = tierPrice;
-      appliedMode = "wholesale";
-    } else if (
-      surplusActive &&
-      Number.isFinite(surplusUnitPrice) &&
-      surplusUnitPrice > 0
-    ) {
-      appliedPrice = surplusUnitPrice;
-      appliedMode = "surplus";
-    }
-
-    unitPriceEl.textContent = `£${appliedPrice.toFixed(2)}`;
-
-    // Compare-at price + percent pill for surplus mode only
-    if (compareAtEl && surplusPercentPillEl) {
-      if (appliedMode === "surplus") {
-        compareAtEl.textContent = `£${baseUnitPrice.toFixed(2)}`;
-        setElVisible(compareAtEl, true);
-
-        if (Number.isFinite(surplusPercent) && surplusPercent > 0) {
-          surplusPercentPillEl.textContent = `${surplusPercent}% off`;
-          setElVisible(surplusPercentPillEl, true);
-        } else {
-          setElVisible(surplusPercentPillEl, false);
-        }
-      } else {
-        setElVisible(compareAtEl, false);
-        setElVisible(surplusPercentPillEl, false);
-      }
-    }
-
-    // Render the surplus notice block
-    renderSurplusNotice({ mode: appliedMode, wholesaleActive });
-  }
-
   function moneyGBP(v) {
     const n = Number(v);
     if (!Number.isFinite(n)) return "£0.00";
     return `£${n.toFixed(2)}`;
   }
 
+  function setElVisible(el, visible) {
+    if (!el) return;
+    el.style.display = visible ? "" : "none";
+  }
+
+  // ---------- Surplus notice ----------
+  function renderSurplusNotice({ wholesaleActive }) {
+    if (!surplusNoticeEl) return;
+
+    surplusNoticeEl.innerHTML = "";
+    if (!surplusActive) return;
+
+    if (wholesaleActive) {
+      surplusNoticeEl.innerHTML = `
+        <div class="alert alert-info py-2 mb-0" role="status"
+             style="border-left: 6px solid rgba(13,110,253,.85);">
+          <div class="fw-semibold">Surplus reduction</div>
+          <div class="small">
+            This item is marked for surplus reduction, but wholesale pricing is currently applied based on quantity.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const defaultLine = "Discount applied to clear excess stock.";
+    const noteLine =
+      surplusNote && surplusNote.toLowerCase() !== "none" ? surplusNote : "";
+
+    surplusNoticeEl.innerHTML = `
+      <div class="alert alert-danger py-2 mb-0" role="status"
+           style="border-left: 6px solid rgba(220,53,69,.9);">
+        <div class="fw-semibold">Surplus reduction</div>
+        <div class="small">${defaultLine}</div>
+        ${noteLine ? `<div class="small mt-1">${noteLine}</div>` : ""}
+      </div>
+    `;
+  }
+
+  // ---------- Wholesale notice ----------
   function renderTierListHtml(qty) {
     const rows = wholesaleTiers
       .map((t) => {
@@ -167,7 +161,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderWholesaleNotice() {
     if (!wholesaleNoticeEl) return;
 
-    // No tiers -> nothing to show
     if (!wholesaleTiers.length) {
       wholesaleNoticeEl.innerHTML = "";
       return;
@@ -175,16 +168,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const qty = clampQty(qtyInput?.value ?? 1);
 
-    // Find current tier (best applicable)
+    // Current tier (best applicable)
     let currentTier = null;
     for (const t of wholesaleTiers) {
       if (qty >= t.min) currentTier = t;
     }
 
-    // Find next tier (first tier above qty)
+    // Next tier
     const nextTier = wholesaleTiers.find((t) => qty < t.min) || null;
 
-    // Wholesale active
     if (currentTier) {
       const savingPerUnit = baseUnitPrice - currentTier.price;
       const savingText =
@@ -230,7 +222,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Not yet wholesale -> show next tier goal (use first tier)
     const firstTier = wholesaleTiers[0];
     const remaining = Math.max(0, firstTier.min - qty);
 
@@ -259,53 +250,59 @@ document.addEventListener("DOMContentLoaded", () => {
       ${renderTierListHtml(qty)}
     `;
   }
-  function setElVisible(el, visible) {
-    if (!el) return;
-    el.style.display = visible ? "" : "none";
-  }
 
-  function renderSurplusNotice({ mode, wholesaleActive }) {
-    // mode: "none" | "surplus" | "wholesale"
-    if (!surplusNoticeEl) return;
+  // ---------- Price rendering ----------
+  function renderUnitPrice() {
+    if (!unitPriceEl) return;
 
-    // Default: clear
-    surplusNoticeEl.innerHTML = "";
+    const qty = clampQty(qtyInput?.value ?? 1);
 
-    if (!surplusActive) return;
+    const tierPrice = effectiveUnitPriceForQty(qty);
+    const wholesaleActive = tierPrice !== baseUnitPrice;
 
-    // If wholesale is active, we still show surplus badge (optional),
-    // but we must be honest: wholesale pricing is being applied instead.
+    let appliedPrice = baseUnitPrice;
+    let appliedMode = "none"; // "none" | "surplus" | "wholesale"
+
     if (wholesaleActive) {
-      surplusNoticeEl.innerHTML = `
-        <div class="alert alert-info py-2 mb-0" role="status"
-             style="border-left: 6px solid rgba(13,110,253,.85);">
-          <div class="fw-semibold">Surplus reduction</div>
-          <div class="small">
-            This item is marked for surplus reduction, but wholesale pricing is currently applied based on quantity.
-          </div>
-        </div>
-      `;
-      return;
+      appliedPrice = tierPrice;
+      appliedMode = "wholesale";
+    } else if (
+      surplusActive &&
+      Number.isFinite(surplusUnitPrice) &&
+      surplusUnitPrice > 0
+    ) {
+      appliedPrice = surplusUnitPrice;
+      appliedMode = "surplus";
     }
 
-    // Surplus active (no wholesale tier applied)
-    const defaultLine = "Discount applied to clear excess stock.";
-    const noteLine =
-      surplusNote && surplusNote.toLowerCase() !== "none" ? surplusNote : "";
+    unitPriceEl.textContent = `£${appliedPrice.toFixed(2)}`;
 
-    surplusNoticeEl.innerHTML = `
-      <div class="alert alert-danger py-2 mb-0" role="status"
-           style="border-left: 6px solid rgba(220,53,69,.9);">
-        <div class="fw-semibold">Surplus reduction</div>
-        <div class="small">${defaultLine}</div>
-        ${noteLine ? `<div class="small mt-1">${noteLine}</div>` : ""}
-      </div>
-    `;
+    if (compareAtEl && surplusPercentPillEl) {
+      if (appliedMode === "surplus") {
+        compareAtEl.textContent = `£${baseUnitPrice.toFixed(2)}`;
+        setElVisible(compareAtEl, true);
+
+        if (Number.isFinite(surplusPercent) && surplusPercent > 0) {
+          surplusPercentPillEl.textContent = `${surplusPercent}% off`;
+          setElVisible(surplusPercentPillEl, true);
+        } else {
+          setElVisible(surplusPercentPillEl, false);
+        }
+      } else {
+        setElVisible(compareAtEl, false);
+        setElVisible(surplusPercentPillEl, false);
+      }
+    }
+
+    renderSurplusNotice({ wholesaleActive });
   }
 
   function onQtyChanged() {
     renderUnitPrice();
     renderWholesaleNotice();
+
+    // Optional pro UX: disable minus at 1
+    if (minus) minus.disabled = clampQty(qtyInput?.value ?? 1) <= 1;
   }
 
   // ---------- Guards ----------
@@ -319,21 +316,49 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ---------- Qty events ----------
+  // ---------- Qty events (cart-style: free typing, clamp on commit) ----------
+  function normalizeQtyInput() {
+    if (!qtyInput) return 1;
+    const q = clampQty(qtyInput.value);
+    qtyInput.value = String(q);
+    return q;
+  }
+
   minus?.addEventListener("click", () => {
-    qtyInput.value = String(clampQty(qtyInput.value) - 1);
+    const q = normalizeQtyInput();
+    qtyInput.value = String(Math.max(1, q - 1));
     onQtyChanged();
   });
 
   plus?.addEventListener("click", () => {
-    qtyInput.value = String(clampQty(qtyInput.value) + 1);
+    const q = normalizeQtyInput();
+    qtyInput.value = String(q + 1);
     onQtyChanged();
   });
 
-  // Live update while typing
+  // While typing: don't clamp; just re-render using clampQty for preview
   qtyInput?.addEventListener("input", () => {
-    qtyInput.value = String(clampQty(qtyInput.value));
     onQtyChanged();
+  });
+
+  // Commit: when they finish editing, clamp to int >= 1
+  qtyInput?.addEventListener("blur", () => {
+    normalizeQtyInput();
+    onQtyChanged();
+  });
+
+  qtyInput?.addEventListener("change", () => {
+    normalizeQtyInput();
+    onQtyChanged();
+  });
+
+  qtyInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      normalizeQtyInput();
+      onQtyChanged();
+      qtyInput.blur();
+    }
   });
 
   // Initial render
@@ -341,60 +366,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---------- Add to cart ----------
   btn?.addEventListener("click", async () => {
-    const productId = Number(btn.dataset.productId);
-    const quantity = clampQty(qtyInput.value);
+  const productId = Number(btn.dataset.productId);
+  const quantity = normalizeQtyInput();
 
-    if (!Number.isInteger(productId) || productId <= 0) {
-      setMsg("Invalid product id.", "danger");
-      return;
-    }
+  if (!Number.isInteger(productId) || productId <= 0) {
+    setMsg("Invalid product id.", "danger");
+    return;
+  }
 
-    if (!window.CartAPI?.addToCart) {
-      setMsg(
-        "CartAPI not found. Check base.html loads static 'carts/cart.js' as type=module.",
-        "danger",
-      );
-      return;
-    }
+  if (!window.CartAPI?.addToCart) {
+    setMsg(
+      "CartAPI not found. Check base.html loads static 'carts/cart.js' as type=module.",
+      "danger",
+    );
+    return;
+  }
 
-    const tierPrice = effectiveUnitPriceForQty(quantity);
-    const wholesaleActive = tierPrice !== baseUnitPrice;
+  setLoading(true);
 
-    const unitPrice = wholesaleActive
-      ? tierPrice
-      : surplusActive &&
-          Number.isFinite(surplusUnitPrice) &&
-          surplusUnitPrice > 0
-        ? surplusUnitPrice
-        : baseUnitPrice;
+  try {
+    // IMPORTANT: server decides wholesale/surplus unit price.
+    // We only send product + quantity.
+    await window.CartAPI.addToCart({
+      productId,
+      quantity,
+    });
 
-    setLoading(true);
-
-    try {
-      await window.CartAPI.addToCart({
-        productId,
-        quantity,
-        unitPrice,
-      });
-
-      window.CartAPI?.showToast?.(`Added to cart (qty: ${quantity}).`, {
+    // Prefer toast (short), fallback to inline auto-dismiss
+    if (typeof window.CartAPI?.showToast === "function") {
+      window.CartAPI.showToast("Added to cart.", {
         title: "Cart",
         variant: "success",
-        delay: 2000,
+        delay: 1500,
       });
+    } else {
+      setMsg("Added to cart.", "success", { timeout: 1500 });
+    }
+  } catch (e) {
+    const text = e?.message ? e.message : String(e);
 
-      setMsg(`Added to cart (qty: ${quantity}).`, "success");
-    } catch (e) {
-      const text = e?.message ? e.message : String(e);
-      setMsg(`Add to cart failed: ${text}`, "danger");
-
-      window.CartAPI?.showToast?.(`Add to cart failed: ${text}`, {
+    // Errors: show longer so user can read
+    if (typeof window.CartAPI?.showToast === "function") {
+      window.CartAPI.showToast(`Add to cart failed: ${text}`, {
         title: "Cart",
         variant: "danger",
-        delay: 4000,
+        delay: 3500,
       });
-    } finally {
-      setLoading(false);
+    } else {
+      setMsg(`Add to cart failed: ${text}`, "danger", { timeout: 4000 });
     }
-  });
+  } finally {
+    setLoading(false);
+  }
+});
 });
