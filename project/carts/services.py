@@ -483,6 +483,7 @@ def _safe_image_url(product) -> str | None:
         return None
 
 
+
 def get_cart_summary(cart) -> dict:
     qs = cart.items.select_related("product")
 
@@ -514,28 +515,48 @@ def get_cart_summary(cart) -> dict:
 
     items = []
     for it in qs:
-        line_total = (it.unit_price or Decimal("0.00")) * (
-            it.quantity or Decimal("0.00")
+        qty = it.quantity or Decimal("0.00")
+        unit_price = it.unit_price or Decimal("0.00")
+
+        # Product base price (non-wholesale)
+        base_unit_price = getattr(it.product, "price", None)
+        base_unit_price = (
+            Decimal(str(base_unit_price)) if base_unit_price is not None else Decimal("0.00")
         )
+
+        line_total = unit_price * qty
+        base_line_total = base_unit_price * qty
+
+        # Savings can be negative if data is weird; clamp later on frontend too
+        savings_total = base_line_total - line_total
+        savings_per_unit = base_unit_price - unit_price
+
         items.append(
             {
                 "id": it.id,
                 "product_id": it.product_id,
-                "product": {  # optional but fine
+                "product": {
                     "id": it.product_id,
                     "name": it.product.name,
                     "unit": getattr(it.product, "unit", "") or "",
                     "producer_name": getattr(it.product, "producer_name", "") or "",
                     "image": _safe_image_url(it.product),
                     "stock_quantity": getattr(it.product, "stock_quantity", None),
+
+                    # for professional UI
+                    "base_unit_price": base_unit_price,
                 },
-                "quantity": it.quantity,
-                "unit_price": it.unit_price,
+                "quantity": qty,
+                "unit_price": unit_price,
                 "line_total": line_total,
+
+                # useful for UI/analytics
+                "base_line_total": base_line_total,
+                "savings_per_unit": savings_per_unit,
+                "savings_total": savings_total,
             }
         )
 
-    # total_quantity formatting (int if integral else string)
     total_quantity_out = (
         int(total_quantity)
         if total_quantity == total_quantity.to_integral()
@@ -549,7 +570,6 @@ def get_cart_summary(cart) -> dict:
         "subtotal": subtotal,
         "currency": "GBP",
     }
-
 
 def cart_get_cart_summary(*, owner: CartOwner) -> dict:
     """Convenience: resolve active cart for owner and return summary."""

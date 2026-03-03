@@ -1,5 +1,4 @@
 // carts/static/carts/cart_page.js
-
 document.addEventListener("DOMContentLoaded", () => {
   const cartMsg = document.getElementById("cartMsg");
   const cartItemsEl = document.getElementById("cartItems");
@@ -20,6 +19,11 @@ document.addEventListener("DOMContentLoaded", () => {
   function money(v) {
     const n = Number(v);
     return GBP.format(Number.isFinite(n) ? n : 0);
+  }
+
+  function toNum(v, fallback = 0) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
   }
 
   function clampQty(v) {
@@ -50,8 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function resolveProductImage(imageValue) {
     if (!imageValue) return "";
-    const s = String(imageValue);
-    return s;
+    return String(imageValue);
   }
 
   async function fetchCart() {
@@ -63,21 +66,26 @@ document.addEventListener("DOMContentLoaded", () => {
     return window.CartAPI.getCart();
   }
 
-  // ---- REQUIRED: each row has name, producer, qty input, unit label, unit_price, line_total, remove btn, data-item-id
+  // ---- REQUIRED: each row has name, producer, qty input, unit label, unit_price, line_total, remove btn
   function buildItemRow(item) {
     const product = item.product || {};
-    const itemId = item.id; // cart line id from API
-    const productId = product.id; // product id (used for PATCH/DELETE)
+    const itemId = item.id;
+    const productId = product.id;
 
     const name = product.name ?? "Product";
     const producer = product.producer_name ?? "";
-    const unit = product.unit ?? "";
+    const unitLabelText = product.unit ?? "";
 
-    const qty = Number(item.quantity ?? 1);
-    const unitPrice = Number(item.unit_price ?? 0);
-    const lineTotal = Number(item.line_total ?? qty * unitPrice);
+    const qty = toNum(item.quantity ?? 1, 1);
+    const unitPrice = toNum(item.unit_price ?? 0, 0);
+    const lineTotal = toNum(item.line_total ?? qty * unitPrice, qty * unitPrice);
 
-    const stockQty = Number(product.stock_quantity ?? 0);
+    // New fields (from backend)
+    const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
+    const isWholesale = baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
+    const savingsTotal = isWholesale ? (baseUnitPrice - unitPrice) * qty : 0;
+
+    const stockQty = toNum(product.stock_quantity ?? 0, 0);
     const isOutOfStock = stockQty <= 0;
 
     const row = document.createElement("div");
@@ -96,15 +104,21 @@ document.addEventListener("DOMContentLoaded", () => {
       imgWrap.innerHTML = `<img src="${imgUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`;
     }
 
-    // meta (name + producer)
+    // meta (name + producer + badges)
     const meta = document.createElement("div");
     meta.innerHTML = `
-  <div class="fw-semibold d-flex align-items-center gap-2">
-    <span>${name}</span>
-    ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-  </div>
-  ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
-`;
+      <div class="fw-semibold d-flex flex-wrap align-items-center gap-2">
+        <span>${name}</span>
+        ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
+        ${isWholesale ? `<span class="badge text-bg-success">Wholesale</span>` : ""}
+      </div>
+      ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+      ${
+        isWholesale
+          ? `<div class="small text-success mt-1">You save ${money(savingsTotal)} on this item</div>`
+          : ``
+      }
+    `;
 
     // qty editor + unit label
     const qtyWrap = document.createElement("div");
@@ -130,17 +144,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const unitLabel = document.createElement("span");
     unitLabel.className = "text-muted small";
-    unitLabel.textContent = unit;
+    unitLabel.textContent = unitLabelText;
 
     qtyWrap.append(minus, qtyInput, plus, unitLabel);
 
-    // prices
+    // prices (professional: show was->now when wholesale)
     const prices = document.createElement("div");
     prices.className = "text-end";
-    prices.innerHTML = `
-      <div class="small text-muted">Unit: ${money(unitPrice)}</div>
-      <div class="fw-semibold">Line: ${money(lineTotal)}</div>
-    `;
+    prices.innerHTML = isWholesale
+      ? `
+        <div class="small text-muted">
+          Unit:
+          <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
+          <span class="ms-1 fw-semibold text-success">${money(unitPrice)}</span>
+        </div>
+        <div class="fw-semibold">Line: ${money(lineTotal)}</div>
+      `
+      : `
+        <div class="small text-muted">Unit: ${money(unitPrice)}</div>
+        <div class="fw-semibold">Line: ${money(lineTotal)}</div>
+      `;
 
     // remove
     const removeBtn = document.createElement("button");
@@ -154,12 +177,12 @@ document.addEventListener("DOMContentLoaded", () => {
       qtyInput.disabled = disabled;
       removeBtn.disabled = disabled;
     }
+
     if (isOutOfStock) {
-      row.classList.add("is-oos"); // optional CSS styling hook
+      row.classList.add("is-oos");
       minus.disabled = true;
       plus.disabled = true;
       qtyInput.disabled = true;
-      // keep remove enabled so user can remove it
       removeBtn.disabled = false;
     }
 
@@ -175,8 +198,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         await refresh();
       } catch (e) {
-        const msg = e?.message ? e.message : String(e);
-        flash(`Update failed: ${msg}`, "danger", { persist: true });
+        const m = e?.message ? e.message : String(e);
+        flash(`Update failed: ${m}`, "danger", { persist: true });
       } finally {
         setDisabled(false);
       }
@@ -193,7 +216,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     removeBtn.addEventListener("click", async () => {
-      // Confirmation prompt
       const ok = window.confirm(`Remove “${name}” from your cart?`);
       if (!ok) return;
 
@@ -207,8 +229,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         await refresh();
       } catch (e) {
-        const msg = e?.message ? e.message : String(e);
-        flash(`Remove failed: ${msg}`, "danger", { persist: true });
+        const m = e?.message ? e.message : String(e);
+        flash(`Remove failed: ${m}`, "danger", { persist: true });
       } finally {
         setDisabled(false);
       }
@@ -221,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function render(cart) {
     const items = cart?.items ?? [];
     const hasOutOfStock = items.some(
-      (it) => Number(it?.product?.stock_quantity ?? 0) <= 0,
+      (it) => toNum(it?.product?.stock_quantity ?? 0) <= 0,
     );
 
     cartItemsEl?.replaceChildren();
@@ -238,6 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (checkoutBtn) {
       checkoutBtn.disabled = !items.length || hasOutOfStock;
     }
+
     if (hasOutOfStock) {
       flash(
         "Some items are out of stock. Remove them to proceed to checkout.",
@@ -245,17 +268,65 @@ document.addEventListener("DOMContentLoaded", () => {
         { persist: true },
       );
     }
+
+    // Professional summary: show wholesale savings if any
     const distinct = items.length;
-    const totalQty = Number(cart?.total_quantity ?? 0);
-    const subtotal = items.reduce(
-      (acc, it) => acc + Number(it.line_total ?? 0),
-      0,
-    );
+    const totalQty = toNum(cart?.total_quantity ?? 0, 0);
+
+    let actualSubtotal = 0;
+    let baseSubtotal = 0;
+
+    for (const it of items) {
+      const qty = toNum(it.quantity ?? 0, 0);
+      const unitPrice = toNum(it.unit_price ?? 0, 0);
+      const baseUnit = toNum(it?.product?.base_unit_price ?? 0, 0);
+
+      actualSubtotal += unitPrice * qty;
+      baseSubtotal += baseUnit * qty;
+    }
+
+    const wholesaleSavings = Math.max(0, baseSubtotal - actualSubtotal);
+    const showSavings = wholesaleSavings > 0.009;
 
     distinctItemsEl && (distinctItemsEl.textContent = String(distinct));
     totalQtyEl && (totalQtyEl.textContent = String(totalQty));
-    subtotalEl && (subtotalEl.textContent = money(subtotal));
-    totalEl && (totalEl.textContent = money(subtotal));
+
+    // Keep existing IDs, but upgrade meaning:
+    // - subtotal: actual payable subtotal
+    // - total: same as subtotal for now (no shipping/tax in your UI)
+    subtotalEl && (subtotalEl.textContent = money(actualSubtotal));
+    totalEl && (totalEl.textContent = money(actualSubtotal));
+
+    // Inject “before wholesale” + “savings” rows into summary (professional look)
+    const summaryCard = subtotalEl?.closest(".cart-card");
+    if (summaryCard) {
+      // Remove old injected block if exists
+      const old = document.getElementById("wholesaleSummaryExtra");
+      if (old) old.remove();
+
+      if (showSavings) {
+        const hr = summaryCard.querySelector("hr");
+        if (hr) {
+          const extra = document.createElement("div");
+          extra.id = "wholesaleSummaryExtra";
+          extra.className = "mb-2";
+          extra.innerHTML = `
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Subtotal (before wholesale)</span>
+              <span class="text-muted">${money(baseSubtotal)}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-success fw-semibold">Wholesale savings</span>
+              <span class="text-success fw-semibold">- ${money(wholesaleSavings)}</span>
+            </div>
+            <div class="alert alert-success py-2 mb-0">
+              <strong>Nice!</strong> You saved <strong>${money(wholesaleSavings)}</strong> with wholesale pricing.
+            </div>
+          `;
+          hr.parentNode.insertBefore(extra, hr); // insert above Total block
+        }
+      }
+    }
   }
 
   async function refresh() {
@@ -268,12 +339,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   refresh().catch((e) => {
-    const msg = e?.message ? e.message : String(e);
-    flash(`Failed to load cart: ${msg}`, "danger", { persist: true });
+    const m = e?.message ? e.message : String(e);
+    flash(`Failed to load cart: ${m}`, "danger", { persist: true });
     setEmpty(true);
   });
 
-  // Optional: refresh cart page if other pages add items
   document.addEventListener("cart:updated", () => {
     refresh().catch(() => {});
   });
