@@ -72,11 +72,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (checkoutBtn) checkoutBtn.disabled = isEmpty;
   }
 
-  function resolveProductImage(imageValue) {
-    if (!imageValue) return "";
-    return String(imageValue);
-  }
-
   async function fetchCart() {
     if (!window.CartAPI?.getCart) {
       throw new Error(
@@ -147,15 +142,30 @@ document.addEventListener("DOMContentLoaded", () => {
     row.dataset.itemId = String(itemId ?? "");
     row.dataset.productId = String(productId ?? "");
 
-    // image (optional)
-    const imgUrl = resolveProductImage(product.image);
+    // image (always render, always fallback)
+    const placeholder =
+      cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
+
+    let imgSrc = String(product.image ?? "").trim();
+    if (!imgSrc) imgSrc = placeholder;
+    else if (!imgSrc.startsWith("/") && !/^https?:\/\//i.test(imgSrc)) {
+      imgSrc = `/media/${imgSrc}`;
+    }
+
     const imgWrap = document.createElement("div");
     imgWrap.className = "bg-light rounded flex-shrink-0 overflow-hidden";
     imgWrap.style.width = "64px";
     imgWrap.style.height = "64px";
-    if (imgUrl) {
-      imgWrap.innerHTML = `<img src="${imgUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`;
-    }
+
+    imgWrap.innerHTML = `
+  <img
+    src="${imgSrc}"
+    alt="${name}"
+    style="width:100%;height:100%;object-fit:cover;"
+    loading="lazy"
+    onerror="this.onerror=null;this.src='${placeholder}';"
+  >
+`;
 
     // meta (name + producer + badges)
     const meta = document.createElement("div");
@@ -405,7 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const old = document.getElementById("wholesaleSummaryExtra");
       if (old) old.remove();
 
-            if (anySavings) {
+      if (anySavings) {
         const hr = summaryCard.querySelector("hr");
         if (hr) {
           const extra = document.createElement("div");

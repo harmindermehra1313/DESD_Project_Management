@@ -9,21 +9,14 @@
           <!-- Image -->
           <div class="col-lg-5">
             <div class="border rounded p-2 bg-light">
-              {% if product.image %}
-                <img src="{{ product.image.url }}"
-                     alt="{{ product.name }}"
-                     class="img-fluid rounded"
-                     style="width:100%;
-                            height:auto;
-                            object-fit:cover"
-                     loading="lazy">
-              {% else %}
-                <div class="d-flex align-items-center justify-content-center rounded bg-white"
-                     style="height: 320px;
-                            border: 1px dashed rgba(0,0,0,.2)">
-                  <span class="text-muted">No image available</span>
-                </div>
-              {% endif %}
+              <img src="{% if product.image %}{{ product.image.url }}{% else %}{% static 'img/default-product.png' %}{% endif %}"
+                   alt="{{ product.name }}"
+                   class="img-fluid rounded"
+                   style="width:100%;
+                          height:auto;
+                          object-fit:cover"
+                   loading="lazy"
+                   onerror="this.onerror=null;this.src='{% static 'img/default-product.png' %}';" />
             </div>
           </div>
           <!-- Details -->
@@ -31,6 +24,11 @@
             <h1 class="h3 mb-2">{{ product.name }}</h1>
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
               <span class="badge text-bg-secondary">{{ product.unit }}</span>
+              {% if product.category %}
+                <span class="badge text-bg-info">{{ product.category.name }}</span>
+              {% else %}
+                <span class="badge text-bg-light text-muted">Uncategorized</span>
+              {% endif %}
               {% if product.producer %}
                 <span class="text-muted">
                   Sold by <strong>{{ product.producer }}</strong>

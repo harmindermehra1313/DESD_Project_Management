@@ -124,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="alert alert-danger py-2 mb-0" role="status"
            style="border-left: 6px solid rgba(220,53,69,.9);">
         <div class="fw-semibold">Surplus reduction</div>
-        <div class="small">${defaultLine}</div>
         ${noteLine ? `<div class="small mt-1">${noteLine}</div>` : ""}
       </div>
     `;
