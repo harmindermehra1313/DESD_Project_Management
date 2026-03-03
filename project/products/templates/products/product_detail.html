@@ -35,6 +35,19 @@
                 </span>
               {% endif %}
             </div>
+            {# Availability + stock message #}
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+              <span class="badge {% if product.availability_status == 'AV' %}text-bg-success {% elif product.availability_status == 'OOS' %}text-bg-danger {% else %}text-bg-secondary{% endif %}">
+                {{ product.get_availability_status_display }}
+              </span>
+              {% if product.stock_quantity|default:0 <= 0 %}
+                <span class="text-danger small">Out of stock</span>
+              {% elif product.stock_quantity <= product.low_stock_threshold %}
+                <span class="text-warning small">Low stock — only {{ product.stock_quantity }} left</span>
+              {% else %}
+                <span class="text-muted small">In stock</span>
+              {% endif %}
+            </div>
             {% comment %} Expiry Date {% endcomment %}
             {% if product.expiry_date %}
               <div class="mt-2 small">
@@ -69,20 +82,43 @@
               <!-- Wholesale tiers data for JS -->
               {{ wholesale_tiers|json_script:"wholesaleTiersJson" }}
             </div>
-            {% comment %} Allergens information {% endcomment %}
             <div class="mt-3">
-              <div class="fw-semibold mb-1">Allergens</div>
-              {% with allergens=product.product_allergen.all %}
-                {% if allergens %}
-                  <div class="d-flex flex-wrap gap-2">
-                    {% for line in allergens %}<span class="badge bg-warning text-dark">{{ line.allergen.name }}</span>{% endfor %}
-                  </div>
-                {% else %}
-                  <div class="text-muted small">No known allergens.</div>
-                {% endif %}
-              {% endwith %}
+              <h2 class="h6 mb-2">Details</h2>
+              {# Description #}
+              {% if product.description %}
+                <div class="mb-3">
+                  <div class="small text-muted mb-1">Description</div>
+                  <div>{{ product.description|linebreaksbr }}</div>
+                </div>
+              {% endif %}
+              {# Allergens chips #}
+              <div class="mb-3">
+                <div class="small text-muted mb-1">Allergens</div>
+                {% with allergens=product.product_allergen.all %}
+                  {% if allergens %}
+                    <div class="d-flex flex-wrap gap-2">
+                      {% for line in allergens %}<span class="badge bg-warning text-dark">{{ line.allergen.name }}</span>{% endfor %}
+                    </div>
+                  {% else %}
+                    <div class="text-muted small">No known allergens.</div>
+                  {% endif %}
+                {% endwith %}
+              </div>
+              {# Storage guidance #}
+              {% if product.storage_guidance %}
+                <div class="mb-3">
+                  <div class="small text-muted mb-1">Storage guidance</div>
+                  <div>{{ product.storage_guidance|linebreaksbr }}</div>
+                </div>
+              {% endif %}
+              {# Farm origin #}
+              {% if product.farm_origin %}
+                <div class="mb-3">
+                  <div class="small text-muted mb-1">Farm origin</div>
+                  <div>{{ product.farm_origin }}</div>
+                </div>
+              {% endif %}
             </div>
-            {% if product.description %}<p class="mb-4">{{ product.description }}</p>{% endif %}
             <div class="d-flex flex-wrap align-items-center gap-3">
               <!-- Quantity selector -->
               <div class="input-group" style="width: 160px;">
