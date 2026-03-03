@@ -278,6 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (compareAtEl && surplusPercentPillEl) {
       if (appliedMode === "surplus") {
+        // Surplus: show base as compare-at + % off
         compareAtEl.textContent = `£${baseUnitPrice.toFixed(2)}`;
         setElVisible(compareAtEl, true);
 
@@ -286,6 +287,21 @@ document.addEventListener("DOMContentLoaded", () => {
           setElVisible(surplusPercentPillEl, true);
         } else {
           setElVisible(surplusPercentPillEl, false);
+        }
+      } else if (appliedMode === "wholesale") {
+        // Wholesale: show base as compare-at + savings pill
+        compareAtEl.textContent = `£${baseUnitPrice.toFixed(2)}`;
+        setElVisible(compareAtEl, true);
+
+        const saving = baseUnitPrice - appliedPrice; // appliedPrice is tierPrice here
+        if (Number.isFinite(saving) && saving > 0) {
+          // Option A: show savings amount
+          surplusPercentPillEl.textContent = `Save ${moneyGBP(saving)}`;
+          setElVisible(surplusPercentPillEl, true);
+        } else {
+          // If no savings, still show "Wholesale" label (optional)
+          surplusPercentPillEl.textContent = "Wholesale";
+          setElVisible(surplusPercentPillEl, true);
         }
       } else {
         setElVisible(compareAtEl, false);
@@ -365,57 +381,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---------- Add to cart ----------
   btn?.addEventListener("click", async () => {
-  const productId = Number(btn.dataset.productId);
-  const quantity = normalizeQtyInput();
+    const productId = Number(btn.dataset.productId);
+    const quantity = normalizeQtyInput();
 
-  if (!Number.isInteger(productId) || productId <= 0) {
-    setMsg("Invalid product id.", "danger");
-    return;
-  }
-
-  if (!window.CartAPI?.addToCart) {
-    setMsg(
-      "CartAPI not found. Check base.html loads static 'carts/cart.js' as type=module.",
-      "danger",
-    );
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    // IMPORTANT: server decides wholesale/surplus unit price.
-    // We only send product + quantity.
-    await window.CartAPI.addToCart({
-      productId,
-      quantity,
-    });
-
-    // Prefer toast (short), fallback to inline auto-dismiss
-    if (typeof window.CartAPI?.showToast === "function") {
-      window.CartAPI.showToast("Added to cart.", {
-        title: "Cart",
-        variant: "success",
-        delay: 1500,
-      });
-    } else {
-      setMsg("Added to cart.", "success", { timeout: 1500 });
+    if (!Number.isInteger(productId) || productId <= 0) {
+      setMsg("Invalid product id.", "danger");
+      return;
     }
-  } catch (e) {
-    const text = e?.message ? e.message : String(e);
 
-    // Errors: show longer so user can read
-    if (typeof window.CartAPI?.showToast === "function") {
-      window.CartAPI.showToast(`Add to cart failed: ${text}`, {
-        title: "Cart",
-        variant: "danger",
-        delay: 3500,
-      });
-    } else {
-      setMsg(`Add to cart failed: ${text}`, "danger", { timeout: 4000 });
+    if (!window.CartAPI?.addToCart) {
+      setMsg(
+        "CartAPI not found. Check base.html loads static 'carts/cart.js' as type=module.",
+        "danger",
+      );
+      return;
     }
-  } finally {
-    setLoading(false);
-  }
-});
+
+    setLoading(true);
+
+    try {
+      // IMPORTANT: server decides wholesale/surplus unit price.
+      // We only send product + quantity.
+      await window.CartAPI.addToCart({
+        productId,
+        quantity,
+      });
+
+      // Prefer toast (short), fallback to inline auto-dismiss
+      if (typeof window.CartAPI?.showToast === "function") {
+        window.CartAPI.showToast("Added to cart.", {
+          title: "Cart",
+          variant: "success",
+          delay: 1500,
+        });
+      } else {
+        setMsg("Added to cart.", "success", { timeout: 1500 });
+      }
+    } catch (e) {
+      const text = e?.message ? e.message : String(e);
+
+      // Errors: show longer so user can read
+      if (typeof window.CartAPI?.showToast === "function") {
+        window.CartAPI.showToast(`Add to cart failed: ${text}`, {
+          title: "Cart",
+          variant: "danger",
+          delay: 3500,
+        });
+      } else {
+        setMsg(`Add to cart failed: ${text}`, "danger", { timeout: 4000 });
+      }
+    } finally {
+      setLoading(false);
+    }
+  });
 });
