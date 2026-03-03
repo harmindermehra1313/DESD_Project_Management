@@ -113,7 +113,20 @@ class ProductDetailView(DetailView):
     context_object_name = "product"
 
     def get_queryset(self):
-        return Product.objects.filter(status__in=["PUBLISHED", Product.Status.PUBLISHED])
+        return (
+            Product.objects
+            .filter(status__in=["PUBLISHED", Product.Status.PUBLISHED])
+            .select_related("producer", "category")
+            .prefetch_related("product_wholesale")
+        )
 
     def get_object(self, queryset=None):
         return get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        p = self.object
+
+        tiers = list(p.product_wholesale.order_by("min_quantity").values("min_quantity", "unit_price"))
+        ctx["wholesale_tiers"] = tiers
+        return ctx
