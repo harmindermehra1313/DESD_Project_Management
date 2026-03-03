@@ -83,22 +83,42 @@ def _get_product_data(*, product_id: int) -> tuple[Decimal, Decimal]:
 
 def _get_effective_unit_price(*, product_id: int, qty: Decimal) -> Decimal:
     """
-    Base price is Product.price.
-    If WholesalePrice exists for qty, use the best tier (highest min_quantity <= qty).
+    Final pricing logic:
+    1. Start from base price
+    2. Apply surplus discount if active
+    3. Apply wholesale tier if available
     """
-    base_price, _stock = _get_product_data(product_id=product_id)
 
-    # WholesalePrice.min_quantity is int, so compare using an int qty
-    qty_int = int(qty)  # qty is already >= 0 in callers
+    product = Product.objects.get(pk=product_id)
+
+    base_price = Decimal(str(product.price))
+
+    # Apply surplus discount if active
+    if product.surplus_status == Product.Surplus_status.SURPLUS_ACTIVE:
+        discount_factor = (
+            Decimal("100") - Decimal(str(product.surplus_discount_percentage))
+        ) / Decimal("100")
+        base_price = base_price * discount_factor
+
+    # Apply wholesale tier (if eligible)
+    qty_int = int(qty)
 
     tier_price = (
-        WholesalePrice.objects.filter(product_id=product_id, min_quantity__lte=qty_int)
+        WholesalePrice.objects.filter(
+            product_id=product_id,
+            min_quantity__lte=qty_int,
+        )
         .order_by("-min_quantity")
         .values_list("unit_price", flat=True)
         .first()
     )
 
-    return base_price if tier_price is None else Decimal(str(tier_price))
+    if tier_price is not None:
+        tier_price = Decimal(str(tier_price))
+        # choose the LOWER of surplus price vs wholesale
+        return min(base_price, tier_price)
+
+    return base_price
 
 
 def cart_new_session_key() -> str:
@@ -483,7 +503,6 @@ def _safe_image_url(product) -> str | None:
         return None
 
 
-
 def get_cart_summary(cart) -> dict:
     qs = cart.items.select_related("product")
 
@@ -521,7 +540,9 @@ def get_cart_summary(cart) -> dict:
         # Product base price (non-wholesale)
         base_unit_price = getattr(it.product, "price", None)
         base_unit_price = (
-            Decimal(str(base_unit_price)) if base_unit_price is not None else Decimal("0.00")
+            Decimal(str(base_unit_price))
+            if base_unit_price is not None
+            else Decimal("0.00")
         )
 
         line_total = unit_price * qty
@@ -542,14 +563,17 @@ def get_cart_summary(cart) -> dict:
                     "producer_name": getattr(it.product, "producer_name", "") or "",
                     "image": _safe_image_url(it.product),
                     "stock_quantity": getattr(it.product, "stock_quantity", None),
-
                     # for professional UI
                     "base_unit_price": base_unit_price,
+                    "surplus_status": getattr(it.product, "surplus_status", None),
+                    "surplus_discount_percentage": getattr(
+                        it.product, "surplus_discount_percentage", None
+                    ),
+                    "surplus_note": getattr(it.product, "surplus_note", None),
                 },
                 "quantity": qty,
                 "unit_price": unit_price,
                 "line_total": line_total,
-
                 # useful for UI/analytics
                 "base_line_total": base_line_total,
                 "savings_per_unit": savings_per_unit,
@@ -570,6 +594,7 @@ def get_cart_summary(cart) -> dict:
         "subtotal": subtotal,
         "currency": "GBP",
     }
+
 
 def cart_get_cart_summary(*, owner: CartOwner) -> dict:
     """Convenience: resolve active cart for owner and return summary."""

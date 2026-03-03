@@ -38,6 +38,14 @@ class ProductMiniSerializer(serializers.Serializer):
 
     # Optional: include image if you want thumbnails
     image = serializers.SerializerMethodField()
+    
+    surplus_status = serializers.CharField(read_only=True)
+    surplus_discount_percentage = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        read_only=True,
+    )
+    surplus_note = serializers.CharField(read_only=True, allow_null=True)
 
     def get_producer_name(self, obj):
         producer = getattr(obj, "producer", None)

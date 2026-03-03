@@ -20,7 +20,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const n = Number(v);
     return GBP.format(Number.isFinite(n) ? n : 0);
   }
+  function round2(n) {
+    return Math.round((Number(n) || 0) * 100) / 100;
+  }
 
+  function approxEqual(a, b, eps = 0.01) {
+    return Math.abs((Number(a) || 0) - (Number(b) || 0)) <= eps;
+  }
+
+  function computeSurplusUnitPrice(baseUnitPrice, surplusPercent) {
+    const base = toNum(baseUnitPrice, 0);
+    const pct = toNum(surplusPercent, 0);
+    if (!(base > 0) || !(pct > 0)) return null;
+    const discounted = base * (1 - pct / 100);
+    return round2(discounted);
+  }
+
+  function hasMeaningfulNote(note) {
+    const s = String(note ?? "").trim();
+    if (!s) return false;
+    return s.toLowerCase() !== "none";
+  }
   function toNum(v, fallback = 0) {
     const n = Number(v);
     return Number.isFinite(n) ? n : fallback;
@@ -78,12 +98,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const qty = toNum(item.quantity ?? 1, 1);
     const unitPrice = toNum(item.unit_price ?? 0, 0);
-    const lineTotal = toNum(item.line_total ?? qty * unitPrice, qty * unitPrice);
+    const lineTotal = toNum(
+      item.line_total ?? qty * unitPrice,
+      qty * unitPrice,
+    );
 
-    // New fields (from backend)
     const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
-    const isWholesale = baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
-    const savingsTotal = isWholesale ? (baseUnitPrice - unitPrice) * qty : 0;
+
+    // Surplus fields (from product snapshot, if backend provides them)
+    const surplusStatus = String(product.surplus_status ?? "");
+    const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
+    const surplusNote = String(product.surplus_note ?? "");
+
+    // Compute expected surplus unit price (so we can distinguish surplus from wholesale)
+    const expectedSurplusUnit = computeSurplusUnitPrice(
+      baseUnitPrice,
+      surplusPercent,
+    );
+
+    const unitIsDiscounted =
+      baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
+
+    // Surplus applies if:
+    // - product says surplus is active, AND
+    // - unit price matches the expected surplus price (derived from base + %)
+    const isSurplus =
+      surplusStatus === "SA" &&
+      expectedSurplusUnit !== null &&
+      approxEqual(unitPrice, expectedSurplusUnit);
+
+    // Wholesale applies if:
+    // - it’s discounted vs base, AND it is NOT the surplus discount
+    const isWholesale = unitIsDiscounted && !isSurplus;
+
+    const wholesaleSavingsTotal = isWholesale
+      ? (baseUnitPrice - unitPrice) * qty
+      : 0;
+    const surplusSavingsTotal = isSurplus
+      ? (baseUnitPrice - unitPrice) * qty
+      : 0;
 
     const stockQty = toNum(product.stock_quantity ?? 0, 0);
     const isOutOfStock = stockQty <= 0;
@@ -110,12 +163,25 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="fw-semibold d-flex flex-wrap align-items-center gap-2">
         <span>${name}</span>
         ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-        ${isWholesale ? `<span class="badge text-bg-success">Wholesale</span>` : ""}
+         ${isWholesale ? `<span class="badge text-bg-success">Wholesale</span>` : ""}
+       ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
       </div>
       ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
       ${
         isWholesale
-          ? `<div class="small text-success mt-1">You save ${money(savingsTotal)} on this item</div>`
+          ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
+          : ``
+      }
+      ${
+        isSurplus
+          ? `<div class="small text-danger mt-1">
+               Surplus reduction: you save ${money(surplusSavingsTotal)}
+             </div>
+             ${
+               hasMeaningfulNote(surplusNote)
+                 ? `<div class="text-muted small">${surplusNote}</div>`
+                 : ``
+             }`
           : ``
       }
     `;
@@ -151,12 +217,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // prices (professional: show was->now when wholesale)
     const prices = document.createElement("div");
     prices.className = "text-end";
-    prices.innerHTML = isWholesale
+    const showWasNow =
+      (isWholesale || isSurplus) &&
+      baseUnitPrice > 0 &&
+      unitPrice > 0 &&
+      unitPrice < baseUnitPrice;
+
+    prices.innerHTML = showWasNow
       ? `
         <div class="small text-muted">
           Unit:
           <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
-          <span class="ms-1 fw-semibold text-success">${money(unitPrice)}</span>
+          <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
         </div>
         <div class="fw-semibold">Line: ${money(lineTotal)}</div>
       `
@@ -275,18 +347,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let actualSubtotal = 0;
     let baseSubtotal = 0;
+    let wholesaleSavings = 0;
+    let surplusSavings = 0;
 
     for (const it of items) {
       const qty = toNum(it.quantity ?? 0, 0);
       const unitPrice = toNum(it.unit_price ?? 0, 0);
       const baseUnit = toNum(it?.product?.base_unit_price ?? 0, 0);
 
-      actualSubtotal += unitPrice * qty;
-      baseSubtotal += baseUnit * qty;
+      const surplusStatus = String(it?.product?.surplus_status ?? "");
+      const surplusPercent = toNum(
+        it?.product?.surplus_discount_percentage ?? 0,
+        0,
+      );
+      const expectedSurplusUnit = computeSurplusUnitPrice(
+        baseUnit,
+        surplusPercent,
+      );
+
+      const lineActual = unitPrice * qty;
+      const lineBase = baseUnit * qty;
+
+      actualSubtotal += lineActual;
+      baseSubtotal += lineBase;
+
+      const unitIsDiscounted =
+        baseUnit > 0 && unitPrice > 0 && unitPrice < baseUnit;
+      const lineIsSurplus =
+        surplusStatus === "SA" &&
+        expectedSurplusUnit !== null &&
+        approxEqual(unitPrice, expectedSurplusUnit);
+
+      const lineIsWholesale = unitIsDiscounted && !lineIsSurplus;
+
+      if (lineIsWholesale) wholesaleSavings += (baseUnit - unitPrice) * qty;
+      if (lineIsSurplus) surplusSavings += (baseUnit - unitPrice) * qty;
     }
 
-    const wholesaleSavings = Math.max(0, baseSubtotal - actualSubtotal);
-    const showSavings = wholesaleSavings > 0.009;
+    wholesaleSavings = Math.max(0, wholesaleSavings);
+    surplusSavings = Math.max(0, surplusSavings);
+
+    const anySavings = wholesaleSavings + surplusSavings > 0.009;
 
     distinctItemsEl && (distinctItemsEl.textContent = String(distinct));
     totalQtyEl && (totalQtyEl.textContent = String(totalQty));
@@ -304,26 +405,45 @@ document.addEventListener("DOMContentLoaded", () => {
       const old = document.getElementById("wholesaleSummaryExtra");
       if (old) old.remove();
 
-      if (showSavings) {
+            if (anySavings) {
         const hr = summaryCard.querySelector("hr");
         if (hr) {
           const extra = document.createElement("div");
           extra.id = "wholesaleSummaryExtra";
           extra.className = "mb-2";
+
+          const totalSavings = wholesaleSavings + surplusSavings;
+
           extra.innerHTML = `
             <div class="d-flex justify-content-between mb-2">
-              <span class="text-muted">Subtotal (before wholesale)</span>
+              <span class="text-muted">Subtotal (before discounts)</span>
               <span class="text-muted">${money(baseSubtotal)}</span>
             </div>
-            <div class="d-flex justify-content-between mb-2">
-              <span class="text-success fw-semibold">Wholesale savings</span>
-              <span class="text-success fw-semibold">- ${money(wholesaleSavings)}</span>
-            </div>
+
+            ${
+              wholesaleSavings > 0.009
+                ? `<div class="d-flex justify-content-between mb-2">
+                     <span class="text-success fw-semibold">Wholesale savings</span>
+                     <span class="text-success fw-semibold">- ${money(wholesaleSavings)}</span>
+                   </div>`
+                : ``
+            }
+
+            ${
+              surplusSavings > 0.009
+                ? `<div class="d-flex justify-content-between mb-2">
+                     <span class="text-danger fw-semibold">Surplus savings</span>
+                     <span class="text-danger fw-semibold">- ${money(surplusSavings)}</span>
+                   </div>`
+                : ``
+            }
+
             <div class="alert alert-success py-2 mb-0">
-              <strong>Nice!</strong> You saved <strong>${money(wholesaleSavings)}</strong> with wholesale pricing.
+              <strong>Nice!</strong> You saved <strong>${money(totalSavings)}</strong> with discounts.
             </div>
           `;
-          hr.parentNode.insertBefore(extra, hr); // insert above Total block
+
+          hr.parentNode.insertBefore(extra, hr);
         }
       }
     }

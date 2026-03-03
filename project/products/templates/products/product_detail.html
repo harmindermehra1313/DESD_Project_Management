@@ -38,16 +38,30 @@
               {% endif %}
             </div>
             <div class="mb-3">
-              <div class="fs-4 fw-semibold">
-                <span id="unitPriceLabel">£{{ product.price }}</span>
-                <span class="text-muted small ms-2">per <span id="unitLabel">{{ product.unit }}</span></span>
+              <!-- Price -->
+              <div class="fs-4 fw-semibold d-flex flex-wrap align-items-end gap-2">
+                <!-- Main unit price (JS will control this text) -->
+                <span id="unitPriceLabel" class="fw-semibold">£{{ product.price|floatformat:2 }}</span>
+                <!-- Compare-at/original price (hidden by default; JS toggles) -->
+                <span id="compareAtPrice"
+                      class="text-muted text-decoration-line-through"
+                      style="display:none">£{{ product.price|floatformat:2 }}</span>
+                <!-- Percent off pill (hidden by default; JS toggles) -->
+                <span id="surplusPercentPill"
+                      class="badge text-bg-danger"
+                      style="display:none">
+                  <!-- JS fills -->
+                </span>
+                <span class="text-muted small">per <span id="unitLabel">{{ product.unit }}</span></span>
               </div>
               {% if product.stock_quantity is not None %}
                 <div class="text-muted small">Stock: {{ product.stock_quantity }}</div>
               {% endif %}
+              <!-- Surplus notice (professional, single place near price) -->
+              <div id="surplusNotice" class="mt-2"></div>
               <!-- Wholesale notice -->
               <div id="wholesaleNotice" class="mt-2"></div>
-              <!-- Wholesale tiers data for JS (KEEP THIS IN CONTENT) -->
+              <!-- Wholesale tiers data for JS -->
               {{ wholesale_tiers|json_script:"wholesaleTiersJson" }}
             </div>
             {% if product.description %}<p class="mb-4">{{ product.description }}</p>{% endif %}
@@ -78,7 +92,11 @@
                       class="btn {% if product.stock_quantity|default:0 <= 0 %}btn-secondary{% else %}btn-primary{% endif %}"
                       id="addToCartBtn"
                       data-product-id="{{ product.id }}"
-                      data-base-price="{{ product.price }}"
+                      data-base-price="{{ product.price|floatformat:2 }}"
+                      data-surplus-active="{% if product.surplus_status == product.Surplus_status.SURPLUS_ACTIVE %}1{% else %}0{% endif %}"
+                      data-surplus-price="{{ product.get_discounted_price|floatformat:2 }}"
+                      data-surplus-percent="{{ product.surplus_discount_percentage|default:'0.00' }}"
+                      data-surplus-note="{{ product.surplus_note|default_if_none:''|escapejs }}"
                       data-stock-qty="{{ product.stock_quantity|default:'0' }}"
                       {% if product.stock_quantity|default:0 <= 0 %}disabled aria-disabled="true"{% endif %}>
                 <i class="bi bi-cart-plus me-1"></i>
