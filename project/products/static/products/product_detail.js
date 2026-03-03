@@ -7,8 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const msg = document.getElementById("productDetailMsg");
 
   const unitPriceEl = document.getElementById("unitPriceLabel");
+  const wholesaleNoticeEl = document.getElementById("wholesaleNotice");
 
-  // Values injected from template via data-* (no Django {{ }} inside JS file)
+  // Values injected from template via data-*
   const stockQty = Number(btn?.dataset.stockQty ?? "0");
   const baseUnitPrice = Number(btn?.dataset.basePrice ?? "0");
 
@@ -76,6 +77,140 @@ document.addEventListener("DOMContentLoaded", () => {
     unitPriceEl.textContent = `£${price.toFixed(2)}`;
   }
 
+  function moneyGBP(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "£0.00";
+    return `£${n.toFixed(2)}`;
+  }
+
+  function renderTierListHtml(qty) {
+    const rows = wholesaleTiers
+      .map((t) => {
+        const active = qty >= t.min;
+        return `
+          <li class="list-group-item d-flex justify-content-between align-items-center ${
+            active ? "fw-semibold" : ""
+          }">
+            <span>${t.min}+ units</span>
+            <span>${moneyGBP(t.price)}</span>
+          </li>
+        `;
+      })
+      .join("");
+
+    return `
+      <div class="collapse mt-2" id="wholesaleTierList">
+        <div class="card card-body p-2">
+          <div class="small text-muted mb-1">Wholesale tiers</div>
+          <ul class="list-group list-group-flush">
+            ${rows}
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderWholesaleNotice() {
+    if (!wholesaleNoticeEl) return;
+
+    // No tiers -> nothing to show
+    if (!wholesaleTiers.length) {
+      wholesaleNoticeEl.innerHTML = "";
+      return;
+    }
+
+    const qty = clampQty(qtyInput?.value ?? 1);
+
+    // Find current tier (best applicable)
+    let currentTier = null;
+    for (const t of wholesaleTiers) {
+      if (qty >= t.min) currentTier = t;
+    }
+
+    // Find next tier (first tier above qty)
+    const nextTier = wholesaleTiers.find((t) => qty < t.min) || null;
+
+    // Wholesale active
+    if (currentTier) {
+      const savingPerUnit = baseUnitPrice - currentTier.price;
+      const savingText =
+        savingPerUnit > 0 ? `Save ${moneyGBP(savingPerUnit)} per unit` : "";
+
+      wholesaleNoticeEl.innerHTML = `
+        <div class="alert alert-success d-flex align-items-start gap-2 py-2 mb-0"
+             role="status"
+             style="border-left: 6px solid rgba(25,135,84,.9);">
+          <div class="flex-grow-1">
+            <div class="fw-semibold">Wholesale price active!</div>
+            <div class="small">
+              You’re paying <span class="fw-semibold">${moneyGBP(
+                currentTier.price
+              )}</span> per unit.
+              ${
+                savingText
+                  ? `<span class="ms-1 text-success-emphasis">${savingText}</span>`
+                  : ``
+              }
+            </div>
+            ${
+              nextTier
+                ? `<div class="small mt-1">
+                     Next tier at <span class="fw-semibold">${nextTier.min}+</span>:
+                     <span class="fw-semibold">${moneyGBP(
+                       nextTier.price
+                     )}</span> per unit.
+                   </div>`
+                : `<div class="small mt-1">You’ve unlocked the best available tier!</div>`
+            }
+          </div>
+
+          <button class="btn btn-sm btn-outline-success" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#wholesaleTierList"
+                  aria-expanded="false" aria-controls="wholesaleTierList">
+            View tiers
+          </button>
+        </div>
+
+        ${renderTierListHtml(qty)}
+      `;
+      return;
+    }
+
+    // Not yet wholesale -> show next tier goal (use first tier)
+    const firstTier = wholesaleTiers[0];
+    const remaining = Math.max(0, firstTier.min - qty);
+
+    wholesaleNoticeEl.innerHTML = `
+      <div class="alert alert-warning d-flex align-items-start gap-2 py-2 mb-0"
+           role="status"
+           style="border-left: 6px solid rgba(255,193,7,.95);">
+        <div class="flex-grow-1">
+          <div class="fw-semibold">Wholesale pricing available!</div>
+          <div class="small">
+            Buy <span class="fw-semibold">${firstTier.min}+</span> to pay
+            <span class="fw-semibold">${moneyGBP(firstTier.price)}</span> per unit.
+          </div>
+          <div class="small mt-1">
+            Add <span class="fw-semibold">${remaining}</span> more to unlock this price.
+          </div>
+        </div>
+
+        <button class="btn btn-sm btn-outline-warning" type="button"
+                data-bs-toggle="collapse" data-bs-target="#wholesaleTierList"
+                aria-expanded="false" aria-controls="wholesaleTierList">
+          View tiers
+        </button>
+      </div>
+
+      ${renderTierListHtml(qty)}
+    `;
+  }
+
+  function onQtyChanged() {
+    renderUnitPrice();
+    renderWholesaleNotice();
+  }
+
   // ---------- Guards ----------
   if (isOutOfStock) {
     setMsg("This product is currently out of stock.", "warning");
@@ -83,28 +218,29 @@ document.addEventListener("DOMContentLoaded", () => {
     if (minus) minus.disabled = true;
     if (plus) plus.disabled = true;
     if (qtyInput) qtyInput.disabled = true;
-    renderUnitPrice();
+    onQtyChanged();
     return;
   }
 
   // ---------- Qty events ----------
   minus?.addEventListener("click", () => {
     qtyInput.value = String(clampQty(qtyInput.value) - 1);
-    renderUnitPrice();
+    onQtyChanged();
   });
 
   plus?.addEventListener("click", () => {
     qtyInput.value = String(clampQty(qtyInput.value) + 1);
-    renderUnitPrice();
+    onQtyChanged();
   });
 
-  qtyInput?.addEventListener("change", () => {
+  // Live update while typing
+  qtyInput?.addEventListener("input", () => {
     qtyInput.value = String(clampQty(qtyInput.value));
-    renderUnitPrice();
+    onQtyChanged();
   });
 
-  // initial render
-  renderUnitPrice();
+  // Initial render
+  onQtyChanged();
 
   // ---------- Add to cart ----------
   btn?.addEventListener("click", async () => {
@@ -124,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Send correct unit price into cart pricing (based on current qty tier)
+    // Tier-aware unit price (for UX). Server should still re-calc authoritatively.
     const unitPrice = effectiveUnitPriceForQty(quantity);
 
     setLoading(true);
@@ -133,7 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await window.CartAPI.addToCart({
         productId,
         quantity,
-        unitPrice, // important: tier-aware unit price
+        unitPrice,
       });
 
       window.CartAPI?.showToast?.(`Added to cart (qty: ${quantity}).`, {

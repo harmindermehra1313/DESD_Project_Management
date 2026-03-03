@@ -45,6 +45,8 @@
               {% if product.stock_quantity is not None %}
                 <div class="text-muted small">Stock: {{ product.stock_quantity }}</div>
               {% endif %}
+              <!-- Wholesale notice -->
+              <div id="wholesaleNotice" class="mt-2"></div>
               <!-- Wholesale tiers data for JS (KEEP THIS IN CONTENT) -->
               {{ wholesale_tiers|json_script:"wholesaleTiersJson" }}
             </div>
