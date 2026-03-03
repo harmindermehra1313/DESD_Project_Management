@@ -35,6 +35,13 @@
                 </span>
               {% endif %}
             </div>
+            {% comment %} Expiry Date {% endcomment %}
+            {% if product.expiry_date %}
+              <div class="mt-2 small">
+                <span class="text-muted">{{ expiry_label }}:</span>
+                <span class="fw-semibold">{{ product.expiry_date|date:"j M Y, H:i" }}</span>
+              </div>
+            {% endif %}
             <div class="mb-3">
               <!-- Price -->
               <div class="fs-4 fw-semibold d-flex flex-wrap align-items-end gap-2">

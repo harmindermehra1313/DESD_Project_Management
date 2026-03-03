@@ -124,11 +124,16 @@ class ProductDetailView(DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         p = self.object
-
+    
         tiers = list(
-            p.product_wholesale
-             .order_by("min_quantity")
-             .values("min_quantity", "unit_price")
+            p.product_wholesale.order_by("min_quantity").values("min_quantity", "unit_price")
         )
         ctx["wholesale_tiers"] = tiers
+    
+        # Date label rule (simple + practical):
+        # Meat + Dairy/Eggs -> "Use by", everything else -> "Best before"
+        use_by_groups = {"MT", "DAE"}
+        food_group = getattr(getattr(p, "category", None), "food_groups", None)
+        ctx["expiry_label"] = "Use by" if food_group in use_by_groups else "Best before"
+    
         return ctx
