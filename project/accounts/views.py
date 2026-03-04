@@ -35,7 +35,11 @@ def login_view(request):
             else:
                 request.session.set_expiry(60 * 60 * 24 * 1)  # 30 days
 
-            return redirect("home:index")
+            if user.role == "ADMIN":
+                return redirect("home:dashboard")   # or your admin home URL
+            else:
+                return redirect("home:index")
+
         else:
             messages.error(request, "Invalid email or password.")
 

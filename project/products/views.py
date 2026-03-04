@@ -8,6 +8,8 @@ from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
 from .models import Product
 
+from django.db.models import Q
+import json
 
 def is_producer_or_admin(user):
     if not user.is_authenticated:
@@ -93,21 +95,23 @@ def add_product(request):
     return render(request, "products/add_product.html")
 
 
+def add_to_cart(request, product_id):
+    print(f"TODO: Logic to add product {product_id} to the cart session.")
+    return redirect("products_list")
 
 
+# products/views.py
 
 
+# class ProductListView(ListView):
+#     template_name = "products/index.html"
+#     context_object_name = "products"
+#     paginate_by = 24
 
-
-class ProductListView(ListView):
-    template_name = "products/index.html"
-    context_object_name = "products"
-    paginate_by = 24
-
-    def get_queryset(self):
-        return Product.objects.filter(status=Product.Status.PUBLISHED).order_by(
-            "-created_at"
-        )
+#     def get_queryset(self):
+#         return Product.objects.filter(status=Product.Status.PUBLISHED).order_by(
+#             "-created_at"
+#         )
 
 
 class ProductDetailView(DetailView):
@@ -144,3 +148,37 @@ class ProductDetailView(DetailView):
         ctx["wholesale_tiers"] = tiers
 
         return ctx
+    # return redirect('products_list')
+
+# Harminder Edits
+def product_view(request, category_id):
+    categories = Category.objects.exclude(name__icontains="organic")
+
+    # All products
+    if category_id == 0:
+        selected_category = None
+        products = Product.objects.filter(status="PUBLISHED")
+    else:
+        selected_category = get_object_or_404(Category, id=category_id)
+        products = Product.objects.filter(status="PUBLISHED", category=selected_category)
+
+    # Convert queryset → JSON for JS filtering
+    product_json = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "price": float(p.price),
+            "image": p.image.url if p.image else "",
+            "producer": p.producer.farm_name,
+            "stock": p.stock_quantity,
+            "expiry": p.expiry_date.strftime("%Y-%m-%d"),
+        }
+        for p in products
+    ]
+
+    return render(request, "products/product_view.html", {
+        "categories": categories,
+        "products_json": json.dumps(product_json),
+        "selected_category": selected_category,
+    })
