@@ -1,6 +1,8 @@
+# In python, numbers are saved as binary floating point internally. Prices should not be binary floating points numbers (0.30000000000000004). So, Decimal makes it as base 10 Decimal (0.3) 
 from decimal import Decimal
 
 from django.conf import settings
+# MinValueValidator is a built in 
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q, F, Sum, ExpressionWrapper, DecimalField
