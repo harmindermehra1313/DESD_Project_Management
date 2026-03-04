@@ -1,19 +1,20 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from products.models import (
     Category,
     Product,
     WholesalePrice,
-    ProductUpdateHistory,
     Allergen,
     ProductAllergen,
 )
 from api.serializers.products import (
     CategorySerializer,
-    ProductSerializer,
-    WholesalePriceSerializer,
-    ProductUpdateHistorySerializer,
     AllergenSerializer,
-    ProductAllergenSerializer,
+    ProductListSerializer,
+    ProductDetailSerializer,
+    ProductWriteSerializer,
+    WholesalePriceInlineSerializer,
+    ProductAllergenInlineSerializer
+    
 )
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -21,16 +22,45 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
 class ProductViewSet(viewsets.ModelViewSet):
+    """
+    list   -> lightweight serializer
+    retrieve -> rich serializer (includes related data)
+    create/update -> write serializer (IDs instead of nested objects)
+    """
     queryset = Product.objects.all().order_by("-created_at")
-    serializer_class = ProductSerializer
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+
+    def get_queryset(self):
+        qs = (
+            Product.objects
+            .select_related("producer", "producer__user", "category", "moderated_by_admin")
+            .order_by("-created_at")
+        )
+
+        # Only prefetch heavier relations for retrieve (detail)
+        if getattr(self, "action", None) == "retrieve":
+            qs = qs.prefetch_related(
+                "product_wholesale",
+                "product_allergen",
+            )
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ProductListSerializer
+        if self.action == "retrieve":
+            return ProductDetailSerializer
+        return ProductWriteSerializer
 
 class WholesalePriceViewSet(viewsets.ModelViewSet):
     queryset = WholesalePrice.objects.all()
-    serializer_class = WholesalePriceSerializer
+    serializer_class = WholesalePriceInlineSerializer
 
-class ProductUpdateHistoryViewSet(viewsets.ModelViewSet):
-    queryset = ProductUpdateHistory.objects.all().order_by("-changed_at")
-    serializer_class = ProductUpdateHistorySerializer
+
 
 class AllergenViewSet(viewsets.ModelViewSet):
     queryset = Allergen.objects.all().order_by("name")
@@ -38,4 +68,5 @@ class AllergenViewSet(viewsets.ModelViewSet):
 
 class ProductAllergenViewSet(viewsets.ModelViewSet):
     queryset = ProductAllergen.objects.all()
-    serializer_class = ProductAllergenSerializer
+    serializer_class = ProductAllergenInlineSerializer
+    
