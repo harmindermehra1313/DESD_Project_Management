@@ -93,12 +93,10 @@ def add_product(request):
     return render(request, "products/add_product.html")
 
 
-def add_to_cart(request, product_id):
-    print(f"TODO: Logic to add product {product_id} to the cart session.")
-    return redirect("products_list")
 
 
-# products/views.py
+
+
 
 
 class ProductListView(ListView):
