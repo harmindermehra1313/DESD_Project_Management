@@ -1,0 +1,226 @@
+/* ============================
+   BRAND VARIABLES
+   ============================ */
+:root {
+    --brand: var(--ink-black);
+    --accent: var(--headback);
+    --muted: var(--lavender-grey);
+    --bg: #ffffff;
+
+    --radius: 8px;
+    --gap: 12px;
+
+    --brand-rgb: 13, 27, 42;
+    --muted-rgb: 119, 141, 169;
+    --accent-rgb: 57, 163, 150;
+}
+
+/* ============================
+   PAGE CONTAINER
+   ============================ */
+.success-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    color: var(--brand);
+}
+
+/* ============================
+   PRODUCER CARD
+   ============================ */
+.producer-block {
+    background: #fff;
+    border: 1px solid var(--lavender-grey);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* ============================
+   ITEM TABLE
+   ============================ */
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    margin-bottom: 1.5rem;
+}
+
+.item-table th {
+    background: rgba(var(--muted-rgb), 0.12);
+    color: var(--brand);
+    font-weight: 600;
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.3);
+    text-align: left;
+}
+
+.item-table td {
+    padding: 0.9rem;
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
+}
+
+.item-table td.qty,
+.item-table td.price,
+.item-table td.total {
+    text-align: right;
+}
+
+/* ============================
+   SECTION DIVIDER
+   ============================ */
+.section-divider {
+    border-top: 1px solid rgba(var(--muted-rgb), 0.4);
+    margin: 1.8rem 0 1.2rem 0;
+}
+
+/* ============================
+   PRICE BREAKDOWN BOX
+   ============================ */
+.price-box {
+    margin-top: 1rem;
+    padding: 1.2rem;
+    background: rgba(var(--accent-rgb), 0.08);
+    border-radius: var(--radius);
+    border-top: 2px solid rgba(var(--muted-rgb), 0.4);
+}
+
+.price-box p {
+    margin: 0.4rem 0;
+    line-height: 1.5;
+}
+
+.price-box strong {
+    font-weight: 700;
+}
+
+/* ============================
+   BUTTON
+   ============================ */
+.order-confirm-btn {
+    display: inline-block;
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-light);
+    font-weight: 600;
+    border-radius: var(--radius);
+    padding: 1rem;
+    width: 100%;
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 1.1rem;
+    transition: 0.2s ease;
+}
+
+.order-confirm-btn:hover {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: var(--text-light);
+}
+
+/* ============================
+   SUCCESS BANNER
+   ============================ */
+.success-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.2rem 1.4rem;
+    background: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
+}
+
+.success-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.success-text h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--brand);
+}
+
+.success-text p {
+    margin: 0.2rem 0 0 0;
+    color: var(--brand);
+    font-size: 0.95rem;
+}
+
+/* ============================
+   UNIT DISCOUNTS & VAT
+   ============================ */
+
+.price-discount {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.price-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.vat-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.savings-note {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ============================
+   HEADING SCALE
+   ============================ */
+
+/* Page-level section headers */
+.success-container h2 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 1.2rem;
+}
+
+/* Producer card title */
+.producer-block h3 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 1rem;
+}
+
+/* Section headers inside producer card */
+.producer-block h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 0.8rem;
+}
+
+/* Small subsection labels */
+.producer-block h5 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 0.6rem;
+}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign In{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'login.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="login-container">
+
+    <!-- Title -->
+    <h1 class="text-center mb-3">Sign In</h1>
+
+    <!-- Login Card -->
+    <div class="card login-card mx-auto">
+        <div class="card-body p-4">
+
+            <!-- Django form errors -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% if request.GET.registered %}
+            <div class="alert alert-success">
+                Your account has been created successfully. Please sign in.
+            </div>
+            {% endif %}
+            <form method="POST" novalidate>
+                {% csrf_token %}
+
+                <!-- Email -->
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <input id="email" name="email" type="email" class="form-control"
+                           placeholder="you@example.com" required>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-3 position-relative">
+                    <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+
+                    <input id="password" name="password" type="password" class="form-control"
+                        placeholder="Your password" required>
+
+                    <i class="bi bi-eye-slash toggle-password"
+                    data-target="password"
+                    style="position:absolute; right:12px; top:40px; cursor:pointer;"></i>
+                </div>
+
+
+                <!-- Remember me -->
+                <div class="form-check mb-3">
+                    <input id="remember" name="remember" type="checkbox" class="form-check-input">
+                    <label for="remember" class="form-check-label">Remember me</label>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn btn-primary w-100">Sign In</button>
+
+            </form>
+
+            <!-- Divider -->
+            <div class="login-divider my-4">
+                <span>or</span>
+            </div>
+
+            <!-- Register link -->
+            <div class="text-center">
+                <a href="/accounts/" class="btn btn-outline-secondary w-100">
+                    Create an Account
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+<script src="{% static 'register.js' %}"></script>
+{% endblock %}

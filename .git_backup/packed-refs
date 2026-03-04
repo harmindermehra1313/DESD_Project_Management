@@ -1,0 +1,24 @@
+# pack-refs with: peeled fully-peeled sorted 
+4ed97cfe9dd3fc407238170f32636585eb0301d8 refs/heads/Default_merage_branch
+0605ba0dd5b2382a46c857792759c7d62510fda0 refs/heads/KAN-10-testing-with-github
+66b6dc4b8f237566ba22cd6c12c9ba7bbcaf6286 refs/heads/KAN-12-Test-whether-comiting-works-in-github-from-vs-code
+19066655e2def9be9faeac4daefeadf41f08460a refs/heads/KAN-14-Harry_testing
+572ab273e77066df5e1a0cf5fd5b6ae554c6599e refs/heads/KAN-17-add-placeholder-text-file
+0803cbd70bde88962f4ab0a9ad1324eb564faaee refs/heads/KAN-18-python-file
+bd721b03f7c9d0927153c00c3662df54c9bb0c8d refs/heads/KAN-19-set-up-basic-django-project-structure
+c161c69ef69b769df37c52a5c1f7bed38088f984 refs/heads/KAN-21-set-up-django-app-structure-to-match-the-mapped-te
+8da3a90fa3736bdd7184ab55b21712226a235881 refs/heads/KAN-25-TC-002-Create-Customer-Account-Form
+82eeeebd311ccd6134b49512f47c1647900c42ea refs/heads/KAN-34-TC-004-Browsing-Products-by-Categories-show-page
+1457bb21b60b0c0f41f18de17dc0d5c015b42e5f refs/heads/KAN-40-tc-006-add-to-cart
+db21b56353d055dfba46a4c6f60352a72c8dfbd0 refs/heads/KAN-43-tc-007-as-a-customer-order-from-single-producer
+63b568263a201e8434fac630668ed1db67aaaf45 refs/heads/KAN-50-tc-050-view-incoming-orders
+b307033cc5114ef7e617d12dff5991b0c8995285 refs/heads/KAN-9-testing-github
+4fb85d876a685c1fbcd159229a798b923d3009dc refs/heads/add_products
+088a6d5f87b27c7ef49af4adb0f777659234d7c7 refs/heads/create_models_orders_and_payments
+5acef764c7943b49d22d50c967e9738eef64f7d1 refs/heads/fix_errors
+b59e104e1d80fe5e93fff44f2be93ac948b19df6 refs/heads/joebranch
+dd5741c45d2158d9ae1f5bc51879113648bedd78 refs/heads/main
+255aafa9f815c1bff86d1343ed2300a0e5bc59af refs/heads/merge_branches
+13b0f30069dcd567dff6a402938d18816034750f refs/heads/rest_api_placeholders
+f5a0b5c741050e379ea6b623adc53e25e8a64b28 refs/heads/setup-design-approaches-for-frontend
+e48aa67e363510f05012ee4cb66cbfbfe76135ef refs/heads/testingjoe

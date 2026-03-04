@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Order Confirmation{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'orders/confirmation.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+
+    <div class="success-banner">
+        <div class="success-icon">✓</div>
+        <div class="success-text">
+            <h2>Your order is confirmed!</h2>
+            <p>Thank you for supporting local producers. Your order details are below.</p>
+            <p>Your order reference number is: <strong>{{ order.unique_reference }}</strong></p>
+        </div>
+    </div>
+
+    <h2>Order Summary</h2>
+    {% for summary in producer_summaries %}
+        <div class="producer-block">
+            <h3>From {{ summary.producer.user.name}} at {{ summary.producer.farm_name }}</h3>
+
+            <p>
+                <strong>Delivery method:</strong>
+                {% if summary.delivery_or_collection == "DEL" %}
+                    Delivery
+                {% else %}
+                    Collection
+                {% endif %}
+            </p>
+
+            <p>
+                <strong>Date:</strong> {{ summary.delivery_date }}<br>
+                <strong>Time slot:</strong> {{ summary.delivery_time_slot }}
+            </p>
+
+            <p>
+                <strong>Address:</strong><br>
+                {% if summary.address_line1 %} {{ summary.address_line1 }}<br> {% endif %}
+                {% if summary.address_line2 %}{{ summary.address_line2 }}<br>{% endif %}
+                {% if summary.city %} {{ summary.city }}<br> {% endif %}
+                {% if summary.postcode %} {{ summary.postcode }} {% endif %}
+            </p>
+
+            <h5>Items from this producer</h5>
+
+            <table class="item-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th class="qty">Qty</th>
+                        <th class="price">Unit Price</th>
+                        <th class="total">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary.items %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td class="qty">{{ item.quantity }}</td>
+                            <td class="price">
+                                {% if item.discount_amount > 0 %}
+                                    <span class="price-discount">£{{ item.final_unit_price|floatformat:2 }}</span><br>
+                                    <small class="price-note">
+                                        Discounted from £{{ item.original_unit_price|floatformat:2 }}
+                                    </small>
+                                {% else %}
+                                    £{{ item.final_unit_price|floatformat:2 }}
+                                {% endif %}
+
+                                {% if item.vat_amount > 0 %}
+                                    <br>
+                                    <small class="vat-note">
+                                        + £{{ item.vat_amount|floatformat:2 }} VAT ({{ item.vat_rate }}%)
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td class="total">
+                                £{{ item.line_total|floatformat:2 }}
+                                {% if item.discount_amount > 0 %}
+                                    <br>
+                                    <small class="savings-note">
+                                        You saved £{{ item.discount_amount|floatformat:2 }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- <div class="section-divider"></div>
+
+            <h4>Price breakdown</h4>
+
+            <div class="price-box">
+                <h5>You Paid (for this producer)</h5>
+                    <p>
+                        <strong>Subtotal:</strong> £{{ summary.original_subtotal }}<br>
+                        <strong>Savings:</strong> -£{{ summary.discount_total }}<br>
+                        <strong>VAT:</strong> £{{ summary.vat_total }}<br>
+                        <strong>Total Paid:</strong> £{{ summary.customer_paid }}
+                    </p>
+                
+                    <br>
+                <h5>Paid to Producer</h5>
+                    <p>
+                        <strong>Commission:</strong> -£{{ summary.commission_total }}<br>
+                        <strong>Payout to producer:</strong> £{{ summary.payout_amount }}
+                    </p>
+            </div> -->
+            <hr>
+        </div>
+    {% endfor %}
+    <a href="/" class="order-confirm-btn">Back to Home</a>
+{% endblock %}

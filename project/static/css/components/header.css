@@ -1,0 +1,214 @@
+
+/* ============================================
+   ROW 1 (TOP HEADER)
+   ============================================ */
+/* ============================================
+   ROW 1 (TOP HEADER) — MODERN REDESIGN
+   ============================================ */
+
+.header-row-1 {
+    background: var(--dusk-blue);
+    padding: 14px 60px;
+    color: var(--alabaster-grey);
+}
+
+/* Brand block */
+.custom-brand {
+    text-decoration: none;
+    color: var(--alabaster-grey);
+    font-family: var(--font-brand);
+    line-height: 1.1;
+}
+
+.brand-line-1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+}
+
+.brand-line-2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+/* Cart + Account Icons */
+.custom-cart-icon i,
+.custom-account-icon i {
+    font-size: 1.5rem;
+    color: var(--alabaster-grey);
+    transition: 0.2s ease;
+}
+
+.cart-text {
+    color: var(--alabaster-grey);
+    font-weight: 500;
+}
+
+.custom-cart-icon:hover i,
+.custom-account-icon:hover i {
+    color: var(--text-light);
+}
+
+
+/* ============================================
+   ROW 2 (NAVIGATION BAR)
+   ============================================ */
+.header-row-2 {
+    background: var(--alabaster-grey);
+    border-radius: 50px;
+    margin: 10px 50px;
+    padding: 8px 15px;
+}
+
+/* Nav Links */
+.custom-nav-link {
+    color: #000;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 10px;
+    transition: all 0.25s ease;
+}
+
+.custom-nav-link:hover {
+    color: var(--alabaster-grey);
+    background-color: var(--ink-black);
+    transform: translateY(-2px);
+}
+
+.custom-nav-link:active {
+    background-color: var(--ink-black);
+    color: var(--text-light);
+    transform: scale(0.96);
+}
+/* Dropdown Menu */
+.custom-dropdown {
+    background: var(--text-light);
+    border: 1px solid #ddd;
+}
+
+.custom-dropdown .dropdown-item:hover {
+    background: var(--ink-black);
+    color: var(--text-light);
+}
+
+/* Search Bar */
+.custom-search-input {
+    border-radius: 25px 0 0 25px;
+}
+
+.custom-search-btn {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    border-radius: 0 25px 25px 0;
+}
+
+.custom-search-btn:hover {
+    background: var(--ink-black);
+}
+.btn:hover {
+  color: var(--text-light);
+}
+
+.me-2 {
+    margin-right: 2.5rem !important;
+}
+/* ============================================
+   RESPONSIVENESS
+   ============================================ */
+
+/* Large Tablets (≤ 1200px) */
+@media (max-width: 1200px) {
+    .header-row-1 {
+        padding: 10px 40px;
+    }
+    .custom-brand {
+        font-size: 1.8rem;
+    }
+    .header-row-2 {
+        margin: 10px 30px;
+        padding: 10px 20px;
+    }
+}
+
+/* Tablets (≤ 992px) */
+@media (max-width: 992px) {
+    .header-row-1 {
+        padding: 10px 30px;
+    }
+    .custom-brand {
+        font-size: 1.6rem;
+    }
+    .welcome-text {
+        font-size: 1.2rem;
+    }
+    .header-row-2 {
+        margin: 10px 20px;
+        padding: 12px 20px;
+        border-radius: 35px;
+    }
+    .navbar-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .custom-search-input {
+        width: 180px;
+    }
+}
+
+/* Mobile (≤ 768px) */
+@media (max-width: 768px) {
+    .header-row-1 .row {
+        text-align: center;
+    }
+    .header-row-1 .col-4 {
+        justify-content: center !important;
+        margin-bottom: 8px;
+    }
+    .custom-brand {
+        font-size: 1.5rem;
+    }
+    .custom-cart-icon i,
+    .custom-account-icon i {
+        font-size: 1.3rem;
+    }
+    .header-row-2 {
+        margin: 10px 15px;
+        padding: 12px;
+        border-radius: 25px;
+    }
+    .navbar-nav {
+        justify-content: center;
+        text-align: center;
+    }
+    .custom-search {
+        width: 100%;
+        margin-top: 10px;
+    }
+    .custom-search-input {
+        width: 100%;
+    }
+}
+
+/* Small Mobile (≤ 480px) */
+@media (max-width: 480px) {
+    .custom-brand {
+        font-size: 1.3rem;
+    }
+    .welcome-text {
+        font-size: 1rem;
+    }
+    .custom-cart-icon i,
+    .custom-account-icon i {
+        font-size: 1.2rem;
+    }
+    .header-row-2 {
+        margin: 5px 10px;
+        padding: 10px;
+    }
+    .navbar-nav .nav-item {
+        margin: 4px 8px;
+    }
+    .custom-search-input {
+        width: 100%;
+    }
+}

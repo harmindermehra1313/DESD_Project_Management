@@ -1,0 +1,427 @@
+/* ============================
+   BRAND VARIABLES
+   ============================ */
+:root {
+    --brand: var(--ink-black);              /* Main text + headings */
+    --accent: var(--headback);           /* Buttons + highlights */
+    --muted: var(--lavender-grey);               /* Subtle text + borders */
+    --bg: #ffffff;
+
+    --radius: 8px;
+    --gap: 12px;
+
+    /* RGB versions for transparency */
+    --brand-rgb: 13, 27, 42;                 /* dark-green */
+    --muted-rgb: 119, 141, 169;               /* blue-grey */
+    --accent-rgb: 57, 163, 150;              /* bright-green */
+}
+
+/* ============================
+   LAYOUT
+   ============================ */
+.checkout-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    color: var(--brand);
+}
+
+.checkout-section {
+    margin-bottom: 2.5rem;
+}
+
+/* ============================
+   HEADINGS
+   ============================ */
+.checkout-container h1,
+.checkout-container h2,
+.checkout-container h3 {
+    color: var(--brand);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+/* ============================
+   TABLE
+   ============================ */
+.checkout-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.checkout-table th {
+    background: rgba(var(--muted-rgb), 0.12);
+    color: var(--brand);
+    font-weight: 600;
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.3);
+}
+
+.checkout-table td {
+    padding: 0.9rem;
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
+}
+
+/* ============================
+   PRICE STYLING
+   ============================ */
+.price-discount {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.price-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.vat-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.savings-note {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ============================
+   ORDER TOTAL BOX
+   ============================ */
+.checkout-total {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-top: 2px solid rgba(var(--muted-rgb), 0.4);
+    background: rgba(var(--accent-rgb), 0.08);
+    border-radius: var(--radius);
+}
+
+.final-order-price {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 0.75rem;
+}
+
+.order-breakdown summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.order-breakdown ul {
+    margin: 0.5rem 0;
+    padding-left: 1.2rem;
+    color: var(--brand);
+}
+
+.savings-line {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.order-savings {
+    margin-top: 0.5rem;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* ============================
+   FORM ELEMENTS
+   ============================ */
+input[type="text"],
+input[type="date"],
+input[type="email"],
+input[type="tel"],
+textarea,
+select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--lavender-grey);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: var(--brand);
+    background: #fff;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
+/* Labels */
+label {
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+/* Radio buttons */
+input[type="radio"] {
+    accent-color: var(--accent);
+    margin-right: 0.4rem;
+}
+
+/* HR */
+hr {
+    border: none;
+    border-top: 1px solid rgba(var(--muted-rgb), 0.4);
+    margin: 1.5rem 0;
+}
+
+/* ============================
+   ADDRESS BLOCKS
+   ============================ */
+#selected-delivery-address,
+#selected-billing-address {
+    padding: 1rem;
+    border: 1px solid rgba(var(--muted-rgb), 0.3);
+    border-radius: var(--radius);
+    background: #fbfbfb;
+    margin-bottom: 1rem;
+}
+
+#new-delivery-address-form,
+#new-billing-address-form {
+    padding: 1rem;
+    border: 1px solid rgba(var(--muted-rgb), 0.3);
+    border-radius: var(--radius);
+    background: #fbfbfb;
+}
+
+/* ============================
+   BUTTONS
+   ============================ */
+.btn-primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-light);
+    font-weight: 600;
+    border-radius: var(--radius);
+}
+
+.btn-primary:hover {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: var(--text-light);
+}
+
+.checkout-btn {
+    margin-top: 2rem;
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+}
+
+/* ============================
+   CARD LAYOUT FOR EACH PRODUCER
+   ============================ */
+.producer-box {
+    background: #fff;
+    border: 1px solid var(--lavender-grey);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.producer-box h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--brand);
+}
+
+/* Two-column layout */
+.producer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+/* Left column: product list */
+.producer-products {
+    border-right: 1px solid rgba(var(--muted-rgb), 0.3);
+    padding-right: 1.5rem;
+}
+
+/* Right column: delivery/collection form */
+.producer-delivery {
+    padding-left: 1.5rem;
+}
+
+.producer-delivery h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--brand);
+}
+
+.producer-delivery label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.producer-delivery input[type="date"],
+.producer-delivery select {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--lavender-grey);
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+/* Table styling inside producer card */
+.checkout-table th,
+.checkout-table td {
+    padding: 0.6rem 0.4rem;
+    border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
+    text-align: left;
+}
+
+.checkout-table th {
+    font-weight: 600;
+    background: rgba(var(--muted-rgb), 0.1);
+}
+
+.producer-subtotal {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(var(--muted-rgb), 0.3);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* ============================
+   ERROR MESSAGES
+   ============================ */
+
+/* Inline error messages, hide by default */
+.error-message {
+    display: none;
+    font-size: 0.85rem;
+    color: #d9534f; /* standard red */
+    margin-top: -0.4rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Error message for invalid minimum payment */
+.min-order-card {
+    display: none;
+    background: #fff4f4;
+    border: 2px solid #d9534f;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0 1.5rem;
+    color: #a94442;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.min-order-card strong {
+    display: block;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+/* 3rd party errors */
+.payment-errors {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(220, 53, 69, 0.1); /* light red */
+    border-left: 4px solid #dc3545;     /* Bootstrap danger red */
+    color: #842029;
+    font-size: 0.95rem;
+    border-radius: 4px;
+    display: none; /* hidden until needed */
+}
+
+/* Show message when field is invalid */
+#checkout-wrapper.submitted input:invalid + .error-message,
+#checkout-wrapper.submitted select:invalid + .error-message,
+#checkout-wrapper.submitted textarea:invalid + .error-message {
+    display: block;
+}
+
+/* Highlight invalid fields only after submit */
+#checkout-wrapper.submitted input:invalid,
+#checkout-wrapper.submitted select:invalid,
+#checkout-wrapper.submitted textarea:invalid {
+    border-color: #d9534f !important;
+    outline-color: #d9534f !important;
+}
+
+/* Force invalid date fields to show a red border */
+#checkout-wrapper.submitted input[type="date"]:invalid {
+    border: 1px solid #d9534f !important;
+    outline: none;
+}
+#checkout-wrapper.submitted input[type="date"]:focus:invalid {
+    border-color: #d9534f !important;
+    box-shadow: 0 0 4px rgba(217, 83, 79, 0.4);
+}
+
+/* Match green focus styling for date fields */
+input[type="date"]:focus,
+input[type="date"]:focus-visible,
+input[type="date"]:focus-within {
+    border: 1px solid var(--accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 4px rgba(var(--accent-rgb), 0.4) !important;
+}
+
+/* Required asterisk for required fields */
+label.required::after {
+    content: " *";
+    color: #d9534f;
+    font-weight: bold;
+}
+
+/* Disable buttton if invalid checkout */
+.checkout-btn:disabled,
+.checkout-btn.disabled-btn {
+    opacity: 1;                     /* keep full colour */
+    background-color: var(--accent);      /* Bootstrap primary */
+    border-color: var(--accent);
+    color: #ffffff;
+    cursor: not-allowed;
+    filter: grayscale(40%);         /* subtle disabled effect */
+}
+
+/* Remove hover effects when disabled */
+.checkout-btn:disabled:hover,
+.checkout-btn.disabled-btn:hover {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ============================
+   ERROR MESSAGES FOR ADDRESS FORMS
+   ============================ */
+
+.address-wrapper.submitted input:invalid + .error-message,
+.address-wrapper.submitted select:invalid + .error-message,
+.address-wrapper.submitted textarea:invalid + .error-message {
+    display: block;
+}
+
+.address-wrapper.submitted input:invalid,
+.address-wrapper.submitted select:invalid,
+.address-wrapper.submitted textarea:invalid {
+    border-color: #d9534f !important;
+    outline-color: #d9534f !important;
+}
