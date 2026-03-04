@@ -1,0 +1,78 @@
+.cart-item {
+  border-radius: 14px;
+}
+
+.cart-thumb-wrap {
+  width: 76px;
+  height: 76px;
+  flex: 0 0 auto;
+}
+
+.cart-thumb {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+.cart-thumb.placeholder {
+  width: 76px;
+  height: 76px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,0,0,.15);
+  background: rgba(0,0,0,.02);
+}
+
+
+
+.cart-actions .btn {
+  white-space: nowrap;
+}
+
+
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.qty-stepper .qty-btn {
+  width: 42px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-stepper .qty-btn:hover {
+  background: rgba(0,0,0,.04);
+}
+
+.qty-stepper .qty-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.qty-stepper .qty-input {
+  width: 70px;
+  height: 38px;
+  border: 0;
+  text-align: center;
+  outline: none;
+}
+
+/* remove ugly spinner arrows (optional) */
+.qty-stepper .qty-input::-webkit-outer-spin-button,
+.qty-stepper .qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.qty-stepper .qty-input[type="number"] {
+  -moz-appearance: textfield;
+}
