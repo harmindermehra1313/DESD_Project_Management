@@ -327,7 +327,7 @@ def checkout(request):
         "producers": producers,
         "collection_addresses": collection_addresses,
         "client_secret": client_secret,
-        "STRIPE_PUBLISHABLE_KEY": settings.STRIPE_PUBLISHABLE_KEY,
+        "STRIPE_PUBLISHABLE_KEY": settings.STRIPE_PUBLIC_KEY,
         "payment_timeout": timeout_flag,
         "timed_out_pi": timed_out_pi,
     }
