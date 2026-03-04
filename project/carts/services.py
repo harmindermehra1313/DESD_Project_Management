@@ -17,6 +17,7 @@ from django.utils import timezone
 from .models import Cart, CartItem, CartStatus
 
 Product = apps.get_model("products", "Product")
+WholesalePrice = apps.get_model("products", "WholesalePrice")
 
 
 class CartError(Exception):
@@ -80,6 +81,46 @@ def _get_product_data(*, product_id: int) -> tuple[Decimal, Decimal]:
     return Decimal(str(price)), Decimal(str(stock))
 
 
+def _get_effective_unit_price(*, product_id: int, qty: Decimal) -> Decimal:
+    """
+    Final pricing logic:
+    1. Start from base price
+    2. Apply surplus discount if active
+    3. Apply wholesale tier if available
+    """
+
+    product = Product.objects.get(pk=product_id)
+
+    base_price = Decimal(str(product.price))
+
+    # Apply surplus discount if active
+    if product.surplus_status == Product.Surplus_status.SURPLUS_ACTIVE:
+        discount_factor = (
+            Decimal("100") - Decimal(str(product.surplus_discount_percentage))
+        ) / Decimal("100")
+        base_price = base_price * discount_factor
+
+    # Apply wholesale tier (if eligible)
+    qty_int = int(qty)
+
+    tier_price = (
+        WholesalePrice.objects.filter(
+            product_id=product_id,
+            min_quantity__lte=qty_int,
+        )
+        .order_by("-min_quantity")
+        .values_list("unit_price", flat=True)
+        .first()
+    )
+
+    if tier_price is not None:
+        tier_price = Decimal(str(tier_price))
+        # choose the LOWER of surplus price vs wholesale
+        return min(base_price, tier_price)
+
+    return base_price
+
+
 def cart_new_session_key() -> str:
     # Session-like token; store as string
     return uuid.uuid4().hex
@@ -91,12 +132,13 @@ def cart_touch(cart: Cart, *, at=None) -> None:
 
 
 def validate_stock(*, product_id: int, requested_quantity: Decimal) -> None:
-    """
-    Raises ValidationError("Insufficient stock") if product.stock_quantity < requested_quantity.
-    """
     _, stock = _get_product_data(product_id=product_id)
+
+    if stock <= 0:
+        raise ValidationError("This product is out of stock.")
+
     if stock < requested_quantity:
-        raise ValidationError("Insufficient stock")
+        raise ValidationError(f"Only {stock} left in stock.")
 
 
 @transaction.atomic
@@ -104,25 +146,25 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
     _assert_owner(owner)
     now = _now()
 
-    # User cart
+    # Authenticated user cart
     if owner.user_id:
-        try:
-            cart = Cart.objects.select_for_update().get(
-                user_id=owner.user_id, status=CartStatus.ACTIVE
-            )
+        cart = (
+            Cart.objects.select_for_update()
+            .filter(user_id=owner.user_id, status=CartStatus.ACTIVE)
+            .first()
+        )
+        if cart:
             cart_touch(cart, at=now)
             return cart
-        except Cart.DoesNotExist:
-            pass
 
+        # Create (race-safe)
         try:
-            cart = Cart.objects.create(
+            return Cart.objects.create(
                 user_id=owner.user_id,
                 session_key=None,
                 status=CartStatus.ACTIVE,
                 last_seen_at=now,
             )
-            return cart
         except IntegrityError:
             cart = Cart.objects.select_for_update().get(
                 user_id=owner.user_id, status=CartStatus.ACTIVE
@@ -130,30 +172,41 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
             cart_touch(cart, at=now)
             return cart
 
-    # Guest cart
+    # Guest cart (session_key)
+
     token = owner.session_key
     if not token:
         raise ValueError("session_key must be set for guest carts.")
 
-    try:
-        cart = Cart.objects.select_for_update().get(session_key=token)
-    except Cart.DoesNotExist:
-        expires_at = now + timedelta(days=guest_ttl_days)
+    cart = (
+        Cart.objects.select_for_update()
+        .filter(session_key=token, status=CartStatus.ACTIVE)  # IMPORTANT
+        .first()
+    )
+
+    # No ACTIVE guest cart -> create one
+    if not cart:
         return Cart.objects.create(
             user=None,
             session_key=token,
             status=CartStatus.ACTIVE,
             last_seen_at=now,
-            expires_at=expires_at,
+            expires_at=now + timedelta(days=guest_ttl_days),
         )
 
-    if cart.status != CartStatus.ACTIVE:
-        raise CartNotActive(f"Guest cart is not active (status={cart.status}).")
+    # ACTIVE but expired -> abandon + create new ACTIVE cart
     if cart.expires_at and cart.expires_at <= now:
         Cart.objects.filter(pk=cart.pk).update(
-            status=CartStatus.ABANDONED, updated_at=now
+            status=CartStatus.ABANDONED,
+            updated_at=now,
         )
-        raise CartNotActive("Guest cart has expired.")
+        return Cart.objects.create(
+            user=None,
+            session_key=token,
+            status=CartStatus.ACTIVE,
+            last_seen_at=now,
+            expires_at=now + timedelta(days=guest_ttl_days),
+        )
 
     cart_touch(cart, at=now)
     return cart
@@ -165,49 +218,72 @@ def cart_add_item(
 ) -> CartItem:
     """
     Add quantity to an item.
-    - If item exists: increment quantity only (do NOT change unit_price).
-    - If new: snapshot unit_price from product.price.
+
+    NEW RULE:
+    - unit_price is the effective wholesale price for the resulting line quantity.
+    - so if qty crosses a tier, unit_price changes.
     """
     if cart.status != CartStatus.ACTIVE:
         raise CartNotActive("Cannot modify a non-active cart.")
 
-    quantity = _to_decimal(quantity)
-    if quantity <= 0:
+    add_qty = _to_decimal(quantity)
+    if add_qty <= 0:
         raise ValueError("quantity must be > 0")
-
-    price, _stock = _get_product_data(product_id=product_id)
 
     # Lock cart row to keep merges/checkout consistent
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
 
-    existing_qty = CartItem.objects.filter(
-        cart_id=cart.pk, product_id=product_id
-    ).values_list("quantity", flat=True).first() or Decimal("0")
-
-    validate_stock(product_id=product_id, requested_quantity=existing_qty + quantity)
-
-    # Try atomic update first (existing line)
-    updated = CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).update(
-        quantity=F("quantity") + quantity, updated_at=_now()
+    # Lock item row (if exists) to safely compute resulting qty
+    item = (
+        CartItem.objects.select_for_update()
+        .filter(cart_id=cart.pk, product_id=product_id)
+        .first()
     )
-    if updated:
-        return CartItem.objects.get(cart_id=cart.pk, product_id=product_id)
 
-    # Create new line with snapshotted unit_price
+    existing_qty = item.quantity if item else Decimal("0")
+    new_qty = existing_qty + add_qty
+
+    validate_stock(product_id=product_id, requested_quantity=new_qty)
+
+    # Compute correct unit price for the resulting qty (server-side truth)
+    unit_price = _get_effective_unit_price(product_id=product_id, qty=new_qty)
+
+    if item:
+        # Update both quantity and unit_price (tier-aware)
+        CartItem.objects.filter(pk=item.pk).update(
+            quantity=new_qty,
+            unit_price=unit_price,
+            updated_at=_now(),
+        )
+        item.quantity = new_qty
+        item.unit_price = unit_price
+        return item
+
+    # Create new line with effective unit_price
     try:
         return CartItem.objects.create(
             cart_id=cart.pk,
             product_id=product_id,
-            quantity=quantity,
-            unit_price=price,  # snapshot here
+            quantity=new_qty,
+            unit_price=unit_price,
         )
     except IntegrityError:
-        # Race: another txn created it; increment qty only, do not touch unit_price
-        CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).update(
-            quantity=F("quantity") + quantity,
+        # Race: someone created; lock and update properly
+        item = CartItem.objects.select_for_update().get(
+            cart_id=cart.pk, product_id=product_id
+        )
+        new_qty = (item.quantity or Decimal("0")) + add_qty
+        validate_stock(product_id=product_id, requested_quantity=new_qty)
+        unit_price = _get_effective_unit_price(product_id=product_id, qty=new_qty)
+
+        CartItem.objects.filter(pk=item.pk).update(
+            quantity=new_qty,
+            unit_price=unit_price,
             updated_at=_now(),
         )
-        return CartItem.objects.get(cart_id=cart.pk, product_id=product_id)
+        item.quantity = new_qty
+        item.unit_price = unit_price
+        return item
 
 
 @transaction.atomic
@@ -216,21 +292,20 @@ def cart_set_item_quantity(
 ) -> Optional[CartItem]:
     """
     Set absolute quantity.
-      - quantity == 0 removes the item and returns None.
-      - quantity  > 0 sets/creates the item and returns the CartItem.
 
-    If creating a new item (didn't exist), snapshot unit_price from product.price.
+    NEW RULE:
+    - unit_price is the effective wholesale price for the resulting line quantity.
     """
     if cart.status != CartStatus.ACTIVE:
         raise CartNotActive("Cannot modify a non-active cart.")
 
-    quantity = _to_decimal(quantity)
-    if quantity < 0:
+    qty = _to_decimal(quantity)
+    if qty < 0:
         raise ValueError("quantity must be >= 0")
 
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
 
-    if quantity == 0:
+    if qty == 0:
         deleted, _ = CartItem.objects.filter(
             cart_id=cart.pk, product_id=product_id
         ).delete()
@@ -238,27 +313,45 @@ def cart_set_item_quantity(
             raise CartItemNotFound("Item not in cart.")
         return None
 
-    price, _stock = _get_product_data(product_id=product_id)
-    validate_stock(product_id=product_id, requested_quantity=quantity)
+    validate_stock(product_id=product_id, requested_quantity=qty)
 
-    updated = CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).update(
-        quantity=quantity, updated_at=_now()
+    unit_price = _get_effective_unit_price(product_id=product_id, qty=qty)
+
+    item = (
+        CartItem.objects.select_for_update()
+        .filter(cart_id=cart.pk, product_id=product_id)
+        .first()
     )
-    if updated:
-        return CartItem.objects.get(cart_id=cart.pk, product_id=product_id)
+
+    if item:
+        CartItem.objects.filter(pk=item.pk).update(
+            quantity=qty,
+            unit_price=unit_price,
+            updated_at=_now(),
+        )
+        item.quantity = qty
+        item.unit_price = unit_price
+        return item
 
     try:
         return CartItem.objects.create(
             cart_id=cart.pk,
             product_id=product_id,
-            quantity=quantity,
-            unit_price=price,  # snapshot if created via set
+            quantity=qty,
+            unit_price=unit_price,
         )
     except IntegrityError:
-        CartItem.objects.filter(cart_id=cart.pk, product_id=product_id).update(
-            quantity=quantity, updated_at=_now()
+        item = CartItem.objects.select_for_update().get(
+            cart_id=cart.pk, product_id=product_id
         )
-        return CartItem.objects.get(cart_id=cart.pk, product_id=product_id)
+        CartItem.objects.filter(pk=item.pk).update(
+            quantity=qty,
+            unit_price=unit_price,
+            updated_at=_now(),
+        )
+        item.quantity = qty
+        item.unit_price = unit_price
+        return item
 
 
 @transaction.atomic
@@ -302,15 +395,12 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     guest_cart = (
         Cart.objects.select_for_update().filter(session_key=session_key).first()
     )
-    if not guest_cart:
-        return cart_get_or_create_active(owner=CartOwner(user_id=user_id))
-
-    if guest_cart.status != CartStatus.ACTIVE:
+    if not guest_cart or guest_cart.status != CartStatus.ACTIVE:
         return cart_get_or_create_active(owner=CartOwner(user_id=user_id))
 
     user_cart = cart_get_or_create_active(owner=CartOwner(user_id=user_id))
 
-    # Lock both carts in a stable order
+    # Lock both carts in a stable order (avoid deadlocks)
     cart_ids = sorted([guest_cart.pk, user_cart.pk])
     list(Cart.objects.select_for_update().filter(id__in=cart_ids).order_by("id"))
 
@@ -318,11 +408,18 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
         CartItem.objects.select_for_update().filter(cart_id=guest_cart.pk)
     )
 
+    touched_product_ids: set[int] = set()
+
+    # 1) Merge quantities
     for gi in guest_items:
-        # Increment existing first; else create preserving unit_price snapshot from guest line
+        touched_product_ids.add(gi.product_id)
+
         updated = CartItem.objects.filter(
             cart_id=user_cart.pk, product_id=gi.product_id
-        ).update(quantity=F("quantity") + gi.quantity, updated_at=_now())
+        ).update(
+            quantity=F("quantity") + gi.quantity,
+            updated_at=_now(),
+        )
 
         if not updated:
             try:
@@ -330,13 +427,39 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
                     cart_id=user_cart.pk,
                     product_id=gi.product_id,
                     quantity=gi.quantity,
-                    unit_price=gi.unit_price,
+                    unit_price=gi.unit_price,  # temporary; normalized below
                 )
             except IntegrityError:
                 CartItem.objects.filter(
                     cart_id=user_cart.pk, product_id=gi.product_id
-                ).update(quantity=F("quantity") + gi.quantity, updated_at=_now())
+                ).update(
+                    quantity=F("quantity") + gi.quantity,
+                    updated_at=_now(),
+                )
 
+    # 2) Normalize unit_price based on FINAL quantities (wholesale tiers)
+    user_lines = list(
+        CartItem.objects.select_for_update().filter(
+            cart_id=user_cart.pk, product_id__in=touched_product_ids
+        )
+    )
+
+    for line in user_lines:
+        final_qty = line.quantity or Decimal("0")
+        correct_unit_price = _get_effective_unit_price(
+            product_id=line.product_id,
+            qty=final_qty,
+        )
+        if line.unit_price != correct_unit_price:
+            CartItem.objects.filter(pk=line.pk).update(
+                unit_price=correct_unit_price,
+                updated_at=_now(),
+            )
+
+    # 3) OPTIONAL CLEANUP: delete guest cart items now that they’re merged
+    CartItem.objects.filter(cart_id=guest_cart.pk).delete()
+
+    # 4) Mark guest cart merged
     guest_cart.status = CartStatus.MERGED
     guest_cart.merged_into_cart_id = user_cart.pk
     guest_cart.save(update_fields=["status", "merged_into_cart_id", "updated_at"])
@@ -411,27 +534,53 @@ def get_cart_summary(cart) -> dict:
 
     items = []
     for it in qs:
-        line_total = (it.unit_price or Decimal("0.00")) * (
-            it.quantity or Decimal("0.00")
+        qty = it.quantity or Decimal("0.00")
+        unit_price = it.unit_price or Decimal("0.00")
+
+        # Product base price (non-wholesale)
+        base_unit_price = getattr(it.product, "price", None)
+        base_unit_price = (
+            Decimal(str(base_unit_price))
+            if base_unit_price is not None
+            else Decimal("0.00")
         )
+
+        line_total = unit_price * qty
+        base_line_total = base_unit_price * qty
+
+        # Savings can be negative if data is weird; clamp later on frontend too
+        savings_total = base_line_total - line_total
+        savings_per_unit = base_unit_price - unit_price
+
         items.append(
             {
                 "id": it.id,
-                "product_id": it.product_id,  # ✅ add this
-                "product": {  # optional but fine
+                "product_id": it.product_id,
+                "product": {
                     "id": it.product_id,
                     "name": it.product.name,
                     "unit": getattr(it.product, "unit", "") or "",
                     "producer_name": getattr(it.product, "producer_name", "") or "",
                     "image": _safe_image_url(it.product),
+                    "stock_quantity": getattr(it.product, "stock_quantity", None),
+                    # for professional UI
+                    "base_unit_price": base_unit_price,
+                    "surplus_status": getattr(it.product, "surplus_status", None),
+                    "surplus_discount_percentage": getattr(
+                        it.product, "surplus_discount_percentage", None
+                    ),
+                    "surplus_note": getattr(it.product, "surplus_note", None),
                 },
-                "quantity": it.quantity,
-                "unit_price": it.unit_price,
+                "quantity": qty,
+                "unit_price": unit_price,
                 "line_total": line_total,
+                # useful for UI/analytics
+                "base_line_total": base_line_total,
+                "savings_per_unit": savings_per_unit,
+                "savings_total": savings_total,
             }
         )
 
-    # total_quantity formatting (int if integral else string)
     total_quantity_out = (
         int(total_quantity)
         if total_quantity == total_quantity.to_integral()
