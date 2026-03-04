@@ -22,8 +22,9 @@ class Order(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete = models.CASCADE,
         related_name = "orders_for_users",
+        null=True,
+        blank=True
     )
-    
     
     delivery_address = models.ForeignKey(
         "accounts.Address",
@@ -39,6 +40,14 @@ class Order(models.Model):
         related_name = 'generated_orders',
     )
 
+    billing_address = models.ForeignKey(
+        "accounts.Address",
+        on_delete=models.CASCADE,
+        related_name="billing_orders",
+        null=True,
+        blank=True,
+    )
+
     unique_reference = ShortUUIDField(
         max_length = 10,
         editable = False,
@@ -49,13 +58,6 @@ class Order(models.Model):
         default = timezone.now
     )
     
-    delivery_or_collection = models.CharField(
-        max_length = 20,
-        choices = DeliveryOrCollection.choices,
-    )
-    
-    delivery_date = models.DateTimeField()
-    
     total_price = models.DecimalField(
         max_digits = 10,
         decimal_places = 2,
@@ -63,6 +65,12 @@ class Order(models.Model):
     )
     
     total_discount = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
+
+    total_vat = models.DecimalField(
         max_digits = 10,
         decimal_places = 2,
         default = Decimal("0.00")
@@ -91,6 +99,12 @@ class Order(models.Model):
         choices = Status.choices,
         default = Status.PENDING
     )
+
+    # Handle guests
+    guest_name = models.CharField(max_length=150, null=True, blank=True)
+    guest_email = models.EmailField(null=True, blank=True)
+    guest_phone = models.CharField(max_length=20, null=True, blank=True)
+    is_guest = models.BooleanField(default=False)
     
     def __str__(self):
         return f"Order #{self.pk} ({self.status})"
@@ -140,6 +154,18 @@ class OrderItem(models.Model):
         max_length = 255,
         blank = True,
         default = ""
+    )
+
+    vat_amount = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
+
+    vat_rate = models.DecimalField(
+        max_digits = 4,
+        decimal_places = 2,
+        default = Decimal("0.00")
     )
     
     final_unit_price = models.DecimalField(
@@ -193,13 +219,36 @@ class ProducerOrderSummary(models.Model):
         default = Decimal("0.00")
         
         )
+    
+    vat_total = models.DecimalField(
+        max_digits = 10,
+        decimal_places = 2,
+        default = Decimal("0.00")
+    )
+
     payout_amount = models.DecimalField(
         max_digits = 10, 
         decimal_places = 2, 
         default = Decimal("0.00")
         )
 
-    delivery_date = models.DateTimeField()
+    delivery_date = models.DateField()
+
+    delivery_or_collection = models.CharField(
+        max_length=20,
+        choices=Order.DeliveryOrCollection.choices,
+    )
+
+    delivery_time_slot = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+
+    address_line1 = models.CharField(max_length=255)
+    address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100)
+    postcode = models.CharField(max_length=20)
 
     special_instructions = models.TextField(
         null=True, 

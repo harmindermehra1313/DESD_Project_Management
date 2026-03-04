@@ -85,14 +85,9 @@ Products | BRFN
 
                             <h5 class="fw-bold mb-3">£${p.price}</h5>
 
-                            <a href="/product/${p.id}/" class="btn btn-brand-outline w-100 mb-2">
+                            <a href="/products/${p.id}/" class="btn btn-brand-outline w-100 mb-2">
                                 More Information
                             </a>
-
-                            <form action="/cart/add/${p.id}/" method="POST" class="mt-auto">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-brand-solid w-100">Add to cart</button>
-                            </form>
                         </div>
                     </div>
                 </div>

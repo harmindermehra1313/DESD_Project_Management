@@ -1,71 +1,68 @@
 {% extends 'base.html' %}
-
-{% load static %}{% block title %}Main Shop | Bristol Regional Food Network{% endblock %}
-
+{% load static %}
+{% block title %}Main Shop | Bristol Regional Food Network{% endblock %}
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/products.css' %}">
 {% endblock %}
-
 {% block content %}
-<div class="container my-5">
-    
-    <h1 class="shop-title mb-5">Main Shop</h1>
-
-    <section class="mb-5">
-        <h3 class="mb-4" style="color: var(--blue-grey);">Offers You May Like:</h3>
-        
-        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3">
-            {% for product in recommended_products %}
-            <div class="col">
-                <div class="card h-100 product-card">
-                    <div class="card-header bg-white text-center fw-bold border-0 pt-3">
-                        {{ product.name }}
+    <div class="container my-5">
+        <h1 class="shop-title mb-5">Main Shop</h1>
+        <section class="mb-5">
+            <h3 class="mb-4" style="color: var(--blue-grey);">Offers You May Like:</h3>
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3">
+                {% for product in recommended_products %}
+                    <div class="col">
+                        <div class="card h-100 product-card">
+                            <div class="card-header bg-white text-center fw-bold border-0 pt-3">{{ product.name }}</div>
+                            <div class="product-img-wrapper">
+                                {% if product.image %}
+                                    <img src="{{ product.image.url }}"
+                                         class="card-img-top"
+                                         alt="{{ product.name }}">
+                                {% else %}
+                                    <span class="text-muted">(Product image)</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <p class="text-muted small mb-2">By: {{ product.producer.name }}</p>
+                                <p class="card-text small mb-3">{{ product.description|truncatewords:10 }}</p>
+                                <ul class="list-unstyled small mb-3 flex-grow-1">
+                                    <li>
+                                        <strong>Stock:</strong> {{ product.stock_quantity }} {{ product.get_unit_display }}
+                                    </li>
+                                    <li>
+                                        <strong>Expires:</strong> {{ product.expiry_date|date:"d/m/Y" }}
+                                    </li>
+                                    <li>
+                                        <strong>Allergens:</strong>
+                                        {% for pa in product.product_allergen.all %}
+                                            {{ pa.allergen.name }}
+                                            {% if not forloop.last %},{% endif %}
+                                        {% endfor %}
+                                    </li>
+                                </ul>
+                                <h5 class="fw-bold mb-3">£{{ product.price }}</h5>
+                                <a href="{% url 'product_detail' product.id %}"
+                                   class="btn btn-brand-outline w-100 mb-2">More Information</a>
+                                <form action="{% url 'add_to_cart' product.id %}"
+                                      method="POST"
+                                      class="mt-auto">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-brand-solid w-100">Add to cart</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="product-img-wrapper">
-                        {% if product.image %}
-                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
-                        {% else %}
-                            <span class="text-muted">(Product image)</span>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="card-body d-flex flex-column">
-                        <p class="text-muted small mb-2">By: {{ product.producer.name }}</p>
-                        <p class="card-text small mb-3">{{ product.description|truncatewords:10 }}</p>
-                        
-                        <ul class="list-unstyled small mb-3 flex-grow-1">
-                            <li><strong>Stock:</strong> {{ product.stock_quantity }} {{ product.get_unit_display }}</li>
-                            <li><strong>Expires:</strong> {{ product.expiry_date|date:"d/m/Y" }}</li>
-                            <li><strong>Allergens:</strong> {% for pa in product.product_allergen.all %}{{ pa.allergen.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
-                        </ul>
-                        
-                        <h5 class="fw-bold mb-3">£{{ product.price }}</h5>
-                        
-                        <a href="{% url 'product_detail' product.id %}" class="btn btn-brand-outline w-100 mb-2">More Information</a>
-                        
-                        <form action="{% url 'add_to_cart' product.id %}" method="POST" class="mt-auto">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-brand-solid w-100">Add to cart</button>
-                        </form>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <hr class="my-5" style="border-color: var(--soft-blue);">
-
-    <section>
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 style="color: var(--blue-grey);">All Produce</h3>
-            <button class="btn btn-brand-outline px-4">Filter</button>
-        </div>
-        
-        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3">
+        </section>
+        <hr class="my-5" style="border-color: var(--soft-blue);">
+        <section>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 style="color: var(--blue-grey);">All Produce</h3>
+                <button class="btn btn-brand-outline px-4">Filter</button>
             </div>
-    </section>
-
-</div>
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3"></div>
+        </section>
+    </div>
 {% endblock %}
