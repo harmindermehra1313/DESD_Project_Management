@@ -15,7 +15,8 @@
 
 /* Table Styling */
 .order-table th {
-    background-color: var(--brand);
+    /* Changed from var(--brand) to match the dark grey footer */
+    background-color: #3a4b53; 
     color: #ffffff;
     font-weight: 600;
     border-bottom: none;
@@ -43,8 +44,9 @@
     font-weight: 600;
 }
 .status-pending { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-.status-confirmed { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
-.status-ready { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.status-preparing { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+.status-packaged { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.status-shipped { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
 
 /* Buttons */
 .btn-primary {
@@ -58,6 +60,32 @@
     border-color: var(--accent);
     color: var(--brand);
 }
+
+/* Custom "Change Status" Button Styling */
+#updateStatusBtn {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Disabled State: Matches the "Filter" button (btn-outline-secondary) */
+#updateStatusBtn:disabled {
+    background-color: #fff;
+    color: #6c757d;
+    border-color: #6c757d;
+    opacity: 1; /* Override default bootstrap opacity */
+}
+
+/* Enabled State: Matches the table header / footer grey */
+#updateStatusBtn:not(:disabled) {
+    background-color: #3a4b53;
+    color: #fff;
+    border-color: #3a4b53;
+}
+
+#updateStatusBtn:not(:disabled):hover {
+    background-color: #343a40; /* Slightly lighter grey on hover */
+    border-color: #343a40;
+}
+
 
 /* Details Section */
 .details-card {

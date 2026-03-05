@@ -1,26 +1,21 @@
+import json
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.contrib.auth import logout
-from django.apps import apps
-from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse                   
 from orders.models import ProducerOrderSummary, OrderItem
 from django.db.models import Prefetch
 
 from accounts.serializers.registration_customer import CustomerRegistrationSerializer
 from accounts.serializers.registration_producer import ProducerRegistrationSerializer
 
-Producer = apps.get_model('accounts', 'Producer')
-ProducerOrderSummary = apps.get_model('orders', 'ProducerOrderSummary')
-
-# Create your views here.
 def register(request):
     return render(request, "accounts/register.html")
-
 
 def logout_view(request):
     logout(request)
@@ -39,9 +34,9 @@ def login_view(request):
 
             # If "Remember me" is NOT checked -> session ends when browser closes
             if not remember:
-                request.session.set_expiry(0)  # expires on browser close
+                request.session.set_expiry(0)
             else:
-                request.session.set_expiry(60 * 60 * 24 * 1)  # 30 days
+                request.session.set_expiry(60 * 60 * 24 * 1)  # 1 day (or 30 days depending on your math)
 
             return redirect("home:index")
         else:
@@ -50,17 +45,17 @@ def login_view(request):
     return render(request, "accounts/login.html")
 
 @login_required
+def profile(request):
+    return render(request, "accounts/profile.html")
+
+@login_required
 def producer_dashboard(request):
-    # 1. Ensure the logged-in user is actually a Producer
     if request.user.role != 'PRODUCER' or not hasattr(request.user, 'producer_profile'):
-        # Redirect non-producers away from this page
-        return redirect('accounts:index') 
+        return redirect('home:index') 
     
     producer = request.user.producer_profile
     
-    # 2. Fetch the order summaries specifically for this producer
-    # select_related: Grabs the Order, User (Customer), and Address in the same SQL hit
-    # prefetch_related: Grabs the items, filtering to ONLY show items belonging to this producer
+    # Fetch ALL orders for this producer (JS handles the filtering now)
     summaries = ProducerOrderSummary.objects.filter(
         producer=producer
     ).select_related(
@@ -71,15 +66,48 @@ def producer_dashboard(request):
         Prefetch(
             'order__items', 
             queryset=OrderItem.objects.filter(producer=producer).select_related('product'),
-            to_attr='my_items' # Stores the filtered items in a temporary attribute
+            to_attr='my_items'
         )
-    ).order_by('delivery_date') # Sorted by delivery date per acceptance criteria
+    ).order_by('delivery_date')
+
+    # Calculate the 95% payout for each summary
+    for summary in summaries:
+        summary.payout_amount = float(summary.subtotal) * 0.95
 
     context = {
         'summaries': summaries,
     }
     
     return render(request, "accounts/producer_dashboard.html", context)
+
+@login_required
+@require_POST
+def update_order_status(request, summary_id):
+    if request.user.role != 'PRODUCER':
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        
+        valid_statuses = ['PEN', 'PRE', 'PAC', 'SHP', 'CAN']
+        if new_status not in valid_statuses:
+            return JsonResponse({'error': 'Invalid status'}, status=400)
+
+        # Ensure the producer only updates their own order summaries
+        summary = ProducerOrderSummary.objects.get(
+            id=summary_id, 
+            producer=request.user.producer_profile
+        )
+        
+        summary.status = new_status
+        summary.save()
+        return JsonResponse({'success': True})
+        
+    except ProducerOrderSummary.DoesNotExist:
+        return JsonResponse({'error': 'Order not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
 
 class UnifiedRegistrationView(APIView):
@@ -96,16 +124,3 @@ class UnifiedRegistrationView(APIView):
             return Response({"message": f"{role.capitalize()} registered successfully"}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# TBC - loads placeholder form based on selected role but doesn't save anything
-# def register(request):
-#     role = request.GET.get("role", "customer")
-
-#     if request.method == "POST":
-#         # TBC - save, currently print
-#         print("Received POST for role:", request.POST.get("role"))
-#         print("Form data:", request.POST)
-#         return render(request, "accounts/register_success.html")
-
-#     return render(request, "accounts/register.html", {
-#         "role": role,
-#     })
