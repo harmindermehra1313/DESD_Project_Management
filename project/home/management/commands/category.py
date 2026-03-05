@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.apps import apps
+from decimal import Decimal
 
 UserModel = get_user_model()
 
@@ -11,7 +12,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-        # Load models
+        # Load models dynamically
         self.User = apps.get_model("accounts", "User")
         self.Producer = apps.get_model("accounts", "Producer")
         self.Admin = apps.get_model("accounts", "Admin")
@@ -21,6 +22,7 @@ class Command(BaseCommand):
         self.Category = apps.get_model("products", "Category")
         self.Allergen = apps.get_model("products", "Allergen")
         self.Product = apps.get_model("products", "Product")
+        self.ProductAllergen = apps.get_model("products", "ProductAllergen")
 
         self.stdout.write(self.style.MIGRATE_HEADING("Seeding database..."))
 
@@ -30,6 +32,7 @@ class Command(BaseCommand):
         self.create_categories()
         self.create_allergens()
         self.create_products()
+        self.create_certified_organic_products()
 
         self.stdout.write(self.style.SUCCESS("Database seeded successfully."))
 
@@ -114,37 +117,32 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Producer created or reused."))
 
     # ------------------------------------------------------------
-    # CATEGORIES
+    # CATEGORIES (updated + Certified Organic)
     # ------------------------------------------------------------
     def create_categories(self):
         categories = [
-            ("Vegetables", "Fresh produce", "0.0"),
-            ("Fruits", "Fresh fruits and berries", "0.0"),
-            ("Dairy", "Milk, cheese, butter", "0.0"),
-            ("Meat & Poultry", "Fresh meat and poultry", "0.0"),
-            ("Fish & Seafood", "Fresh fish and shellfish", "0.0"),
-            ("Bakery", "Bread and baked goods", "0.0"),
-            ("Grains & Cereals", "Rice, pasta, oats", "0.0"),
-            ("Herbs & Spices", "Fresh herbs and dried spices", "0.0"),
-            ("Frozen Foods", "Frozen produce and meals", "0.0"),
-            ("Pantry & Dry Goods", "Tinned foods, oils, condiments", "0.0"),
-            ("Beverages", "Juices, teas, coffees", "0.0"),
-            ("Snacks", "Crisps, nuts, bars", "20.0"),
-            ("Confectionery", "Sweets and chocolates", "20.0"),
-            ("Eggs", "Farm eggs", "0.0"),
-            ("Honey & Preserves", "Honey, jams, chutneys", "0.0"),
-            ("Prepared Foods", "Ready meals and prepared dishes", "20.0"),
-            ("Artisan Goods", "Handmade and local artisan foods", "0.0"),
+            ("Meat", "Fresh meat products", Decimal("0.00"), "MT"),
+            ("Dairy and Eggs", "Milk, cheese, eggs", Decimal("0.00"), "DAE"),
+            ("Fruit", "Fresh fruits", Decimal("0.00"), "FR"),
+            ("Vegetables", "Fresh vegetables", Decimal("0.00"), "VEG"),
+            ("Seasonal Produce", "Seasonal farm goods", Decimal("0.00"), "SEA"),
+            ("Certified Organic", "Fully certified organic produce", Decimal("0.00"), "SEA"),
         ]
 
         self.categories = []
 
-        for name, description, vat in categories:
+        for name, description, vat, food_group in categories:
             category, _ = self.Category.objects.get_or_create(
                 name=name,
-                defaults={"description": description, "vat": vat}
+                defaults={
+                    "description": description,
+                    "vat": vat,
+                    "food_groups": food_group,
+                }
             )
             self.categories.append(category)
+
+        self.certified_organic_category = self.Category.objects.get(name="Certified Organic")
 
         self.stdout.write(self.style.SUCCESS("Categories created or reused."))
 
@@ -152,11 +150,14 @@ class Command(BaseCommand):
     # ALLERGENS
     # ------------------------------------------------------------
     def create_allergens(self):
-        allergen_names = ["Eggs", "Milk", "Nuts", "Soya", "Sesame"]
+        allergen_codes = [
+            "NUT", "SEA", "PEA", "SOY", "MUS", "FSH", "MOL",
+            "CRU", "CEL", "GLU", "SUL", "LUP", "EGG", "MLK", "NON"
+        ]
 
         self.allergens = [
-            self.Allergen.objects.get_or_create(name=name)[0]
-            for name in allergen_names
+            self.Allergen.objects.get_or_create(name=code)[0]
+            for code in allergen_codes
         ]
 
         self.stdout.write(self.style.SUCCESS("Allergens created or reused."))
@@ -165,19 +166,19 @@ class Command(BaseCommand):
     # PRODUCTS (5 per category)
     # ------------------------------------------------------------
     def create_products(self):
-        today = timezone.now().date()
         now = timezone.now()
+        expiry = now + timezone.timedelta(days=7)
 
         product_templates = [
-            ("Sample Product A", "Description for product A", 2.50, "KG", "sample1.jpg"),
-            ("Sample Product B", "Description for product B", 3.00, "EACH", "sample2.jpg"),
-            ("Sample Product C", "Description for product C", 1.80, "PACK", "sample3.jpg"),
-            ("Sample Product D", "Description for product D", 4.20, "KG", "sample4.jpg"),
-            ("Sample Product E", "Description for product E", 5.50, "EACH", "sample5.jpg"),
+            ("Sample Product A", "Description for product A", Decimal("2.50"), "KG"),
+            ("Sample Product B", "Description for product B", Decimal("3.00"), "EA"),
+            ("Sample Product C", "Description for product C", Decimal("1.80"), "PK"),
+            ("Sample Product D", "Description for product D", Decimal("4.20"), "KG"),
+            ("Sample Product E", "Description for product E", Decimal("5.50"), "EA"),
         ]
 
         for category in self.categories:
-            for name, description, price, unit, image in product_templates:
+            for name, description, price, unit in product_templates:
 
                 product_name = f"{category.name} - {name}"
 
@@ -186,27 +187,76 @@ class Command(BaseCommand):
                     defaults={
                         "producer": self.producer,
                         "category": category,
+                        "moderated_by_admin": self.admin,
                         "description": description,
                         "price": price,
                         "unit": unit,
-                        "image": image,
+                        "image": None,
                         "stock_quantity": 100,
                         "low_stock_threshold": 10,
-                        "harvest_date": today,
+                        "harvest_date": now,
                         "farm_origin": "Blue Cow Farm",
                         "organic_certification_status": "CERTIFIED",
                         "storage_guidance": "Keep refrigerated.",
-                        "expiry_date": today + timezone.timedelta(days=7),
-                        "expiry_type": "BEST BEFORE",
-                        "availability_start": today,
-                        "availability_end": today + timezone.timedelta(days=30),
-                        "availability_status": "AVAILABLE",
-                        "surplus_status": "NONE",
-                        "surplus_discount_percentage": 0.00,
-                        "created_at": now,
-                        "updated_at": now,
-                        "status": "PUBLISHED",
+                        "expiry_date": expiry,
+                        "expiry_type": "BB",
+                        "availability_status": "AV",
+                        "surplus_status": "NN",
+                        "surplus_discount_percentage": Decimal("0.00"),
+                        "surplus_expiry": now,
+                        "surplus_note": None,
+                        "status": "PUB",
                     }
                 )
 
         self.stdout.write(self.style.SUCCESS("5 products created for each category."))
+
+    # ------------------------------------------------------------
+    # CERTIFIED ORGANIC PRODUCTS (10 items)
+    # ------------------------------------------------------------
+    def create_certified_organic_products(self):
+        now = timezone.now()
+        expiry = now + timezone.timedelta(days=10)
+
+        organic_products = [
+            ("Organic Carrots", "Fresh organic carrots", Decimal("1.20"), "KG"),
+            ("Organic Apples", "Crisp organic apples", Decimal("2.80"), "EA"),
+            ("Organic Spinach", "Leafy organic spinach", Decimal("1.50"), "PK"),
+            ("Organic Tomatoes", "Vine-ripened organic tomatoes", Decimal("2.20"), "KG"),
+            ("Organic Broccoli", "Fresh organic broccoli", Decimal("1.90"), "EA"),
+            ("Organic Strawberries", "Sweet organic strawberries", Decimal("3.50"), "PK"),
+            ("Organic Potatoes", "Farm-grown organic potatoes", Decimal("1.10"), "KG"),
+            ("Organic Onions", "Organic yellow onions", Decimal("0.90"), "KG"),
+            ("Organic Lettuce", "Crisp organic lettuce", Decimal("1.30"), "EA"),
+            ("Organic Blueberries", "Fresh organic blueberries", Decimal("3.80"), "PK"),
+        ]
+
+        for name, description, price, unit in organic_products:
+            self.Product.objects.get_or_create(
+                name=name,
+                defaults={
+                    "producer": self.producer,
+                    "category": self.certified_organic_category,
+                    "moderated_by_admin": self.admin,
+                    "description": description,
+                    "price": price,
+                    "unit": unit,
+                    "image": None,
+                    "stock_quantity": 200,
+                    "low_stock_threshold": 20,
+                    "harvest_date": now,
+                    "farm_origin": "Blue Cow Farm",
+                    "organic_certification_status": "CERTIFIED",
+                    "storage_guidance": "Store in a cool dry place.",
+                    "expiry_date": expiry,
+                    "expiry_type": "BB",
+                    "availability_status": "AV",
+                    "surplus_status": "NN",
+                    "surplus_discount_percentage": Decimal("0.00"),
+                    "surplus_expiry": now,
+                    "surplus_note": None,
+                    "status": "PUB",
+                }
+            )
+
+        self.stdout.write(self.style.SUCCESS("Certified Organic products created."))
