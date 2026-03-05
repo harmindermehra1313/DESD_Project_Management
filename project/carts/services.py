@@ -393,9 +393,13 @@ def cart_remove_item_for_owner(*, owner: CartOwner, product_id: int) -> None:
 @transaction.atomic
 def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     guest_cart = (
-        Cart.objects.select_for_update().filter(session_key=session_key).first()
+        # Added status=CartStatus.ACTIVE
+        Cart.objects.select_for_update().filter(
+            session_key=session_key, status=CartStatus.ACTIVE
+        ).first()
     )
-    if not guest_cart or guest_cart.status != CartStatus.ACTIVE:
+    # if not guest_cart or guest_cart.status != CartStatus.ACTIVE:
+    if not guest_cart:
         return cart_get_or_create_active(owner=CartOwner(user_id=user_id))
 
     user_cart = cart_get_or_create_active(owner=CartOwner(user_id=user_id))
@@ -410,7 +414,7 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
 
     touched_product_ids: set[int] = set()
 
-    # 1) Merge quantities
+    # Merge quantities
     for gi in guest_items:
         touched_product_ids.add(gi.product_id)
 
@@ -437,7 +441,7 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
                     updated_at=_now(),
                 )
 
-    # 2) Normalize unit_price based on FINAL quantities (wholesale tiers)
+    # Normalize unit_price based on FINAL quantities (wholesale tiers)
     user_lines = list(
         CartItem.objects.select_for_update().filter(
             cart_id=user_cart.pk, product_id__in=touched_product_ids
@@ -456,14 +460,14 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
                 updated_at=_now(),
             )
 
-    # 3) OPTIONAL CLEANUP: delete guest cart items now that they’re merged
-    CartItem.objects.filter(cart_id=guest_cart.pk).delete()
-
-    # 4) Mark guest cart merged
-    guest_cart.status = CartStatus.MERGED
-    guest_cart.merged_into_cart_id = user_cart.pk
-    guest_cart.save(update_fields=["status", "merged_into_cart_id", "updated_at"])
-
+    # delete guest cart items now that they’re merged
+    # CartItem.objects.filter(cart_id=guest_cart.pk).delete()
+    # [TODO: Review later whether to keep merged carts in the db or delete it permanently]
+    # Mark guest cart merged
+    # guest_cart.status = CartStatus.MERGED
+    # guest_cart.merged_into_cart_id = user_cart.pk
+    # guest_cart.save(update_fields=["status", "merged_into_cart_id", "updated_at"])
+    guest_cart.delete()
     return user_cart
 
 
