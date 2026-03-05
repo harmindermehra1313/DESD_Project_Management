@@ -1,5 +1,9 @@
 from rest_framework.routers import DefaultRouter
-
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+from api.views.accounts import jwt_test
 
 from api.views.accounts import (
     UserViewSet,
@@ -113,7 +117,11 @@ router.register("review-responses", ReviewResponseViewSet)
 
 #urlpatterns = router.urls
 
+
 urlpatterns = [
+    path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("jwt-test/", jwt_test, name="jwt_test"),
     path("cart/", CartAPIView.as_view(), name="cart"),
     path("cart/items/", CartItemAddView.as_view(), name="cart-item-add"),
     path("cart/items/<int:pk>/", CartItemDetailView.as_view(), name="cart-item-detail"),

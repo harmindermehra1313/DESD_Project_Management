@@ -89,9 +89,26 @@ if (email && emailFeedback) {
 
         // Common domain corrections
         const commonDomains = [
-            'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
-            'icloud.com', 'live.com', 'proton.me'
+            // Gmail
+            "gmail.com",
+            "gmail.co.uk",
+
+            // Outlook / Hotmail / Live
+            "outlook.com",
+            "outlook.co.uk",
+            "hotmail.com",
+            "hotmail.co.uk",
+            "live.com",
+
+            // Yahoo
+            "yahoo.com",
+            "yahoo.co.uk",
+
+            // Apple / Proton
+            "icloud.com",
+            "proton.me"
         ];
+
 
         const typedDomain = value.split('@')[1];
 
@@ -109,6 +126,39 @@ if (email && emailFeedback) {
         } else {
             emailFeedback.textContent = 'Email looks good';
             emailFeedback.style.color = 'green';
+        }
+    });
+}
+// Contact Person Validation
+const contactPerson = document.getElementById("business_contact_person");
+
+if (contactPerson) {
+    contactPerson.addEventListener("input", () => {
+        const value = contactPerson.value.trim();
+        const pattern = /^[A-Za-z\s]{2,}$/;
+
+        if (!pattern.test(value)) {
+            showFieldError(contactPerson, "Name must contain only letters and spaces.");
+        } else {
+            clearFieldError(contactPerson);
+        }
+    });
+  }
+
+if (businessReg) {
+    businessReg.addEventListener("input", () => {
+        const value = businessReg.value.trim().toUpperCase();
+        businessReg.value = value; // auto‑uppercase
+
+        const pattern = /^(\d{8}|[A-Z]\d{7}|[A-Z]{2}\d{6}|[A-Z]{2}\d{5}[A-Z])$/;
+
+        if (!pattern.test(value)) {
+            showFieldError(
+                businessReg,
+                "Companies House numbers must be 8 digits (01234567), 1 letter + 7 digits (A1234567), or 2 letters + 6 digits (SC123456)."
+            );
+        } else {
+            clearFieldError(businessReg);
         }
     });
 }
@@ -351,7 +401,7 @@ if (fullName && nameFeedback) {
         // Case 1: Only first name typed
         if (parts.length === 1) {
             nameFeedback.textContent = 'Please enter your last name, or write your first name twice if you don’t have a last name.';
-            nameFeedback.style.color = 'orange';
+            nameFeedback.style.color = 'red';
             return;
         }
 
@@ -366,25 +416,41 @@ if (fullName && nameFeedback) {
 // ------------------------------------------------------------
 if (email) {
     const domainSuggestions = {
+        // Gmail
         "gma": "gmail.com",
         "gmai": "gmail.com",
         "gmail": "gmail.com",
+        "gmail.co.": "gmail.co.uk",
+        "gmail.co.u": "gmail.co.uk",
+        "gmail.co.uk": "gmail.co.uk",
 
+        // Hotmail
         "hot": "hotmail.com",
         "hotm": "hotmail.com",
         "hotma": "hotmail.com",
         "hotmai": "hotmail.com",
         "hotmail": "hotmail.com",
+        "hotmail.co.": "hotmail.co.uk",
+        "hotmail.co.u": "hotmail.co.uk",
+        "hotmail.co.uk": "hotmail.co.uk",
 
+        // Outlook
         "out": "outlook.com",
         "outl": "outlook.com",
         "outlo": "outlook.com",
         "outloo": "outlook.com",
         "outlook": "outlook.com",
+        "outlook.co.": "outlook.co.uk",
+        "outlook.co.u": "outlook.co.uk",
+        "outlook.co.uk": "outlook.co.uk",
 
+        // Yahoo
         "yah": "yahoo.com",
         "yaho": "yahoo.com",
-        "yahoo": "yahoo.com"
+        "yahoo": "yahoo.com",
+        "yahoo.co.": "yahoo.co.uk",
+        "yahoo.co.u": "yahoo.co.uk",
+        "yahoo.co.uk": "yahoo.co.uk"
     };
 
     let lastEmailValue = "";
@@ -396,7 +462,7 @@ if (email) {
 
         if (isDeleting) {
             emailFeedback.textContent = "";
-            return; // allow backspace
+            return;
         }
 
         if (!current.includes('@')) {
@@ -406,11 +472,19 @@ if (email) {
 
         const [local, domainPart] = current.split('@');
 
-        if (!domainPart || domainPart.length < 3) {
+        if (!domainPart || domainPart.length < 2) {
             emailFeedback.textContent = "";
             return;
         }
 
+        // Allow custom/special domains
+        if (domainPart.includes('.') && !commonDomains.includes(domainPart)) {
+            emailFeedback.textContent = "Email looks good";
+            emailFeedback.style.color = "green";
+            return;
+        }
+
+        // Auto-complete for known domains
         let suggestion = null;
         for (const key in domainSuggestions) {
             if (domainPart.startsWith(key)) {
@@ -664,7 +738,10 @@ normaliseUKPhone(phone); // customer phone if needed
 
   // Business registration number
   if (businessReg) {
-    addPatternMessage(businessReg, 'Enter a valid UK Companies House registration number.');
+    addPatternMessage(
+    businessReg,
+    "Companies House numbers must be 8 digits (01234567), 1 letter + 7 digits (A1234567), or 2 letters + 6 digits (SC123456)."
+);
   }
 
   // Community / charity registration number

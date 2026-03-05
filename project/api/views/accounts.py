@@ -56,3 +56,17 @@ class AdminViewSet(viewsets.ModelViewSet):
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def jwt_test(request):
+    return Response({
+        "authenticated": True,
+        "user_id": request.user.id,
+        "email": request.user.email,
+        "role": request.user.role,
+    })

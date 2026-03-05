@@ -55,7 +55,7 @@
 
             <div class="mb-3">
               <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-              <input id="email" name="email" type="email" class="form-control" maxlength="25" required autocomplete="email" placeholder="you@example.com">
+              <input id="email" name="email" type="email" class="form-control" maxlength="40" required autocomplete="email" placeholder="you@example.com">
               <div id="emailFeedback" class="form-text"></div>
             </div>
 
@@ -151,7 +151,11 @@
               </div>
                 <div class="mb-2">
                   <label for="business_contact_person" class="form-label">Business contact person</label>
-                  <input id="business_contact_person" name="business_contact_person" type="text" class="form-control" placeholder=" e.g. Jon Smith" maxlength="150" required pattern="^[A-Za-z]+(?:\s+[A-Za-z]+)+$">
+                  <input id="business_contact_person" name="business_contact_person" type="text" class="form-control" placeholder=" e.g. Jon Smith" maxlength="150" required pattern="^[A-Za-z\s]{2,}$">
+                  <div class="invalid-feedback">
+                    Enter a full name with at least two words (e.g. “Jon Smith”).
+                  </div>
+
                 </div>
               </div>
 
@@ -160,11 +164,12 @@
                 <h6 class="mb-2">Community Group Details</h6>
                 <div class="mb-2">
                   <label for="community_name" class="form-label">Organisation name</label>
-                  <input id="community_name" name="community_name" type="text" class="form-control" maxlength="150" placeholder="e.g. Friendship Factory" required pattern="^[A-Za-z0-9\s\-&,.'()]{2,}$">
+                  <input id="business_contact_person" name="community_name" type="text" class="form-control" maxlength="150" placeholder="e.g. Friendship Factory" required pattern="^[A-Za-z\s]{2,}$">
                 </div>
                 <div class="mb-2">
                   <label for="community_contact" class="form-label">Contact person</label>
                   <input id="community_contact" name="community_contact" type="text" class="form-control" placeholder=" e.g. Jon Smith" maxlength="150" required pattern="^[A-Za-z]+(?:\s+[A-Za-z]+)+$">
+                  <div id="nameFeedback" class="form-text"></div>
                 </div>
                 <div class="mb-2">
                   <label for="community_registration_number" class="form-label">Registration number (Optional)</label>

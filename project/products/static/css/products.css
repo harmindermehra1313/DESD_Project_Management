@@ -56,3 +56,100 @@
     justify-content: center;
     background-color: #f8f9fa;
 }
+
+.product-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+/* --- FILTER BAR --- */
+.filter-bar {
+    background: #f6f7f9;
+    padding: 18px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+    margin-bottom: 25px;
+    margin-top: 30px;
+    transition: box-shadow .2s ease;
+}
+
+.filter-bar:hover {
+    box-shadow: 0 6px 22px rgba(0,0,0,0.10);
+}
+
+.filter-bar .form-control,
+.filter-bar .form-select {
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid #dcdcdc;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.filter-bar .form-control:focus,
+.filter-bar .form-select:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 3px rgba(76,175,80,0.25);
+}
+
+/* --- PRODUCT CARDS --- */
+.product-card {
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform .2s ease, box-shadow .2s ease;
+    background: #ffffff;
+}
+
+.product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+}
+
+.product-card img {
+    height: 140px;
+    object-fit: cover;
+    border-bottom: 1px solid #eee;
+}
+
+/* Card header */
+.product-card .card-header {
+    font-size: 1rem;
+    padding: 12px;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+}
+
+/* Price styling */
+.product-card h5 {
+    color: #2e7d32 !important;
+    font-weight: 700;
+}
+
+/* Buttons */
+.btn-brand-outline {
+    border: 2px solid #4CAF50;
+    color: #4CAF50;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all .2s ease;
+}
+
+.btn-brand-outline:hover {
+    background: #4CAF50;
+    color: #fff;
+}
+.row-cols-lg-6>* {
+    flex: 0 0 auto;
+    width: 19.666667%;
+}
+
+/* --- RESPONSIVE TWEAKS --- */
+@media (max-width: 768px) {
+    .filter-bar {
+        padding: 15px;
+    }
+    .product-card img {
+        height: 120px;
+    }
+}
