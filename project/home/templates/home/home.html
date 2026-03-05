@@ -1,10 +1,64 @@
 {% extends "base.html" %}
-{% block title %}Home{% endblock %}
+{% load static %}
+
+{% block title %}Home | Bristol Regional Food Network{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'home.css' %}">
+{% endblock %}
+
 {% block content %}
-  <div class="card border-0 shadow-none">
-    <div class="card-body p-3 p-md-4">
-      <h1>Homepage</h1>
-      <p>Use the navbar to visit each app’s placeholder page.</p>
+<div class="container pb-5">
+    
+    <div class="text-center hero-section">
+        <h1 class="hero-title">Local Produce, Delivered to You.</h1>
+        <p class="hero-text">
+            The Bristol Regional Food Network connects you with over 40 local producers within 20 miles 
+            of the city center. From seasonal veg and artisan dairy to fresh bakery goods, we make it easy to 
+            support local farms through one simple, transparent marketplace.
+        </p>
+        <a href="/category/vegetables/" class="btn btn-browse">Browse Products</a>
     </div>
-  </div>
+
+    <div class="text-center py-5 mt-3">
+        <h2 class="section-title">How it Works</h2>
+        <div class="row mt-5 px-md-4">
+            
+            <div class="col-md-4 mb-5 how-it-works-col px-lg-4">
+                <h4>Add Items to<br>Basket</h4>
+                <p>Browse fresh produce from over 40 local farms and artisans within 20 miles of Bristol. Mix and match seasonal veg, dairy, and bakery goods from multiple vendors in one simple shop.</p>
+            </div>
+            
+            <div class="col-md-4 mb-5 how-it-works-col px-lg-4">
+                <h4>Pay Online, or In<br>Person</h4>
+                <p>Choose the way you pay, whether it's a secure digital checkout or a manual payment upon collection. Our system automatically splits the total to ensure every local producer is paid fairly and accurately.</p>
+            </div>
+            
+            <div class="col-md-4 mb-5 how-it-works-col px-lg-4">
+                <h4>Receive Your<br>Order</h4>
+                <p>Get your harvest exactly how you want it, with options for direct home delivery or convenient farm collection. Once ordered, our producers have 48 hours to harvest or bake your items at peak freshness.</p>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="text-center py-5">
+        <h2 class="section-title">Popular Categories</h2>
+        <div class="row mt-5">
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a href="/category/vegetables/" class="category-card">(image)</a>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a href="/category/dairy-eggs/" class="category-card">(image)</a>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a href="/category/bakery/" class="category-card">(image)</a>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a href="/category/seasonal/" class="category-card">(image)</a>
+            </div>
+        </div>
+    </div>
+    
+</div>
 {% endblock %}
