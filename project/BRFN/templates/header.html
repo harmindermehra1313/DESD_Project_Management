@@ -95,7 +95,9 @@
 
 
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="{% url 'product_view' 999 %}">Certified Organic</a></li>
+                {% for org in organic %}
+                <li><a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a></li>
+                {% endfor %}
               </ul>
             </li>
 

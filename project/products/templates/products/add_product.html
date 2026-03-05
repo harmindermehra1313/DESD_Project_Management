@@ -4,11 +4,18 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
 {% endblock %}
 
 {% block content %}
 <div class="container my-5">
     <h1 class="page-title mb-5">List New Product</h1>
+
+    {% if error_message %}
+    <div class="alert alert-danger" role="alert">
+        {{ error_message }}
+    </div>
+    {% endif %}
 
     <form method="POST" action="{% url 'add_product' %}" enctype="multipart/form-data">
         {% csrf_token %}
@@ -18,7 +25,7 @@
             <div class="col-12 col-md-4">
                 <div class="mb-3">
                     <label for="id_name" class="form-label custom-form-label">Product Name</label>
-                    <input type="text" class="form-control" name="name" id="id_name" placeholder="Sample Text" required>
+                    <input type="text" class="form-control" name="name" id="id_name" placeholder="E.g, Apples" required>
                 </div>
 
                 <div class="mb-3">
@@ -42,34 +49,34 @@
                     <label for="id_harvest_date" class="form-label custom-form-label">Harvest Date</label>
                     <input type="datetime-local" class="form-control" name="harvest_date" id="id_harvest_date" required>
                 </div>
+            
+                <div class="mb-3">
+                    <label for="id_expiry_date" class="form-label custom-form-label">Best Before / Expiry Date</label>
+                    <input type="datetime-local" class="form-control" name="expiry_date" id="id_expiry_date" required>
+                </div>
             </div>
-
             <div class="col-12 col-md-4">
                 <div class="mb-3">
                     <label for="id_category" class="form-label custom-form-label">Product Category</label>
                     <select class="form-select" name="category" id="id_category" required>
                         <option value="" selected disabled>Select a category...</option>
                         
-                        <option value="MT">Meat</option>
-                        <option value="DAE">Dairy and Eggs</option>
-                        <option value="FR">Fruit</option>
-                        <option value="VEG">Vegetables</option>
-                        <option value="SEA">Seasonal</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
                         
                     </select>
                 </div>
 
                 <div class="mb-3">
                     <label for="id_unit" class="form-label custom-form-label">Units</label>
-                    <select class="form-select" name="unit" id="id_unit">
-                        <option value="EA">Each</option>
-                        <option value="PK">Pack</option>
-                        <option value="KG">Kilogram</option>
-                        <option value="G">Gram</option>
-                        <option value="L">Liter</option>
-                        <option value="ML">Milliliter</option>
-                        <option value="BX">Box</option>
-                        <option value="BN">Bunch</option>
+                    <select class="form-select" name="unit" id="id_unit" required>
+                        <option value="" selected disabled>Select a unit...</option>
+                        
+                        {% for value, label in units %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                        
                     </select>
                 </div>
 
@@ -77,18 +84,27 @@
                     <label for="id_stock_quantity" class="form-label custom-form-label">Stock</label>
                     <input type="number" class="form-control" name="stock_quantity" id="id_stock_quantity" placeholder="100" required>
                 </div>
-
                 <div class="mb-3">
-                    <label for="id_allergens" class="form-label custom-form-label">Allergen Information</label>
-                    <input type="text" class="form-control" name="allergen_info_placeholder" id="id_allergens" placeholder="E.g., Contains Nuts">
+                    <label for="id_allergen" class="form-label custom-form-label">Allergen Information</label>
+                    <select class="form-select" name="allergen" id="id_allergen" multiple size="6">
+                        {% if allergens %}
+                            {% for allergen in allergens %}
+                                <option value="{{ allergen.value }}">{{ allergen.label }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No allergens available</option>
+                        {% endif %}
+                    </select>
+                    <div class="form-text text-muted small">Select all that apply. Leave blank if none.</div>
                 </div>
+
             </div>
 
             <div class="col-12 col-md-4">
                 <div class="mb-3">
                     <label for="id_image" class="form-label custom-form-label">Product Image</label>
                     <div class="image-upload-box px-3">
-                        <input class="form-control" type="file" name="image" id="id_image" accept="image/*" required>
+                        <input class="form-control" type="file" name="image" id="id_image" accept="image/*">
                     </div>
                 </div>
 
@@ -105,4 +121,7 @@
         </div>
     </form>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="{% static 'js/allergen_select.js' %}"></script>
 {% endblock %}

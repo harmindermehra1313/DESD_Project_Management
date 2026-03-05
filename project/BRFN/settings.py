@@ -18,6 +18,24 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+from datetime import timedelta
+
+LOGIN_URL = '/accounts/login/'
+# Timer for Session and JWT for token Generation
+# Global Session Time out
+SESSION_COOKIE_AGE = 60 * 30  # 60 seconds * 30 = 30 minutes
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# JWT Time span
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
+
+ACCESS_TOKEN_LIFETIME = timedelta(seconds=30)
+from google.oauth2 import service_account
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -88,15 +106,8 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 
 
 # Database
+
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -107,19 +118,6 @@ DATABASES = {
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }
-
-# Harminder EDITS
-#  DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.mysql",
-#         "NAME": os.environ.get("MYSQL_DATABASE", "DESD"),
-#         "USER": os.environ.get("MYSQL_USER", "myuser"),
-#         "PASSWORD": os.environ.get("MYSQL_PASSWORD", "mypass"),
-#         "HOST": os.environ.get("DB_HOST", "db"),
-#         "PORT": int(os.environ.get("DB_PORT", 3306)),
-#         "OPTIONS": {"charset": "utf8mb4"},
-#     }
-# }
 
 
 AUTH_USER_MODEL = "accounts.User"
@@ -165,13 +163,41 @@ STATICFILES_DIRS = [
     BASE_DIR / "static", 
 ]
 
+GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
+    os.path.join(BASE_DIR, 'firebase-key.json')
+)
 
+GS_BUCKET_NAME = 'desd-6af1a.firebasestorage.app'
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+
+# Default Firebase/GCS object path used when a product is created without an uploaded image.
+# This should exist in the bucket, e.g. gs://<bucket>/products/img/default-product.png
+DEFAULT_PRODUCT_IMAGE = os.getenv("DEFAULT_PRODUCT_IMAGE", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg")
+
+# Category food-group specific default image paths in Firebase/GCS.
+# Keys must match products.Category.FoodGroups values.
+DEFAULT_PRODUCT_IMAGES_BY_GROUP = {
+    "FR": os.getenv("DEFAULT_PRODUCT_IMAGE_FRUIT", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg"),
+    "VEG": os.getenv("DEFAULT_PRODUCT_IMAGE_VEGETABLES", "products/img/DEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg"),
+    "MT": os.getenv("DEFAULT_PRODUCT_IMAGE_MEAT", "products/img/DEFAULT_PRODUCT_IMAGE_MEAT.jpg"),
+    "DAE": os.getenv("DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS", "products/img/DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg"),
+    "SEA": os.getenv("DEFAULT_PRODUCT_IMAGE_SEASONAL", "products/img/DEFAULT_PRODUCT_IMAGE_SEASONAL.jpg"),
+}
 # DRF settings
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }

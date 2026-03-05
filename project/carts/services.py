@@ -393,9 +393,13 @@ def cart_remove_item_for_owner(*, owner: CartOwner, product_id: int) -> None:
 @transaction.atomic
 def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     guest_cart = (
-        Cart.objects.select_for_update().filter(session_key=session_key).first()
+        # Added status=CartStatus.ACTIVE
+        Cart.objects.select_for_update().filter(
+            session_key=session_key, status=CartStatus.ACTIVE
+        ).first()
     )
-    if not guest_cart or guest_cart.status != CartStatus.ACTIVE:
+    # if not guest_cart or guest_cart.status != CartStatus.ACTIVE:
+    if not guest_cart:
         return cart_get_or_create_active(owner=CartOwner(user_id=user_id))
 
     user_cart = cart_get_or_create_active(owner=CartOwner(user_id=user_id))

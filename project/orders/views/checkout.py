@@ -86,6 +86,277 @@ def stripe_return(request):
         logger.exception("Stripe return redirect failed: %s", e)
         raise
 
+class CheckoutAPIView(APIView):
+    def post(self, request):
+        # Get user either guest or logged in
+        if request.user.is_authenticated:
+            user = request.user
+            is_guest = False
+        else:
+            user = None
+            is_guest = True
+
+        serializer = CheckoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # cart = request.session.get("cart", {})
+        # items = cart.get("items", [])
+        if request.user.is_authenticated:
+            owner = CartOwner(user_id=request.user.id)
+        else:
+            if not request.session.session_key:
+                request.session.create()
+            owner = CartOwner(session_key=request.session.session_key)
+        
+        cart = cart_get_or_create_active(owner=owner)
+        items = cart.items.select_related("product", "product__producer")
+
+        if not items:
+            return Response(
+                {"error": "Cart is empty"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # -----------------------------
+        # Validate stock for each item
+        # -----------------------------
+        for entry in items:
+            # product = Product.objects.get(id=entry["product_id"])
+            # quantity = entry["quantity"]
+            product = entry.product
+            quantity = entry.quantity
+
+            if product.stock_quantity < quantity:
+                return Response(
+                    {
+                        "error": f"Insufficient stock for {product.name}. "
+                                f"Available: {product.stock_quantity}, "
+                                f"Requested: {quantity}"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+
+        # -----------------------------
+        # Extract global checkout fields
+        # -----------------------------
+        #delivery_address_id = serializer.validated_data["delivery_address_id"]
+        #delivery_address = Address.objects.get(id=delivery_address_id)
+
+        payment_method = serializer.validated_data["payment_method"]
+        special_instructions = serializer.validated_data.get("special_instructions", "")
+
+        # -----------------------------
+        # Resolve delivery & billing address
+        # -----------------------------
+
+        if not is_guest:
+            # Logged-in user: use saved addresses
+            delivery_address_id = serializer.validated_data["delivery_address_id"]
+            delivery_address = Address.objects.get(id=delivery_address_id)
+            
+            billing_address_id = serializer.validated_data.get("billing_address_id")
+            billing_address = Address.objects.get(id=billing_address_id)
+        
+        else:
+            # Guest: create delivery & billing addresses
+            delivery_address = Address.objects.create(
+                user = None,
+                line1 = serializer.validated_data["guest_delivery_line1"],
+                line2 = serializer.validated_data.get("guest_delivery_line2"),
+                city = serializer.validated_data["guest_delivery_city"],
+                postcode = serializer.validated_data["guest_delivery_postcode"],
+            )
+            
+            # Check if billing = delivery (store once)
+            same_as_delivery = (
+                serializer.validated_data["guest_billing_line1"] == serializer.validated_data["guest_delivery_line1"] and
+                serializer.validated_data.get("guest_billing_line2") == serializer.validated_data.get("guest_delivery_line2") and
+                serializer.validated_data["guest_billing_city"] == serializer.validated_data["guest_delivery_city"]
+                and serializer.validated_data["guest_billing_postcode"] == serializer.validated_data["guest_delivery_postcode"]
+            )
+
+            if same_as_delivery:
+                billing_address = delivery_address
+            else:        
+                billing_address = Address.objects.create(
+                    user = None,
+                    line1 = serializer.validated_data["guest_billing_line1"],
+                    line2 = serializer.validated_data.get("guest_billing_line2"),
+                    city = serializer.validated_data["guest_billing_city"],
+                    postcode = serializer.validated_data["guest_billing_postcode"],
+                )
+
+        # -----------------------------
+        # Get dynamic producer fields
+        # -----------------------------
+
+        with transaction.atomic():
+
+            # -----------------------------
+            # Create order (global)
+            # -----------------------------
+            order = Order.objects.create(
+                user=user,
+                is_guest=is_guest,
+                delivery_address=delivery_address,
+                billing_address=billing_address,
+                status=Order.Status.PENDING,
+                guest_name=serializer.validated_data.get("guest_name") if is_guest else None,
+                guest_email=serializer.validated_data.get("guest_email") if is_guest else None,
+                guest_phone=serializer.validated_data.get("guest_phone") if is_guest else None,
+            )
+
+            # -----------------------------
+            # Create order items
+            # -----------------------------
+            total_excl_vat = Decimal("0")
+            total_vat = Decimal("0")
+            total_discount = Decimal("0")
+            commission_total = Decimal("0")
+
+            items_by_producer = {}
+            commission_per = Decimal("0.05")
+
+            for entry in items:
+                # product = Product.objects.get(id=entry["product_id"])
+                # quantity = entry["quantity"]
+                product = entry.product
+                quantity = entry.quantity
+
+                # Pricing logic
+                discounted_price = product.get_discounted_price()
+                wholesale_tier = product.get_wholesale_price(quantity)
+                unit_price = wholesale_tier or discounted_price
+
+                original_unit_price = product.price
+                original_line_total = original_unit_price * quantity
+
+                line_total = unit_price * quantity
+                discount_amount = original_line_total - line_total
+
+                vat_rate = product.category.vat
+                vat_fraction = vat_rate / Decimal("100")
+                vat_per_unit = unit_price * vat_fraction
+                vat_amount = vat_per_unit * quantity
+
+                commission_amount = line_total * commission_per
+
+                total_excl_vat += line_total
+                total_vat += vat_amount
+                total_discount += discount_amount
+                commission_total += commission_amount
+
+                item = OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    producer=product.producer,
+                    quantity=quantity,
+                    original_unit_price=original_unit_price,
+                    final_unit_price=unit_price,
+                    vat_amount=vat_amount,
+                    vat_rate=vat_rate,
+                    commission_amount=commission_amount,
+                    discount_amount=discount_amount,
+                    preparation_deadline=timezone.now() + timedelta(hours=48),
+                )
+
+                # Reduce stock
+                product.stock_quantity = max(product.stock_quantity - quantity, 0)
+                product.save(update_fields=["stock_quantity"])
+
+                items_by_producer.setdefault(product.producer, []).append(item)
+
+            # Update order totals
+            order.total_price = total_excl_vat
+            order.total_vat = total_vat
+            order.total_discount = total_discount
+            order.total_commission = commission_total
+            order.final_total_price = total_excl_vat + total_vat
+            order.save()
+
+            # -----------------------------
+            # Create ProducerOrderSummary for each producer
+            # -----------------------------
+            for producer, producer_items in items_by_producer.items():
+
+                # Extract producer-specific fields
+                choice_key = f"delivery_or_collection_{producer.id}"
+                date_key = f"delivery_date_{producer.id}"
+                time_key = f"delivery_time_{producer.id}"
+
+                delivery_or_collection = serializer.validated_data.get(choice_key)
+                delivery_date = serializer.validated_data.get(date_key)
+                delivery_time = serializer.validated_data.get(time_key)
+
+                # Resolve the actual address used
+                if delivery_or_collection == "DEL":
+                    # Use the order's delivery address
+                    addr = delivery_address
+                    addr_line1 = addr.line1
+                    addr_line2 = addr.line2
+                    addr_city = addr.city
+                    addr_postcode = addr.postcode
+
+                else:
+                    # TBC Use producer farm address (fallback to user address if needed)
+                    producer_addr = (
+                        producer.user.addresses.filter(is_default_delivery=True).first()
+                        or producer.user.addresses.first()
+                    )
+
+                    addr_line1 = producer_addr.line1 if producer_addr else producer.farm_name
+                    addr_line2 = producer_addr.line2 if producer_addr else ""
+                    addr_city = producer_addr.city if producer_addr else ""
+                    addr_postcode = producer_addr.postcode if producer_addr else producer.farm_postcode
+
+                # Totals
+                subtotal = sum(i.final_unit_price * i.quantity for i in producer_items)
+                vat_total_p = sum(i.vat_amount for i in producer_items)
+                commission_total_p = sum(i.commission_amount for i in producer_items)
+                payout_amount = subtotal - commission_total_p
+
+                ProducerOrderSummary.objects.create(
+                    order=order,
+                    producer=producer,
+                    subtotal=subtotal,
+                    vat_total=vat_total_p,
+                    commission_total=commission_total_p,
+                    payout_amount=payout_amount,
+                    delivery_date=delivery_date,
+                    special_instructions=special_instructions,
+                    status=ProducerOrderSummary.Status.PENDING,
+                    delivery_or_collection=delivery_or_collection,
+                    delivery_time_slot=delivery_time,
+                    address_line1=addr_line1,
+                    address_line2=addr_line2,
+                    city=addr_city,
+                    postcode=addr_postcode,
+                )
+
+            # -----------------------------
+            # Create payment record
+            # -----------------------------
+            Payment.objects.create(
+                order=order,
+                amount=order.final_total_price,
+                payment_method=payment_method,
+                payment_status=Payment.Status.PENDING,
+                sandbox_mode=True,
+            )
+
+            # Clear cart
+            #request.session["cart"] = {"items": []}
+            cart = cart_mark_checked_out(cart=cart)
+
+        return Response(
+            {
+                "order_id": order.id,
+                "unique_reference": order.unique_reference
+            },
+            status=status.HTTP_201_CREATED
+        )
+    
 def fake_add_to_cart(request):
     # TBC Temporary cart structure with multiple items
     products = Product.objects.all()[:3]
