@@ -240,13 +240,13 @@ def product_view(request, category_id):
     # ALL PRODUCTS PAGE
     if category_id == 0:
         selected_category = None
-        products = Product.objects.filter(status="PUB")
+        products = Product.objects.filter(status="PUBLISHED")
         show_filters = True   # show category + producer filters
 
     # CATEGORY PAGE
     else:
         selected_category = get_object_or_404(Category, id=category_id)
-        products = Product.objects.filter(status="PUB", category=selected_category)
+        products = Product.objects.filter(status="PUBLISHED", category=selected_category)
         show_filters = False  # hide category + producer filters
 
     # Producer list for dropdown (only used when show_filters=True)
