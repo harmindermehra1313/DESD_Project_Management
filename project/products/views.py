@@ -9,7 +9,7 @@ from accounts.models import Producer
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from BRFN.decorators import admin_required
+from BRFN.decorators import admin_required, producer_required
 import json
 
 
@@ -103,7 +103,7 @@ def is_producer_or_admin(user):
 #     return render(request, "products/products_list.html", context)
 
 
-@admin_required
+@producer_required
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
     if request.method == 'POST':
@@ -172,14 +172,14 @@ def add_product(request):
                 allergen=allergen_obj
             )
 
-        return redirect('products_list')
+        return redirect('product_view', category_id=0)
 
     return render(request, 'products/add_product.html', _build_add_product_context())
 
 
 def add_to_cart(request, product_id):
     print(f"TODO: Logic to add product {product_id} to the cart session.")
-    return redirect("products_list")
+    return redirect('product_view', category_id=0)
 
 
 # products/views.py
@@ -240,13 +240,13 @@ def product_view(request, category_id):
     # ALL PRODUCTS PAGE
     if category_id == 0:
         selected_category = None
-        products = Product.objects.filter(status="PUB")
+        products = Product.objects.filter(status="PUBLISHED")
         show_filters = True   # show category + producer filters
 
     # CATEGORY PAGE
     else:
         selected_category = get_object_or_404(Category, id=category_id)
-        products = Product.objects.filter(status="PUB", category=selected_category)
+        products = Product.objects.filter(status="PUBLISHED", category=selected_category)
         show_filters = False  # hide category + producer filters
 
     # Producer list for dropdown (only used when show_filters=True)
