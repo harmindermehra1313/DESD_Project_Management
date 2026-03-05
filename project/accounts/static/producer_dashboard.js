@@ -4,7 +4,7 @@ let selectedSummaryId = null;
 let currentPage = 1;
 const rowsPerPage = 10;
 
-// 1. The Master Filter - Evaluates ID, Name, Dates, Checkboxes, AND Pagination
+// 1. Evaluates ID, Name, Dates, Checkboxes, AND Pagination
 function applyAllFilters(resetPage = true) {
     if (resetPage) {
         currentPage = 1;
@@ -37,7 +37,7 @@ function applyAllFilters(resetPage = true) {
         if (fromDate !== "" && dueDate < fromDate) fromMatch = false;
         if (toDate !== "" && dueDate > toDate) toMatch = false;
 
-        // If ALL conditions are met, save it to our matching array
+        // If ALL conditions are met, save it to matching array
         if (statusMatch && orderIdMatch && nameMatch && fromMatch && toMatch) {
             matchingRows.push(row);
         } else {
