@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
-
 # ============================================================
 # CUSTOM USER MANAGER
 # ============================================================
@@ -138,6 +137,12 @@ class Producer(models.Model):
         null = True,
         blank = True,
         related_name = "approved_producers"
+    )
+
+    stripe_account_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
     )
 
     farm_name = models.CharField(

@@ -1,5 +1,61 @@
 // Main process for checkout form
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("checkout.js loaded");
+    const wrapper = document.getElementById("checkout-wrapper");
+    const form = document.getElementById("checkout-form");
+    const isGuest = document.getElementById("is-authenticated").value === "0";
+
+    // ===============================
+    // Disable payment options & submit when total < £1
+    // ===============================
+    const total = parseFloat(document.getElementById("checkout-submit")
+        .textContent.match(/£([\d.]+)/)[1]);
+
+    const checkoutDetails = document.getElementById("checkout-whole");
+    const warning = document.getElementById("min-order-warning");
+    const cardRadio = document.getElementById("payment-card");
+    const cashRadio = document.getElementById("payment-cash");
+    const submitBtn = document.getElementById("checkout-submit");
+
+    if (total < 1) {
+        warning.style.display = "block";
+
+        // Hide all checkout details except the warning
+        checkoutDetails.style.opacity = "0.4";
+        checkoutDetails.style.pointerEvents = "none";
+
+        // Disable payment options
+        cardRadio.disabled = true;
+        cashRadio.disabled = true;
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.classList.add("disabled-btn");
+    }
+
+    // ===============================
+    // Card payment initialisation
+    // ===============================
+    let stripe = null;
+    let elements = null;
+
+    if (STRIPE_CLIENT_SECRET && STRIPE_CLIENT_SECRET.startsWith("pi_")) {
+        stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+
+        elements = stripe.elements({
+            clientSecret: STRIPE_CLIENT_SECRET,
+            wallets: { link: "never" }
+        });
+
+        const paymentElement = elements.create("payment", {
+            wallets: { link: "never" }
+        });
+
+        paymentElement.mount("#payment-element");
+    } else {
+        console.warn("Stripe not initialised: no valid client secret.");
+    }
+
     // ===============================
     // Address selector toggles
     // ===============================
@@ -106,18 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // function updateSlotOptions() {
-        //     const slots = deliveryRadio.checked ? deliverySlots : collectionSlots;
-
-        //     timeField.innerHTML = '<option value="">Select a time slot</option>';
-
-        //     slots.forEach(slot => {
-        //         const opt = document.createElement("option");
-        //         opt.value = slot;
-        //         opt.textContent = slot;
-        //         timeField.appendChild(opt);
-        //     });
-        // }
         function updateSlotOptions() {
             const slots = deliveryRadio.checked ? deliverySlots : collectionSlots;
 
@@ -287,7 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    if (sameAsDelivery) {
+    if (sameAsDelivery && isGuest) {
         sameAsDelivery.addEventListener("change", () => {
             if (sameAsDelivery.checked) {
                 syncBillingToDelivery();
@@ -309,120 +353,261 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ===============================
+    // Show card payment
+    // ===============================
+    const cardSection = document.getElementById("card-payment-section");
+    const radios = document.querySelectorAll('input[name="payment_method"]');
+
+    // Show or hide card section based on the default selected radio
+    const selected = document.querySelector('input[name="payment_method"]:checked');
+    if (selected && selected.value === "CRD") {
+        cardSection.style.display = "block";
+    } else {
+        cardSection.style.display = "none";
+    }
+
+    // Update visibility when user changes selection
+    radios.forEach(radio => {
+        radio.addEventListener("change", () => {
+            if (radio.value === "CRD") {
+                cardSection.style.display = "block";
+            } else {
+                cardSection.style.display = "none";
+            }
+        });
+    });
+
+    // ===============================
     // Error messages
     // ===============================
-    const wrapper = document.getElementById("checkout-wrapper");
-    const form = document.getElementById("checkout-form");
-
+    
+    // Dates, time slots and main form validation
     form.addEventListener("invalid", () => {
         wrapper.classList.add("submitted");
+    }, true);
+
+    // Delivery address form validation
+    const deliveryAddressForm = document.getElementById("delivery-address-create-form");
+    const deliveryWrapper = document.querySelector("#new-delivery-address-form .address-wrapper");
+
+    deliveryAddressForm.addEventListener("invalid", () => {
+        deliveryWrapper.classList.add("submitted");
+    }, true);
+
+    // Billing address form validation
+    const billingAddressForm = document.getElementById("billing-address-create-form");
+    const billingWrapper = document.querySelector("#new-billing-address-form .address-wrapper");
+
+    billingAddressForm.addEventListener("invalid", () => {
+        billingWrapper.classList.add("submitted");
     }, true);
 
     // ===============================
     // Order form
     // ===============================
-    const isGuest = document.getElementById("is-authenticated").value === "0";
-
+    if (!form) {
+        console.warn("checkout-form not found in DOM");
+        return;
+    }
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        e.stopImmediatePropagation();
 
-        const paymentMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
-        const specialInstructions = form.special_instructions.value;
-        
-        //const deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
-        // Use saved address for users
-        let deliveryAddressId = null;
-        if (!isGuest) {
-            deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
-        }
-        let billingAddressId = null;
-        if (!isGuest) {
-            billingAddressId = document.querySelector('select[name="billing_address_id"]').value;
-        }
+        try {
+            console.log("Submit handler triggered");
+            debugger;
 
-        // Producer delivery/collection
-        const producerBlocks = document.querySelectorAll('.producer-delivery');
-        const producerData = {};
-        let missingFields = false;
+            const paymentMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
+            console.log("paymentMethod =", paymentMethod);
 
-        producerBlocks.forEach(block => {
-            const producerId = block.querySelector('.producer-id').value;
+            const specialInstructions = form.special_instructions.value;
+            console.log("specialInstructions =", specialInstructions);
 
-            const method = block.querySelector(`input[name="delivery_or_collection_${producerId}"]:checked`)?.value;
-            const date = block.querySelector(`input[name="delivery_date_${producerId}"]`)?.value;
-            const time = block.querySelector(`select[name="delivery_time_${producerId}"]`)?.value;
-            
-            // Validate all required fields exist per producer
-            if (!method || !date || !time) {
-                missingFields = true; 
+            //const deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
+            // Use saved address for users
+            let deliveryAddressId = null;
+            if (!isGuest) {
+                deliveryAddressId = document.querySelector('select[name="delivery_address_id"]').value;
+            }
+            let billingAddressId = null;
+            if (!isGuest) {
+                billingAddressId = document.querySelector('select[name="billing_address_id"]').value;
+            }
+            console.log("deliveryAddressId =", deliveryAddressId);
+            console.log("billingAddressId =", billingAddressId);
+
+            // Producer delivery/collection
+            const producerBlocks = document.querySelectorAll('.producer-delivery');
+            const producerData = {};
+            let missingFields = false;
+
+            producerBlocks.forEach(block => {
+                const producerId = block.querySelector('.producer-id').value;
+
+                const method = block.querySelector(`input[name="delivery_or_collection_${producerId}"]:checked`)?.value;
+                const date = block.querySelector(`input[name="delivery_date_${producerId}"]`)?.value;
+                const time = block.querySelector(`select[name="delivery_time_${producerId}"]`)?.value;
+                
+                // Validate all required fields exist per producer
+                if (!method || !date || !time) {
+                    missingFields = true; 
+                }
+
+                producerData[`delivery_or_collection_${producerId}`] = method;
+                producerData[`delivery_date_${producerId}`] = date;
+                producerData[`delivery_time_${producerId}`] = time;
+            });
+
+            console.log("producerData =", producerData);
+
+            // Validation for required fields
+            if (!paymentMethod || missingFields) {
+                wrapper.classList.add("submitted");
+                alert("Please complete all required fields before placing your order.");
+                return;
             }
 
-            producerData[`delivery_or_collection_${producerId}`] = method;
-            producerData[`delivery_date_${producerId}`] = date;
-            producerData[`delivery_time_${producerId}`] = time;
-        });
+            // Logged-in users must select an address
+            if (!isGuest && !deliveryAddressId) {
+                alert("Please select a delivery address.");
+                return;
+            }
+            if (!isGuest && !billingAddressId) {
+                alert("Please select a billing address.");
+                return;
+            }
 
-        // Validation for required fields
-        if (!paymentMethod || missingFields) {
-            wrapper.classList.add("submitted");
-            alert("Please complete all required fields before placing your order.");
-            return;
-        }
+            // Guest fields
+            let guestData = {};
+            if (isGuest) {
+                guestData = {
+                    guest_name: form.guest_name.value,
+                    guest_email: form.guest_email.value,
+                    guest_phone: form.guest_phone.value,
 
-        // Logged-in users must select an address
-        if (!isGuest && !deliveryAddressId) {
-            alert("Please select a delivery address.");
-            return;
-        }
-        if (!isGuest && !billingAddressId) {
-            alert("Please select a billing address.");
-            return;
-        }
+                    guest_delivery_line1: form.guest_delivery_line1.value,
+                    guest_delivery_line2: form.guest_delivery_line2.value,
+                    guest_delivery_city: form.guest_delivery_city.value,
+                    guest_delivery_postcode: form.guest_delivery_postcode.value,
 
-        // Guest fields
-        let guestData = {};
-        if (isGuest) {
-            guestData = {
-                guest_name: form.guest_name.value,
-                guest_email: form.guest_email.value,
-                guest_phone: form.guest_phone.value,
+                    guest_billing_line1: form.guest_billing_line1.value,
+                    guest_billing_line2: form.guest_billing_line2.value,
+                    guest_billing_city: form.guest_billing_city.value,
+                    guest_billing_postcode: form.guest_billing_postcode.value,
+                };
+            }
+            console.log("guestData =", guestData);
 
-                guest_delivery_line1: form.guest_delivery_line1.value,
-                guest_delivery_line2: form.guest_delivery_line2.value,
-                guest_delivery_city: form.guest_delivery_city.value,
-                guest_delivery_postcode: form.guest_delivery_postcode.value,
+            // ===============================
+            // Branch by payment method
+            // ===============================
 
-                guest_billing_line1: form.guest_billing_line1.value,
-                guest_billing_line2: form.guest_billing_line2.value,
-                guest_billing_city: form.guest_billing_city.value,
-                guest_billing_postcode: form.guest_billing_postcode.value,
-            };
-        }
+            // Store details first
+            let saveResponse;
+            try {
+                saveResponse = await fetch("/orders/checkout/save/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                    },
+                    body: JSON.stringify({
+                        delivery_address_id: deliveryAddressId,
+                        billing_address_id: billingAddressId,
+                        payment_method: paymentMethod,
+                        special_instructions: specialInstructions,
+                        is_guest: isGuest,
+                        ...guestData,
+                        ...producerData
+                    })
+                });
 
-        // Send request
-        const response = await fetch("/orders/checkout/api/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
-            },
-            body: JSON.stringify({
-                delivery_address_id: deliveryAddressId,
-                billing_address_id: billingAddressId,
-                payment_method: paymentMethod,
-                special_instructions: specialInstructions,
-                is_guest: isGuest,
-                ...guestData,
-                ...producerData
-            })
-        });
+                if (!saveResponse.ok) {
+                    throw new Error("Save endpoint returned " + saveResponse.status);
+                }
+                console.log("Saved successfully.");
+            } catch (err) {
+                console.error("Failed to save checkout data:", err);
+                alert("Could not save your checkout details. Please try again.");
+                return;
+            }
 
-        const data = await response.json();
+            console.log("Saved successfully.")
 
-        if (response.ok) {
-            window.location.href = `/orders/success/${data.unique_reference}/`;
-        } else {
-            alert("Checkout failed:\n" + JSON.stringify(data, null, 2));
+            if (paymentMethod === "CSH") {
+                try {
+                    // Submit normally to COD view
+                    console.log("Submit handler CASH triggered");
+                    form.action = "/orders/checkout/cod/";
+                    form.submit();
+                } catch (err) {
+                    console.error("COD submission failed:", err);
+                    alert("Could not submit your cash order.");
+                }
+                console.log("CASH branch returned");
+                return;
+            }
+
+            console.log("Reached card payment.")
+
+            // Card payment
+            if (!stripe || !elements) {
+                console.warn("Stripe not initialised — cannot process card payment.");
+                return;
+            }
+
+            try{
+                 const result = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        return_url: RETURN_URL,
+                    },
+                    setup_future_usage: null
+                });
+                console.log("Card payment came back =", result);
+
+                if (result.error) {
+                    let userMessage = "Something went wrong. Please try again."; 
+                    
+                    // Stripe provided error
+                    switch (result.error.type) {
+                        case "card_error": 
+                            // Safe to show (insufficient funds etc.)
+                            userMessage = result.error.message;
+                            break;
+                        
+                        case "validation_error":
+                            // Hide specifics
+                            userMessage = "Your card details are incorrect. Please check them and try again.";
+                            break;
+                        
+                        case "api_connection_error":
+                            userMessage = "We couldn't reach your bank. Please check your connection and try again.";
+                            break;
+                        
+                        case "api_error":
+                            userMessage = "A server error occurred. Please try again in a moment.";
+                            break;
+                        
+                        case "authentication_error":
+                            userMessage = "Authentication failed. Please try again.";
+                            break;
+                        
+                        default:
+                            userMessage = "Payment could not be processed. Please try again.";
+                    }
+
+                    document.querySelector("#payment-errors").textContent = userMessage;
+                    errorBox.style.display = "block";
+                    console.error("Stripe error:", result.error);
+                }
+            } catch (err) {
+                console.error("Stripe confirmPayment crashed:", err);
+                alert("Payment could not be completed. Please try again.");
+            }
+        } catch (err) {
+            console.error("Checkout submit failed:", err);
+            alert("Something went wrong while processing your order. Please try again.");
         }
     });
 });
@@ -431,22 +616,22 @@ document.addEventListener("DOMContentLoaded", () => {
 // Handle new addresses and update display
 // ===============================
 async function handleAddressForm(formId, selectId, previewId) {
-    const form = document.getElementById(formId);
+    const addressForm = document.getElementById(formId);
     const select = document.getElementById(selectId);
     const preview = document.getElementById(previewId);
 
-    if (!form) return;
+    if (!addressForm) return;
 
-    form.addEventListener("submit", async (e) => {
+    addressForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const payload = {
-            line1: form.line1.value,
-            line2: form.line2.value,
-            city: form.city.value,
-            postcode: form.postcode.value,
-            is_default_delivery: form.is_default_delivery?.checked || false,
-            is_default_billing: form.is_default_billing?.checked || false
+            line1: addressForm.line1.value,
+            line2: addressForm.line2.value,
+            city: addressForm.city.value,
+            postcode: addressForm.postcode.value,
+            is_default_delivery: addressForm.is_default_delivery?.checked || false,
+            is_default_billing: addressForm.is_default_billing?.checked || false
         };
 
         const response = await fetch("/api/addresses/", {
@@ -506,8 +691,8 @@ async function handleAddressForm(formId, selectId, previewId) {
         `;
 
         // Hide form
-        form.reset();
-        form.parentElement.style.display = "none";
+        addressForm.reset();
+        addressForm.parentElement.style.display = "none";
     });
 }
 

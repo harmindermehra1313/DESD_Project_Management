@@ -1,0 +1,68 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[branch "main"]
+	vscode-merge-base = origin/main
+[branch "fix_errors"]
+	vscode-merge-base = origin/fix_errors
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#16"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#16"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#16"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#16"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#16"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#16"
+[branch "rest_api_placeholders"]
+	github-pr-base-branch = "harmindermehra1313#DESP_Project_Management#main"
+	vscode-merge-base = origin/main
+[branch "merge_branches"]
+	vscode-merge-base = origin/merge_branches
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#18"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#18"
+[branch "KAN-43-tc-007-as-a-customer-order-from-single-producer"]
+	github-pr-base-branch = "harmindermehra1313#DESP_Project_Management#main"
+	vscode-merge-base = origin/main
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#20"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#28"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#28"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#28"
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#28"
+[branch "setup-design-approaches-for-frontend"]
+	vscode-merge-base = origin/setup-design-approaches-for-frontend
+[branch "KAN-40-tc-006-add-to-cart"]
+	vscode-merge-base = origin/KAN-40-tc-006-add-to-cart
+	github-pr-owner-number = "harmindermehra1313#DESP_Project_Management#26"
