@@ -36,7 +36,7 @@
     background-color: var(--bright-green);
     color: var(--text-dark);
     font-weight: bold;
-    border: none;
+    border: 1px solid #000;
 }
 .btn-brand-solid:hover, .btn-submit:hover {
     background-color: var(--dark-green);
