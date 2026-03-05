@@ -12,6 +12,12 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+import environ
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 from datetime import timedelta
 
 LOGIN_URL = '/accounts/login/'
@@ -186,7 +192,7 @@ DEFAULT_PRODUCT_IMAGES_BY_GROUP = {
     "MT": os.getenv("DEFAULT_PRODUCT_IMAGE_MEAT", "products/img/DEFAULT_PRODUCT_IMAGE_MEAT.jpg"),
     "DAE": os.getenv("DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS", "products/img/DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg"),
     "SEA": os.getenv("DEFAULT_PRODUCT_IMAGE_SEASONAL", "products/img/DEFAULT_PRODUCT_IMAGE_SEASONAL.jpg"),
-
+}
 # DRF settings
 
 REST_FRAMEWORK = {
@@ -195,3 +201,39 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "orders": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "payments": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
+# Payment settings
+STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY")
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
