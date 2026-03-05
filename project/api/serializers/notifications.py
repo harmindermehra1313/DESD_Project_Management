@@ -6,14 +6,14 @@ from notifications.models import (
     TraceabilityRecord,
 )
 from api.serializers.accounts import UserSerializer, ProducerSerializer, CustomerSerializer
-from api.serializers.products import ProductSerializer
+from api.serializers.products import ProductInlineSerializer
 from api.serializers.orders import OrderSerializer, OrderItemSerializer
 
 # Validation should happen here! TBC remove when added
 
 class NotificationSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    product = ProductSerializer(read_only=True)
+    product = ProductInlineSerializer(read_only=True)
     order = OrderSerializer(read_only=True)
 
     class Meta:
@@ -22,7 +22,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class RecallNoticeSerializer(serializers.ModelSerializer):
     producer = ProducerSerializer(read_only=True)
-    product = ProductSerializer(read_only=True)
+    product = ProductInlineSerializer(read_only=True)
 
     class Meta:
         model = RecallNotice
@@ -39,7 +39,7 @@ class RecallNotificationSerializer(serializers.ModelSerializer):
 
 class TraceabilityRecordSerializer(serializers.ModelSerializer):
     order_item = OrderItemSerializer(read_only=True)
-    product = ProductSerializer(read_only=True)
+    product = ProductInlineSerializer(read_only=True)
     producer = ProducerSerializer(read_only=True)
     customer = CustomerSerializer(read_only=True)
 

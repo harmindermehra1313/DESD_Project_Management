@@ -6,7 +6,6 @@
 <link rel="stylesheet" href="{% static 'orders/checkout.css' %}">
 {% endblock %}
 
-
 {% block content %}
 <div class="checkout-container">
 
@@ -14,7 +13,7 @@
 
     <!-- Cart Summary -->
     <section class="checkout-section">
-        <h2>Your Order</h2>
+        <h2>Cart Overview</h2>
 
         {% if cart.items %}
             <table class="checkout-table">
@@ -23,69 +22,448 @@
                         <th>Product</th>
                         <th>Qty</th>
                         <th>Unit Price</th>
+                        <th>Unit</th>
+                        <th>Origin</th>
                         <th>Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in cart.items %}
-                    <tr>
-                        <td>{{ item.product.name }}</td>
-                        <td>{{ item.quantity }}</td>
-                        <td>£{{ item.product.price }}</td>
-                        <td>£{{ item.total_price }}</td>
-                    </tr>
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                {% if item.is_wholesale %}
+                                    <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
+                                    <small class="price-note">Wholesale price applied</small>
+                                {% elif item.is_discounted %}
+                                    <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
+                                    <small class="price-note">Discounted from £{{ item.original_price|floatformat:2 }}</small>
+                                {% else %}
+                                    £{{ item.unit_price }}
+                                {% endif %}
+
+                                <br>
+                                <small class="vat-note">
+                                    + £{{ item.vat_per_unit|floatformat:2 }} VAT ({{ item.vat_rate }}%)
+                                </small>
+
+                            </td>
+                            <td>{{ item.product.get_unit_display }}</td>
+                            <td>
+                                {{ item.product.farm_origin }} - TBC miles
+                                <br>
+                                    <small class="vat-note">
+                                        Producer: {{ item.product.producer.user.name }}
+                                    </small>
+                            </td>
+                            <td>
+                                £{{ item.total_price|floatformat:2 }}
+                                {% if item.savings_total > 0 %}
+                                    <br>
+                                    <small class="savings-note">
+                                        You saved £{{ item.savings_total|floatformat:2 }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
-
-            <div class="checkout-total">
-                <strong>Order Total:</strong> £{{ cart.total }}
-            </div>
-
         {% else %}
             <p>Your cart is empty.</p>
         {% endif %}
     </section>
 
     {% if cart.items %}
-        <!-- Delivery Address -->
-        <section class="checkout-section">
-            <h3>Delivery Address</h3>
+    <div id="checkout-wrapper">
+        <h2>Order by Producer</h2>
+    {% endif %}
+    <input type="hidden" id="delivery-min" value="{{ delivery_earliest|date:'Y-m-d\TH:i' }}">
+    <input type="hidden" id="collection-min" value="{{ collection_earliest|date:'Y-m-d\TH:i' }}">
+    <input type="hidden" id="delivery-hint" value="Earliest available: {{ delivery_earliest|date:'D j M, H:i' }}">
+    <input type="hidden" id="collection-hint" value="Earliest available: {{ collection_earliest|date:'D j M, H:i' }}">
 
-            <p>{{ user.customer.address.line1 }}<br>
-            {{ user.customer.address.city }}<br>
-            {{ user.customer.address.postcode }}</p>
-            
-            <!-- Allow changing address -->
-                {% if user.is_authenticated %}
-                    <a class="btn-secondary">Change Address</a>
+    {% for producer, data in producers.items %}
+        <section class="producer-box">
+
+            <h3>{{ data.items.0.product.farm_origin }} - {{ producer.user.name }}</h3>
+
+            <div class="producer-grid">
+                <!-- LEFT: Products -->
+                <div class="producer-products">
+                    <table class="checkout-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Unit Price</th>
+                                <th>Unit</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in data.items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity }}</td>
+                                
+                                <td>
+                                    {% if item.is_wholesale %}
+                                        <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
+                                        <small class="price-note">Wholesale price applied</small>
+                                    {% elif item.is_discounted %}
+                                        <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
+                                        <small class="price-note">Discounted from £{{ item.original_price|floatformat:2 }}</small>
+                                    {% else %}
+                                        £{{ item.unit_price|floatformat:2 }}
+                                    {% endif %}
+
+                                    <br>
+                                    <small class="vat-note">
+                                        + £{{ item.vat_per_unit|floatformat:2 }} VAT ({{ item.vat_rate }}%)
+                                    </small>
+                                </td>
+
+                                <td>{{ item.product.get_unit_display }}</td>
+
+                                <td> £{{ item.total_price|floatformat:2 }}
+                                    {% if item.savings_total > 0 %}
+                                        <br>
+                                        <small class="savings-note">
+                                            You saved £{{ item.savings_total|floatformat:2 }} 
+                                        </small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- RIGHT: Delivery/Collection fields -->
+                <div class="producer-delivery">
+                    <input type="hidden" class="producer-id" value="{{ producer.id }}">
+        
+                    <h3>Select Delivery or Collection</h3>
+
+                    <label>
+                        <input type="radio" 
+                            name="delivery_or_collection_{{ producer.id }}" 
+                            value="DEL" checked required>
+                        Delivery
+                    </label><br>
+
+                    <label>
+                        <input type="radio" 
+                            name="delivery_or_collection_{{ producer.id }}" 
+                            value="COL" required>
+                        Collection
+                    </label>
+
+                    <hr>
+
+                    <h3>Select Date and Time</h3>
+                    <label class="required" for="delivery-date-{{ producer.id }}">Date</label>
+                    <input type="date"
+                        id="delivery-date-{{ producer.id }}"
+                        name="delivery_date_{{ producer.id }}" 
+                        required
+                        class="delivery-date">
+                    <span class="error-message">Please select a valid date.</span>
+
+                    <label class="required" for="delivery-time-{{ producer.id }}">Time slot</label>
+                    <select id="delivery-time-{{ producer.id }}" 
+                            name="delivery_time_{{ producer.id }}" 
+                            required
+                            class="delivery-time">
+                        <option value="">Select a time slot</option>
+                        <option value="10:00-12:00">10:00-12:00</option>
+                        <option value="12:00-14:00">12:00-14:00</option>
+                        <option value="14:00-16:00">14:00-16:00</option>
+                        <option value="16:00-18:00">16:00-18:00</option>
+                    </select>
+                    <span class="error-message">Please select a time slot.</span>
+
+                    <p class="date-hint form-text">
+                        Earliest available: 
+                        {{ delivery_earliest|date:"D j M, H:i" }}
+                    </p>
+                </div>
+            </div>
+        
+            <div class="producer-subtotal">
+                <strong>Subtotal (excl. VAT):</strong>
+                £{{ data.subtotal|floatformat:2 }}<br>
+                
+                <strong>VAT:</strong> £{{ data.vat_total|floatformat:2 }}<br>
+                
+                {% if data.savings_total > 0 %}
+                    <strong>Savings:</strong>
+                    -£{{ data.savings_total|floatformat:2 }}<br>
                 {% endif %}
+                
+                <strong>Total (incl. VAT):</strong>
+                £{{ data.grand_total|floatformat:2 }}
+            </div>
+
         </section>
+    {% endfor %}
+    
+    {% if cart.items %}
+        <div class="checkout-total">
+            <!-- Final total including VAT -->
+            <h3 class="final-order-price">
+                Final total (incl. VAT): 
+                £{{ cart.final_total|floatformat:2 }}
+            </h3>
+
+            <details class="order-breakdown">
+                <summary>Order breakdown</summary>
+
+                <ul>
+                    <!-- Total before discounts -->
+                    <li>
+                        Original total (before VAT and discounts): 
+                        £{{ cart.original_total|floatformat:2 }}
+                    </li>
+
+                    <!-- Base total (excluding VAT) -->
+                    <li>
+                        Products total (before VAT, with all discounts applied): 
+                        £{{ cart.total|floatformat:2 }}
+                    </li>
+
+                    <!-- VAT -->
+                    <li>
+                        VAT total: 
+                        £{{ cart.vat_total|floatformat:2 }}
+                    </li>
+
+                    <!-- Savings -->
+                    {% if cart.savings_total > 0 %}
+                        <li>
+                            Savings applied: 
+                            -£{{ cart.savings_total|floatformat:2 }}
+                        </li>
+                    {% endif %}
+                </ul>
+
+                {% if cart.savings_total > 0 %}
+                    <div class="order-savings">
+                        You saved £{{ cart.savings_total|floatformat:2 }} on this order
+                    </div>
+                {% endif %}
+            </details>
+        </div>
+        <br>
+    {% endif %}
+
+    {% if cart.items %}
+        <!-- Delivery Address -->
+        {% if user.is_authenticated %}
+            <section class="checkout-section">
+                <section id="delivery-address-section" class="checkout-section">
+                    <h3>Delivery Address</h3>
+
+                    
+                    <!-- Default delivery address -->
+                    <div id="selected-delivery-address">
+                        <p>
+                            {{ default_delivery.line1 }}<br>
+                            {{ default_delivery.city }}<br>
+                            {{ default_delivery.postcode }}
+                        </p>
+                    </div>
+
+                    <!-- Delivery address selector -->
+                    <label class="required"><strong>Choose another address:</strong></label>
+                    <select id="delivery-address-select" name="delivery_address_id">
+                        {% for addr in addresses %}
+                            <option 
+                                value="{{ addr.id }}"
+                                data-line1="{{ addr.line1 }}"
+                                data-line2="{{ addr.line2|default:'' }}"
+                                data-city="{{ addr.city }}"
+                                data-postcode="{{ addr.postcode }}"
+                                {% if addr.id == default_delivery.id %}selected{% endif %}
+                            >
+                                {{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}, {{ addr.city }} ({{ addr.postcode }})
+                            </option>
+                        {% endfor %}
+                        <option value="new">+ Add a new address</option>
+                    </select>
+
+                    <!-- New delivery address form -->
+                    <div id="new-delivery-address-form" style="display:none; margin-top:1rem;">
+                        <form id="delivery-address-create-form">
+                            {% csrf_token %}
+                            <h4>Add New Delivery Address</h4>
+
+                            <label class="required">Address Line 1</label>
+                            <input type="text" name="line1" required placeholder="12 Farm Lane">
+
+                            <label>Address Line 2 (optional)</label>
+                            <input type="text" name="line2" placeholder="Apartment 1A">
+
+                            <label class="required">City</label>
+                            <input type="text" name="city" required placeholder="Bristol">
+
+                            <label class="required">Postcode</label>
+                            <input type="text" name="postcode" required placeholder="BS16 2AX">
+
+                            <label>
+                                <input type="checkbox" name="is_default_delivery">
+                                Set as default delivery address
+                            </label>
+
+                            <button type="submit" class="btn btn-primary">Save Address</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Collection Address (farm collection info) --> 
+                <section id="collection-address-section" class="checkout-section" style="display:none;">
+                    <h3>Collection Addresses</h3>
+
+                    <ul>
+                        {% for addr in collection_addresses %}
+                            <li class="collection-address-item" data-producer-id="{{ addr.producer_id }}">
+                                <strong>{{ addr.farm_name }}</strong> ({{ addr.producer_name }})<br>
+                                {{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}<br>
+                                {{ addr.city }} {{ addr.postcode }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            </section>
+
+            <!-- Billing address selector -->
+            <section class="checkout-section">
+                <h3>Billing Address</h3>
+
+                <div id="selected-billing-address">
+                    <p>
+                        {{ default_billing.line1 }}<br>
+                        {{ default_billing.city }}<br>
+                        {{ default_billing.postcode }}
+                    </p>
+                </div>
+
+                <label class="required"><strong>Choose another address:</strong></label>
+                <select id="billing-address-select" name="billing_address_id">
+                    {% for addr in addresses %}
+                        <option 
+                            value="{{ addr.id }}"
+                            data-line1="{{ addr.line1 }}"
+                            data-line2="{{ addr.line2|default:'' }}"
+                            data-city="{{ addr.city }}"
+                            data-postcode="{{ addr.postcode }}"
+                            {% if addr.id == default_billing.id %}selected{% endif %}
+                        >
+                            {{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}, {{ addr.city }} ({{ addr.postcode }})
+                        </option>
+                    {% endfor %}
+                    <option value="new">+ Add a new address</option>
+                </select>
+
+                <div id="new-billing-address-form" style="display:none; margin-top:1rem;">
+                    <form id="billing-address-create-form">
+                        {% csrf_token %}
+                        <h4>Add New Billing Address</h4>
+
+                        <label class="required">Address Line 1</label>
+                        <input type="text" name="line1" required placeholder="12 Farm Lane">
+
+                        <label>Address Line 2 (optional)</label>
+                        <input type="text" name="line2" placeholder="Apartment 1A">
+
+                        <label class="required">City</label>
+                        <input type="text" name="city" required placeholder="Bristol">
+
+                        <label class="required">Postcode</label>
+                        <input type="text" name="postcode" required placeholder="BS16 2AX">
+
+                        <label>
+                            <input type="checkbox" name="is_default_billing">
+                            Set as default billing address
+                        </label>
+
+                        <button type="submit" class="btn btn-primary">Save Address</button>
+                    </form>
+                </div>
+            </section>
+        {% endif %}
 
         <!-- Order details -->
         <section class="checkout-section">
             <form id="checkout-form">
                 {% csrf_token %}
+                <input type="hidden" id="is-authenticated" value="{{ user.is_authenticated|yesno:'1,0' }}">
 
-                <!--- Delivery method -->
-                <h3>Delivery or Collection</h3>
-                <label>
-                    <input type="radio" name="delivery_or_collection" value="DEL" checked>
-                    Delivery
-                </label><br>
+                <!-- Guest checkout -->
+                {% if not user.is_authenticated %}
+                    <section class="checkout-section">
+                        <h3>Your Details</h3>
 
-                <label> 
-                    <input type="radio" name="delivery_or_collection" value="COL"> 
-                    Collection 
-                </label>
+                        <label class="required">Full Name</label>
+                        <input type="text" name="guest_name" required placeholder="Jane Doe">
+                        <span class="error-message">Full name is required.</span>
 
-                <hr>
+                        <label class="required">Email</label>
+                        <input type="email" name="guest_email" required placeholder="janedoe@hotmail.com">
+                        <span class="error-message">Please enter a valid email address.</span>
 
-                <!-- Delivery date --> 
-                <h3>Choose Delivery / Collection Date</h3> 
-                <input type="datetime-local" name="delivery_date" required > 
-                 
-                <hr>
+                        <label class="required">Phone Number</label>
+                        <input type="text" name="guest_phone" required placeholder="07123456789">
+                        <span class="error-message">Phone number is required.</span>
+                    </section>
+
+                    <section class="checkout-section">
+                        <h3>Delivery Address</h3>
+
+                        <label class="required">Address Line 1</label>
+                        <input type="text" name="guest_delivery_line1" required placeholder="12 Farm Lane">
+                        <span class="error-message">Address line 1 is required.</span>
+
+                        <label>Address Line 2 (optional)</label>
+                        <input type="text" name="guest_delivery_line2" placeholder="Apartment 1A">
+
+                        <label class="required">City</label>
+                        <input type="text" name="guest_delivery_city" required placeholder="Bristol">
+                        <span class="error-message">City is required.</span>
+
+                        <label class="required">Postcode</label>
+                        <input type="text" name="guest_delivery_postcode" required placeholder="BS16 2AX">
+                        <span class="error-message">Postcode is required.</span>
+                    </section>
+
+                    <section class="checkout-section">
+                        <h3>Billing Address</h3>
+
+                        <label>
+                            <input type="checkbox" id="billing-same-as-delivery">
+                            Same as delivery address
+                        </label>
+
+                        <div id="guest-billing-fields">
+                            <label class="required">Address Line 1</label>
+                            <input type="text" name="guest_billing_line1" required placeholder="12 Farm Lane">
+                            <span class="error-message">Address line 1 is required.</span>
+
+                            <label>Address Line 2 (optional)</label>
+                            <input type="text" name="guest_billing_line2" placeholder="Apartment 4B">
+
+                            <label class="required">City</label>
+                            <input type="text" name="guest_billing_city" required placeholder="Bristol">
+                            <span class="error-message">City is required.</span>
+
+                            <label class="required">Postcode</label>
+                            <input type="text" name="guest_billing_postcode" required placeholder="BS16 2AX">
+                            <span class="error-message">Postcode is required.</span>
+                        </div>
+                    </section>
+                {% endif %}
 
                 <!-- Special instruction --> 
                 <h3>Special Instructions (optional)</h3> 
@@ -96,25 +474,21 @@
                 <!-- Payment method --> 
                 <h3>Payment Method</h3>
                 <label>
-                    <input type="radio" name="payment_method" value="CARD" checked>
+                    <input type="radio" name="payment_method" value="CRD" checked>
                     Pay by Card
                 </label><br>
 
                 <label>
-                    <input type="radio" name="payment_method" value="CASH">
+                    <input type="radio" name="payment_method" value="CSH">
                     Cash on Delivery
                 </label><br>
 
-                <label>
-                    <input type="radio" name="payment_method" value="ACCOUNT_WALLET">
-                    Wallet Balance
-                </label>
-
-                <button type="submit" class="btn-primary checkout-btn">
-                    Place Order (£{{ cart.total }})
+                <button type="submit" id="checkout-submit" class="btn btn-primary checkout-btn">
+                    Place Order (£{{ cart.total|floatformat:2 }})
                 </button>
             </form>
         </section>
+        </div>
     {% endif %}
 </div>
 <script src="{% static 'orders/checkout.js' %}"></script>

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from community.models import Recipe, RecipeProduct, FarmStory, FavouriteRecipe
 from accounts.models import Producer, User
 from api.serializers.accounts import UserSerializer, ProducerSerializer
-from api.serializers.products import ProductSerializer
+from api.serializers.products import ProductListSerializer
 
 # Validation should happen here! TBC remove when added
 
@@ -16,7 +16,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 class RecipeProductSerializer(serializers.ModelSerializer):
     recipe = RecipeSerializer(read_only=True)
-    product = ProductSerializer(read_only=True)
+    product = ProductListSerializer(read_only=True)
 
     class Meta:
         model = RecipeProduct

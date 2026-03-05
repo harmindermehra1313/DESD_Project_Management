@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     # Rest API
     'rest_framework',
     'api',
+    'carts',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +77,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                "BRFN.context_processors.product_categories",
             ],
         },
     },
@@ -191,4 +193,13 @@ DEFAULT_PRODUCT_IMAGES_BY_GROUP = {
     "MT": os.getenv("DEFAULT_PRODUCT_IMAGE_MEAT", "products/img/DEFAULT_PRODUCT_IMAGE_MEAT.jpg"),
     "DAE": os.getenv("DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS", "products/img/DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg"),
     "SEA": os.getenv("DEFAULT_PRODUCT_IMAGE_SEASONAL", "products/img/DEFAULT_PRODUCT_IMAGE_SEASONAL.jpg"),
+
+# DRF settings
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
 }

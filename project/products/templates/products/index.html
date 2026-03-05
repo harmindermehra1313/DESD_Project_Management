@@ -1,10 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Orders{% endblock %}
-
+{% load static %}
 {% block content %}
-  <div class="card">
-    <h1>Orders</h1>
-    <p>This is the Orders area (placeholder page).</p>
-    <p>URL: <code>/orders/</code></p>
+  <div class="container py-4">
+    <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 mb-3">
+      <h1 class="m-0">Products</h1>
+      <div class="ms-md-auto d-flex gap-2">
+        <input id="productSearch"
+               class="form-control"
+               style="max-width: 360px"
+               placeholder="Search (name / category / farm)" />
+        <select id="productSort" class="form-select" style="max-width: 220px">
+          <option value="name">Sort: Name</option>
+          <option value="price_asc">Sort: Price (low → high)</option>
+          <option value="price_desc">Sort: Price (high → low)</option>
+        </select>
+      </div>
+    </div>
+    <div id="productsMsg" class="mb-3"></div>
+    <div id="productsGrid" class="row g-3"></div>
   </div>
+  <script defer src="{% static 'products/products_list.js' %}"></script>
 {% endblock %}

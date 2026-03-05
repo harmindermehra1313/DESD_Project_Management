@@ -35,10 +35,23 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid role.")
         return value
 
+# class AddressSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Address
+#         fields = "__all__"
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = "__all__"
+        fields = [
+            "id",
+            "line1",
+            "line2",
+            "city",
+            "postcode",
+            "is_default_delivery",
+            "is_default_billing",
+        ]
+        read_only_fields = ["id"]
 
 class ProducerSerializer(serializers.ModelSerializer):
     
