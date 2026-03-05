@@ -391,7 +391,7 @@ class Command(BaseCommand):
     #     self.stdout.write(self.style.SUCCESS("  Order 1 traceability record created."))
 
 
-        # Order Item 2 - Eggs
+    #     # Order Item 2 - Eggs
     #     original_price_2 = 3.00
     #     commission_2 = round(original_price_2 * 0.05, 2)
 
