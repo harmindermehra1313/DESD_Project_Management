@@ -212,3 +212,57 @@
         width: 100%;
     }
 }
+
+/* Error CSS */
+/* Error Page Container */
+.error-wrapper {
+    min-height: 70vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Error Card */
+.error-card {
+    max-width: 500px;
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+
+/* Icon */
+.error-icon {
+    font-size: 4rem;
+    color: #d9534f; /* Bootstrap danger red */
+    margin-bottom: 20px;
+}
+
+/* Title */
+.error-title {
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+/* Message */
+.error-message {
+    color: #6c757d;
+    margin-bottom: 25px;
+}
+
+/* BRFN Button */
+.btn-brand {
+    background-color: #2e7d32;
+    color: #fff;
+    border: none;
+    padding: 10px 0;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.btn-brand:hover {
+    background-color: #256628;
+    color: #fff;
+}

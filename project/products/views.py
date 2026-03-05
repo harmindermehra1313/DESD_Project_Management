@@ -8,8 +8,8 @@ from .models import Product, Category, Allergen, ProductAllergen
 from accounts.models import Producer
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
-from .models import Product
 from django.db.models import Q
+from BRFN.decorators import admin_required
 import json
 
 
@@ -86,24 +86,24 @@ def is_producer_or_admin(user):
     return False
 
 
-def product_list(request):
-    all_products = (
-        Product.objects.filter(status=Product.Status.PUBLISHED)
-        .select_related("producer")
-        .prefetch_related("product_allergen__allergen")
-    )
-    recommended_products = all_products.order_by("-created_at")[:4]
-    categories = Category.objects.all()
+# def product_list(request):
+#     all_products = (
+#         Product.objects.filter(status=Product.Status.PUBLISHED)
+#         .select_related("producer")
+#         .prefetch_related("product_allergen__allergen")
+#     )
+#     recommended_products = all_products.order_by("-created_at")[:4]
+#     categories = Category.objects.all()
 
-    context = {
-        "all_products": all_products,
-        "recommended_products": recommended_products,
-        "categories": categories,
-    }
-    return render(request, "products/products_list.html", context)
+#     context = {
+#         "all_products": all_products,
+#         "recommended_products": recommended_products,
+#         "categories": categories,
+#     }
+#     return render(request, "products/products_list.html", context)
 
 
-@login_required
+@admin_required
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
     if request.method == 'POST':
@@ -234,17 +234,25 @@ class ProductDetailView(DetailView):
 
 # Harminder Edits
 def product_view(request, category_id):
+    # All categories except organic
     categories = Category.objects.exclude(name__icontains="organic")
-
-    # All products
+    certified_organic = Category.objects.filter(name__icontains="organic")
+    # ALL PRODUCTS PAGE
     if category_id == 0:
         selected_category = None
         products = Product.objects.filter(status="PUBLISHED")
+        show_filters = True   # show category + producer filters
+
+    # CATEGORY PAGE
     else:
         selected_category = get_object_or_404(Category, id=category_id)
         products = Product.objects.filter(status="PUBLISHED", category=selected_category)
+        show_filters = False  # hide category + producer filters
 
-    # Convert queryset → JSON for JS filtering
+    # Producer list for dropdown (only used when show_filters=True)
+    producers = products.values_list("producer__farm_name", flat=True).distinct()
+
+    # Convert queryset → JSON for inline JS
     product_json = [
         {
             "id": p.id,
@@ -253,6 +261,7 @@ def product_view(request, category_id):
             "price": float(p.price),
             "image": p.image.url if p.image else "",
             "producer": p.producer.farm_name,
+            "category": p.category.name,  # required for filtering
             "stock": p.stock_quantity,
             "expiry": p.expiry_date.strftime("%Y-%m-%d"),
         }
@@ -261,6 +270,9 @@ def product_view(request, category_id):
 
     return render(request, "products/product_view.html", {
         "categories": categories,
-        "products_json": json.dumps(product_json),
+        "producers": producers,
+        "products_json": json.dumps(product_json),  # safe JSON for inline JS
         "selected_category": selected_category,
+        "show_filters": show_filters,
+        'organic': certified_organic,
     })

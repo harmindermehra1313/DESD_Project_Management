@@ -12,11 +12,24 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from datetime import timedelta
+
+LOGIN_URL = '/accounts/login/'
+# Timer for Session and JWT for token Generation
+# Global Session Time out
+SESSION_COOKIE_AGE = 60 * 30  # 60 seconds * 30 = 30 minutes
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# JWT Time span
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
+
+ACCESS_TOKEN_LIFETIME = timedelta(seconds=30)
 from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -87,15 +100,8 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 
 
 # Database
+
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -106,19 +112,6 @@ DATABASES = {
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }
-
-# Harminder EDITS
-#  DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.mysql",
-#         "NAME": os.environ.get("MYSQL_DATABASE", "DESD"),
-#         "USER": os.environ.get("MYSQL_USER", "myuser"),
-#         "PASSWORD": os.environ.get("MYSQL_PASSWORD", "mypass"),
-#         "HOST": os.environ.get("DB_HOST", "db"),
-#         "PORT": int(os.environ.get("DB_PORT", 3306)),
-#         "OPTIONS": {"charset": "utf8mb4"},
-#     }
-# }
 
 
 AUTH_USER_MODEL = "accounts.User"
@@ -199,7 +192,6 @@ DEFAULT_PRODUCT_IMAGES_BY_GROUP = {
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
 }
