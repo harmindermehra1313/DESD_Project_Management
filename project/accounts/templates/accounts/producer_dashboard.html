@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Order Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'producer_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 dashboard-container">
+    <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">Order Management</h2>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 id="pageTitle" class="mb-0">Orders</h5>
+        
+        <div class="d-flex gap-2">
+            
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                    Filter
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-3 shadow-sm" aria-labelledby="filterDropdown" style="width: 300px; z-index: 1050;">
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Status</label>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PEN" id="filterPen" checked>
+                            <label class="form-check-label" for="filterPen">Pending</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PRE" id="filterPre" checked>
+                            <label class="form-check-label" for="filterPre">Preparing</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PAC" id="filterPac" checked>
+                            <label class="form-check-label" for="filterPac">Packaged</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="SHP" id="filterShp">
+                            <label class="form-check-label" for="filterShp">Shipped</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="filterOrderId" class="form-label small fw-bold text-muted mb-1">Order ID</label>
+                        <input type="text" class="form-control form-control-sm" id="filterOrderId" placeholder="Search by ID...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="filterCustomerName" class="form-label small fw-bold text-muted mb-1">Customer Name</label>
+                        <input type="text" class="form-control form-control-sm" id="filterCustomerName" placeholder="Start typing to search...">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="filterDateFrom" class="form-label small fw-bold text-muted mb-1">From (Due Date)</label>
+                        <input type="date" class="form-control form-control-sm" id="filterDateFrom">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="filterDateTo" class="form-label small fw-bold text-muted mb-1">To (Due Date)</label>
+                        <input type="date" class="form-control form-control-sm" id="filterDateTo">
+                    </div>
+                    
+                    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" type="button" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn dropdown-toggle" type="button" id="updateStatusBtn" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+                    Change Status
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="updateStatusBtn">
+                    <li><button class="dropdown-item fw-bold" style="color: #856404;" type="button" onclick="changeStatus('PEN')">Pending</button></li>
+                    <li><button class="dropdown-item fw-bold" style="color: #004085;" type="button" onclick="changeStatus('PRE')">Preparing</button></li>
+                    <li><button class="dropdown-item fw-bold" style="color: #155724;" type="button" onclick="changeStatus('PAC')">Packaged</button></li>
+                    <li><button class="dropdown-item fw-bold" style="color: #383d41;" type="button" onclick="changeStatus('SHP')">Shipped</button></li>
+                </ul>
+            </div>
+            
+        </div>
+    </div>
+    
+    <div class="table-responsive mb-4 shadow-sm" style="border-radius: var(--radius); overflow: hidden;">
+        <table class="table table-hover mb-0 order-table align-middle text-center">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer Name</th>
+                    <th>Order Date</th>
+                    <th>Due Date</th>
+                    <th>Type</th>
+                    <th>Items</th>
+                    <th>Total Value</th>
+                    <th>Payout (95%)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="orderTableBody">
+                {% for summary in summaries %}
+                <tr class="order-row" id="row-{{ summary.id }}" 
+                    data-status="{{ summary.status }}" 
+                    data-order-id="{{ summary.order.unique_reference|lower }}"
+                    data-customer-name="{{ summary.order.user.name|lower }}"
+                    data-due-date="{{ summary.delivery_date|date:'Y-m-d' }}"
+                    onclick="showOrderDetails('{{ summary.id }}', this)">
+                    
+                    <td>{{ summary.order.unique_reference }}</td>
+                    <td>{{ summary.order.user.name }}</td>
+                    <td>{{ summary.order.order_date|date:"d/m/Y" }}</td>
+                    <td>{{ summary.delivery_date|date:"d/m/Y" }}</td>
+                    
+                    <td>{{ summary.get_delivery_or_collection_display }}</td>
+
+                    <td>{{ summary.order.my_items|length }} items</td>
+                    
+                    <td>£{{ summary.subtotal }}</td>
+                    
+                    <td>£{{ summary.payout_amount|floatformat:2 }}</td>
+                    
+                    <td>
+                        <span class="status-badge status-{{ summary.get_status_display|lower|default:'pending' }}">
+                            {{ summary.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr id="emptyStateRow">
+                    <td colspan="9" class="text-center py-4 text-muted">No orders found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <nav id="paginationContainer" class="d-flex justify-content-center mb-5" aria-label="Order pagination"></nav>
+
+    <div class="details-card bg-white mb-5">
+        <div class="details-header">
+            Further Details: <span id="detailOrderId" class="text-muted fw-normal">Select an order</span>
+        </div>
+        <div class="details-body" id="detailsContent">
+            <p class="text-muted mb-0">Click on a specific order from the table above to view complete customer details, delivery address, itemised product list, and special instructions.</p>
+        </div>
+    </div>
+</div>
+
+<div id="hidden-templates" style="display: none;">
+    {% for summary in summaries %}
+    <template id="details-template-{{ summary.id }}">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <strong>Customer Contact:</strong><br> 
+                {{ summary.order.user.name }}<br>
+                <a href="mailto:{{ summary.order.user.email }}">{{ summary.order.user.email }}</a><br>
+                {{ summary.order.user.phone }}<br><br>
+                
+                {% if summary.delivery_or_collection == 'COL' %}
+                    <strong>Collection Address:</strong><br>
+                {% else %}
+                    <strong>Delivery Address:</strong><br> 
+                {% endif %}
+                
+                {% if summary.address_line1 %}{{ summary.address_line1 }}<br>{% endif %}
+                {% if summary.address_line2 %}{{ summary.address_line2 }}<br>{% endif %}
+                {% if summary.city %}{{ summary.city }}<br>{% endif %}
+                {% if summary.postcode %}{{ summary.postcode }}{% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong>Itemised Product List:</strong><br> 
+                <ul class="list-unstyled mb-3">
+                    {% for item in summary.order.my_items %}
+                        <li>{{ item.quantity }}x {{ item.product.name }} ({{ item.product.get_unit_display }})</li>
+                    {% endfor %}
+                </ul>
+                
+                <strong>Special Instructions:</strong><br> 
+                <span class="fst-italic">{{ summary.special_instructions|default:"None provided." }}</span>
+            </div>
+        </div>
+    </template>
+    {% endfor %}
+</div>
+
+{% csrf_token %}
+
+<script src="{% static 'producer_dashboard.js' %}"></script>
+{% endblock %}
