@@ -1,14 +1,19 @@
 from django.shortcuts import render, redirect
 from django.apps import apps
 from decimal import Decimal
-from datetime import datetime, timedelta, time
-from django.utils import timezone
-from rest_framework.views import APIView 
-from rest_framework.response import Response 
-from rest_framework import status
-from django.db import transaction
-from orders.serializers.checkout import CheckoutSerializer
-from carts.services import CartOwner, cart_get_or_create_active, cart_merge_guest_into_user, cart_mark_checked_out
+from datetime import datetime, timedelta
+from carts.services import CartOwner, cart_get_or_create_active
+from payments.stripe_client import get_stripe
+from orders.services.order_creation import create_order_from_session
+import json
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.conf import settings
+import logging
+from django.core.exceptions import ValidationError
+from orders.services.session_loader import load_checkout_data_from_session
+from orders.services.order_validation import validate_checkout_session
+from payments.services import create_payment_intent
 
 Product = apps.get_model('products', 'Product')
 Order = apps.get_model('orders', 'Order')
@@ -17,6 +22,69 @@ User = apps.get_model('accounts', 'User')
 ProducerOrderSummary = apps.get_model('orders', 'ProducerOrderSummary')
 Payment = apps.get_model('payments', 'Payment')
 Address = apps.get_model('accounts', 'Address')
+stripe = get_stripe()
+logger = logging.getLogger(__name__)
+
+@require_POST
+def checkout_save(request):
+    try:
+        data = json.loads(request.body)
+
+        request.session["checkout_data"] = data
+        request.session.modified = True
+
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        logger.exception("checkout_save failed: %s", e)
+        return JsonResponse({"error": "Could not save checkout data"}, status=500)
+
+def checkout_cod(request):
+    if request.method != "POST":
+        return redirect("orders:checkout")
+
+    session_key = request.session.session_key
+    checkout_data = load_checkout_data_from_session(session_key)
+
+    if not checkout_data:
+        return redirect("orders:checkout")
+
+    # Validate using same serializer as card payments
+    validated_data = validate_checkout_session(checkout_data)
+
+    # Create order using validated data
+    order = create_order_from_session(
+        request=request,
+        validated_data=validated_data,
+        payment_method="CSH",
+        payment_intent_id=None,
+    )
+
+    return redirect("orders:order_success", reference=order.unique_reference)
+
+def stripe_return(request):
+    try:
+        pi = request.GET.get("payment_intent")
+
+        if not pi:
+            logger.exception("Stripe return: payment intent does not exist")
+            return redirect("orders:checkout")
+
+        # Find the order by payment_intent_id
+        try:
+            order = Order.objects.get(payments__stripe_payment_intent=pi)
+            logger.exception("Stripe return order redirect")
+            return redirect("orders:order_success", reference=order.unique_reference)
+        
+        except Order.DoesNotExist:
+            logger.warning(f"Stripe return: order does not exist yet for payment intent {pi}")
+            # Show a waiting page that auto-refreshes
+            return render(request, "orders/payment_processing.html", { 
+                "payment_intent": pi, 
+                })
+
+    except Exception as e:
+        logger.exception("Stripe return redirect failed: %s", e)
+        raise
 
 class CheckoutAPIView(APIView):
     def post(self, request):
@@ -304,9 +372,11 @@ def fake_add_to_cart(request):
     return redirect("orders:checkout")
 
 def checkout(request):
+    # Check for payment timeout
+    timeout_flag = request.GET.get("timeout") == "1"
+    timed_out_pi = request.GET.get("pi")
+
     # Get cart
-    # cart = request.session.get("cart", {})
-    # items = cart.get("items", [])
     if request.user.is_authenticated:
         owner = CartOwner(user_id=request.user.id)
     else:
@@ -381,10 +451,15 @@ def checkout(request):
                 "vat_total": Decimal("0"),
                 "savings_total": Decimal("0"),
                 "grand_total": Decimal("0"),
+                "expiry_dates": [],
             }
         
         #producers[producer].append(enriched_item)
         producers[producer]["items"].append(enriched_item)
+
+        # Store expiry dates for max date calculation
+        if product.expiry_date:
+            producers[producer]["expiry_dates"].append(product.expiry_date)
     
         # Get subtotals for each producer
         producers[producer]["subtotal"] += product.price * quantity
@@ -411,6 +486,19 @@ def checkout(request):
         data["collection_address"]
         for data in producers.values()
     ]
+
+    # Get maximum date for each producer
+    # max is 2 days before shortest product expiry
+    for producer, data in producers.items():
+        expiry_dates = data.get("expiry_dates", [])
+
+        if expiry_dates:
+            earliest_expiry = min(expiry_dates)
+            max_delivery_date = earliest_expiry.date() - timedelta(days=2)
+        else:
+            max_delivery_date = None
+
+        data["max_delivery_date"] = max_delivery_date
 
     # Get original total before vat or discounts
     original_total = total + order_savings_total
@@ -482,6 +570,17 @@ def checkout(request):
         slot_hours=[10, 12, 14, 16]  # delivery slots
     )
 
+    amount = total + vat_cart_total
+
+    session_key = request.session.session_key
+    user_id = request.user.id if request.user.is_authenticated else None
+
+    try:
+        intent = create_payment_intent(amount, session_key=session_key, user_id=user_id)
+        client_secret = intent.client_secret
+    except ValidationError:
+        client_secret = None  # too small, no intent created
+
     context = {
         "cart": {
             "items": enriched_items,
@@ -498,6 +597,10 @@ def checkout(request):
         "delivery_earliest": delivery_earliest,
         "producers": producers,
         "collection_addresses": collection_addresses,
+        "client_secret": client_secret,
+        "STRIPE_PUBLISHABLE_KEY": settings.STRIPE_PUBLIC_KEY,
+        "payment_timeout": timeout_flag,
+        "timed_out_pi": timed_out_pi,
     }
 
     return render(request, "orders/checkout.html", context)

@@ -14,6 +14,7 @@
         <div class="success-text">
             <h2>Your order is confirmed!</h2>
             <p>Thank you for supporting local producers. Your order details are below.</p>
+            <p>Your order reference number is: <strong>{{ order.unique_reference }}</strong></p>
         </div>
     </div>
 
@@ -38,10 +39,10 @@
 
             <p>
                 <strong>Address:</strong><br>
-                {{ summary.address_line1 }}<br>
+                {% if summary.address_line1 %} {{ summary.address_line1 }}<br> {% endif %}
                 {% if summary.address_line2 %}{{ summary.address_line2 }}<br>{% endif %}
-                {{ summary.city }}<br>
-                {{ summary.postcode }}
+                {% if summary.city %} {{ summary.city }}<br> {% endif %}
+                {% if summary.postcode %} {{ summary.postcode }} {% endif %}
             </p>
 
             <h5>Items from this producer</h5>
@@ -91,7 +92,7 @@
                 </tbody>
             </table>
             
-            <div class="section-divider"></div>
+            <!-- <div class="section-divider"></div>
 
             <h4>Price breakdown</h4>
 
@@ -110,7 +111,7 @@
                         <strong>Commission:</strong> -£{{ summary.commission_total }}<br>
                         <strong>Payout to producer:</strong> £{{ summary.payout_amount }}
                     </p>
-            </div>
+            </div> -->
             <hr>
         </div>
     {% endfor %}

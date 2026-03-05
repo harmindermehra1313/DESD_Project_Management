@@ -1,0 +1,30 @@
+{% block content %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'orders/processing.css' %}">
+{% endblock %}
+
+<div class="processing-wrapper">
+    <div class="processing-card">
+        <div class="spinner"></div>
+        <h2>Processing your payment…</h2>
+        <p>Please give us time to finalise your order and do not refresh the page.</p>
+        <p>This usually takes a few seconds.</p>
+    </div>
+</div>
+
+<script>
+    const intent = "{{ payment_intent }}";
+
+    // Poll every 2 seconds
+    setTimeout(() => {
+        window.location.href = "{% url 'orders:stripe_return' %}?payment_intent=" + intent;
+    }, 2000);
+
+    // Hard timeout after 15 seconds
+    setTimeout(() => {
+        window.location.href = "{% url 'orders:checkout' %}?timeout=1&pi=" + intent;
+    }, 15000);
+</script>
+{% endblock %}

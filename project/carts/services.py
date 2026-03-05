@@ -414,7 +414,7 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
 
     touched_product_ids: set[int] = set()
 
-    # Merge quantities
+    # 1) Merge quantities
     for gi in guest_items:
         touched_product_ids.add(gi.product_id)
 
@@ -441,7 +441,7 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
                     updated_at=_now(),
                 )
 
-    # Normalize unit_price based on FINAL quantities (wholesale tiers)
+    # 2) Normalize unit_price based on FINAL quantities (wholesale tiers)
     user_lines = list(
         CartItem.objects.select_for_update().filter(
             cart_id=user_cart.pk, product_id__in=touched_product_ids
@@ -460,14 +460,14 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
                 updated_at=_now(),
             )
 
-    # delete guest cart items now that they’re merged
-    # CartItem.objects.filter(cart_id=guest_cart.pk).delete()
-    # [TODO: Review later whether to keep merged carts in the db or delete it permanently]
-    # Mark guest cart merged
-    # guest_cart.status = CartStatus.MERGED
-    # guest_cart.merged_into_cart_id = user_cart.pk
-    # guest_cart.save(update_fields=["status", "merged_into_cart_id", "updated_at"])
-    guest_cart.delete()
+    # 3) OPTIONAL CLEANUP: delete guest cart items now that they’re merged
+    CartItem.objects.filter(cart_id=guest_cart.pk).delete()
+
+    # 4) Mark guest cart merged
+    guest_cart.status = CartStatus.MERGED
+    guest_cart.merged_into_cart_id = user_cart.pk
+    guest_cart.save(update_fields=["status", "merged_into_cart_id", "updated_at"])
+
     return user_cart
 
 
