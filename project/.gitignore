@@ -7,3 +7,5 @@ db.sqlite3
 .docker_data/
 
 .settings
+
+firebase-key.json
