@@ -1,14 +1,76 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
-from django.http import HttpResponse  # Imported for the placeholder view
-from .models import Product, Category
+from django.http import HttpResponse # Imported for the placeholder view
+from django.conf import settings
+from datetime import datetime
+from .models import Product, Category, Allergen, ProductAllergen
 from accounts.models import Producer
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
 from .models import Product
 from django.db.models import Q
 import json
+
+
+def _get_category_default_image(category_obj):
+    image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
+    fallback = getattr(settings, 'DEFAULT_PRODUCT_IMAGE', 'products/img/default-product.png')
+
+    # Primary match: Category.food_groups code
+    food_group = str(getattr(category_obj, 'food_groups', '') or '').strip().upper()
+    if food_group in image_map:
+        return image_map[food_group]
+
+    aliases = {
+        'MEAT': 'MT',
+        'FRUIT': 'FR',
+        'VEGETABLE': 'VEG',
+        'VEGETABLES': 'VEG',
+        'DAIRY': 'DAE',
+        'EGGS': 'DAE',
+        'DAIRY_AND_EGGS': 'DAE',
+        'SEASONAL': 'SEA',
+    }
+    alias_code = aliases.get(food_group)
+    if alias_code and alias_code in image_map:
+        return image_map[alias_code]
+
+    # Final fallback based on category name text
+    category_name = str(getattr(category_obj, 'name', '') or '').lower()
+    if 'meat' in category_name and 'MT' in image_map:
+        return image_map['MT']
+    if 'fruit' in category_name and 'FR' in image_map:
+        return image_map['FR']
+    if ('vegetable' in category_name or 'veg' in category_name) and 'VEG' in image_map:
+        return image_map['VEG']
+    if ('dairy' in category_name or 'egg' in category_name) and 'DAE' in image_map:
+        return image_map['DAE']
+    if 'season' in category_name and 'SEA' in image_map:
+        return image_map['SEA']
+
+    return fallback
+
+
+def _build_add_product_context(error_message=None):
+    categories = Category.objects.all()
+    units = Product.Unit.choices
+    allergens = [
+        {'value': value, 'label': label}
+        for value, label in Allergen.Allergens.choices
+        if value != Allergen.Allergens.NONE
+    ]
+
+    context = {
+        'categories': categories,
+        'units': units,
+        'allergens': allergens,
+    }
+
+    if error_message:
+        context['error_message'] = error_message
+
+    return context
 
 def is_producer_or_admin(user):
     if not user.is_authenticated:
@@ -44,54 +106,75 @@ def product_list(request):
 @login_required
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
-    if request.method == "POST":
-        name = request.POST.get("name")
-        price = request.POST.get("price")
-        availability_status = request.POST.get("availability_status")
-        harvest_date = request.POST.get("harvest_date")
-        unit = request.POST.get("unit")
-        stock_quantity = request.POST.get("stock_quantity")
-        description = request.POST.get("description")
-        image = request.FILES.get("image")
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        price = request.POST.get('price')
+        availability_status = request.POST.get('availability_status')
+        harvest_date = request.POST.get('harvest_date')
+        expiry_date = request.POST.get('expiry_date')
+        unit_code = request.POST.get('unit')
+        stock_quantity = request.POST.get('stock_quantity')
+        description = request.POST.get('description')
+        uploaded_image = request.FILES.get('image')
 
-        food_group_code = request.POST.get("category")
+        try:
+            harvest_dt = datetime.strptime(harvest_date, '%Y-%m-%dT%H:%M')
+            expiry_dt = datetime.strptime(expiry_date, '%Y-%m-%dT%H:%M')
+        except (TypeError, ValueError):
+            return render(
+                request,
+                'products/add_product.html',
+                _build_add_product_context('Please enter valid harvest and expiry dates.'),
+            )
 
-        group_names = {
-            "MT": "Meat",
-            "DAE": "Dairy and Eggs",
-            "FR": "Fruit",
-            "VEG": "Vegetables",
-            "SEA": "Seasonal",
-        }
+        if harvest_dt > expiry_dt:
+            return render(
+                request,
+                'products/add_product.html',
+                _build_add_product_context('Harvest date cannot be after expiry date.'),
+            )
+        
 
-        category_obj, created = Category.objects.get_or_create(
-            food_groups=food_group_code,
-            defaults={
-                "name": group_names.get(food_group_code, "Unknown Category"),
-                "vat": 0.00,  # Providing a default VAT
-            },
-        )
+        #expiry_date=expiry_date
 
+        category_id = request.POST.get('category')
+        
+        category_obj = get_object_or_404(Category, id=category_id)
+        default_image_path = _get_category_default_image(category_obj)
+        
         producer = request.user.producer_profile
 
-        Product.objects.create(
+        new_product = Product.objects.create(
             producer=producer,
             category=category_obj,
             name=name,
             price=price,
             availability_status=availability_status,
             harvest_date=harvest_date,
-            unit=unit,
+            expiry_date=expiry_date,
+            unit=unit_code,
             stock_quantity=stock_quantity,
             description=description,
-            image=image,
-            expiry_date=timezone.now() + timezone.timedelta(days=7),
+            image=uploaded_image,
             farm_origin="Local Farm",
             surplus_discount_percentage=0.00,
         )
-        return redirect("products_list")
 
-    return render(request, "products/add_product.html")
+        if not uploaded_image:
+            new_product.image.name = default_image_path
+            new_product.save(update_fields=['image'])
+
+        allergen_ids = request.POST.getlist('allergen')
+        for a_code in allergen_ids:
+            allergen_obj, _ = Allergen.objects.get_or_create(name=a_code)
+            ProductAllergen.objects.create(
+                product=new_product, 
+                allergen=allergen_obj
+            )
+
+        return redirect('products_list')
+
+    return render(request, 'products/add_product.html', _build_add_product_context())
 
 
 def add_to_cart(request, product_id):
