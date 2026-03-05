@@ -237,7 +237,6 @@ class Cart(models.Model):
     """
     # total_price() returns the total cost of a cart. It is computed as: sum of (unit_price × quantity) for every item in the cart. It is designed to be safe if some prices are missing (NULL) and to always return a Decimal but never None. 
     
-    # instead of pulling all cart items into Python and looping, it 
     """
     @property
     def total_price(self) -> Decimal:
@@ -253,7 +252,6 @@ class Cart(models.Model):
         total = self.items.aggregate(total=Coalesce(Sum("quantity"), Decimal("0")))[
             "total"
         ]
-        # quantity is DecimalField; badge wants int
         return int(total)
 
 
@@ -269,14 +267,14 @@ class CartItem(models.Model):
         related_name="cart_items",
     )
 
-    # Per your spec: DecimalField quantity
+    # DecimalField quantity
     quantity = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("1"))],
     )
 
-    # Per your spec: snapshot price when item is added
+    # Snapshot price when item is added
     unit_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
