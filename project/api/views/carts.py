@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
+from carts.models import Cart
 
 from carts.services import (
     CartOwner,
@@ -40,10 +41,13 @@ def _owner(request) -> CartOwner:
     Auth user -> CartOwner(user_id=...)
     Guest -> CartOwner(session_key=...)
     """
-    if request.user and request.user.is_authenticated:
+    if request.user.is_authenticated:
         return CartOwner(user_id=request.user.id)
+    # Guest: ensure the Django session exists so session_key is not None
+    if not request.session.session_key:
+        request.session.save()  # generates a session_key
 
-    return CartOwner(session_key=_ensure_session_key(request))
+    return CartOwner(session_key=request.session.session_key)
 
 
 def _translate_service_error(exc: Exception) -> Exception:
@@ -59,13 +63,22 @@ def _translate_service_error(exc: Exception) -> Exception:
 
 
 class CartAPIView(APIView):
-    permission_classes = [AllowAny] # AlloweAny / IsAuthenticated 
+    permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         try:
             cart = cart_get_or_create_active(owner=_owner(request))
+
+            # IMPORTANT: reload with prefetch so the serializer has everything efficiently
+            cart = (
+                Cart.objects
+                .filter(pk=cart.pk)
+                .prefetch_related("items__product", "items__product__producer")
+                .get()
+            )
         except Exception as exc:
             raise _translate_service_error(exc)
+
         return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
 
 

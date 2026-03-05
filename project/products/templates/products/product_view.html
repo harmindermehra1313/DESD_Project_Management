@@ -1,0 +1,87 @@
+<!-- HARMINDER-SINGH -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+Products | BRFN
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/products.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+
+    <h1 class="mb-4">
+        {% if selected_category %}{{ selected_category.name }}{% else %}All Products{% endif %}
+    </h1>
+
+    <!-- FILTER BAR (only show on All Products page) -->
+    <div class="filter-bar row g-3 mb-4">
+        
+        <div class="col-md-4">
+            <input id="searchInput" type="text" class="form-control" placeholder="Search products...">
+        </div>
+        
+        {% if show_filters %}
+        <div class="col-md-2">
+            <select id="categoryFilter" class="form-select">
+                <option value="">All Categories</option>
+                 {% for c in categories %}
+                    <option value="{{ c.name }}">{{ c.name }}</option>
+                {% endfor %}
+                {% for o in organic %}
+                    <option value="{{ o.name }}">{{ o.name }}</option>
+                {% endfor %}
+
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <select id="producerFilter" class="form-select">
+                <option value="">All Producers</option>
+                {% for p in producers %}
+                <option value="{{ p }}">{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="col-md-2">
+            <input id="minPrice" type="number" class="form-control" placeholder="Min £">
+        </div>
+
+        <div class="col-md-2">
+            <input id="maxPrice" type="number" class="form-control" placeholder="Max £">
+        </div>
+
+        <div class="col-md-3 mt-3">
+            <select id="sortSelect" class="form-select">
+                <option value="">Sort by</option>
+                <option value="price_low">Price: Low → High</option>
+                <option value="price_high">Price: High → Low</option>
+                <option value="newest">Newest</option>
+            </select>
+        </div>
+
+    </div>
+
+    <!-- PRODUCT GRID -->
+    <div id="productGrid" class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-4"></div>
+
+</div>
+<!-- JSON DATA -->
+<script id="productsData" type="application/json">
+    {{ products_json|safe }}
+</script>
+
+<script id="showFiltersFlag" type="text/plain">
+    {{ show_filters|yesno:"true,false" }}
+</script>
+
+<script src="{% static 'js/product_view.js' %}"></script>
+<!-- JS FILES -->
+
+{% endblock %}
+<!-- HARMINDER-SINGH -->

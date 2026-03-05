@@ -17,6 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+
+handler400 = "BRFN.view.custom_400"
+handler403 = "BRFN.view.custom_403"
+handler404 = "BRFN.view.custom_404"
+handler500 = "BRFN.view.custom_500"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", include("home.urls", namespace="home")),

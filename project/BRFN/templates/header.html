@@ -54,136 +54,70 @@
       </div>
     </div>
   </div>
-  <nav class="navbar navbar-expand-lg header-row-2">
-    <div class="container-fluid">
-      <!-- Mobile Toggle -->
-      <button class="navbar-toggler"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#navRow2">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navRow2">
-        <div class="row w-100 align-items-center">
-          <!-- LEFT COLUMN: NAVIGATION -->
-          <div class="col-12 col-xl-8 mb-3 mb-xl-0">
-            <ul class="navbar-nav flex-wrap align-items-center">
-              <!-- Home -->
-              <li class="nav-item mx-2">
-                <a class="nav-link custom-nav-link" href="/">Home</a>
-              </li>
-              <!-- Products Dropdown -->
-              <li class="nav-item dropdown mx-2">
-                <a class="nav-link dropdown-toggle custom-nav-link"
-                   href="#"
-                   data-bs-toggle="dropdown">Products</a>
-                <ul class="dropdown-menu custom-dropdown">
-                  <li>
-                    <a class="dropdown-item" href="/category/vegetables/">Vegetables</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/category/dairy-eggs/">Dairy & Eggs</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/category/bakery/">Bakery</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/category/preserves/">Preserves</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/category/seasonal/">Seasonal</a>
-                  </li>
-                  <li>
-                    <hr class="dropdown-divider">
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/category/organic/">Certified Organic</a>
-                  </li>
-                </ul>
-              </li>
-              <!-- Producers -->
-              <li class="nav-item mx-2">
-                <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
-              </li>
-              <!-- More Dropdown -->
-              <li class="nav-item dropdown mx-2">
-                <a class="nav-link dropdown-toggle custom-nav-link"
-                   href="#"
-                   data-bs-toggle="dropdown">More</a>
-                <ul class="dropdown-menu custom-dropdown">
-                  <li>
-                    <a class="dropdown-item" href="/about/">About Us</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/contact/">Contact Us</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/sustainability/">Food Miles</a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="/community/">Community Projects</a>
-                  </li>
-                </ul>
-              </li>
-              <!-- ROLE‑BASED NAVIGATION -->
-              {% if user.is_authenticated %}
-                {% if user.role == "customer" %}
-                  <li class="nav-item mx-2">
-                    <a class="nav-link custom-nav-link" href="/orders/">My Orders</a>
-                  </li>
-                {% elif user.role == "community" %}
-                  <li class="nav-item mx-2">
-                    <a class="nav-link custom-nav-link" href="/community/dashboard/">Community Dashboard</a>
-                  </li>
-                {% elif user.role == "business" %}
-                  <li class="nav-item mx-2">
-                    <a class="nav-link custom-nav-link" href="/business/orders/">Business Orders</a>
-                  </li>
-                {% elif user.role == "producer" %}
-                  <li class="nav-item dropdown mx-2">
-                    <a class="nav-link dropdown-toggle custom-nav-link"
-                       href="#"
-                       data-bs-toggle="dropdown">Producer Panel</a>
-                    <ul class="dropdown-menu custom-dropdown">
-                      <li>
-                        <a class="dropdown-item" href="/producer/products/">My Products</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/producer/products/add/">Add Product</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/producer/orders/">Incoming Orders</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/producer/payments/">Payments</a>
-                      </li>
-                    </ul>
-                  </li>
-                {% elif user.role == "admin" %}
-                  <li class="nav-item dropdown mx-2">
-                    <a class="nav-link dropdown-toggle custom-nav-link"
-                       href="#"
-                       data-bs-toggle="dropdown">Admin Panel</a>
-                    <ul class="dropdown-menu custom-dropdown">
-                      <li>
-                        <a class="dropdown-item" href="/admin/users/">Manage Users</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/admin/producers/">Manage Producers</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/admin/products/">Product Approvals</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/admin/orders/">All Orders</a>
-                      </li>
-                      <li>
-                        <a class="dropdown-item" href="/admin/admin_records/">Admin Records</a>
-                      </li>
-                    </ul>
-                  </li>
-                {% endif %}
-              {% endif %}
+</div>
+
+  <!-- ===================== ROW 2 ===================== -->
+<nav class="navbar navbar-expand-lg header-row-2">
+  <div class="container-fluid">
+
+    <!-- Mobile Toggle -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navRow2">
+
+      <div class="row w-100 align-items-center">
+
+        <!-- LEFT COLUMN: NAVIGATION -->
+        <div class="col-12 col-xl-8 mb-3 mb-xl-0">
+          <ul class="navbar-nav flex-wrap align-items-center">
+
+            <!-- Home -->
+            <li class="nav-item mx-2">
+              <a class="nav-link custom-nav-link" href="/">Home</a>
+            </li>
+
+            <!-- Products Dropdown -->
+            <li class="nav-item dropdown mx-2">
+              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
+                Products
+              </a>
+              <ul class="dropdown-menu custom-dropdown">
+                <li><a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a></li>
+                {% for cat in header_categories %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'product_view' cat.id %}">
+                    {{ cat.name }}
+                  </a>
+                </li>
+                {% endfor %}
+
+
+                <li><hr class="dropdown-divider"></li>
+                {% for org in organic %}
+                <li><a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a></li>
+                {% endfor %}
+              </ul>
+            </li>
+
+            <!-- Producers -->
+            <li class="nav-item mx-2">
+              <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
+            </li>
+
+            <!-- More Dropdown -->
+            <li class="nav-item dropdown mx-2">
+              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
+                More
+              </a>
+              <ul class="dropdown-menu custom-dropdown">
+                <li><a class="dropdown-item" href="/about/">About Us</a></li>
+                <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
+                <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
+                <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
+              </ul>
+            </li>      
             </ul>
           </div>
           <!-- RIGHT COLUMN: SEARCH BAR -->

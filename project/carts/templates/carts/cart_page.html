@@ -3,59 +3,148 @@
 {% block title %}Cart{% endblock %}
 {% block extra_css %}
   {{ block.super }}
-  {# Optional page-specific css if you have it #}
   <link rel="stylesheet" href="{% static 'carts/cart_page.css' %}">
+  <style>
+    /* Page shell */
+    .cart-shell { background: #f6f7f9; }
+    .cart-card {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 16px;
+      box-shadow: 0 1px 0 rgba(0,0,0,.02);
+    }
+
+    /* Items + summary spacing */
+    .cart-items-wrap { min-width: 0; }
+    .cart-summary-wrap { min-width: 0; }
+
+    @media (min-width: 992px) {
+      .cart-summary-sticky { position: sticky; top: 1rem; }
+    }
+
+    /* JS-rendered rows: make them responsive + remove whitespace */
+    #cartItems .cart-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,.10);
+      background: #fff;
+      padding: 12px;
+    }
+
+    /* image block if present */
+    #cartItems .cart-row > div:first-child {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+
+    /* meta must grow to kill whitespace */
+    #cartItems .cart-row > div:nth-child(2) {
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+
+    /* qty editor */
+    #cartItems .cart-row > div:nth-child(3) {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* prices */
+    #cartItems .cart-row > div:nth-child(4) {
+      flex: 0 0 auto;
+      margin-left: auto; /* pushes prices right on wide screens */
+      text-align: right;
+      min-width: 140px;
+    }
+
+    /* remove button: keep near right but wrap on mobile */
+    #cartItems .cart-row > button.btn {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    /* Mobile layout: stack nicely */
+    @media (max-width: 576px) {
+      #cartItems .cart-row > div:nth-child(4) {
+        margin-left: 0;
+        width: 100%;
+        text-align: left;
+      }
+      #cartItems .cart-row > button.btn {
+        width: 100%;
+      }
+    }
+  </style>
 {% endblock %}
 {% block content %}
-  <section class="py-4 py-lg-5">
+  <section class="cart-shell py-4 py-lg-5">
     <div class="container">
-      <div class="p-3 p-md-4 p-lg-5 bg-white rounded shadow-sm">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-          <h1 class="h3 mb-0">Cart</h1>
-          <a class="btn btn-outline-secondary" href="/products/">Continue shopping</a>
+      <!-- Header -->
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+        <div>
+          <div class="text-muted small mb-1">Shop / Cart</div>
+          <h1 class="h3 mb-0">Your cart</h1>
         </div>
-        <div id="cartMsg" class="mb-3" aria-live="polite"></div>
-        <div class="row g-4">
-          <!-- LEFT: items -->
-          <div class="col-lg-8">
-            <div id="cartItems"></div>
+        <a class="btn btn-outline-secondary" href="/products/">
+          <i class="bi bi-arrow-left"></i>
+          Continue shopping
+        </a>
+      </div>
+      <!-- Messages (JS writes here) -->
+      <div id="cartMsg" class="mb-3" aria-live="polite"></div>
+      <div class="row g-4">
+        <!-- LEFT: Items -->
+        <div class="col-lg-8 cart-items-wrap">
+          <div class="cart-card p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h2 class="h5 mb-0">Items</h2>
+              <span class="text-muted small">Review quantities before checkout</span>
+            </div>
+            <!-- JS renders rows here -->
+            <div id="cartItems"
+                 data-placeholder-img="{% static 'img/default-product.png' %}"></div>
+            <!-- Empty state -->
             <div id="cartEmpty" class="d-none border rounded p-4 text-center">
               <p class="mb-2 fw-semibold">Your cart is empty.</p>
               <a class="btn btn-primary" href="/products/">Browse products</a>
             </div>
           </div>
-          <!-- RIGHT: summary -->
-          <div class="col-lg-4">
-            <div class="border rounded p-3">
-              <h2 class="h5 mb-3">Summary</h2>
-              <div class="d-flex justify-content-between mb-2">
-                <span>Distinct items</span>
-                <span id="distinctItems">0</span>
-              </div>
-              <div class="d-flex justify-content-between mb-2">
-                <span>Total quantity</span>
-                <span id="totalQty">0</span>
-              </div>
-              <div class="d-flex justify-content-between mb-2">
-                <span>Subtotal</span>
-                <span id="subtotal">£0.00</span>
-              </div>
-              {% comment %} Might implement these later {% endcomment %}
-              <div class="d-none">
-                <span id="discount">£0.00</span>
-                <span id="tax">£0.00</span>
-                <span id="shipping">£0.00</span>
-              </div>
-              <hr>
-              <div class="d-flex justify-content-between fw-semibold mb-3">
-                <span>Total</span>
-                <span id="total">£0.00</span>
-              </div>
-              <button id="checkoutBtn" class="btn btn-success w-100" type="button">Checkout</button>
-              <p class="text-muted small mt-3 mb-0">
-                You’ll be redirected to checkout at <code>/orders/checkout</code>.
-              </p>
+        </div>
+        <!-- RIGHT: Summary -->
+        <div class="col-lg-4 cart-summary-wrap">
+          <div class="cart-card p-3 p-md-4 cart-summary-sticky">
+            <h2 class="h5 mb-3">Summary</h2>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Distinct items</span>
+              <span id="distinctItems" class="fw-semibold">0</span>
             </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Total quantity</span>
+              <span id="totalQty" class="fw-semibold">0</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Subtotal</span>
+              <span id="subtotal" class="fw-semibold">£0.00</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fw-semibold mb-3">
+              <span>Total</span>
+              <span id="total">£0.00</span>
+            </div>
+            <!-- single checkout button -->
+            <button id="checkoutBtn" class="btn btn-success w-100 btn-lg" type="button">
+              <i class="bi bi-lock-fill me-1"></i>
+              Secure checkout
+            </button>
           </div>
         </div>
       </div>

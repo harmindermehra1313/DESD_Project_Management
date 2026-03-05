@@ -55,10 +55,36 @@ async function request(method, path, { body } = {}) {
 
   const data = await parseJsonSafe(res);
 
+  function extractErrorMessage(data, fallback) {
+    if (!data) return fallback;
+
+    // DRF detail/error
+    if (typeof data.detail === "string") return data.detail;
+    if (typeof data.error === "string") return data.error;
+
+    // DRF field errors: {field: ["msg1", "msg2"]} or {field: "msg"}
+    if (typeof data === "object") {
+      const parts = [];
+      for (const [key, val] of Object.entries(data)) {
+        if (Array.isArray(val)) {
+          for (const msg of val) {
+            parts.push(
+              key === "non_field_errors" ? String(msg) : `${key}: ${msg}`,
+            );
+          }
+        } else if (typeof val === "string") {
+          parts.push(key === "non_field_errors" ? val : `${key}: ${val}`);
+        }
+      }
+      if (parts.length) return parts.join(" | ");
+    }
+
+    return fallback;
+  }
+
   if (!res.ok) {
-    const msg =
-      (data && (data.detail || data.error)) ||
-      `Request failed (HTTP ${res.status})`;
+    const fallback = `Request failed (HTTP ${res.status})`;
+    const msg = extractErrorMessage(data, fallback);
     const err = new Error(msg);
     err.status = res.status;
     err.payload = data;
@@ -140,7 +166,7 @@ export async function getCartBadgeCount() {
   badge.classList.remove("is-hidden"); // always visible
 
   const cart = await getCart();
-  const count = Number(cart?.total_quantity  ?? 0);
+  const count = Number(cart?.total_quantity ?? 0);
 
   badge.textContent = String(count);
   // Do NOT hide when 0
@@ -156,6 +182,50 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("cart:updated", () => {
   getCartBadgeCount().catch(() => {});
 });
+function ensureToastContainer() {
+  const el = document.getElementById("toast-container");
+  if (!el)
+    throw new Error(
+      "toast-container not found (components/toast.html missing)",
+    );
+  return el;
+}
+
+function showToast(
+  message,
+  { title = "", variant = "success", delay = 2000 } = {},
+) {
+  const container = ensureToastContainer();
+
+  const toastEl = document.createElement("div");
+  toastEl.className = `toast text-bg-${variant} border-0 mb-2`;
+  toastEl.setAttribute("role", "alert");
+  toastEl.setAttribute("aria-live", "assertive");
+  toastEl.setAttribute("aria-atomic", "true");
+
+  toastEl.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body">
+        ${title ? `<div class="fw-semibold mb-1">${title}</div>` : ``}
+        <div>${String(message ?? "")}</div>
+      </div>
+      <button type="button"
+              class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"
+              aria-label="Close"></button>
+    </div>
+  `;
+
+  container.appendChild(toastEl);
+
+  const toast = bootstrap.Toast.getOrCreateInstance(toastEl, {
+    delay: Number(delay) || 2000,
+    autohide: true,
+  });
+
+  toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
+  toast.show();
+}
 
 // Global bridge for classic scripts
 window.CartAPI = window.CartAPI || {};
@@ -164,3 +234,4 @@ window.CartAPI.addToCart = addToCart;
 window.CartAPI.setItemQuantity = setItemQuantity;
 window.CartAPI.removeItem = removeItem;
 window.CartAPI.getCartBadgeCount = getCartBadgeCount;
+window.CartAPI.showToast = showToast;

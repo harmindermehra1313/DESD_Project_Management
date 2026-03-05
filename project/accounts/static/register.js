@@ -1,199 +1,3 @@
-// document.addEventListener('DOMContentLoaded', function () {
-
-//   // Role buttons
-//   const btnCustomer = document.getElementById('btnCustomer');
-//   const btnProducer = document.getElementById('btnProducer');
-//   const roleInput = document.getElementById('roleInput');
-
-//   const customerSection = document.getElementById('customerSection');
-//   const producerSection = document.getElementById('producerSection');
-//   const accountTypeSelect = document.getElementById('customer_account_type');
-
-//   // nested containers
-//   const customerBusinessFields = document.getElementById('customerBusinessFields');
-//   const customerCommunityFields = document.getElementById('customerCommunityFields');
-
-//   // producer payout fields
-//   const bankFields = document.getElementById('bankFields');
-//   const paypalFields = document.getElementById('paypalFields');
-//   const chequeFields = document.getElementById('chequeFields');
-
-//   // password match
-//   const password = document.getElementById('password');
-//   const confirm = document.getElementById('confirm_password');
-//   const passwordMatch = document.getElementById('passwordMatch');
-
-//   // helpers
-//   function showElement(el) { if (!el) return; el.classList.remove('visually-hidden'); el.hidden = false; enableInputs(el, true); }
-//   function hideElement(el) { if (!el) return; el.classList.add('visually-hidden'); el.hidden = true; enableInputs(el, false); }
-//   function enableInputs(container, enable) {
-//     if (!container) return;
-//     container.querySelectorAll('input, textarea, select').forEach(i => i.disabled = !enable);
-//   }
-
-//   // set role view
-//   function setRole(role) {
-//     roleInput.value = role;
-//     if (role === 'producer') {
-//       showElement(producerSection);
-//       hideElement(customerSection);
-//       btnProducer.classList.add('active');
-//       btnCustomer.classList.remove('active');
-//       hideElement(document.getElementById('accountTypeWrapper'));
-//     } else {
-//       showElement(customerSection);
-//       hideElement(producerSection);
-//       btnCustomer.classList.add('active');
-//       btnProducer.classList.remove('active');
-//       showElement(document.getElementById('accountTypeWrapper'));
-//     }
-//   }
-
-//   // initialize role from hidden input or default
-//   setRole(roleInput.value || 'customer');
-
-//   btnCustomer.addEventListener('click', () => setRole('customer'));
-//   btnProducer.addEventListener('click', () => setRole('producer'));
-
-//   // account type change: show/hide fields depending on selection and set hidden organisation_type
-//   const orgTypeInput = document.getElementById('organisation_type');
-//   function onAccountTypeChange() {
-//     const val = accountTypeSelect.value;
-//     // hide all extras first
-//     hideElement(customerBusinessFields);
-//     hideElement(customerCommunityFields);
-
-//     if (val === 'INDIVIDUAL') {
-//       orgTypeInput.value = 'Individual';
-//     } else if (val === 'BUSINESS') {
-//       orgTypeInput.value = 'Business';
-//       showElement(customerBusinessFields);
-//     } else if (val === 'COMMUNITY_GROUP') {
-//       orgTypeInput.value = 'Community Group';
-//       showElement(customerCommunityFields);
-//     }
-//   }
-
-//   accountTypeSelect.addEventListener('change', onAccountTypeChange);
-//   onAccountTypeChange(); // initialize
-
-//   // Producer payout method toggle
-//   function updatePayoutFields() {
-//     const method = document.querySelector('input[name="payout_method"]:checked')?.value || 'BANK_TRANSFER';
-
-//       if (method === 'BANK_TRANSFER') {
-//         showElement(bankFields);
-//         hideElement(paypalFields);
-//         hideElement(chequeFields);
-//       } else if (method === 'PAYPAL') {
-//         hideElement(bankFields);
-//         showElement(paypalFields);
-//         hideElement(chequeFields);
-//       } else if (method === 'CHEQUE') {
-//         hideElement(bankFields);
-//         hideElement(paypalFields);
-//         showElement(chequeFields);
-//       }
-//   }
-//   document.querySelectorAll('input[name="payout_method"]').forEach(r =>
-//     r.addEventListener('change', updatePayoutFields)
-//   );
-//   updatePayoutFields();
-
-//   // Password match feedback
-//   function checkPasswordMatch() {
-//     if (!password.value && !confirm.value) { passwordMatch.textContent = ''; return; }
-//     if (password.value === confirm.value) {
-//       passwordMatch.textContent = 'Passwords match';
-//       passwordMatch.style.color = 'green';
-//     } else {
-//       passwordMatch.textContent = 'Passwords do not match';
-//       passwordMatch.style.color = 'red';
-//     }
-//   }
-//   password.addEventListener('input', checkPasswordMatch);
-//   confirm.addEventListener('input', checkPasswordMatch);
-
-//   // Client-side submit validation
-//   const form = document.getElementById('registerForm');
-//   form.addEventListener('submit', function (e) {
-//     // Basic HTML5 validity
-//     if (!form.checkValidity()) {
-//       e.preventDefault();
-//       form.reportValidity();
-//       return;
-//     }
-//     // Password match
-//     if (password.value !== confirm.value) {
-//       e.preventDefault();
-//       confirm.focus();
-//       passwordMatch.textContent = 'Passwords do not match';
-//       passwordMatch.style.color = 'red';
-//       return;
-//     }
-//     // Disable hidden nested fields so server ignores them
-//     document.querySelectorAll('.nested-fields').forEach(container => {
-//       const hidden = container.classList.contains('visually-hidden') || container.hidden;
-//       container.querySelectorAll('input, textarea, select').forEach(el => el.disabled = hidden);
-//     });
-//   });
-
-// });
-
-// form.addEventListener('submit', async function (e) {
-//   e.preventDefault();
-
-//   // HTML5 validation
-//   if (!form.checkValidity()) {
-//     form.reportValidity();
-//     return;
-//   }
-
-//   // Password match
-//   if (password.value !== confirm.value) {
-//     passwordMatch.textContent = 'Passwords do not match';
-//     passwordMatch.style.color = 'red';
-//     confirm.focus();
-//     return;
-//   }
-
-//   // Disable hidden nested fields
-//   document.querySelectorAll('.nested-fields').forEach(container => {
-//     const hidden = container.classList.contains('visually-hidden') || container.hidden;
-//     container.querySelectorAll('input, textarea, select').forEach(el => el.disabled = hidden);
-//   });
-
-//   // Prepare form data
-//   const formData = new FormData(form);
-
-//   // Send to API
-//   const response = await fetch('/api/register/', {
-//     method: 'POST',
-//     body: formData
-//   });
-
-//   const errorBox = document.getElementById('formErrors');
-
-//   if (!response.ok) {
-//     const data = await response.json();
-
-//     // Build readable error message
-//     let messages = [];
-//     for (const field in data) {
-//       messages.push(`${field}: ${data[field].join(', ')}`);
-//     }
-
-//     // Show pop-up
-//     errorBox.textContent = messages.join(' | ');
-//     errorBox.classList.remove('visually-hidden');
-
-//     window.scrollTo({ top: 0, behavior: 'smooth' });
-//     return;
-//   }
-
-//   // Success → redirect or show success message
-//   window.location.href = '/register/success/';
-// });
 // ------------------------------------------------------------
 // Registration Form Logic (Clean Version)
 // Sections:
@@ -285,9 +89,26 @@ if (email && emailFeedback) {
 
         // Common domain corrections
         const commonDomains = [
-            'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
-            'icloud.com', 'live.com', 'proton.me'
+            // Gmail
+            "gmail.com",
+            "gmail.co.uk",
+
+            // Outlook / Hotmail / Live
+            "outlook.com",
+            "outlook.co.uk",
+            "hotmail.com",
+            "hotmail.co.uk",
+            "live.com",
+
+            // Yahoo
+            "yahoo.com",
+            "yahoo.co.uk",
+
+            // Apple / Proton
+            "icloud.com",
+            "proton.me"
         ];
+
 
         const typedDomain = value.split('@')[1];
 
@@ -305,6 +126,39 @@ if (email && emailFeedback) {
         } else {
             emailFeedback.textContent = 'Email looks good';
             emailFeedback.style.color = 'green';
+        }
+    });
+}
+// Contact Person Validation
+const contactPerson = document.getElementById("business_contact_person");
+
+if (contactPerson) {
+    contactPerson.addEventListener("input", () => {
+        const value = contactPerson.value.trim();
+        const pattern = /^[A-Za-z\s]{2,}$/;
+
+        if (!pattern.test(value)) {
+            showFieldError(contactPerson, "Name must contain only letters and spaces.");
+        } else {
+            clearFieldError(contactPerson);
+        }
+    });
+  }
+
+if (businessReg) {
+    businessReg.addEventListener("input", () => {
+        const value = businessReg.value.trim().toUpperCase();
+        businessReg.value = value; // auto‑uppercase
+
+        const pattern = /^(\d{8}|[A-Z]\d{7}|[A-Z]{2}\d{6}|[A-Z]{2}\d{5}[A-Z])$/;
+
+        if (!pattern.test(value)) {
+            showFieldError(
+                businessReg,
+                "Companies House numbers must be 8 digits (01234567), 1 letter + 7 digits (A1234567), or 2 letters + 6 digits (SC123456)."
+            );
+        } else {
+            clearFieldError(businessReg);
         }
     });
 }
@@ -547,7 +401,7 @@ if (fullName && nameFeedback) {
         // Case 1: Only first name typed
         if (parts.length === 1) {
             nameFeedback.textContent = 'Please enter your last name, or write your first name twice if you don’t have a last name.';
-            nameFeedback.style.color = 'orange';
+            nameFeedback.style.color = 'red';
             return;
         }
 
@@ -562,25 +416,41 @@ if (fullName && nameFeedback) {
 // ------------------------------------------------------------
 if (email) {
     const domainSuggestions = {
+        // Gmail
         "gma": "gmail.com",
         "gmai": "gmail.com",
         "gmail": "gmail.com",
+        "gmail.co.": "gmail.co.uk",
+        "gmail.co.u": "gmail.co.uk",
+        "gmail.co.uk": "gmail.co.uk",
 
+        // Hotmail
         "hot": "hotmail.com",
         "hotm": "hotmail.com",
         "hotma": "hotmail.com",
         "hotmai": "hotmail.com",
         "hotmail": "hotmail.com",
+        "hotmail.co.": "hotmail.co.uk",
+        "hotmail.co.u": "hotmail.co.uk",
+        "hotmail.co.uk": "hotmail.co.uk",
 
+        // Outlook
         "out": "outlook.com",
         "outl": "outlook.com",
         "outlo": "outlook.com",
         "outloo": "outlook.com",
         "outlook": "outlook.com",
+        "outlook.co.": "outlook.co.uk",
+        "outlook.co.u": "outlook.co.uk",
+        "outlook.co.uk": "outlook.co.uk",
 
+        // Yahoo
         "yah": "yahoo.com",
         "yaho": "yahoo.com",
-        "yahoo": "yahoo.com"
+        "yahoo": "yahoo.com",
+        "yahoo.co.": "yahoo.co.uk",
+        "yahoo.co.u": "yahoo.co.uk",
+        "yahoo.co.uk": "yahoo.co.uk"
     };
 
     let lastEmailValue = "";
@@ -592,7 +462,7 @@ if (email) {
 
         if (isDeleting) {
             emailFeedback.textContent = "";
-            return; // allow backspace
+            return;
         }
 
         if (!current.includes('@')) {
@@ -602,11 +472,19 @@ if (email) {
 
         const [local, domainPart] = current.split('@');
 
-        if (!domainPart || domainPart.length < 3) {
+        if (!domainPart || domainPart.length < 2) {
             emailFeedback.textContent = "";
             return;
         }
 
+        // Allow custom/special domains
+        if (domainPart.includes('.') && !commonDomains.includes(domainPart)) {
+            emailFeedback.textContent = "Email looks good";
+            emailFeedback.style.color = "green";
+            return;
+        }
+
+        // Auto-complete for known domains
         let suggestion = null;
         for (const key in domainSuggestions) {
             if (domainPart.startsWith(key)) {
@@ -860,7 +738,10 @@ normaliseUKPhone(phone); // customer phone if needed
 
   // Business registration number
   if (businessReg) {
-    addPatternMessage(businessReg, 'Enter a valid UK Companies House registration number.');
+    addPatternMessage(
+    businessReg,
+    "Companies House numbers must be 8 digits (01234567), 1 letter + 7 digits (A1234567), or 2 letters + 6 digits (SC123456)."
+);
   }
 
   // Community / charity registration number
