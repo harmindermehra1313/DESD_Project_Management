@@ -15,7 +15,6 @@
 
 /* Table Styling */
 .order-table th {
-    /* Changed from var(--brand) to match the dark grey footer */
     background-color: #3a4b53; 
     color: #ffffff;
     font-weight: 600;
@@ -66,7 +65,7 @@
     transition: all 0.2s ease-in-out;
 }
 
-/* Disabled State: Matches the "Filter" button (btn-outline-secondary) */
+/* Disabled State */
 #updateStatusBtn:disabled {
     background-color: #fff;
     color: #6c757d;
@@ -74,7 +73,7 @@
     opacity: 1; /* Override default bootstrap opacity */
 }
 
-/* Enabled State: Matches the table header / footer grey */
+/* Enabled State */
 #updateStatusBtn:not(:disabled) {
     background-color: #3a4b53;
     color: #fff;
