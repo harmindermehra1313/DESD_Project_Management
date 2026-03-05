@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -160,3 +161,34 @@ STATICFILES_DIRS = [
     BASE_DIR / "BRFN" / "templates",
     BASE_DIR / "static", 
 ]
+
+GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
+    os.path.join(BASE_DIR, 'firebase-key.json')
+)
+
+GS_BUCKET_NAME = 'desd-6af1a.firebasestorage.app'
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+
+# Default Firebase/GCS object path used when a product is created without an uploaded image.
+# This should exist in the bucket, e.g. gs://<bucket>/products/img/default-product.png
+DEFAULT_PRODUCT_IMAGE = os.getenv("DEFAULT_PRODUCT_IMAGE", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg")
+
+# Category food-group specific default image paths in Firebase/GCS.
+# Keys must match products.Category.FoodGroups values.
+DEFAULT_PRODUCT_IMAGES_BY_GROUP = {
+    "FR": os.getenv("DEFAULT_PRODUCT_IMAGE_FRUIT", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg"),
+    "VEG": os.getenv("DEFAULT_PRODUCT_IMAGE_VEGETABLES", "products/img/DEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg"),
+    "MT": os.getenv("DEFAULT_PRODUCT_IMAGE_MEAT", "products/img/DEFAULT_PRODUCT_IMAGE_MEAT.jpg"),
+    "DAE": os.getenv("DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS", "products/img/DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg"),
+    "SEA": os.getenv("DEFAULT_PRODUCT_IMAGE_SEASONAL", "products/img/DEFAULT_PRODUCT_IMAGE_SEASONAL.jpg"),
+}

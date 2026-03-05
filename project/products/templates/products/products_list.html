@@ -24,7 +24,7 @@
                     
                     <div class="product-img-wrapper">
                         {% if product.image %}
-                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" onerror="this.onerror=null;this.src='https://storage.googleapis.com/desd-6af1a.firebasestorage.app/products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg';">
                         {% else %}
                             <span class="text-muted">(Product image)</span>
                         {% endif %}

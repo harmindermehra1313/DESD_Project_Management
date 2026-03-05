@@ -113,7 +113,9 @@ class Product(models.Model):
     )
 
     image = models.ImageField(
-        upload_to = 'products/'
+        upload_to = 'products/img/',
+        blank = True,
+        null = True
     )
 
     stock_quantity = models.IntegerField(
@@ -243,10 +245,34 @@ class ProductUpdateHistory(models.Model):
         auto_now_add = True
     )
 
+
 class Allergen(models.Model):
+    class Allergens(models.TextChoices):
+        TREENUTS = 'NUT', 'Tree Nuts'
+        SESAME = 'SEA', 'Sesame'
+        PEANUTS = 'PEA', 'Peanuts'
+        SOYBEANS = 'SOY', 'Soybeans'
+        MUSTARD = 'MUS', 'Mustard'
+        FISH = 'FSH', 'Fish'
+        MOLLUSCS = 'MOL', 'Molluscs'
+        CRUSTACEANS = 'CRU', 'Crustaceans'
+        CELERY = 'CEL', 'Celery'
+        GLUTEN = 'GLU', 'Gluten'
+        SULPHUR_DIOXIED = 'SUL', 'Sulphur Dioxide'
+        LUPIN = 'LUP', 'Lupin'
+        EGG = 'EGG', 'Egg'
+        MILK = 'MLK', 'Milk'
+        NONE = 'NON', 'None'
+    
     name = models.CharField(
-        max_length = 100
+        max_length=3,
+        choices=Allergens.choices,
+        default=Allergens.NONE,
+        unique=True  
     )
+
+    def __str__(self):
+        return self.get_name_display()
 
 class ProductAllergen(models.Model): 
     product = models.ForeignKey(
@@ -259,18 +285,6 @@ class ProductAllergen(models.Model):
         on_delete = models.CASCADE, 
         related_name = "allergen_products"
     )
-    
 
-
-
-
-
-
-
-
-
-
-
-
-    
-
+    def __str__(self):
+        return f"{self.product.name} - {self.allergen.get_name_display()}"
