@@ -261,8 +261,13 @@ class CartItem(models.Model):
         on_delete=models.CASCADE,
         related_name="items",
     )
-    product = models.ForeignKey(
-        "products.Product",
+    # product = models.ForeignKey(
+    #     "products.Product",
+    #     on_delete=models.CASCADE,
+    #     related_name="cart_items",
+    # )
+    inventory = models.ForeignKey(
+        "products.Inventory",
         on_delete=models.CASCADE,
         related_name="cart_items",
     )
@@ -287,17 +292,24 @@ class CartItem(models.Model):
 
     class Meta:
         constraints = [
+            # models.UniqueConstraint(
+            #     fields=["cart", "product"],
+            #     name="uniq_cart_product",
+            # ),
             models.UniqueConstraint(
-                fields=["cart", "product"],
-                name="uniq_cart_product",
+                fields=["cart", "inventory"],
+                name="uniq_cart_item",
             ),
             models.CheckConstraint(
                 name="cartitem_quantity_gt_0",
                 condition=Q(quantity__gt=0),
             ),
         ]
+        # indexes = [
+        #     models.Index(fields=["cart", "product"], name="cartitem_cart_product_idx"),
+        # ]
         indexes = [
-            models.Index(fields=["cart", "product"], name="cartitem_cart_product_idx"),
+            models.Index(fields=["cart", "inventory"], name="cartitem_cart_inventory_idx"),
         ]
         ordering = ["created_at", "id"]
 

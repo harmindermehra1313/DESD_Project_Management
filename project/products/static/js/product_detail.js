@@ -383,6 +383,7 @@ document.addEventListener("DOMContentLoaded", () => {
   btn?.addEventListener("click", async () => {
     const productId = Number(btn.dataset.productId);
     const quantity = normalizeQtyInput();
+    const inventoryId = Number(btn.dataset.inventoryId);
 
     if (!Number.isInteger(productId) || productId <= 0) {
       setMsg("Invalid product id.", "danger");
@@ -403,7 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // IMPORTANT: server decides wholesale/surplus unit price.
       // We only send product + quantity.
       await window.CartAPI.addToCart({
-        productId,
+        inventoryId,
         quantity,
       });
 

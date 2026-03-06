@@ -390,17 +390,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const deliveryAddressForm = document.getElementById("delivery-address-create-form");
     const deliveryWrapper = document.querySelector("#new-delivery-address-form .address-wrapper");
 
-    deliveryAddressForm.addEventListener("invalid", () => {
-        deliveryWrapper.classList.add("submitted");
-    }, true);
+    if (deliveryAddressForm && deliveryWrapper) {
+        deliveryAddressForm.addEventListener("invalid", () => {
+            deliveryWrapper.classList.add("submitted");
+        }, true);
+    }
 
     // Billing address form validation
     const billingAddressForm = document.getElementById("billing-address-create-form");
     const billingWrapper = document.querySelector("#new-billing-address-form .address-wrapper");
 
-    billingAddressForm.addEventListener("invalid", () => {
-        billingWrapper.classList.add("submitted");
-    }, true);
+    if (billingAddressForm && billingWrapper) {
+        billingAddressForm.addEventListener("invalid", () => {
+            billingWrapper.classList.add("submitted");
+        }, true);
+    }
 
     // ===============================
     // Order form
@@ -679,6 +683,10 @@ async function handleAddressForm(formId, selectId, previewId) {
         // Select only in the dropdown that triggered the form
         insertAddressOption(deliverySelect, option, selectId === "delivery-address-select");
         insertAddressOption(billingSelect, option, selectId === "billing-address-select");
+
+        // Force the triggering dropdown to select the new address
+        select.value = data.id;
+        select.dispatchEvent(new Event("change"));
 
         // Update preview
         preview.innerHTML = `
