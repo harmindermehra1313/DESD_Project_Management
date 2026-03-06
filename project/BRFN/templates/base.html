@@ -23,6 +23,8 @@
 
     {% if user.is_authenticated and user.role == "ADMIN" %}
         {% include "admin_header.html" %}
+    {% elif user.is_authenticated and user.role == "PRODUCER" %}
+        {% include "producer_header.html" %}
     {% else %}
         {% include "header.html" %}
     {% endif %}

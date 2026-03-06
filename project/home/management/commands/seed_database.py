@@ -134,46 +134,46 @@ class Command(BaseCommand):
         )
         self.stdout.write(self.style.SUCCESS("  Address created."))
 
-    # Producers
-    def create_producers(self):
-        self.producer = self.Producer.objects.create(
-            user=self.producer_user,
-            farm_name="Blue Cow Farm",
-            farm_description="A small family-run organic farm.",
-            farm_postcode="BS1 4AB",
-            contact_email="contact@bluecowfarm.com",
-            contact_phone="07123456789",
-            approved_by_admin=self.admin_user,
-            is_approved=True,
-            approved_at=timezone.now(),
-            payout_method="BANK_TRANSFER",
-            bank_account_name="Blue Cow Farm Ltd",
-            bank_account_number="12345678",
-            bank_sort_code="12-34-56",
-            paypal_email=None,
-            payout_notes="Initial setup for testing.",
-            organic_certification_number="ORG-12345",
-        )
+    # # Producers
+    # def create_producers(self):
+    #     self.producer = self.Producer.objects.create(
+    #         user=self.producer_user,
+    #         farm_name="Blue Cow Farm",
+    #         farm_description="A small family-run organic farm.",
+    #         farm_postcode="BS1 4AB",
+    #         contact_email="contact@bluecowfarm.com",
+    #         contact_phone="07123456789",
+    #         approved_by_admin=self.admin_user,
+    #         is_approved=True,
+    #         approved_at=timezone.now(),
+    #         payout_method="BANK_TRANSFER",
+    #         bank_account_name="Blue Cow Farm Ltd",
+    #         bank_account_number="12345678",
+    #         bank_sort_code="12-34-56",
+    #         paypal_email=None,
+    #         payout_notes="Initial setup for testing.",
+    #         organic_certification_number="ORG-12345",
+    #     )
 
-        self.producer2 = self.Producer.objects.create(
-            user=self.producer_user2,
-            farm_name="Cricket Ranch",
-            farm_description="A small family-run farm.",
-            farm_postcode="BS1 4AK",
-            contact_email="cricketranch@gmail.com",
-            contact_phone="07123456789",
-            approved_by_admin=self.admin_user,
-            is_approved=True,
-            approved_at=timezone.now(),
-            payout_method="BANK_TRANSFER",
-            bank_account_name="Cricket Ranch Ltd",
-            bank_account_number="12345678",
-            bank_sort_code="12-34-56",
-            paypal_email=None,
-            payout_notes="Initial setup for testing.",
-        )
+    #     self.producer2 = self.Producer.objects.create(
+    #         user=self.producer_user2,
+    #         farm_name="Cricket Ranch",
+    #         farm_description="A small family-run farm.",
+    #         farm_postcode="BS1 4AK",
+    #         contact_email="cricketranch@gmail.com",
+    #         contact_phone="07123456789",
+    #         approved_by_admin=self.admin_user,
+    #         is_approved=True,
+    #         approved_at=timezone.now(),
+    #         payout_method="BANK_TRANSFER",
+    #         bank_account_name="Cricket Ranch Ltd",
+    #         bank_account_number="12345678",
+    #         bank_sort_code="12-34-56",
+    #         paypal_email=None,
+    #         payout_notes="Initial setup for testing.",
+    #     )
 
-        self.stdout.write(self.style.SUCCESS("  Producer x2 created."))
+    #     self.stdout.write(self.style.SUCCESS("  Producer x2 created."))
 
     # # Categories
     # def create_categories(self):
