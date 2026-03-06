@@ -97,10 +97,15 @@ def login_view(request):
 
             # Debug print (optional)
             print("JWT ACCESS:", access_token)
+            print("USER:", request.user)
+            print("ROLE:", request.user.role)
+            print("AUTH:", request.user.is_authenticated)
 
             # Redirect based on role
             if user.role == "ADMIN":
                 return redirect("home:dashboard")
+            elif user.role =='PRODUCER':
+                return redirect("home:producer")
             else:
                 return redirect("home:index")
 

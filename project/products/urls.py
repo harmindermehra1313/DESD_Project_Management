@@ -11,4 +11,5 @@ urlpatterns = [
     path("<int:pk>/", ProductDetailView.as_view(), name="detail"),  # /products/<pk>/
     # Harminder Edits
     path("category/<int:category_id>/", views.product_view, name="product_view"),
+    path("producer/products/", views.producer_products, name="producer_products"),
 ]
