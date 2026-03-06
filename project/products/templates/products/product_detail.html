@@ -40,19 +40,19 @@
               <span class="badge {% if product.availability_status == 'AV' %}text-bg-success {% elif product.availability_status == 'OOS' %}text-bg-danger {% else %}text-bg-secondary{% endif %}">
                 {{ product.get_availability_status_display }}
               </span>
-              {% if product.stock_quantity|default:0 <= 0 %}
+              {% if stock|default:0 <= 0 %}
                 <span class="text-danger small">Out of stock</span>
-              {% elif product.stock_quantity <= product.low_stock_threshold %}
-                <span class="text-warning small">Low stock — only {{ product.stock_quantity }} left</span>
+              {% elif stock <= product.low_stock_threshold %}
+                <span class="text-warning small">Low stock — only {{ stock }} left</span>
               {% else %}
                 <span class="text-muted small">In stock</span>
               {% endif %}
             </div>
             {% comment %} Expiry Date {% endcomment %}
-            {% if product.expiry_date %}
+            {% if expiry %}
               <div class="mt-2 small">
                 <span class="text-muted">{{ expiry_label }}:</span>
-                <span class="fw-semibold">{{ product.expiry_date|date:"j M Y, H:i" }}</span>
+                <span class="fw-semibold">{{ expiry|date:"j M Y" }}</span>
               </div>
             {% endif %}
             <div class="mb-3">
@@ -72,8 +72,8 @@
                 </span>
                 <span class="text-muted small">per <span id="unitLabel">{{ product.unit }}</span></span>
               </div>
-              {% if product.stock_quantity is not None %}
-                <div class="text-muted small">Stock: {{ product.stock_quantity }}</div>
+              {% if stock is not None %}
+                <div class="text-muted small">Stock: {{ stock }}</div>
               {% endif %}
               <!-- Surplus notice (professional, single place near price) -->
               <div id="surplusNotice" class="mt-2"></div>
@@ -126,7 +126,7 @@
                         type="button"
                         id="qtyMinus"
                         aria-label="Decrease quantity"
-                        {% if product.stock_quantity|default:0 <= 0 %}disabled{% endif %}>−</button>
+                        {% if stock|default:0 <= 0 %}disabled{% endif %}>−</button>
                 <input type="text"
                        class="form-control text-center"
                        id="qtyInput"
@@ -134,27 +134,28 @@
                        inputmode="numeric"
                        autocomplete="off"
                        aria-label="Quantity"
-                       {% if product.stock_quantity|default:0 <= 0 %}disabled{% endif %}>
+                       {% if stock|default:0 <= 0 %}disabled{% endif %}>
                 <button class="btn btn-outline-secondary"
                         type="button"
                         id="qtyPlus"
                         aria-label="Increase quantity"
-                        {% if product.stock_quantity|default:0 <= 0 %}disabled{% endif %}>+</button>
+                        {% if stock|default:0 <= 0 %}disabled{% endif %}>+</button>
               </div>
               <!-- Add to cart -->
               <button type="button"
-                      class="btn {% if product.stock_quantity|default:0 <= 0 %}btn-secondary{% else %}btn-primary{% endif %}"
+                      class="btn {% if stock|default:0 <= 0 %}btn-secondary{% else %}btn-primary{% endif %}"
                       id="addToCartBtn"
                       data-product-id="{{ product.id }}"
                       data-base-price="{{ product.price|floatformat:2 }}"
-                      data-surplus-active="{% if product.surplus_status == product.Surplus_status.SURPLUS_ACTIVE %}1{% else %}0{% endif %}"
-                      data-surplus-price="{{ product.get_discounted_price|floatformat:2 }}"
-                      data-surplus-percent="{{ product.surplus_discount_percentage|default:'0.00' }}"
-                      data-surplus-note="{{ product.surplus_note|default_if_none:''|escapejs }}"
-                      data-stock-qty="{{ product.stock_quantity|default:'0' }}"
-                      {% if product.stock_quantity|default:0 <= 0 %}disabled aria-disabled="true"{% endif %}>
+                      data-surplus-active="{% if batch and batch.surplus_status == 'SA' %}1{% else %}0{% endif %}"
+                      data-surplus-price="{% if batch and batch.surplus_discount_percentage %}{{ product.price|floatformat:2 }}{% else %}{{ product.price|floatformat:2 }}{% endif %}"
+                      data-surplus-percent="{{ batch.surplus_discount_percentage|default:'0.00' }}"
+                      data-surplus-note="{{ batch.surplus_note|default_if_none:''|escapejs }}"
+                      data-stock-qty="{{ stock|default:'0' }}"
+                      data-inventory-id="{{ batch.id }}"
+                      {% if stock|default:0 <= 0 %}disabled aria-disabled="true"{% endif %}>
                 <i class="bi bi-cart-plus me-1"></i>
-                {% if product.stock_quantity|default:0 <= 0 %}
+                {% if stock|default:0 <= 0 %}
                   Out of stock
                 {% else %}
                   Add to Cart

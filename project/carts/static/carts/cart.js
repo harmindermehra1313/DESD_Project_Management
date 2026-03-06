@@ -101,58 +101,104 @@ export async function getCart() {
 }
 
 /** POST /api/cart/items/ */
-export async function addToCart({ productId, quantity = 1 } = {}) {
-  if (!Number.isInteger(productId) || productId <= 0) {
-    throw new Error("addToCart: productId must be a positive integer");
+// export async function addToCart({ productId, quantity = 1 } = {}) {
+//   if (!Number.isInteger(productId) || productId <= 0) {
+//     throw new Error("addToCart: productId must be a positive integer");
+//   }
+//   const q = Number(quantity);
+//   if (!Number.isFinite(q) || q < 1) {
+//     throw new Error("addToCart: quantity must be >= 1");
+//   }
+
+//   const { data } = await request("POST", "/cart/items/", {
+//     body: { product_id: productId, quantity: q },
+//   });
+
+//   document.dispatchEvent(
+//     new CustomEvent("cart:updated", { detail: { action: "add" } }),
+//   );
+//   await getCartBadgeCount().catch(() => {});
+//   return data;
+// }
+export async function addToCart({ inventoryId, quantity = 1 } = {}) {
+  if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
+    throw new Error("addToCart: inventoryId must be a positive integer");
   }
+
   const q = Number(quantity);
   if (!Number.isFinite(q) || q < 1) {
     throw new Error("addToCart: quantity must be >= 1");
   }
 
   const { data } = await request("POST", "/cart/items/", {
-    body: { product_id: productId, quantity: q },
+    body: { inventory_id: inventoryId, quantity: q },
   });
 
-  document.dispatchEvent(
-    new CustomEvent("cart:updated", { detail: { action: "add" } }),
-  );
+  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "add" } }));
   await getCartBadgeCount().catch(() => {});
   return data;
 }
 
 /** PATCH /api/cart/items/<product_id>/ */
-export async function setItemQuantity({ productId, quantity } = {}) {
-  if (!Number.isInteger(productId) || productId <= 0) {
-    throw new Error("setItemQuantity: productId must be a positive integer");
+// export async function setItemQuantity({ productId, quantity } = {}) {
+//   if (!Number.isInteger(productId) || productId <= 0) {
+//     throw new Error("setItemQuantity: productId must be a positive integer");
+//   }
+//   const q = Number(quantity);
+//   if (!Number.isFinite(q) || q < 0) {
+//     throw new Error("setItemQuantity: quantity must be >= 0");
+//   }
+
+//   const { res, data } = await request("PATCH", `/cart/items/${productId}/`, {
+//     body: { quantity: q },
+//   });
+
+//   document.dispatchEvent(
+//     new CustomEvent("cart:updated", { detail: { action: "set_qty" } }),
+//   );
+//   await getCartBadgeCount().catch(() => {});
+//   if (res.status === 204) return null;
+//   return data;
+// }
+export async function setItemQuantity({ inventoryId, quantity } = {}) {
+  if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
+    throw new Error("setItemQuantity: inventoryId must be a positive integer");
   }
+
   const q = Number(quantity);
   if (!Number.isFinite(q) || q < 0) {
     throw new Error("setItemQuantity: quantity must be >= 0");
   }
 
-  const { res, data } = await request("PATCH", `/cart/items/${productId}/`, {
+  const { res, data } = await request("PATCH", `/cart/items/${inventoryId}/`, {
     body: { quantity: q },
   });
 
-  document.dispatchEvent(
-    new CustomEvent("cart:updated", { detail: { action: "set_qty" } }),
-  );
+  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "set_qty" } }));
   await getCartBadgeCount().catch(() => {});
-  if (res.status === 204) return null;
-  return data;
+  return res.status === 204 ? null : data;
 }
 
 /** DELETE /api/cart/items/<product_id>/ */
-export async function removeItem({ productId } = {}) {
-  if (!Number.isInteger(productId) || productId <= 0) {
-    throw new Error("removeItem: productId must be a positive integer");
+// export async function removeItem({ productId } = {}) {
+//   if (!Number.isInteger(productId) || productId <= 0) {
+//     throw new Error("removeItem: productId must be a positive integer");
+//   }
+
+//   await request("DELETE", `/cart/items/${productId}/`);
+//   document.dispatchEvent(
+//     new CustomEvent("cart:updated", { detail: { action: "remove" } }),
+//   );
+//   await getCartBadgeCount().catch(() => {});
+//   return { ok: true };
+// }
+export async function removeItem({ inventoryId } = {}) {
+  if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
+    throw new Error("removeItem: inventoryId must be a positive integer");
   }
 
-  await request("DELETE", `/cart/items/${productId}/`);
-  document.dispatchEvent(
-    new CustomEvent("cart:updated", { detail: { action: "remove" } }),
-  );
+  await request("DELETE", `/cart/items/${inventoryId}/`);
+  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "remove" } }));
   await getCartBadgeCount().catch(() => {});
   return { ok: true };
 }

@@ -128,6 +128,12 @@ class TraceabilityRecord(models.Model):
         related_name = "order_tracebility"
     )
 
+    inventory = models.ForeignKey(
+        "products.Inventory",
+        on_delete=models.PROTECT,
+        related_name="traceability_records",
+    )
+
     product = models.ForeignKey(
         "products.Product", 
         on_delete = models.CASCADE, 
@@ -142,10 +148,19 @@ class TraceabilityRecord(models.Model):
 
     customer = models.ForeignKey(
         "accounts.Customer",
-        on_delete = models.CASCADE, 
-        related_name ="customer_tracebility"
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="traceability_records",
     )
+
+    guest_name = models.CharField(max_length=150, null=True, blank=True)
+    guest_email = models.EmailField(null=True, blank=True)
+    guest_phone = models.CharField(max_length=20, null=True, blank=True)
 
     timestamp = models.DateTimeField(
         auto_now_add=True
     )
+
+    def __str__(self):
+        return f"Traceability for OrderItem {self.order_item_id}"
