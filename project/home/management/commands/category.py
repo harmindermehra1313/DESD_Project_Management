@@ -205,7 +205,7 @@ class Command(BaseCommand):
                         "surplus_discount_percentage": Decimal("0.00"),
                         "surplus_expiry": now,
                         "surplus_note": None,
-                        "status": "PUBLISHED",
+                        "status": "PUB",
                     }
                 )
 

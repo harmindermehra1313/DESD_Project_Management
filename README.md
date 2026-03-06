@@ -51,7 +51,8 @@ python manage.py migrate
 
 ### Run seeder script for initial data
 docker-compose up
-docker-compose exec web python manage.py seed_database
+docker-compose exec web python manage.py seed_database # For Admin User, Demo Customer
+docker-compose exec web python manage.py category # For Demo Products
 
 # [KAN-21] Setting up django apps according to test cases
 - Basic Apps created.
