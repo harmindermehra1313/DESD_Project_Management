@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<h2 class="mb-4">My Products</h2>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Stock</th>
+            <th>Harvest</th>
+            <th>Expiry</th>
+            <th>Image</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.category.name }}</td>
+            <td>£{{ product.price }}</td>
+            <td>{{ product.availability_status }}</td>
+            <td>{{ product.stock_quantity }}</td>
+            <td>{{ product.harvest_date }}</td>
+            <td>{{ product.expiry_date }}</td>
+            <td>
+                {% if product.image %}
+                    <img src="{{ product.image.url }}" width="60">
+                {% else %}
+                    No image
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" class="text-center">No products uploaded yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

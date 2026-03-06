@@ -177,6 +177,18 @@ def add_product(request):
     return render(request, 'products/add_product.html', _build_add_product_context())
 
 
+
+@producer_required
+def producer_products(request):
+    producer = request.user.producer_profile
+
+    products = Product.objects.filter(producer=producer).order_by("-created_at")
+
+    return render(request, "products/producer_products.html", {
+        "products": products
+    })
+
+
 def add_to_cart(request, product_id):
     print(f"TODO: Logic to add product {product_id} to the cart session.")
     return redirect('product_view', category_id=0)
@@ -203,7 +215,7 @@ class ProductDetailView(DetailView):
 
     def get_queryset(self):
         return (
-            Product.objects.filter(status__in=["PUBLISHED", Product.Status.PUBLISHED])
+            Product.objects.filter(status__in=["PUB", Product.Status.PUBLISHED])
             .select_related("producer", "category")
             .prefetch_related(
                 "product_wholesale",
