@@ -291,24 +291,24 @@ class ProductUpdateHistory(models.Model):
 
 class Allergen(models.Model):
     class Allergens(models.TextChoices):
-        TREENUTS = 'NUT', 'Tree Nuts'
-        SESAME = 'SEA', 'Sesame'
-        PEANUTS = 'PEA', 'Peanuts'
-        SOYBEANS = 'SOY', 'Soybeans'
-        MUSTARD = 'MUS', 'Mustard'
-        FISH = 'FSH', 'Fish'
-        MOLLUSCS = 'MOL', 'Molluscs'
-        CRUSTACEANS = 'CRU', 'Crustaceans'
-        CELERY = 'CEL', 'Celery'
-        GLUTEN = 'GLU', 'Gluten'
-        SULPHUR_DIOXIED = 'SUL', 'Sulphur Dioxide'
-        LUPIN = 'LUP', 'Lupin'
+        TREENUTS = 'TREENUTS', 'Tree Nuts'
+        SESAME = 'SESAME', 'Sesame'
+        PEANUTS = 'PEANUTS', 'Peanuts'
+        SOYBEANS = 'SOYBEANS', 'Soybeans'
+        MUSTARD = 'MUSTARD', 'Mustard'
+        FISH = 'FISH', 'Fish'
+        MOLLUSCS = 'MOLLUSCS', 'Molluscs'
+        CRUSTACEANS = 'CRUSTACEANS', 'Crustaceans'
+        CELERY = 'CELERY', 'Celery'
+        GLUTEN = 'GLUTEN', 'Gluten'
+        SULPHUR_DIOXIED = 'SULPHUR DIOXIED', 'Sulphur Dioxide'
+        LUPIN = 'LUPIN', 'Lupin'
         EGG = 'EGG', 'Egg'
-        MILK = 'MLK', 'Milk'
-        NONE = 'NON', 'None'
+        MILK = 'MILK', 'Milk'
+        NONE = 'NONE', 'None'
     
     name = models.CharField(
-        max_length=3,
+        max_length=20,
         choices=Allergens.choices,
         default=Allergens.NONE,
         unique=True  
