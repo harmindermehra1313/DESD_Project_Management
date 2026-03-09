@@ -6,6 +6,7 @@ from django.conf import settings
 from datetime import datetime
 from .models import Product, Category, Allergen, ProductAllergen
 from accounts.models import Producer
+from products.models import Inventory
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -144,25 +145,48 @@ def add_product(request):
         
         producer = request.user.producer_profile
 
+        # new_product = Product.objects.create(
+        #     producer=producer,
+        #     category=category_obj,
+        #     name=name,
+        #     price=price,
+        #     availability_status=availability_status,
+        #     harvest_date=harvest_date,
+        #     expiry_date=expiry_date,
+        #     unit=unit_code,
+        #     stock_quantity=stock_quantity,
+        #     description=description,
+        #     image=uploaded_image,
+        #     farm_origin="Local Farm",
+        #     surplus_discount_percentage=0.00,
+        # )
+
         new_product = Product.objects.create(
             producer=producer,
             category=category_obj,
             name=name,
             price=price,
             availability_status=availability_status,
-            harvest_date=harvest_date,
-            expiry_date=expiry_date,
             unit=unit_code,
-            stock_quantity=stock_quantity,
             description=description,
             image=uploaded_image,
             farm_origin="Local Farm",
-            surplus_discount_percentage=0.00,
         )
 
         if not uploaded_image:
             new_product.image.name = default_image_path
             new_product.save(update_fields=['image'])
+        
+        Inventory.objects.create(
+            product=new_product,
+            original_quantity=stock_quantity,
+            remaining_quantity=stock_quantity,
+            harvest_date=harvest_dt.date(),
+            expiry_date=expiry_dt.date(),
+            expiry_type="BB",
+            surplus_status="NONE",
+            surplus_discount_percentage=0,
+        )
 
         allergen_ids = request.POST.getlist('allergen')
         for a_code in allergen_ids:
@@ -219,7 +243,8 @@ class ProductDetailView(DetailView):
             .select_related("producer", "category")
             .prefetch_related(
                 "product_wholesale",
-                "product_allergen__allergen",  # 👈 ADD THIS
+                "product_allergen__allergen",
+                "inventory_batches",
             )
         )
 
@@ -241,6 +266,11 @@ class ProductDetailView(DetailView):
         )
         ctx["wholesale_tiers"] = tiers
 
+        batch = p.inventory_batches.order_by("expiry_date").first()
+        ctx["stock"] = batch.remaining_quantity if batch else 0
+        ctx["expiry"] = batch.expiry_date if batch else None
+        ctx["batch"] = batch
+
         return ctx
     # return redirect('products_list')
 
@@ -249,36 +279,56 @@ def product_view(request, category_id):
     # All categories except organic
     categories = Category.objects.exclude(name__icontains="organic")
     certified_organic = Category.objects.filter(name__icontains="organic")
+    
     # ALL PRODUCTS PAGE
     if category_id == 0:
         selected_category = None
-        products = Product.objects.filter(status="PUBLISHED")
+        products = Product.objects.filter(status="PUB")
         show_filters = True   # show category + producer filters
 
     # CATEGORY PAGE
     else:
         selected_category = get_object_or_404(Category, id=category_id)
-        products = Product.objects.filter(status="PUBLISHED", category=selected_category)
+        products = Product.objects.filter(status="PUB", category=selected_category)
         show_filters = False  # hide category + producer filters
 
     # Producer list for dropdown (only used when show_filters=True)
     producers = products.values_list("producer__farm_name", flat=True).distinct()
 
-    # Convert queryset → JSON for inline JS
-    product_json = [
-        {
+    # Helper: get earliest-expiring batch
+    def get_active_batch(product):
+        return product.inventory_batches.order_by("expiry_date").first()
+    
+    product_json = []
+    for p in products:
+        batch = get_active_batch(p)
+
+        product_json.append({
             "id": p.id,
             "name": p.name,
             "description": p.description,
             "price": float(p.price),
             "image": p.image.url if p.image else "",
             "producer": p.producer.farm_name,
-            "category": p.category.name,  # required for filtering
-            "stock": p.stock_quantity,
-            "expiry": p.expiry_date.strftime("%Y-%m-%d"),
-        }
-        for p in products
-    ]
+            "category": p.category.name,
+            "stock": batch.remaining_quantity if batch else 0,
+            "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
+        })
+    # Convert queryset → JSON for inline JS
+    # product_json = [
+    #     {
+    #         "id": p.id,
+    #         "name": p.name,
+    #         "description": p.description,
+    #         "price": float(p.price),
+    #         "image": p.image.url if p.image else "",
+    #         "producer": p.producer.farm_name,
+    #         "category": p.category.name,  # required for filtering
+    #         "stock": p.stock_quantity,
+    #         "expiry": p.expiry_date.strftime("%Y-%m-%d"),
+    #     }
+    #     for p in products
+    # ]
 
     return render(request, "products/product_view.html", {
         "categories": categories,

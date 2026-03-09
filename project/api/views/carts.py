@@ -73,7 +73,12 @@ class CartAPIView(APIView):
             cart = (
                 Cart.objects
                 .filter(pk=cart.pk)
-                .prefetch_related("items__product", "items__product__producer")
+                # .prefetch_related("items__product", "items__product__producer")
+                .prefetch_related(
+                    "items__inventory",
+                    "items__inventory__product",
+                    "items__inventory__product__producer",
+                )
                 .get()
             )
         except Exception as exc:
@@ -94,7 +99,8 @@ class CartItemAddView(CreateAPIView):
             cart = cart_get_or_create_active(owner=_owner(request))
             item = cart_add_item(
                 cart=cart,
-                product_id=ser.validated_data["product_id"],
+                # product_id=ser.validated_data["product_id"],
+                inventory_id=ser.validated_data["inventory_id"],
                 quantity=ser.validated_data["quantity"],
             )
         except Exception as exc:
@@ -119,13 +125,14 @@ class CartItemDetailView(APIView):
     def delete(self, request, pk: int, *args, **kwargs):
         try:
             cart = cart_get_or_create_active(owner=_owner(request))
-            cart_remove_item(cart=cart, product_id=int(pk))
+            # cart_remove_item(cart=cart, product_id=int(pk))
+            cart_remove_item(cart=cart, inventory_id=int(pk))
         except Exception as exc:
             raise _translate_service_error(exc)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def _set_quantity(self, request, product_id: int):
+    def _set_quantity(self, request, inventory_id: int):
         ser = UpdateQuantitySerializer(data=request.data)
         ser.is_valid(raise_exception=True)
 
@@ -133,7 +140,8 @@ class CartItemDetailView(APIView):
             cart = cart_get_or_create_active(owner=_owner(request))
             item = cart_set_item_quantity(
                 cart=cart,
-                product_id=int(product_id),
+                # product_id=int(product_id),
+                inventory_id=int(inventory_id),
                 quantity=ser.validated_data["quantity"],
             )
         except Exception as exc:

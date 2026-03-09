@@ -85,7 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function buildItemRow(item) {
     const product = item.product || {};
     const itemId = item.id;
-    const productId = product.id;
+    // const productId = product.id;
+    const inventoryId = Number(item.inventory_id ?? 0);
 
     const name = product.name ?? "Product";
     const producer = product.producer_name ?? "";
@@ -140,7 +141,8 @@ document.addEventListener("DOMContentLoaded", () => {
     row.className =
       "cart-row border rounded p-3 mb-3 d-flex gap-3 align-items-start";
     row.dataset.itemId = String(itemId ?? "");
-    row.dataset.productId = String(productId ?? "");
+    // row.dataset.productId = String(productId ?? "");
+    row.dataset.inventoryId = String(item.inventory_id ?? "");
 
     // image (always render, always fallback)
     const placeholder =
@@ -272,7 +274,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const q = clampQty(newQty);
       setDisabled(true);
       try {
-        await window.CartAPI.setItemQuantity({ productId, quantity: q });
+        // await window.CartAPI.setItemQuantity({ productId, quantity: q });
+        await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
         window.CartAPI.showToast?.(`Updated quantity to ${q}`, {
           title: "Cart",
           variant: "success",
@@ -303,7 +306,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       setDisabled(true);
       try {
-        await window.CartAPI.removeItem({ productId });
+        // await window.CartAPI.removeItem({ productId });
+        await window.CartAPI.removeItem({ inventoryId });
         window.CartAPI.showToast?.(`Removed “${name}”`, {
           title: "Cart",
           variant: "success",
