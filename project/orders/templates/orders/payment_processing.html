@@ -16,15 +16,28 @@
 
 <script>
     const intent = "{{ payment_intent }}";
-
-    // Poll every 2 seconds
-    setTimeout(() => {
-        window.location.href = "{% url 'orders:stripe_return' %}?payment_intent=" + intent;
-    }, 2000);
+    let timedOut = false;
 
     // Hard timeout after 15 seconds
-    setTimeout(() => {
+    const timeoutTimer = setTimeout(() => {
+        timedOut = true;
         window.location.href = "{% url 'orders:checkout' %}?timeout=1&pi=" + intent;
     }, 15000);
+
+    // Poll Stripe status every 2 seconds
+    const pollTimer = setInterval(async () => {
+        if (timedOut) return;
+
+        const response = await fetch(
+            "{% url 'orders:stripe_return' %}?payment_intent=" + intent + "&ajax=1"
+        );
+        const data = await response.json();
+
+        if (data.status === "succeeded") {
+            clearInterval(pollTimer);
+            clearTimeout(timeoutTimer);
+            window.location.href = data.redirect_url;  // your success page
+        }
+    }, 2000);
 </script>
 {% endblock %}

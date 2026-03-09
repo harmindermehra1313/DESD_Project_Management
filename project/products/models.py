@@ -117,15 +117,9 @@ class Product(models.Model):
         null = True
     )
 
-    stock_quantity = models.IntegerField(
-        default = 0
-    )
-
     low_stock_threshold = models.IntegerField(
         default = 0
     )
-    
-    harvest_date = models.DateTimeField()
 
     farm_origin = models.CharField(
         max_length = 150
@@ -141,14 +135,6 @@ class Product(models.Model):
         null = True
     )
 
-    expiry_date = models.DateTimeField()
-
-    expiry_type = models.CharField(
-        max_length = 11,
-        choices = Expiry_type.choices,
-        default = Expiry_type.BESTBEFORE
-    )
-
     availability_start = models.DateTimeField(
         auto_now_add = True
     )
@@ -161,26 +147,6 @@ class Product(models.Model):
         max_length = 10,
         choices = Availability_status.choices,
         default = Availability_status.OUT_OF_STOCK
-    )
-
-    surplus_status = models.CharField(
-        max_length = 15,
-        choices = Surplus_status.choices,
-        default = Surplus_status.NONE
-    )
-
-    surplus_discount_percentage = models.DecimalField(
-        max_digits = 5, 
-        decimal_places = 2
-    )
-
-    surplus_expiry = models.DateTimeField(
-        auto_now_add = True, 
-        null = True
-    )
-
-    surplus_note = models.TextField(
-        null = True
     )
 
     created_at = models.DateTimeField(
@@ -215,14 +181,70 @@ class Product(models.Model):
             return tier.unit_price
         else:
             return None
-    
+
+class Inventory(models.Model):
+
+    class ExpiryType(models.TextChoices):
+        BEST_BEFORE = 'BB', 'Best Before'
+        USE_BY = 'UB', 'Use By'
+
+    class SurplusStatus(models.TextChoices):
+        NONE = 'NN', 'None'
+        SURPLUS_ACTIVE = 'SA', 'Surplus Active'
+        SURPLUS_EXPIRED = 'SE', 'Surplus Expired'
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="inventory_batches"
+    )
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="added_inventory"
+    )
+
+    original_quantity = models.IntegerField()
+    remaining_quantity = models.IntegerField()
+
+    harvest_date = models.DateField()
+    expiry_date = models.DateField()
+    expiry_type = models.CharField(
+        max_length=11,
+        choices=ExpiryType.choices,
+        default=ExpiryType.BEST_BEFORE
+    )
+
+    surplus_status = models.CharField(
+        max_length=15,
+        choices=SurplusStatus.choices,
+        default=SurplusStatus.NONE
+    )
+
+    surplus_discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True
+    )
+
+    surplus_expiry = models.DateTimeField(null=True)
+    surplus_note = models.TextField(null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     # Return the discounted price if surplus is active else normal price
     def get_discounted_price(self):
-        if self.surplus_status == Product.Surplus_status.SURPLUS_ACTIVE:
+        if self.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
             discount_factor = (Decimal('100') - self.surplus_discount_percentage) / Decimal('100')
             return self.price * discount_factor
         else:
             return self.price
+
+    def __str__(self):
+        return f"{self.product.name} batch ({self.harvest_date})"
 
 class WholesalePrice(models.Model):
 
@@ -269,24 +291,24 @@ class ProductUpdateHistory(models.Model):
 
 class Allergen(models.Model):
     class Allergens(models.TextChoices):
-        TREENUTS = 'NUT', 'Tree Nuts'
-        SESAME = 'SEA', 'Sesame'
-        PEANUTS = 'PEA', 'Peanuts'
-        SOYBEANS = 'SOY', 'Soybeans'
-        MUSTARD = 'MUS', 'Mustard'
-        FISH = 'FSH', 'Fish'
-        MOLLUSCS = 'MOL', 'Molluscs'
-        CRUSTACEANS = 'CRU', 'Crustaceans'
-        CELERY = 'CEL', 'Celery'
-        GLUTEN = 'GLU', 'Gluten'
-        SULPHUR_DIOXIED = 'SUL', 'Sulphur Dioxide'
-        LUPIN = 'LUP', 'Lupin'
+        TREENUTS = 'TREENUTS', 'Tree Nuts'
+        SESAME = 'SESAME', 'Sesame'
+        PEANUTS = 'PEANUTS', 'Peanuts'
+        SOYBEANS = 'SOYBEANS', 'Soybeans'
+        MUSTARD = 'MUSTARD', 'Mustard'
+        FISH = 'FISH', 'Fish'
+        MOLLUSCS = 'MOLLUSCS', 'Molluscs'
+        CRUSTACEANS = 'CRUSTACEANS', 'Crustaceans'
+        CELERY = 'CELERY', 'Celery'
+        GLUTEN = 'GLUTEN', 'Gluten'
+        SULPHUR_DIOXIED = 'SULPHUR DIOXIED', 'Sulphur Dioxide'
+        LUPIN = 'LUPIN', 'Lupin'
         EGG = 'EGG', 'Egg'
-        MILK = 'MLK', 'Milk'
-        NONE = 'NON', 'None'
+        MILK = 'MILK', 'Milk'
+        NONE = 'NONE', 'None'
     
     name = models.CharField(
-        max_length=3,
+        max_length=20,
         choices=Allergens.choices,
         default=Allergens.NONE,
         unique=True  

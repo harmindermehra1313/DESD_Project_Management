@@ -11,12 +11,14 @@ from orders.models import (
 from api.serializers.accounts import UserSerializer, ProducerSerializer
 from api.serializers.accounts import AddressSerializer
 from api.serializers.products import ProductInlineSerializer
+from api.serializers.products import InventorySerializer
 
 # Validation should happen here! TBC remove when added
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product = ProductInlineSerializer(read_only=True)
     producer = ProducerSerializer(read_only=True)
+    inventory = InventorySerializer(read_only=True)
 
     class Meta:
         model = OrderItem

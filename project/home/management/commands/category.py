@@ -126,7 +126,7 @@ class Command(BaseCommand):
             ("Fruit", "Fresh fruits", Decimal("0.00"), "FR"),
             ("Vegetables", "Fresh vegetables", Decimal("0.00"), "VEG"),
             ("Seasonal Produce", "Seasonal farm goods", Decimal("0.00"), "SEA"),
-            ("Certified Organic", "Fully certified organic produce", Decimal("0.00"), "SEA"),
+            ("Certified Organic", "Fully certified organic produce", Decimal("0.00"), "CO"),
         ]
 
         self.categories = []

@@ -7,8 +7,10 @@ from orders.models import (
 from payments.models import Payment
 from accounts.models import Address
 from carts.services import (
-    CartOwner, cart_get_or_create_active, cart_mark_checked_out
+    CartOwner, cart_get_or_create_active, cart_mark_checked_out, _get_effective_unit_price
 )
+from notifications.models import TraceabilityRecord
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,12 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
         # Load cart
         # -----------------------------
         cart = cart_get_or_create_active(owner=owner)
-        items = cart.items.select_related("product", "product__producer")
+        # items = cart.items.select_related("product", "product__producer")
+        items = cart.items.select_related(
+            "inventory",
+            "inventory__product",
+            "inventory__product__producer",
+        )
 
         if not items:
             raise ValueError("Cart is empty")
@@ -54,13 +61,17 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
         # Validate stock
         # -----------------------------
         for entry in items:
-            product = entry.product
+            # product = entry.product
+            product = entry.inventory.product
             quantity = entry.quantity
+            inventory = entry.inventory
 
-            if product.stock_quantity < quantity:
+            # if product.stock_quantity < quantity:
+            if inventory.remaining_quantity < quantity:
                 raise ValueError(
                     f"Insufficient stock for {product.name}. "
-                    f"Available: {product.stock_quantity}, Requested: {quantity}"
+                    # f"Available: {product.stock_quantity}, Requested: {quantity}"
+                    f"Available: {inventory.remaining_quantity}, Requested: {quantity}"
                 )
 
         # -----------------------------
@@ -129,12 +140,20 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
             commission_per = Decimal("0.05")
 
             for entry in items:
-                product = entry.product
+                # product = entry.product
+                product = entry.inventory.product
                 quantity = entry.quantity
+                inventory = entry.inventory
+                producer = product.producer
 
-                discounted_price = product.get_discounted_price()
-                wholesale_tier = product.get_wholesale_price(quantity)
-                unit_price = wholesale_tier or discounted_price
+                # discounted_price = inventory.get_discounted_price()
+                # wholesale_tier = product.get_wholesale_price(quantity)
+                # unit_price = wholesale_tier or discounted_price
+                # _get_effective_unit_price returns cheapest price if both wholesale & discount are active
+                unit_price = _get_effective_unit_price(
+                    inventory_id=inventory.id,
+                    qty=quantity,
+                )
 
                 original_unit_price = product.price
                 original_line_total = original_unit_price * quantity
@@ -154,12 +173,26 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 total_discount += discount_amount
                 commission_total += commission_amount
 
+                # item = OrderItem.objects.create(
+                #     order=order,
+                #     product=product,
+                #     producer=product.producer,
+                #     quantity=quantity,
+                #     original_unit_price=original_unit_price,
+                #     final_unit_price=unit_price,
+                #     vat_amount=vat_amount,
+                #     vat_rate=vat_rate,
+                #     commission_amount=commission_amount,
+                #     discount_amount=discount_amount,
+                #     preparation_deadline=timezone.now() + timezone.timedelta(hours=48),
+                # )
                 item = OrderItem.objects.create(
                     order=order,
-                    product=product,
-                    producer=product.producer,
+                    inventory=inventory,
+                    product=inventory.product,
+                    producer=producer,
                     quantity=quantity,
-                    original_unit_price=original_unit_price,
+                    original_unit_price=inventory.product.price,
                     final_unit_price=unit_price,
                     vat_amount=vat_amount,
                     vat_rate=vat_rate,
@@ -168,9 +201,31 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                     preparation_deadline=timezone.now() + timezone.timedelta(hours=48),
                 )
 
+                # Create traceability record
+                if order.is_guest:
+                    TraceabilityRecord.objects.create(
+                        order_item=item,
+                        inventory=inventory,
+                        product=product,
+                        producer=producer,
+                        guest_name=order.guest_name,
+                        guest_email=order.guest_email,
+                        guest_phone=order.guest_phone,
+                    )
+                else:
+                    TraceabilityRecord.objects.create(
+                        order_item=item,
+                        inventory=inventory,
+                        product=product,
+                        producer=producer,
+                        customer=order.user.customer_profile,
+                    )
+
                 # Reduce stock
-                product.stock_quantity = max(product.stock_quantity - quantity, 0)
-                product.save(update_fields=["stock_quantity"])
+                # product.stock_quantity = max(product.stock_quantity - quantity, 0)
+                # product.save(update_fields=["stock_quantity"])
+                inventory.remaining_quantity = max(inventory.remaining_quantity - quantity, 0)
+                inventory.save(update_fields=["remaining_quantity"])
 
                 items_by_producer.setdefault(product.producer, []).append(item)
 
