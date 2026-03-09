@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.apps import apps
 from decimal import Decimal
 from datetime import datetime, timedelta
-from carts.services import CartOwner, cart_get_or_create_active
+from carts.services import CartOwner, cart_get_or_create_active, _get_effective_unit_price
 from payments.stripe_client import get_stripe
 from orders.services.order_creation import create_order_from_session
 import json
@@ -14,6 +14,7 @@ from django.core.exceptions import ValidationError
 from orders.services.session_loader import load_checkout_data_from_session
 from orders.services.order_validation import validate_checkout_session
 from payments.services import create_payment_intent
+from django.urls import reverse
 
 Product = apps.get_model('products', 'Product')
 Order = apps.get_model('orders', 'Order')
@@ -61,29 +62,69 @@ def checkout_cod(request):
 
     return redirect("orders:order_success", reference=order.unique_reference)
 
+# def stripe_return(request):
+#     try:
+#         pi = request.GET.get("payment_intent")
+
+#         if not pi:
+#             logger.exception("Stripe return: payment intent does not exist")
+#             return redirect("orders:checkout")
+
+#         # Find the order by payment_intent_id
+#         try:
+#             order = Order.objects.get(payments__stripe_payment_intent=pi)
+#             logger.exception("Stripe return order redirect")
+#             return redirect("orders:order_success", reference=order.unique_reference)
+        
+#         except Order.DoesNotExist:
+#             logger.warning(f"Stripe return: order does not exist yet for payment intent {pi}")
+#             # Show a waiting page that auto-refreshes
+#             return render(request, "orders/payment_processing.html", { 
+#                 "payment_intent": pi, 
+#                 })
+
+#     except Exception as e:
+#         logger.exception("Stripe return redirect failed: %s", e)
+#         raise
+
 def stripe_return(request):
     try:
         pi = request.GET.get("payment_intent")
 
         if not pi:
-            logger.exception("Stripe return: payment intent does not exist")
+            logger.error("Stripe return: payment intent missing")
             return redirect("orders:checkout")
 
-        # Find the order by payment_intent_id
+        is_ajax = request.GET.get("ajax") == "1"
+
+        # Try to find the order
         try:
             order = Order.objects.get(payments__stripe_payment_intent=pi)
-            logger.exception("Stripe return order redirect")
-            return redirect("orders:order_success", reference=order.unique_reference)
-        
-        except Order.DoesNotExist:
-            logger.warning(f"Stripe return: order does not exist yet for payment intent {pi}")
-            # Show a waiting page that auto-refreshes
-            return render(request, "orders/payment_processing.html", { 
-                "payment_intent": pi, 
+
+            # AJAX polling branch
+            if is_ajax:
+                return JsonResponse({
+                    "status": "succeeded",
+                    "redirect_url": reverse("orders:order_success", args=[order.unique_reference])
                 })
 
+            # Normal browser redirect
+            return redirect("orders:order_success", reference=order.unique_reference)
+
+        except Order.DoesNotExist:
+            logger.info(f"Stripe return: order not created yet for PI {pi}")
+
+            # AJAX polling branch
+            if is_ajax:
+                return JsonResponse({"status": "pending"})
+
+            # First visit, show processing page
+            return render(request, "orders/payment_processing.html", {
+                "payment_intent": pi,
+            })
+
     except Exception as e:
-        logger.exception("Stripe return redirect failed: %s", e)
+        logger.exception("Stripe return failed: %s", e)
         raise
 
 
@@ -101,7 +142,12 @@ def checkout(request):
         owner = CartOwner(session_key=request.session.session_key)
     
     cart = cart_get_or_create_active(owner=owner)
-    items = cart.items.select_related("product", "product__producer")
+    # items = cart.items.select_related("product", "product__producer")
+    items = cart.items.select_related(
+        "inventory",
+        "inventory__product",
+        "inventory__product__producer",
+    )
 
     enriched_items = []
     producers = {}
@@ -112,14 +158,24 @@ def checkout(request):
     for entry in items:
         # product = Product.objects.get(id=entry["product_id"])
         # quantity = entry["quantity"]
-        product = entry.product
+        # product = entry.product
+        product = entry.inventory.product
+        inventory = entry.inventory
         quantity = entry.quantity
         producer = product.producer
         
         # Price
-        discounted_price = product.get_discounted_price() # Normal price if no discount
+        #discounted_price = inventory.get_discounted_price() # Normal price if no discount
+        discounted_price = _get_effective_unit_price(
+            inventory_id=inventory.id,
+            qty=1,   # discounted price per unit
+        )
         wholesale_tier = product.get_wholesale_price(quantity) # None if no wholesale
-        unit_price = wholesale_tier or discounted_price
+        # unit_price = wholesale_tier or discounted_price
+        unit_price = _get_effective_unit_price(
+            inventory_id=inventory.id,
+            qty=quantity,
+        )
         
         # VAT
         vat_rate = product.category.vat
@@ -140,6 +196,7 @@ def checkout(request):
 
         enriched_item = {
             "product": product,
+            "inventory": inventory,
             "quantity": quantity,
             "unit_price": unit_price,
             "total_price": total_price,
@@ -174,8 +231,10 @@ def checkout(request):
         producers[producer]["items"].append(enriched_item)
 
         # Store expiry dates for max date calculation
-        if product.expiry_date:
-            producers[producer]["expiry_dates"].append(product.expiry_date)
+        # if product.expiry_date:
+            # producers[producer]["expiry_dates"].append(product.expiry_date)
+        if inventory.expiry_date:
+            producers[producer]["expiry_dates"].append(inventory.expiry_date)
     
         # Get subtotals for each producer
         producers[producer]["subtotal"] += product.price * quantity
@@ -210,7 +269,7 @@ def checkout(request):
 
         if expiry_dates:
             earliest_expiry = min(expiry_dates)
-            max_delivery_date = earliest_expiry.date() - timedelta(days=2)
+            max_delivery_date = earliest_expiry - timedelta(days=2)
         else:
             max_delivery_date = None
 

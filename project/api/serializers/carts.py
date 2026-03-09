@@ -9,73 +9,152 @@ from rest_framework import serializers
 from carts.models import Cart, CartItem
 
 
+# class ProductMiniSerializer(serializers.Serializer):
+#     """
+#     Minimal product snapshot for cart lines (multi-vendor awareness).
+#     Includes producer display name + base_unit_price for wholesale UI.
+#     """
+
+#     id = serializers.IntegerField(read_only=True)
+#     name = serializers.CharField(read_only=True)
+
+#     # This is the product's normal price (non-wholesale baseline)
+#     price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
+#     # IMPORTANT: Frontend expects this name
+#     base_unit_price = serializers.DecimalField(
+#         max_digits=10,
+#         decimal_places=2,
+#         source="price",
+#         read_only=True,
+#     )
+
+#     # Keep as int-like in payload (your Product model uses IntegerField)
+#     stock_quantity = serializers.IntegerField(read_only=True)
+
+#     unit = serializers.CharField(read_only=True)
+
+#     producer_name = serializers.SerializerMethodField()
+
+#     # Optional: include image if you want thumbnails
+#     image = serializers.SerializerMethodField()
+    
+#     surplus_status = serializers.CharField(read_only=True)
+#     surplus_discount_percentage = serializers.DecimalField(
+#         max_digits=5,
+#         decimal_places=2,
+#         read_only=True,
+#     )
+#     surplus_note = serializers.CharField(read_only=True, allow_null=True)
+
+#     def get_producer_name(self, obj):
+#         producer = getattr(obj, "producer", None)
+#         if not producer:
+#             return None
+#         if hasattr(producer, "business_name") and producer.business_name:
+#             return producer.business_name
+#         if hasattr(producer, "name") and producer.name:
+#             return producer.name
+#         return str(producer)
+
+#     def get_image(self, obj):
+#         img = getattr(obj, "image", None)
+#         if not img:
+#             return None
+#         url = getattr(img, "url", None)
+#         return url or None
 class ProductMiniSerializer(serializers.Serializer):
-    """
-    Minimal product snapshot for cart lines (multi-vendor awareness).
-    Includes producer display name + base_unit_price for wholesale UI.
-    """
+    id = serializers.IntegerField(source="product.id", read_only=True)
+    name = serializers.CharField(source="product.name", read_only=True)
 
-    id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(read_only=True)
-
-    # This is the product's normal price (non-wholesale baseline)
-    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-
-    # IMPORTANT: Frontend expects this name
-    base_unit_price = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        source="price",
-        read_only=True,
+    price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="product.price", read_only=True
     )
 
-    # Keep as int-like in payload (your Product model uses IntegerField)
-    stock_quantity = serializers.IntegerField(read_only=True)
+    base_unit_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="product.price", read_only=True
+    )
 
-    unit = serializers.CharField(read_only=True)
+    stock_quantity = serializers.IntegerField(
+        source="remaining_quantity", read_only=True
+    )
+
+    unit = serializers.CharField(source="product.unit", read_only=True)
 
     producer_name = serializers.SerializerMethodField()
-
-    # Optional: include image if you want thumbnails
     image = serializers.SerializerMethodField()
-    
+
     surplus_status = serializers.CharField(read_only=True)
     surplus_discount_percentage = serializers.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        read_only=True,
+        max_digits=5, decimal_places=2, read_only=True
     )
     surplus_note = serializers.CharField(read_only=True, allow_null=True)
 
     def get_producer_name(self, obj):
-        producer = getattr(obj, "producer", None)
-        if not producer:
-            return None
-        if hasattr(producer, "business_name") and producer.business_name:
-            return producer.business_name
-        if hasattr(producer, "name") and producer.name:
-            return producer.name
-        return str(producer)
+        producer = obj.product.producer
+        return getattr(producer, "business_name", None) or getattr(producer, "name", None)
 
     def get_image(self, obj):
-        img = getattr(obj, "image", None)
-        if not img:
-            return None
-        url = getattr(img, "url", None)
-        return url or None
+        img = getattr(obj.product, "image", None)
+        return getattr(img, "url", None) if img else None
 
+# class CartItemSerializer(serializers.ModelSerializer):
+#     """
+#     Cart line serializer for API read responses.
+#     """
 
+#     product_id = serializers.IntegerField(source="product.id", read_only=True)
+#     product = ProductMiniSerializer(read_only=True)
+
+#     line_total = serializers.SerializerMethodField()
+
+#     # Optional (but nice for UI): expose baseline + savings
+#     base_line_total = serializers.SerializerMethodField()
+#     savings_total = serializers.SerializerMethodField()
+#     savings_per_unit = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = CartItem
+#         fields = [
+#             "id",
+#             "product_id",
+#             "product",
+#             "quantity",
+#             "unit_price",
+#             "line_total",
+#             "base_line_total",
+#             "savings_total",
+#             "savings_per_unit",
+#             "created_at",
+#             "updated_at",
+#         ]
+#         read_only_fields = fields
+
+#     def get_line_total(self, obj: CartItem) -> Decimal:
+#         unit_price = obj.unit_price or Decimal("0.00")
+#         qty = obj.quantity or Decimal("0.00")
+#         return unit_price * qty
+
+#     def get_base_line_total(self, obj: CartItem) -> Decimal:
+#         base = getattr(obj.product, "price", None) or Decimal("0.00")
+#         qty = obj.quantity or Decimal("0.00")
+#         return Decimal(str(base)) * qty
+
+#     def get_savings_total(self, obj: CartItem) -> Decimal:
+#         base_total = self.get_base_line_total(obj)
+#         line_total = self.get_line_total(obj)
+#         return base_total - line_total
+
+#     def get_savings_per_unit(self, obj: CartItem) -> Decimal:
+#         base = getattr(obj.product, "price", None) or Decimal("0.00")
+#         unit = obj.unit_price or Decimal("0.00")
+#         return Decimal(str(base)) - unit
 class CartItemSerializer(serializers.ModelSerializer):
-    """
-    Cart line serializer for API read responses.
-    """
-
-    product_id = serializers.IntegerField(source="product.id", read_only=True)
-    product = ProductMiniSerializer(read_only=True)
+    inventory_id = serializers.IntegerField(source="inventory.id", read_only=True)
+    product_id = serializers.IntegerField(source="inventory.product.id", read_only=True)
+    product = ProductMiniSerializer(source="inventory", read_only=True)
 
     line_total = serializers.SerializerMethodField()
-
-    # Optional (but nice for UI): expose baseline + savings
     base_line_total = serializers.SerializerMethodField()
     savings_total = serializers.SerializerMethodField()
     savings_per_unit = serializers.SerializerMethodField()
@@ -84,6 +163,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = [
             "id",
+            "inventory_id",
             "product_id",
             "product",
             "quantity",
@@ -97,26 +177,19 @@ class CartItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_line_total(self, obj: CartItem) -> Decimal:
-        unit_price = obj.unit_price or Decimal("0.00")
-        qty = obj.quantity or Decimal("0.00")
-        return unit_price * qty
+    def get_line_total(self, obj):
+        return (obj.unit_price or 0) * (obj.quantity or 0)
 
-    def get_base_line_total(self, obj: CartItem) -> Decimal:
-        base = getattr(obj.product, "price", None) or Decimal("0.00")
-        qty = obj.quantity or Decimal("0.00")
-        return Decimal(str(base)) * qty
+    def get_base_line_total(self, obj):
+        base = obj.inventory.product.price
+        return Decimal(str(base)) * (obj.quantity or 0)
 
-    def get_savings_total(self, obj: CartItem) -> Decimal:
-        base_total = self.get_base_line_total(obj)
-        line_total = self.get_line_total(obj)
-        return base_total - line_total
+    def get_savings_total(self, obj):
+        return self.get_base_line_total(obj) - self.get_line_total(obj)
 
-    def get_savings_per_unit(self, obj: CartItem) -> Decimal:
-        base = getattr(obj.product, "price", None) or Decimal("0.00")
-        unit = obj.unit_price or Decimal("0.00")
-        return Decimal(str(base)) - unit
-
+    def get_savings_per_unit(self, obj):
+        base = obj.inventory.product.price
+        return Decimal(str(base)) - (obj.unit_price or 0)
 
 class CartSerializer(serializers.ModelSerializer):
     """
@@ -170,7 +243,8 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class AddToCartSerializer(serializers.Serializer):
-    product_id = serializers.IntegerField(min_value=1)
+    # product_id = serializers.IntegerField(min_value=1)
+    inventory_id = serializers.IntegerField(min_value=1)
     quantity = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,

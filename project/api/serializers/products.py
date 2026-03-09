@@ -8,12 +8,13 @@ from products.models import (
 )
 from accounts.models import Producer
 from api.serializers.accounts import ProducerSerializer, AdminSerializer
+from rest_framework import serializers
+from products.models import Inventory
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = "__all__"
-
 
 
 class WholesalePriceInlineSerializer(serializers.ModelSerializer):
@@ -49,7 +50,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "price",
             "unit",
             "image",
-            "stock_quantity",
             "availability_status",
             "status",
             "producer",
@@ -100,4 +100,32 @@ class ProductInlineSerializer(serializers.ModelSerializer):
             "availability_status",
             "status",
         )
+        read_only_fields = fields
+
+
+class InventorySerializer(serializers.ModelSerializer):
+    """
+    Serializes a single inventory batch, including:
+    - batch-level fields (remaining_quantity, surplus, expiry, harvest)
+    - nested product snapshot
+    """
+
+    product = ProductInlineSerializer(read_only=True)
+
+    class Meta:
+        model = Inventory
+        fields = [
+            "id",
+            "product",
+            "remaining_quantity",
+            "harvest_date",
+            "expiry_date",
+            "expiry_type",
+            "surplus_status",
+            "surplus_discount_percentage",
+            "surplus_expiry",
+            "surplus_note",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = fields

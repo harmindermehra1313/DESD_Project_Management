@@ -124,6 +124,12 @@ class OrderItem(models.Model):
         on_delete = models.CASCADE,
         related_name = 'order_items',
     )
+
+    inventory = models.ForeignKey(
+        'products.Inventory',
+        on_delete=models.PROTECT,
+        related_name='order_items',
+    )
     
     producer = models.ForeignKey(
         'accounts.Producer',
