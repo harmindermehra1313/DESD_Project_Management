@@ -17,15 +17,16 @@ from carts.services import (
     cart_add_item,
     cart_set_item_quantity,
     cart_remove_item,
-    cart_merge_guest_into_user
+    cart_merge_guest_into_user,
 )
 
-from api.serializers.carts import (
+from carts.api.serializers.carts import (
     AddToCartSerializer,
     UpdateQuantitySerializer,
     CartSerializer,
     CartItemSerializer,
 )
+
 
 def _ensure_session_key(request) -> str:
     """
@@ -35,6 +36,7 @@ def _ensure_session_key(request) -> str:
     if not request.session.session_key:
         request.session.save()  # generates a session_key
     return request.session.session_key
+
 
 def _owner(request) -> CartOwner:
     """
@@ -71,15 +73,13 @@ class CartAPIView(APIView):
 
             # IMPORTANT: reload with prefetch so the serializer has everything efficiently
             cart = (
-                Cart.objects
-                .filter(pk=cart.pk)
+                Cart.objects.filter(pk=cart.pk)
                 # .prefetch_related("items__product", "items__product__producer")
                 .prefetch_related(
                     "items__inventory",
                     "items__inventory__product",
                     "items__inventory__product__producer",
-                )
-                .get()
+                ).get()
             )
         except Exception as exc:
             raise _translate_service_error(exc)
@@ -88,11 +88,12 @@ class CartAPIView(APIView):
 
 
 class CartItemAddView(CreateAPIView):
-    permission_classes = [AllowAny] # AlloweAny / IsAuthenticated 
+    permission_classes = [AllowAny]  # AlloweAny / IsAuthenticated
     serializer_class = AddToCartSerializer
 
     def create(self, request, *args, **kwargs):
         ser = self.get_serializer(data=request.data)
+        
         ser.is_valid(raise_exception=True)
 
         try:
@@ -104,6 +105,7 @@ class CartItemAddView(CreateAPIView):
                 quantity=ser.validated_data["quantity"],
             )
         except Exception as exc:
+            print("DEBUG service exception =", repr(exc))
             raise _translate_service_error(exc)
 
         return Response(CartItemSerializer(item).data, status=status.HTTP_201_CREATED)
@@ -114,7 +116,8 @@ class CartItemDetailView(APIView):
     /cart/items/<pk>/
     pk is treated as product_id.
     """
-    permission_classes = [AllowAny] # AlloweAny / IsAuthenticated 
+
+    permission_classes = [AllowAny]  # AlloweAny / IsAuthenticated
 
     def patch(self, request, pk: int, *args, **kwargs):
         return self._set_quantity(request, pk)
@@ -152,14 +155,15 @@ class CartItemDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         return Response(CartItemSerializer(item).data, status=status.HTTP_200_OK)
-    
-    
+
+
 class CartMergeAPIView(APIView):
     """
     POST /api/cart/merge/
 
     Merge the current anonymous session cart into the authenticated user's cart.
     """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
@@ -169,10 +173,14 @@ class CartMergeAPIView(APIView):
 
         session_key = request.session.session_key
         if not session_key:
-            return Response({"detail": "No session key found."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "No session key found."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
-            cart = cart_merge_guest_into_user(session_key=session_key, user_id=request.user.id)
+            cart = cart_merge_guest_into_user(
+                session_key=session_key, user_id=request.user.id
+            )
         except Exception as exc:
             raise _translate_service_error(exc)
 
