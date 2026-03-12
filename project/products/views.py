@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
-from django.http import HttpResponse # Imported for the placeholder view
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from datetime import datetime
 from .models import Product, Category, Allergen, ProductAllergen
@@ -9,7 +9,7 @@ from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Sum
 from BRFN.decorators import admin_required, producer_required
 import json
 
@@ -113,10 +113,23 @@ def add_product(request):
         availability_status = request.POST.get('availability_status')
         harvest_date = request.POST.get('harvest_date')
         expiry_date = request.POST.get('expiry_date')
+        expiry_type = request.POST.get('expiry_type', Inventory.ExpiryType.BEST_BEFORE)
+        organic_certification_status = request.POST.get(
+            'organic_certification_status',
+            Product.OrganicStatus.NOT_CERTIFIED,
+        )
         unit_code = request.POST.get('unit')
         stock_quantity = request.POST.get('stock_quantity')
         description = request.POST.get('description')
         uploaded_image = request.FILES.get('image')
+
+        valid_expiry_types = {choice[0] for choice in Inventory.ExpiryType.choices}
+        if expiry_type not in valid_expiry_types:
+            expiry_type = Inventory.ExpiryType.BEST_BEFORE
+
+        valid_organic_statuses = {choice[0] for choice in Product.OrganicStatus.choices}
+        if organic_certification_status not in valid_organic_statuses:
+            organic_certification_status = Product.OrganicStatus.NOT_CERTIFIED
 
         try:
             harvest_dt = datetime.strptime(harvest_date, '%Y-%m-%dT%H:%M')
@@ -144,6 +157,7 @@ def add_product(request):
         default_image_path = _get_category_default_image(category_obj)
         
         producer = request.user.producer_profile
+        farm_origin = producer.farm_name.strip() if producer.farm_name else "Local Farm"
 
         # new_product = Product.objects.create(
         #     producer=producer,
@@ -168,9 +182,10 @@ def add_product(request):
             price=price,
             availability_status=availability_status,
             unit=unit_code,
+            organic_certification_status=organic_certification_status,
             description=description,
             image=uploaded_image,
-            farm_origin="Local Farm",
+            farm_origin=farm_origin,
         )
 
         if not uploaded_image:
@@ -183,7 +198,7 @@ def add_product(request):
             remaining_quantity=stock_quantity,
             harvest_date=harvest_dt.date(),
             expiry_date=expiry_dt.date(),
-            expiry_type="BB",
+            expiry_type=expiry_type,
             surplus_status="NONE",
             surplus_discount_percentage=0,
         )
@@ -206,10 +221,105 @@ def add_product(request):
 def producer_products(request):
     producer = request.user.producer_profile
 
-    products = Product.objects.filter(producer=producer).order_by("-created_at")
+    products = (
+        Product.objects
+        .filter(producer=producer)
+        .select_related('category')
+        .prefetch_related('inventory_batches', 'product_allergen__allergen')
+        .annotate(total_stock=Sum('inventory_batches__remaining_quantity'))
+        .order_by("-created_at")
+    )
+    categories = Category.objects.all()
 
     return render(request, "products/producer_products.html", {
-        "products": products
+        "products": products,
+        "categories": categories,
+        "units": Product.Unit.choices,
+    })
+
+
+@producer_required
+def edit_producer_product(request, pk):
+    product = get_object_or_404(Product, pk=pk, producer=request.user.producer_profile)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+
+        name = data.get('name', '').strip()
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Product name is required.'})
+
+        try:
+            price = float(data.get('price', 0))
+            if price < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return JsonResponse({'success': False, 'error': 'Invalid price value.'})
+
+        unit = data.get('unit', product.unit)
+        valid_units = {choice[0] for choice in Product.Unit.choices}
+        if unit not in valid_units:
+            return JsonResponse({'success': False, 'error': 'Invalid unit.'})
+
+        availability_status = data.get('availability_status', product.availability_status)
+        valid_avail = {choice[0] for choice in Product.Availability_status.choices}
+        if availability_status not in valid_avail:
+            return JsonResponse({'success': False, 'error': 'Invalid availability status.'})
+
+        organic = data.get('organic_certification_status', product.organic_certification_status)
+        valid_organic = {choice[0] for choice in Product.OrganicStatus.choices}
+        if organic not in valid_organic:
+            return JsonResponse({'success': False, 'error': 'Invalid organic status.'})
+
+        category_id = data.get('category_id')
+        if category_id:
+            category = get_object_or_404(Category, pk=category_id)
+        else:
+            category = product.category
+
+        product.name = name
+        product.price = price
+        product.unit = unit
+        product.availability_status = availability_status
+        product.organic_certification_status = organic
+        product.description = data.get('description', product.description)
+        product.category = category
+        product.save()
+
+        return JsonResponse({
+            'success': True,
+            'name': product.name,
+            'price': str(product.price),
+            'unit_display': product.get_unit_display(),
+            'unit': product.unit,
+            'category': product.category.name,
+            'category_id': product.category.pk,
+            'availability_status': product.availability_status,
+            'availability_display': product.get_availability_status_display(),
+            'organic_certification_status': product.organic_certification_status,
+            'description': product.description or '',
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
+
+
+@producer_required
+def cancel_producer_product(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+    product = get_object_or_404(Product, pk=pk, producer=request.user.producer_profile)
+    product.availability_status = Product.Availability_status.DISCONTINUED
+    product.save(update_fields=['availability_status'])
+
+    return JsonResponse({
+        'success': True,
+        'availability_status': product.availability_status,
+        'availability_display': product.get_availability_status_display(),
     })
 
 

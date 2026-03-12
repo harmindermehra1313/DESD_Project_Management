@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}My Product Listings{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/producer_products.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 dashboard-container">
+    <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">My Product Listings</h2>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 id="pageTitle" class="mb-0">Products</h5>
+
+        <div class="d-flex gap-2">
+
+            <!-- Filter Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown"
+                    data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                    Filter
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-3 shadow-sm" aria-labelledby="filterDropdown"
+                    style="width: 300px; z-index: 1050;">
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Availability</label>
+                        <div class="form-check">
+                            <input class="form-check-input avail-filter" type="checkbox" value="AV" id="filterAV" checked>
+                            <label class="form-check-label" for="filterAV">Available</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input avail-filter" type="checkbox" value="OOS" id="filterOOS" checked>
+                            <label class="form-check-label" for="filterOOS">Out of Stock</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input avail-filter" type="checkbox" value="DIS" id="filterDIS">
+                            <label class="form-check-label" for="filterDIS">Discontinued</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Listing Status</label>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PUB" id="filterPUB" checked>
+                            <label class="form-check-label" for="filterPUB">Published</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="HID" id="filterHID" checked>
+                            <label class="form-check-label" for="filterHID">Hidden</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="FLG" id="filterFLG">
+                            <label class="form-check-label" for="filterFLG">Flagged</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="RMV" id="filterRMV">
+                            <label class="form-check-label" for="filterRMV">Removed</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="filterProductName" class="form-label small fw-bold text-muted mb-1">Product Name</label>
+                        <input type="text" class="form-control form-control-sm" id="filterProductName" placeholder="Search by name...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="filterCategory" class="form-label small fw-bold text-muted mb-1">Category</label>
+                        <select class="form-select form-select-sm" id="filterCategory">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category.name|lower }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" type="button"
+                        onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <!-- Edit Product Button -->
+            <button class="btn" type="button" id="editProductBtn" disabled onclick="openEditModal()">
+                Edit Product
+            </button>
+
+            <!-- Cancel Listing Button -->
+            <button class="btn btn-outline-danger" type="button" id="cancelProductBtn" disabled onclick="openCancelModal()">
+                Cancel Listing
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Product Table -->
+    <div class="table-responsive mb-4 shadow-sm" style="border-radius: var(--radius); overflow: hidden;">
+        <table class="table table-hover mb-0 order-table align-middle text-center">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Unit</th>
+                    <th>Stock</th>
+                    <th>Availability</th>
+                    <th>Listing Status</th>
+                    <th>Listed On</th>
+                </tr>
+            </thead>
+            <tbody id="productTableBody">
+                {% for product in products %}
+                <tr class="order-row" id="row-{{ product.pk }}"
+                    data-product-id="{{ product.pk }}"
+                    data-availability="{{ product.availability_status }}"
+                    data-status="{{ product.status }}"
+                    data-product-name="{{ product.name|lower }}"
+                    data-category="{{ product.category.name|lower }}"
+                    data-edit-name="{{ product.name }}"
+                    data-edit-price="{{ product.price }}"
+                    data-edit-unit="{{ product.unit }}"
+                    data-edit-category-id="{{ product.category.pk }}"
+                    data-edit-availability="{{ product.availability_status }}"
+                    data-edit-organic="{{ product.organic_certification_status }}"
+                    data-edit-description="{{ product.description|default:'' }}"
+                    onclick="showProductDetails('{{ product.pk }}', this)">
+
+                    <td>#{{ product.pk }}</td>
+                    <td class="text-start fw-semibold">{{ product.name }}</td>
+                    <td>{{ product.category.name }}</td>
+                    <td>£{{ product.price }}</td>
+                    <td>{{ product.get_unit_display }}</td>
+                    <td>{{ product.total_stock|default:"0" }}</td>
+
+                    <td>
+                        <span class="status-badge avail-{{ product.availability_status|lower }}">
+                            {{ product.get_availability_status_display }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="status-badge listing-{{ product.status|lower }}">
+                            {{ product.get_status_display }}
+                        </span>
+                    </td>
+
+                    <td>{{ product.created_at|date:"d/m/Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr id="emptyStateRow">
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        No products found.
+                        <a href="{% url 'add_product' %}" style="color: var(--brand);">Add your first product</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <nav id="paginationContainer" class="d-flex justify-content-center mb-5" aria-label="Product pagination"></nav>
+
+    <!-- Details Panel -->
+    <div class="details-card bg-white mb-5">
+        <div class="details-header">
+            Product Details: <span id="detailProductName" class="text-muted fw-normal">Select a product</span>
+        </div>
+        <div class="details-body" id="detailsContent">
+            <p class="text-muted mb-0">Click on a product row above to view its full details including description, allergens, and inventory batches.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Detail Templates -->
+<div id="hidden-templates" style="display: none;">
+    {% for product in products %}
+    <template id="details-template-{{ product.pk }}">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <strong>Product Info:</strong><br>
+                <span class="text-muted small">Name:</span> {{ product.name }}<br>
+                <span class="text-muted small">Category:</span> {{ product.category.name }}<br>
+                <span class="text-muted small">Price:</span> £{{ product.price }} per {{ product.get_unit_display }}<br>
+                <span class="text-muted small">Farm Origin:</span> {{ product.farm_origin }}<br>
+                <span class="text-muted small">Organic:</span> {{ product.get_organic_certification_status_display }}<br><br>
+
+                <strong>Description:</strong><br>
+                <span class="fst-italic">{{ product.description|default:"No description provided." }}</span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong>Allergens:</strong><br>
+                <ul class="list-unstyled mb-3">
+                    {% for pa in product.product_allergen.all %}
+                    <li>{{ pa.allergen.get_name_display }}</li>
+                    {% empty %}
+                    <li class="text-muted">None declared.</li>
+                    {% endfor %}
+                </ul>
+
+                <strong>Inventory Batches:</strong><br>
+                <ul class="list-unstyled">
+                    {% for batch in product.inventory_batches.all %}
+                    <li>
+                        <span class="text-muted small">Stock:</span> {{ batch.remaining_quantity }} / {{ batch.original_quantity }} &mdash;
+                        <span class="text-muted small">{{ batch.get_expiry_type_display }}:</span> {{ batch.expiry_date|date:"d/m/Y" }}
+                    </li>
+                    {% empty %}
+                    <li class="text-muted">No inventory batches recorded.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </template>
+    {% endfor %}
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProductModalLabel" style="color: var(--brand);">Edit Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProductForm" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="editName" class="form-label fw-semibold">Product Name</label>
+                            <input type="text" class="form-control" id="editName" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editPrice" class="form-label fw-semibold">Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">£</span>
+                                <input type="number" class="form-control" id="editPrice" name="price" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editUnit" class="form-label fw-semibold">Unit</label>
+                            <select class="form-select" id="editUnit" name="unit">
+                                {% for value, label in units %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editCategory" class="form-label fw-semibold">Category</label>
+                            <select class="form-select" id="editCategory" name="category_id">
+                                {% for category in categories %}
+                                <option value="{{ category.pk }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editAvailability" class="form-label fw-semibold">Availability</label>
+                            <select class="form-select" id="editAvailability" name="availability_status">
+                                <option value="AV">Available</option>
+                                <option value="OOS">Out of Stock</option>
+                                <option value="DIS">Discontinued</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editOrganic" class="form-label fw-semibold">Organic Certification</label>
+                            <select class="form-select" id="editOrganic" name="organic_certification_status">
+                                <option value="NOT_CERTIFIED">Not Certified</option>
+                                <option value="CERTIFIED">Certified Organic</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="editDescription" class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div id="editFormAlert" class="alert mt-3 d-none" role="alert"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn save-btn" id="saveEditBtn" onclick="submitEditForm()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div class="modal fade" id="cancelProductModal" tabindex="-1" aria-labelledby="cancelProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger" id="cancelProductModalLabel">Cancel Listing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel the listing for <strong id="cancelProductName"></strong>?</p>
+                <p class="text-muted small mb-0">This will mark the product as <strong>Discontinued</strong> and hide it from buyers. You can re-activate it by editing the product and changing the availability status.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">No, Keep Listing</button>
+                <button type="button" class="btn btn-danger" onclick="confirmCancelProduct()">Yes, Cancel Listing</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<script src="{% static 'js/producer_products.js' %}"></script>
+{% endblock %}

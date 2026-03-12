@@ -38,9 +38,16 @@
     font-weight: bold;
     border: 1px solid #000;
 }
-.btn-brand-solid:hover, .btn-submit:hover {
+.btn-brand-solid:hover {
     background-color: var(--dark-green);
     color: var(--text-light);
+}
+
+.btn-submit:hover {
+    background-color: var(--bright-green);
+    color: var(--text-dark);
+    border: 1px solid #000;
+    opacity: 1;
 }
 
 .custom-form-label {
