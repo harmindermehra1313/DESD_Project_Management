@@ -381,11 +381,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---------- Add to cart ----------
   btn?.addEventListener("click", async () => {
-    const productId = Number(btn.dataset.productId);
+    // const productId = Number(btn.dataset.productId);
     const quantity = normalizeQtyInput();
     const inventoryId = Number(btn.dataset.inventoryId);
 
-    if (!Number.isInteger(productId) || productId <= 0) {
+
+    // if (!Number.isInteger(productId) || productId <= 0) {
+    //   setMsg("Invalid product id.", "danger");
+    //   return;
+    // }
+    if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
       setMsg("Invalid product id.", "danger");
       return;
     }
