@@ -133,19 +133,22 @@ def _parse_int(value: str | None, field_name: str) -> int | None:
 
     Returns:
         int | None:
-            Parsed integer value, or None when the value is empty.
+            Parsed integer value, or None when the parameter is not provided.
 
     Raises:
         ValidationError:
-            Raised when the value is present but not a valid integer.
+            Raised when the value is blank or not a valid integer.
     """
-    if value is None or value == "":
+    if value is None:
         return None
+
+    if value == "":
+        raise ValidationError({field_name: [f"A valid {field_name} is required."]})
 
     try:
         return int(value)
     except (TypeError, ValueError):
-        raise ValidationError({field_name: ["A valid integer is required."]})
+        raise ValidationError({field_name: [f"A valid {field_name} is required."]})
 
 
 class OrderHistoryApiView(generics.ListAPIView):
