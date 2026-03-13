@@ -150,6 +150,8 @@ def reorder_order(*, user: User, order_id: int) -> dict:
                 {
                     "product_id": product.pk,
                     "product_name": product.name,
+                    "producer_id": item.producer_id,
+                    "producer_name": str(item.producer),
                     "requested_quantity": requested_quantity,
                     "reason": str(exc),
                 }
@@ -160,6 +162,9 @@ def reorder_order(*, user: User, order_id: int) -> dict:
             {
                 "product_id": product.pk,
                 "product_name": product.name,
+                "producer_id": item.producer_id,
+                "producer_name": str(item.producer),
+                "requested_quantity": requested_quantity,
                 "added_quantity": quantity_to_add,
                 "inventory_id": inventory.pk,
             }
