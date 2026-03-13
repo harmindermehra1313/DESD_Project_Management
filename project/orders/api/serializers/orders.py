@@ -1,3 +1,25 @@
+"""
+orders/api/serializers/orders.py
+
+Purpose:
+Define API serializers for order history, order detail, and reorder responses.
+
+This module converts Order-related model instances and reorder service
+results into response structures suitable for the API layer.
+
+Responsibilities:
+- serialise order history list rows
+- serialise detailed order item data
+- serialise per-producer order breakdown data
+- expose derived fields needed by the frontend
+- serialise reorder result payloads returned by the service layer
+
+Design notes:
+- serializers should transform and present data, not perform query logic
+- selectors are responsible for query optimisation before serializer usage
+- service-layer reorder results are validated here before being returned
+"""
+
 from __future__ import annotations
 
 from rest_framework import serializers
@@ -6,6 +28,13 @@ from orders.models import Order, OrderItem, ProducerOrderSummary
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
+    """
+    Serialiser for paginated order history results.
+
+    Output shape is intentionally compact and list-friendly. Derived fields
+    are used where API naming differs from internal model naming.
+    """
+
     order_number = serializers.CharField(source="unique_reference", read_only=True)
     order_status = serializers.CharField(source="status", read_only=True)
     total = serializers.DecimalField(
@@ -30,6 +59,12 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         ]
 
     def get_producer_names(self, obj: Order) -> list[str]:
+        """
+        Return unique producer names associated with the order.
+
+        The order history view typically needs a simple producer summary
+        rather than the full producer breakdown.
+        """
         names: list[str] = []
 
         for summary in obj.producer_summaries.all():
@@ -44,9 +79,8 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         Return a single delivery date only when all producer summaries
         share the same delivery date.
 
-        For multi-vendor orders with different producer delivery dates,
-        return None and let the client inspect producer_breakdown in
-        the detail endpoint.
+        For multi-vendor orders with differing delivery dates, None is
+        returned so the client does not display a misleading top-level date.
         """
         delivery_dates = [
             summary.delivery_date
@@ -63,6 +97,13 @@ class OrderHistorySerializer(serializers.ModelSerializer):
 
 
 class OrderItemDetailSerializer(serializers.ModelSerializer):
+    """
+    Serialiser for individual order items inside the order detail response.
+
+    Snapshot fields are preferred where available so historical order data
+    remains stable even if related product or producer records later change.
+    """
+
     product_name = serializers.SerializerMethodField()
     price = serializers.DecimalField(
         source="original_unit_price",
@@ -83,6 +124,14 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_product_name(self, obj: OrderItem) -> str:
+        """
+        Return the historical product name when available.
+
+        Fallback order:
+        1. snapshot name stored on the order item
+        2. related product name
+        3. placeholder text
+        """
         snapshot_name = getattr(obj, "product_name_snapshot", None)
         if snapshot_name:
             return snapshot_name
@@ -93,6 +142,14 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
         return "Unknown product"
 
     def get_producer(self, obj: OrderItem) -> str:
+        """
+        Return the historical producer name when available.
+
+        Fallback order:
+        1. snapshot name stored on the order item
+        2. related producer farm name or string form
+        3. placeholder text
+        """
         snapshot_name = getattr(obj, "producer_name_snapshot", None)
         if snapshot_name:
             return snapshot_name
@@ -107,6 +164,13 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
 
 
 class ProducerOrderSummarySerializer(serializers.ModelSerializer):
+    """
+    Serialiser for producer-level fulfilment and financial breakdown data.
+
+    This representation is used in order detail responses where a single
+    order may contain multiple producers with different fulfilment details.
+    """
+
     producer_name = serializers.CharField(source="producer.farm_name", read_only=True)
 
     class Meta:
@@ -132,6 +196,17 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
+    """
+    Serialiser for full order detail responses.
+
+    This serializer exposes:
+    - top-level order metadata
+    - item-level detail
+    - producer-level breakdown
+    - derived delivery address
+    - masked payment method text
+    """
+
     order_number = serializers.CharField(source="unique_reference", read_only=True)
     items = OrderItemDetailSerializer(many=True, read_only=True)
     producer_breakdown = ProducerOrderSummarySerializer(
@@ -164,8 +239,10 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     def get_delivery_date(self, obj: Order):
         """
         Return a single top-level delivery date only if every producer
-        summary uses the same date. Otherwise return None and rely on
-        producer_breakdown for the per-producer truth.
+        summary uses the same date.
+
+        When producer delivery dates differ, None is returned so the client
+        relies on producer_breakdown for accurate per-producer information.
         """
         delivery_dates = [
             summary.delivery_date
@@ -181,19 +258,34 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         return None
 
     def get_delivery_address(self, obj: Order) -> dict | None:
+        """
+        Return a single top-level fulfilment address when that address can be
+        represented truthfully at order level.
+
+        Rules:
+        - delivery-only orders:
+            return the customer's order delivery address
+        - collection-only orders:
+            return the pickup address only if every producer summary points
+            to the same collection location
+        - mixed fulfilment orders:
+            return None because no single address represents the whole order
+
+        Returning None for mixed or inconsistent fulfilment prevents the API
+        from exposing a misleading address at top level.
+        """
         summaries = list(obj.producer_summaries.all())
-    
+
         if not summaries:
             return None
-    
+
         fulfilment_modes = {summary.delivery_or_collection for summary in summaries}
-    
-        # Delivery: return the customer's delivery address from Order.delivery_address
+
         if fulfilment_modes == {"DEL"}:
             address = getattr(obj, "delivery_address", None)
             if not address:
                 return None
-    
+
             return {
                 "line_1": address.line1,
                 "line_2": address.line2,
@@ -201,8 +293,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
                 "postcode": address.postcode,
                 "type": "delivery",
             }
-    
-        # Collection: return pickup address only if all summaries point to the same location
+
         if fulfilment_modes == {"COL"}:
             unique_addresses = {
                 (
@@ -213,7 +304,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
                 )
                 for summary in summaries
             }
-    
+
             if len(unique_addresses) == 1:
                 line_1, line_2, city, postcode = unique_addresses.pop()
                 return {
@@ -223,13 +314,20 @@ class OrderDetailSerializer(serializers.ModelSerializer):
                     "postcode": postcode,
                     "type": "collection",
                 }
-    
+
             return None
-    
-        # Mixed delivery/collection across producers
+
         return None
 
     def get_payment_method_masked(self, obj: Order) -> str | None:
+        """
+        Return a masked payment method string for display purposes.
+
+        Fallback order:
+        1. precomputed masked value
+        2. generated masked card ending text from last four digits
+        3. generic placeholder string
+        """
         masked = getattr(obj, "payment_method_masked", None)
         if masked:
             return masked
@@ -242,6 +340,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
 
 class ReorderUnavailableItemSerializer(serializers.Serializer):
+    """Serializer for items that could not be added during reorder."""
+
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     requested_quantity = serializers.IntegerField()
@@ -251,6 +351,8 @@ class ReorderUnavailableItemSerializer(serializers.Serializer):
 
 
 class ReorderQuantityAdjustedItemSerializer(serializers.Serializer):
+    """Serializer for items added with reduced quantity."""
+
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     requested_quantity = serializers.IntegerField()
@@ -259,6 +361,8 @@ class ReorderQuantityAdjustedItemSerializer(serializers.Serializer):
 
 
 class ReorderPriceChangedItemSerializer(serializers.Serializer):
+    """Serializer for items whose price changed since the original order."""
+
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     original_price = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -266,6 +370,8 @@ class ReorderPriceChangedItemSerializer(serializers.Serializer):
 
 
 class ReorderAddedItemSerializer(serializers.Serializer):
+    """Serializer for items successfully added to the cart during reorder."""
+
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     producer_id = serializers.IntegerField()
@@ -276,6 +382,13 @@ class ReorderAddedItemSerializer(serializers.Serializer):
 
 
 class ReorderResponseSerializer(serializers.Serializer):
+    """
+    Top-level serializer for the reorder service response payload.
+
+    This serializer validates the shape of the service result before the
+    API view returns it to the client.
+    """
+
     added_items = ReorderAddedItemSerializer(many=True)
     unavailable_items = ReorderUnavailableItemSerializer(many=True)
     quantity_adjusted_items = ReorderQuantityAdjustedItemSerializer(many=True)
