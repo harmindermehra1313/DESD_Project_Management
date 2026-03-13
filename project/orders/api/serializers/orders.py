@@ -145,12 +145,15 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     Serialiser for producer-level fulfilment and financial breakdown data.
 
     A single order may contain multiple producers with different fulfilment
-    modes and different dates. For that reason, fulfilment schedule data is
-    exposed at producer-summary level rather than order level.
+    modes, schedules, and addresses. For that reason, fulfilment-specific
+    schedule and address data is exposed at producer-summary level rather
+    than being forced into a single top-level order representation.
 
-    The underlying model stores a single schedule date and time-slot pair.
-    This serializer maps those values into delivery or collection response
-    fields based on the fulfilment mode so the API output remains truthful.
+    The underlying model stores one schedule date, one time-slot pair, and
+    one address snapshot for the selected fulfilment path. This serializer
+    maps those stored values into delivery-specific or collection-specific
+    response fields based on the fulfilment mode so the API output remains
+    truthful and easy for the frontend to consume.
     """
 
     producer_name = serializers.CharField(source="producer.farm_name", read_only=True)
@@ -158,6 +161,8 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     collection_date = serializers.SerializerMethodField()
     delivery_time_slot = serializers.SerializerMethodField()
     collection_time_slot = serializers.SerializerMethodField()
+    delivery_address = serializers.SerializerMethodField()
+    collection_address = serializers.SerializerMethodField()
 
     class Meta:
         model = ProducerOrderSummary
@@ -171,23 +176,43 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
             "collection_date",
             "delivery_time_slot",
             "collection_time_slot",
+            "delivery_address",
+            "collection_address",
             "subtotal",
             "vat_total",
             "commission_total",
             "payout_amount",
-            "address_line1",
-            "address_line2",
-            "city",
-            "postcode",
             "special_instructions",
         ]
+
+    def _build_address_payload(self, obj: ProducerOrderSummary) -> dict | None:
+        """
+        Build an address object from the summary snapshot fields.
+
+        The producer summary is treated as the historical source of truth for
+        fulfilment address data so past orders remain stable even if related
+        producer or customer address records later change.
+        """
+        if not any(
+            [
+                obj.address_line1,
+                obj.address_line2,
+                obj.city,
+                obj.postcode,
+            ]
+        ):
+            return None
+
+        return {
+            "line_1": obj.address_line1,
+            "line_2": obj.address_line2,
+            "city": obj.city,
+            "postcode": obj.postcode,
+        }
 
     def get_delivery_date(self, obj: ProducerOrderSummary):
         """
         Return the producer delivery date only for delivery fulfilment.
-
-        None is returned for collection summaries so the API does not expose
-        a collection schedule using a delivery field.
         """
         if obj.delivery_or_collection == "DEL":
             return obj.delivery_date
@@ -196,9 +221,6 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     def get_collection_date(self, obj: ProducerOrderSummary):
         """
         Return the producer collection date only for collection fulfilment.
-
-        The underlying stored date is mapped into the collection field for
-        collection summaries.
         """
         if obj.delivery_or_collection == "COL":
             return obj.delivery_date
@@ -207,9 +229,6 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     def get_delivery_time_slot(self, obj: ProducerOrderSummary):
         """
         Return the producer delivery time slot only for delivery fulfilment.
-
-        None is returned for collection summaries so the API does not expose
-        a collection time slot using a delivery field.
         """
         if obj.delivery_or_collection == "DEL":
             return obj.delivery_time_slot
@@ -218,12 +237,25 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     def get_collection_time_slot(self, obj: ProducerOrderSummary):
         """
         Return the producer collection time slot only for collection fulfilment.
-
-        The underlying stored time slot is mapped into the collection field
-        for collection summaries.
         """
         if obj.delivery_or_collection == "COL":
             return obj.delivery_time_slot
+        return None
+
+    def get_delivery_address(self, obj: ProducerOrderSummary) -> dict | None:
+        """
+        Return the producer delivery address only for delivery fulfilment.
+        """
+        if obj.delivery_or_collection == "DEL":
+            return self._build_address_payload(obj)
+        return None
+
+    def get_collection_address(self, obj: ProducerOrderSummary) -> dict | None:
+        """
+        Return the producer collection address only for collection fulfilment.
+        """
+        if obj.delivery_or_collection == "COL":
+            return self._build_address_payload(obj)
         return None
 
 
@@ -250,7 +282,6 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True,
     )
-    delivery_address = serializers.SerializerMethodField()
     payment_method_display = serializers.SerializerMethodField()
     total_price = serializers.DecimalField(
         max_digits=10,
@@ -267,90 +298,29 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "status",
             "items",
             "producer_breakdown",
-            "delivery_address",
             "payment_method_display",
             "total_price",
         ]
 
-    def get_delivery_address(self, obj: Order) -> dict | None:
-        """
-        Return a single top-level fulfilment address only when that address
-        can be represented truthfully for the full order.
-
-        Rules:
-        - delivery-only orders:
-            return the customer's delivery address
-        - collection-only orders:
-            return the pickup address only if every producer summary points
-            to the same collection location
-        - mixed fulfilment orders:
-            return None because no single address represents the whole order
-
-        Returning None for mixed or inconsistent fulfilment prevents the API
-        from exposing a misleading address at top level.
-        """
-        summaries = list(obj.producer_summaries.all())
-
-        if not summaries:
-            return None
-
-        fulfilment_modes = {summary.delivery_or_collection for summary in summaries}
-
-        if fulfilment_modes == {"DEL"}:
-            address = getattr(obj, "delivery_address", None)
-            if not address:
-                return None
-
-            return {
-                "line_1": address.line1,
-                "line_2": address.line2,
-                "city": address.city,
-                "postcode": address.postcode,
-                "type": "delivery",
-            }
-
-        if fulfilment_modes == {"COL"}:
-            unique_addresses = {
-                (
-                    summary.address_line1,
-                    summary.address_line2,
-                    summary.city,
-                    summary.postcode,
-                )
-                for summary in summaries
-            }
-
-            if len(unique_addresses) == 1:
-                line_1, line_2, city, postcode = unique_addresses.pop()
-                return {
-                    "line_1": line_1,
-                    "line_2": line_2,
-                    "city": city,
-                    "postcode": postcode,
-                    "type": "collection",
-                }
-
-            return None
-
-        return None
+    
 
     def get_payment_method_display(self, obj: Order) -> str | None:
         """
         Return a user-friendly payment method label for display.
-    
+
         Payment records are treated as the source of truth. A successful
         payment is preferred when present; otherwise the most recent payment
         record is used.
-    
+
         For card payments, a masked card number is returned when last-four
         digits are available. For all other payment methods, the configured
         Django choices display label is returned.
         """
         payments = list(obj.payments.all().order_by("-created_at"))
-    
+
         if not payments:
             return None
-    
+
         successful_payment = next(
             (
                 payment
@@ -360,12 +330,12 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             None,
         )
         payment = successful_payment or payments[0]
-    
+
         if payment.payment_method == payment.Method.CARD:
             last4 = getattr(obj, "payment_last4", None)
             if last4:
                 return f"**** **** **** {last4}"
-    
+
         return payment.get_payment_method_display()
 
 
