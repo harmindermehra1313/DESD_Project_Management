@@ -251,7 +251,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     delivery_address = serializers.SerializerMethodField()
-    payment_method_masked = serializers.SerializerMethodField()
+    payment_method_display = serializers.SerializerMethodField()
     total_price = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -268,7 +268,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "items",
             "producer_breakdown",
             "delivery_address",
-            "payment_method_masked",
+            "payment_method_display",
             "total_price",
         ]
 
@@ -334,24 +334,39 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
         return None
 
-    def get_payment_method_masked(self, obj: Order) -> str | None:
+    def get_payment_method_display(self, obj: Order) -> str | None:
         """
-        Return a masked payment method string for display purposes.
-
-        Fallback order:
-        1. precomputed masked value
-        2. generated masked card ending text from last four digits
-        3. generic placeholder string
+        Return a user-friendly payment method label for display.
+    
+        Payment records are treated as the source of truth. A successful
+        payment is preferred when present; otherwise the most recent payment
+        record is used.
+    
+        For card payments, a masked card number is returned when last-four
+        digits are available. For all other payment methods, the configured
+        Django choices display label is returned.
         """
-        masked = getattr(obj, "payment_method_masked", None)
-        if masked:
-            return masked
-
-        last4 = getattr(obj, "payment_last4", None)
-        if last4:
-            return f"**** **** **** {last4}"
-
-        return "Stored payment method"
+        payments = list(obj.payments.all().order_by("-created_at"))
+    
+        if not payments:
+            return None
+    
+        successful_payment = next(
+            (
+                payment
+                for payment in payments
+                if payment.payment_status == payment.Status.SUCCESS
+            ),
+            None,
+        )
+        payment = successful_payment or payments[0]
+    
+        if payment.payment_method == payment.Method.CARD:
+            last4 = getattr(obj, "payment_last4", None)
+            if last4:
+                return f"**** **** **** {last4}"
+    
+        return payment.get_payment_method_display()
 
 
 class ReorderUnavailableItemSerializer(serializers.Serializer):
