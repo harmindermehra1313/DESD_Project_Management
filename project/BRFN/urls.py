@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 
@@ -24,7 +25,7 @@ handler404 = "BRFN.view.custom_404"
 handler500 = "BRFN.view.custom_500"
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
     path("", include("home.urls", namespace="home")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("admin_records/", include("admin_records.urls", namespace="admin_records")),
@@ -37,5 +38,6 @@ urlpatterns = [
     path('reviews/', include('reviews.urls', namespace='reviews')),
     path('api/', include('api.urls', namespace='api')),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
-     path("cart/", include("carts.urls", namespace="carts")),
+    # Cart Endpoint
+    path("cart/", include(("carts.urls", "carts"), namespace="carts")),
 ]
