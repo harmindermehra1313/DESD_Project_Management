@@ -141,7 +141,9 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     )
     delivery_address = serializers.SerializerMethodField()
     payment_method_masked = serializers.SerializerMethodField()
-    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    total_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
     delivery_date = serializers.SerializerMethodField()
 
     class Meta:
@@ -179,17 +181,53 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         return None
 
     def get_delivery_address(self, obj: Order) -> dict | None:
-        address = getattr(obj, "delivery_address", None)
-        if not address:
+        summaries = list(obj.producer_summaries.all())
+    
+        if not summaries:
             return None
-
-        return {
-            "line_1": getattr(address, "line_1", ""),
-            "line_2": getattr(address, "line_2", ""),
-            "city": getattr(address, "city", ""),
-            "postcode": getattr(address, "postcode", ""),
-            "country": getattr(address, "country", ""),
-        }
+    
+        fulfilment_modes = {summary.delivery_or_collection for summary in summaries}
+    
+        # Delivery: return the customer's delivery address from Order.delivery_address
+        if fulfilment_modes == {"DEL"}:
+            address = getattr(obj, "delivery_address", None)
+            if not address:
+                return None
+    
+            return {
+                "line_1": address.line1,
+                "line_2": address.line2,
+                "city": address.city,
+                "postcode": address.postcode,
+                "type": "delivery",
+            }
+    
+        # Collection: return pickup address only if all summaries point to the same location
+        if fulfilment_modes == {"COL"}:
+            unique_addresses = {
+                (
+                    summary.address_line1,
+                    summary.address_line2,
+                    summary.city,
+                    summary.postcode,
+                )
+                for summary in summaries
+            }
+    
+            if len(unique_addresses) == 1:
+                line_1, line_2, city, postcode = unique_addresses.pop()
+                return {
+                    "line_1": line_1,
+                    "line_2": line_2,
+                    "city": city,
+                    "postcode": postcode,
+                    "type": "collection",
+                }
+    
+            return None
+    
+        # Mixed delivery/collection across producers
+        return None
 
     def get_payment_method_masked(self, obj: Order) -> str | None:
         masked = getattr(obj, "payment_method_masked", None)
