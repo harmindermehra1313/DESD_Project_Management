@@ -44,8 +44,6 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         read_only=True,
     )
     producer_names = serializers.SerializerMethodField()
-    delivery_date = serializers.SerializerMethodField()
-    collection_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -53,8 +51,6 @@ class OrderHistorySerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "order_date",
-            "delivery_date",
-            "collection_date",
             "total",
             "order_status",
             "producer_names",
@@ -75,64 +71,6 @@ class OrderHistorySerializer(serializers.ModelSerializer):
                 names.append(producer_name)
 
         return names
-
-    def get_delivery_date(self, obj: Order):
-        """
-        Return a single top-level delivery date only when every producer
-        summary is marked for delivery and all dates match.
-
-        None is returned for collection-only, mixed-fulfilment, or
-        conflicting-date orders.
-        """
-        summaries = list(obj.producer_summaries.all())
-
-        if not summaries:
-            return None
-
-        if any(summary.delivery_or_collection != "DEL" for summary in summaries):
-            return None
-
-        delivery_dates = [
-            summary.delivery_date
-            for summary in summaries
-            if summary.delivery_date is not None
-        ]
-
-        unique_dates = sorted(set(delivery_dates))
-
-        if len(unique_dates) == 1:
-            return unique_dates[0]
-
-        return None
-
-    def get_collection_date(self, obj: Order):
-        """
-        Return a single top-level collection date only when every producer
-        summary is marked for collection and all dates match.
-
-        None is returned for delivery-only, mixed-fulfilment, or
-        conflicting-date orders.
-        """
-        summaries = list(obj.producer_summaries.all())
-
-        if not summaries:
-            return None
-
-        if any(summary.delivery_or_collection != "COL" for summary in summaries):
-            return None
-
-        collection_dates = [
-            summary.delivery_date
-            for summary in summaries
-            if summary.delivery_date is not None
-        ]
-
-        unique_dates = sorted(set(collection_dates))
-
-        if len(unique_dates) == 1:
-            return unique_dates[0]
-
-        return None
 
 
 class OrderItemDetailSerializer(serializers.ModelSerializer):
@@ -206,11 +144,20 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     """
     Serialiser for producer-level fulfilment and financial breakdown data.
 
-    This representation is used in order detail responses where a single
-    order may contain multiple producers with different fulfilment details.
+    A single order may contain multiple producers with different fulfilment
+    modes and different dates. For that reason, fulfilment schedule data is
+    exposed at producer-summary level rather than order level.
+
+    The underlying model stores a single schedule date and time-slot pair.
+    This serializer maps those values into delivery or collection response
+    fields based on the fulfilment mode so the API output remains truthful.
     """
 
     producer_name = serializers.CharField(source="producer.farm_name", read_only=True)
+    delivery_date = serializers.SerializerMethodField()
+    collection_date = serializers.SerializerMethodField()
+    delivery_time_slot = serializers.SerializerMethodField()
+    collection_time_slot = serializers.SerializerMethodField()
 
     class Meta:
         model = ProducerOrderSummary
@@ -221,7 +168,9 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
             "status",
             "delivery_or_collection",
             "delivery_date",
+            "collection_date",
             "delivery_time_slot",
+            "collection_time_slot",
             "subtotal",
             "vat_total",
             "commission_total",
@@ -233,6 +182,50 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
             "special_instructions",
         ]
 
+    def get_delivery_date(self, obj: ProducerOrderSummary):
+        """
+        Return the producer delivery date only for delivery fulfilment.
+
+        None is returned for collection summaries so the API does not expose
+        a collection schedule using a delivery field.
+        """
+        if obj.delivery_or_collection == "DEL":
+            return obj.delivery_date
+        return None
+
+    def get_collection_date(self, obj: ProducerOrderSummary):
+        """
+        Return the producer collection date only for collection fulfilment.
+
+        The underlying stored date is mapped into the collection field for
+        collection summaries.
+        """
+        if obj.delivery_or_collection == "COL":
+            return obj.delivery_date
+        return None
+
+    def get_delivery_time_slot(self, obj: ProducerOrderSummary):
+        """
+        Return the producer delivery time slot only for delivery fulfilment.
+
+        None is returned for collection summaries so the API does not expose
+        a collection time slot using a delivery field.
+        """
+        if obj.delivery_or_collection == "DEL":
+            return obj.delivery_time_slot
+        return None
+
+    def get_collection_time_slot(self, obj: ProducerOrderSummary):
+        """
+        Return the producer collection time slot only for collection fulfilment.
+
+        The underlying stored time slot is mapped into the collection field
+        for collection summaries.
+        """
+        if obj.delivery_or_collection == "COL":
+            return obj.delivery_time_slot
+        return None
+
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     """
@@ -242,8 +235,12 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     - top-level order metadata
     - item-level detail
     - producer-level breakdown
-    - derived delivery address
+    - derived delivery or collection address when it can be represented
+      truthfully at order level
     - masked payment method text
+
+    Fulfilment dates are intentionally not exposed at order level because a
+    multi-producer order may contain different schedules per producer.
     """
 
     order_number = serializers.CharField(source="unique_reference", read_only=True)
@@ -256,10 +253,10 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     delivery_address = serializers.SerializerMethodField()
     payment_method_masked = serializers.SerializerMethodField()
     total_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, read_only=True
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
     )
-    delivery_date = serializers.SerializerMethodField()
-    collection_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -267,8 +264,6 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "order_date",
-            "delivery_date",
-            "collection_date",
             "status",
             "items",
             "producer_breakdown",
@@ -277,74 +272,14 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "total_price",
         ]
 
-    def get_delivery_date(self, obj: Order):
-        """
-        Return a single top-level delivery date only when every producer
-        summary is marked for delivery and all dates match.
-
-        None is returned for collection-only, mixed-fulfilment, or
-        conflicting-date orders so the client relies on producer_breakdown
-        for accurate per-producer information.
-        """
-        summaries = list(obj.producer_summaries.all())
-
-        if not summaries:
-            return None
-
-        if any(summary.delivery_or_collection != "DEL" for summary in summaries):
-            return None
-
-        delivery_dates = [
-            summary.delivery_date
-            for summary in summaries
-            if summary.delivery_date is not None
-        ]
-
-        unique_dates = sorted(set(delivery_dates))
-
-        if len(unique_dates) == 1:
-            return unique_dates[0]
-
-        return None
-
-    def get_collection_date(self, obj: Order):
-        """
-        Return a single top-level collection date only when every producer
-        summary is marked for collection and all dates match.
-
-        None is returned for delivery-only, mixed-fulfilment, or
-        conflicting-date orders so the client relies on producer_breakdown
-        for accurate per-producer information.
-        """
-        summaries = list(obj.producer_summaries.all())
-
-        if not summaries:
-            return None
-
-        if any(summary.delivery_or_collection != "COL" for summary in summaries):
-            return None
-
-        collection_dates = [
-            summary.delivery_date
-            for summary in summaries
-            if summary.delivery_date is not None
-        ]
-
-        unique_dates = sorted(set(collection_dates))
-
-        if len(unique_dates) == 1:
-            return unique_dates[0]
-
-        return None
-
     def get_delivery_address(self, obj: Order) -> dict | None:
         """
-        Return a single top-level fulfilment address when that address can be
-        represented truthfully at order level.
+        Return a single top-level fulfilment address only when that address
+        can be represented truthfully for the full order.
 
         Rules:
         - delivery-only orders:
-            return the customer's order delivery address
+            return the customer's delivery address
         - collection-only orders:
             return the pickup address only if every producer summary points
             to the same collection location
