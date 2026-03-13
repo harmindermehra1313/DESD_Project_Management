@@ -389,7 +389,7 @@ class Command(BaseCommand):
             total_commission=round(Decimal("5.50") * Decimal("0.05"), 2),
             food_miles_total=3.0,
 
-            status="COMPLETED",
+            status= self.Order.Status.COMPLETED,
         )
 
         # Order Item 1 – Carrots
