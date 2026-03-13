@@ -14,14 +14,16 @@ Business responsibilities:
 """
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from carts.services import CartOwner, cart_add_item_for_owner
 from orders.selectors import get_order_detail_for_user
+from orders.models import Order
 
 User = get_user_model()
+
 
 
 def _product_reorderable(product):
@@ -54,11 +56,15 @@ def _inventory_reorderable(inventory):
 @transaction.atomic
 def reorder_order(*, user: User, order_id: int) -> dict:
     """
-    Rebuild cart from historical order.
+    Rebuild cart from a historical completed order.
 
     Returns structured result describing reorder outcome.
     """
     order = get_order_detail_for_user(user=user, order_id=order_id)
+
+    if order.status != Order.Status.COMPLETED:
+        raise ValidationError("Only completed orders can be reordered.")
+
     owner = CartOwner(user_id=user.id)
 
     result = {
@@ -74,7 +80,6 @@ def reorder_order(*, user: User, order_id: int) -> dict:
         inventory = item.inventory
         requested_quantity = item.quantity
 
-        # Check product validity
         reorderable, reason = _product_reorderable(product)
         if not reorderable:
             result["unavailable_items"].append(
@@ -87,7 +92,6 @@ def reorder_order(*, user: User, order_id: int) -> dict:
             )
             continue
 
-        # Check inventory expiry validity
         inventory_ok, inventory_reason = _inventory_reorderable(inventory)
         if not inventory_ok:
             result["unavailable_items"].append(
@@ -100,7 +104,6 @@ def reorder_order(*, user: User, order_id: int) -> dict:
             )
             continue
 
-        # Check stock
         available_quantity = inventory.remaining_quantity
 
         if available_quantity <= 0:
@@ -116,7 +119,6 @@ def reorder_order(*, user: User, order_id: int) -> dict:
 
         quantity_to_add = min(requested_quantity, available_quantity)
 
-        # Price comparison
         if item.original_unit_price != product.price:
             result["price_changed_items"].append(
                 {
@@ -127,7 +129,6 @@ def reorder_order(*, user: User, order_id: int) -> dict:
                 }
             )
 
-        # Quantity adjustment
         if quantity_to_add < requested_quantity:
             result["quantity_adjusted_items"].append(
                 {
@@ -170,7 +171,6 @@ def reorder_order(*, user: User, order_id: int) -> dict:
             }
         )
 
-    # Build message
     added = len(result["added_items"])
     unavailable = len(result["unavailable_items"])
 
