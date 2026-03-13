@@ -40,6 +40,7 @@ def _get_order_history_base_queryset() -> QuerySet[Order]:
     - prefetch_related() is used for reverse and multi-valued relations
     - nested producer history is prefetched for detail/history rendering
     """
+
     item_queryset = (
         OrderItem.objects.select_related(
             "product",
