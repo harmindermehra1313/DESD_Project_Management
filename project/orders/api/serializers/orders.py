@@ -36,7 +36,7 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     """
 
     order_number = serializers.CharField(source="unique_reference", read_only=True)
-    order_status = serializers.CharField(source="status", read_only=True)
+    order_status = serializers.CharField(source="get_status_display", read_only=True)
     total = serializers.DecimalField(
         source="total_price",
         max_digits=10,
@@ -157,6 +157,11 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
     """
 
     producer_name = serializers.CharField(source="producer.farm_name", read_only=True)
+    status = serializers.CharField(source="get_status_display", read_only=True)
+    delivery_or_collection = serializers.CharField(
+        source="get_delivery_or_collection_display",
+        read_only=True,
+    )
     delivery_date = serializers.SerializerMethodField()
     collection_date = serializers.SerializerMethodField()
     delivery_time_slot = serializers.SerializerMethodField()
@@ -214,7 +219,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
         """
         Return the producer delivery date only for delivery fulfilment.
         """
-        if obj.delivery_or_collection == "DEL":
+        if obj.delivery_or_collection == Order.DeliveryOrCollection.DELIVERY:
             return obj.delivery_date
         return None
 
@@ -222,7 +227,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
         """
         Return the producer collection date only for collection fulfilment.
         """
-        if obj.delivery_or_collection == "COL":
+        if obj.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION:
             return obj.delivery_date
         return None
 
@@ -230,7 +235,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
         """
         Return the producer delivery time slot only for delivery fulfilment.
         """
-        if obj.delivery_or_collection == "DEL":
+        if obj.delivery_or_collection == Order.DeliveryOrCollection.DELIVERY:
             return obj.delivery_time_slot
         return None
 
@@ -238,7 +243,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
         """
         Return the producer collection time slot only for collection fulfilment.
         """
-        if obj.delivery_or_collection == "COL":
+        if obj.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION:
             return obj.delivery_time_slot
         return None
 
@@ -246,7 +251,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
         """
         Return the producer delivery address only for delivery fulfilment.
         """
-        if obj.delivery_or_collection == "DEL":
+        if obj.delivery_or_collection == Order.DeliveryOrCollection.DELIVERY:
             return self._build_address_payload(obj)
         return None
 
@@ -254,7 +259,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
         """
         Return the producer collection address only for collection fulfilment.
         """
-        if obj.delivery_or_collection == "COL":
+        if obj.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION:
             return self._build_address_payload(obj)
         return None
 
@@ -277,6 +282,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
     order_number = serializers.CharField(source="unique_reference", read_only=True)
     items = OrderItemDetailSerializer(many=True, read_only=True)
+    status = serializers.CharField(source="get_status_display", read_only=True)
+
     producer_breakdown = ProducerOrderSummarySerializer(
         source="producer_summaries",
         many=True,
@@ -301,8 +308,6 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "payment_method_display",
             "total_price",
         ]
-
-    
 
     def get_payment_method_display(self, obj: Order) -> str | None:
         """
