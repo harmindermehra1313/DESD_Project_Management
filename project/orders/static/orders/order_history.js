@@ -1,14 +1,48 @@
-const ORDER_HISTORY_API_URL = "/api/orders/history/";
-  const ORDER_DETAIL_API_BASE = "/api/orders/history/";
-  const ORDER_REORDER_API_SUFFIX = "/reorder/";
-  const RECEIPT_URL_BASE = "/orders/receipt/"; // placeholder if backend route is added
+const ORDER_HISTORY_API_URL = "/api/order-history/history/";
+const ORDER_DETAIL_API_BASE = "/api/order-history/";
+const ORDER_REORDER_API_SUFFIX = "/reorder/";
+  const RECEIPT_URL_BASE = "/orders/receipt/"; 
 
   let currentPage = 1;
   let totalCount = 0;
   let pageSize = 10;
 
-  const detailModal = new bootstrap.Modal(document.getElementById("orderDetailModal"));
-  const reorderModal = new bootstrap.Modal(document.getElementById("reorderResultModal"));
+let detailModal;
+let reorderModal;
+
+document.addEventListener("DOMContentLoaded", function () {
+  detailModal = new bootstrap.Modal(document.getElementById("orderDetailModal"));
+  reorderModal = new bootstrap.Modal(document.getElementById("reorderResultModal"));
+
+  document.getElementById("orderFiltersForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    currentPage = 1;
+    loadOrders();
+  });
+
+  document.getElementById("resetFiltersBtn").addEventListener("click", function() {
+    document.getElementById("orderFiltersForm").reset();
+    currentPage = 1;
+    loadOrders();
+  });
+
+  document.getElementById("prevPageBtn").addEventListener("click", function() {
+    if (currentPage > 1) {
+      currentPage--;
+      loadOrders();
+    }
+  });
+
+  document.getElementById("nextPageBtn").addEventListener("click", function() {
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    if (currentPage < totalPages) {
+      currentPage++;
+      loadOrders();
+    }
+  });
+
+  loadOrders();
+});
 
   function escapeHtml(value) {
     if (value === null || value === undefined) return "";
