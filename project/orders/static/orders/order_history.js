@@ -3,6 +3,16 @@ const ORDER_DETAIL_API_BASE = "/api/order-history/";
 const ORDER_REORDER_API_SUFFIX = "/reorder/";
 const RECEIPT_URL_BASE = "/orders/receipt/";
 
+const DEFAULT_FILTERS = {
+  status: "",
+  start_date: "",
+  end_date: "",
+  delivery_or_collection: "",
+  recurring_only: "",
+};
+
+let appliedFilters = { ...DEFAULT_FILTERS };
+
 let currentPage = 1;
 let totalCount = 0;
 let pageSize = 10;
@@ -11,12 +21,49 @@ let detailModal;
 let reorderModal;
 
 document.addEventListener("DOMContentLoaded", () => {
-  detailModal = new bootstrap.Modal(document.getElementById("orderDetailModal"));
-  reorderModal = new bootstrap.Modal(document.getElementById("reorderResultModal"));
+  const detailModalElement = document.getElementById("orderDetailModal");
+  const reorderModalElement = document.getElementById("reorderResultModal");
 
+  if (detailModalElement) {
+    detailModal = new bootstrap.Modal(detailModalElement);
+  }
+
+  if (reorderModalElement) {
+    reorderModal = new bootstrap.Modal(reorderModalElement);
+  }
+
+  appliedFilters = readFiltersFromForm();
   bindEvents();
   loadOrders();
 });
+
+function readFiltersFromForm() {
+  return {
+    status: document.getElementById("status")?.value?.trim() || "",
+    start_date: document.getElementById("start_date")?.value || "",
+    end_date: document.getElementById("end_date")?.value || "",
+    delivery_or_collection: document.getElementById("delivery_or_collection")?.value || "",
+    recurring_only: document.getElementById("recurring_only")?.value || "",
+  };
+}
+
+function writeFiltersToForm(filters) {
+  const statusEl = document.getElementById("status");
+  const startDateEl = document.getElementById("start_date");
+  const endDateEl = document.getElementById("end_date");
+  const fulfilmentEl = document.getElementById("delivery_or_collection");
+  const recurringEl = document.getElementById("recurring_only");
+
+  if (statusEl) statusEl.value = filters.status || "";
+  if (startDateEl) startDateEl.value = filters.start_date || "";
+  if (endDateEl) endDateEl.value = filters.end_date || "";
+  if (fulfilmentEl) fulfilmentEl.value = filters.delivery_or_collection || "";
+  if (recurringEl) recurringEl.value = filters.recurring_only || "";
+}
+
+function resetAppliedFilters() {
+  appliedFilters = { ...DEFAULT_FILTERS };
+}
 
 function bindEvents() {
   const filtersForm = document.getElementById("orderFiltersForm");
@@ -25,8 +72,9 @@ function bindEvents() {
   const nextBtn = document.getElementById("nextPageBtn");
 
   if (filtersForm) {
-    filtersForm.addEventListener("submit", (e) => {
-      e.preventDefault();
+    filtersForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      appliedFilters = readFiltersFromForm();
       currentPage = 1;
       loadOrders();
     });
@@ -34,7 +82,8 @@ function bindEvents() {
 
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
-      filtersForm.reset();
+      resetAppliedFilters();
+      writeFiltersToForm(appliedFilters);
       currentPage = 1;
       loadOrders();
     });
@@ -43,7 +92,7 @@ function bindEvents() {
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
-        currentPage--;
+        currentPage -= 1;
         loadOrders();
       }
     });
@@ -53,15 +102,45 @@ function bindEvents() {
     nextBtn.addEventListener("click", () => {
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
       if (currentPage < totalPages) {
-        currentPage++;
+        currentPage += 1;
         loadOrders();
       }
     });
   }
 }
 
+function buildQueryString() {
+  const params = new URLSearchParams();
+
+  if (appliedFilters.status) {
+    params.append("status", appliedFilters.status);
+  }
+
+  if (appliedFilters.start_date) {
+    params.append("start_date", appliedFilters.start_date);
+  }
+
+  if (appliedFilters.end_date) {
+    params.append("end_date", appliedFilters.end_date);
+  }
+
+  if (appliedFilters.delivery_or_collection) {
+    params.append("delivery_or_collection", appliedFilters.delivery_or_collection);
+  }
+
+  if (appliedFilters.recurring_only) {
+    params.append("recurring_only", appliedFilters.recurring_only);
+  }
+
+  params.append("page", String(currentPage));
+  params.append("page_size", String(pageSize));
+
+  return params.toString();
+}
+
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
+
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -85,19 +164,51 @@ function formatDate(dateString) {
 
 function formatMoney(value) {
   const amount = Number(value || 0);
+
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
   }).format(amount);
 }
 
-function getStatusBadgeClass(status) {
-  const s = (status || "").toLowerCase();
+function normaliseStatus(status) {
+  return (status || "").toLowerCase().trim();
+}
 
-  if (s.includes("completed")) return "bg-success";
-  if (s.includes("pending")) return "bg-warning text-dark";
-  if (s.includes("cancel")) return "bg-danger";
+function getStatusBadgeClass(status) {
+  const value = normaliseStatus(status);
+
+  if (value.includes("completed")) return "bg-success";
+  if (value.includes("confirmed")) return "bg-info text-dark";
+  if (value.includes("pending")) return "bg-warning text-dark";
+  if (value.includes("cancel")) return "bg-danger";
+
   return "bg-secondary";
+}
+
+function isReorderAllowed(status) {
+  const value = normaliseStatus(status);
+  return !value.includes("pending") && !value.includes("cancel") && !value.includes("ready for collection");
+}
+
+function getReorderButtonHtml(orderId, status, extraClass = "") {
+  const allowed = isReorderAllowed(status);
+  const disabledAttr = allowed ? "" : "disabled";
+  const title = allowed
+    ? "Reorder"
+    : "Reorder is not available for pending or cancelled orders";
+
+  return `
+    <button
+      type="button"
+      class="btn btn-dark ${extraClass}".trim()
+      onclick="reorderOrder(${orderId})"
+      ${disabledAttr}
+      title="${escapeHtml(title)}"
+    >
+      Reorder
+    </button>
+  `;
 }
 
 function getFulfilmentType(summary) {
@@ -145,51 +256,127 @@ function formatAddress(address) {
     return `<div class="text-muted">Address not available</div>`;
   }
 
-  return lines.map(line => `<div>${escapeHtml(line)}</div>`).join("");
+  return lines.map((line) => `<div>${escapeHtml(line)}</div>`).join("");
 }
 
-function buildQuery() {
-  const params = new URLSearchParams();
+function setLoadingState() {
+  document.getElementById("orderListLoading")?.classList.remove("d-none");
+  document.getElementById("orderListError")?.classList.add("d-none");
+  document.getElementById("orderListEmpty")?.classList.add("d-none");
+  document.getElementById("orderTableWrapper")?.classList.add("d-none");
 
-  const status = document.getElementById("status")?.value.trim() || "";
-  const startDate = document.getElementById("start_date")?.value || "";
-  const endDate = document.getElementById("end_date")?.value || "";
-  const deliveryOrCollection = document.getElementById("delivery_or_collection")?.value || "";
-  const recurringOnly = document.getElementById("recurring_only")?.value || "";
-
-  if (status) params.append("status", status);
-  if (startDate) params.append("start_date", startDate);
-  if (endDate) params.append("end_date", endDate);
-  if (deliveryOrCollection) params.append("delivery_or_collection", deliveryOrCollection);
-  if (recurringOnly) params.append("recurring_only", recurringOnly);
-
-  params.append("page", currentPage);
-  params.append("page_size", pageSize);
-
-  return params.toString();
-}
-
-async function loadOrders() {
-  const loading = document.getElementById("orderListLoading");
-  const errorBox = document.getElementById("orderListError");
-  const emptyBox = document.getElementById("orderListEmpty");
-  const wrapper = document.getElementById("orderTableWrapper");
   const tbody = document.getElementById("orderTableBody");
+  if (tbody) {
+    tbody.innerHTML = "";
+  }
+}
+
+function setPaginationState(totalPages) {
   const paginationInfo = document.getElementById("paginationInfo");
   const prevBtn = document.getElementById("prevPageBtn");
   const nextBtn = document.getElementById("nextPageBtn");
 
-  loading?.classList.remove("d-none");
-  errorBox?.classList.add("d-none");
-  emptyBox?.classList.add("d-none");
-  wrapper?.classList.add("d-none");
-
-  if (tbody) {
-    tbody.innerHTML = "";
+  if (paginationInfo) {
+    paginationInfo.textContent = `Page ${currentPage} of ${totalPages} · ${totalCount} total orders`;
   }
 
+  if (prevBtn) {
+    prevBtn.disabled = currentPage <= 1;
+  }
+
+  if (nextBtn) {
+    nextBtn.disabled = currentPage >= totalPages;
+  }
+}
+
+function setEmptyState() {
+  document.getElementById("orderListLoading")?.classList.add("d-none");
+  document.getElementById("orderListEmpty")?.classList.remove("d-none");
+
+  const paginationInfo = document.getElementById("paginationInfo");
+  const prevBtn = document.getElementById("prevPageBtn");
+  const nextBtn = document.getElementById("nextPageBtn");
+
+  if (paginationInfo) {
+    paginationInfo.textContent = totalCount === 0 ? "0 orders" : `Page ${currentPage}`;
+  }
+
+  if (prevBtn) prevBtn.disabled = true;
+  if (nextBtn) nextBtn.disabled = true;
+}
+
+function setErrorState(message) {
+  document.getElementById("orderListLoading")?.classList.add("d-none");
+
+  const errorBox = document.getElementById("orderListError");
+  if (errorBox) {
+    errorBox.textContent = message || "Failed to load orders.";
+    errorBox.classList.remove("d-none");
+  }
+}
+
+function renderOrdersTable(orders) {
+  const wrapper = document.getElementById("orderTableWrapper");
+  const tbody = document.getElementById("orderTableBody");
+
+  if (!tbody || !wrapper) return;
+
+  tbody.innerHTML = orders.map((order) => `
+    <tr>
+      <td><strong>${escapeHtml(order.order_number)}</strong></td>
+      <td>${formatDate(order.order_date)}</td>
+      <td>
+        ${(order.producer_names || []).map((name) => `
+          <span class="badge rounded-pill text-bg-light border me-1 mb-1">
+            ${escapeHtml(name)}
+          </span>
+        `).join("")}
+      </td>
+      <td>${formatMoney(order.total)}</td>
+      <td>
+        <span class="badge ${getStatusBadgeClass(order.order_status)}">
+          ${escapeHtml(order.order_status)}
+        </span>
+      </td>
+      <td class="text-end">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-dark me-2"
+          onclick="openOrderDetails(${order.id})"
+        >
+          View Details
+        </button>
+        ${getReorderButtonHtml(order.id, order.order_status, "btn-sm")}
+      </td>
+    </tr>
+  `).join("");
+
+  document.getElementById("orderListLoading")?.classList.add("d-none");
+  wrapper.classList.remove("d-none");
+}
+
+async function parseErrorMessage(response, fallbackMessage) {
+  let message = fallbackMessage;
+
   try {
-    const response = await fetch(`${ORDER_HISTORY_API_URL}?${buildQuery()}`, {
+    const errorData = await response.json();
+    message =
+      errorData.detail ||
+      errorData.message ||
+      errorData.error ||
+      JSON.stringify(errorData);
+  } catch (_) {
+    // keep fallback
+  }
+
+  return message;
+}
+
+async function loadOrders() {
+  setLoadingState();
+
+  try {
+    const response = await fetch(`${ORDER_HISTORY_API_URL}?${buildQueryString()}`, {
       headers: {
         "X-Requested-With": "XMLHttpRequest",
       },
@@ -197,102 +384,45 @@ async function loadOrders() {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to load order history (${response.status})`);
+      const message = await parseErrorMessage(
+        response,
+        `Failed to load order history (${response.status})`,
+      );
+      throw new Error(message);
     }
 
     const data = await response.json();
 
-    totalCount = data.count || 0;
-    const orders = data.results || [];
+    totalCount = Number(data.count || 0);
+    const orders = Array.isArray(data.results) ? data.results : [];
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-    loading?.classList.add("d-none");
+    if (currentPage > totalPages) {
+      currentPage = 1;
+      return loadOrders();
+    }
 
     if (!orders.length) {
-      emptyBox?.classList.remove("d-none");
-      if (paginationInfo) {
-        paginationInfo.textContent = "0 orders";
-      }
-      if (prevBtn) prevBtn.disabled = true;
-      if (nextBtn) nextBtn.disabled = true;
+      setEmptyState();
       return;
     }
 
-    wrapper?.classList.remove("d-none");
-
-    if (tbody) {
-      tbody.innerHTML = orders.map(order => `
-        <tr>
-          <td><strong>${escapeHtml(order.order_number)}</strong></td>
-          <td>${formatDate(order.order_date)}</td>
-          <td>
-            ${(order.producer_names || []).map(name => `
-              <span class="badge rounded-pill text-bg-light border me-1 mb-1">
-                ${escapeHtml(name)}
-              </span>
-            `).join("")}
-          </td>
-          <td>${formatMoney(order.total)}</td>
-          <td>
-            <span class="badge ${getStatusBadgeClass(order.order_status)}">
-              ${escapeHtml(order.order_status)}
-            </span>
-          </td>
-          <td class="text-end">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-dark me-2"
-              onclick="openOrderDetails(${order.id})"
-            >
-              View Details
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-dark"
-              onclick="reorderOrder(${order.id})"
-            >
-              Reorder
-            </button>
-          </td>
-        </tr>
-      `).join("");
-    }
-
-    if (paginationInfo) {
-      paginationInfo.textContent = `Page ${currentPage} of ${totalPages} · ${totalCount} total orders`;
-    }
-
-    if (prevBtn) prevBtn.disabled = currentPage <= 1;
-    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    renderOrdersTable(orders);
+    setPaginationState(totalPages);
   } catch (error) {
-    loading?.classList.add("d-none");
-    if (errorBox) {
-      errorBox.textContent = error.message || "Failed to load orders.";
-      errorBox.classList.remove("d-none");
-    }
+    setErrorState(error.message || "Failed to load orders.");
   }
 }
 
 function buildFulfilmentGroups(producerBreakdown) {
-  const groups = [];
-
-  (producerBreakdown || []).forEach(summary => {
-    const type = getFulfilmentType(summary) || "Not specified";
-    const date = getFulfilmentDate(summary);
-    const slot = getFulfilmentSlot(summary);
-    const address = getFulfilmentAddress(summary);
-
-    groups.push({
-      producerName: summary.producer_name || "Unknown producer",
-      fulfilmentType: type,
-      date,
-      slot,
-      address,
-      status: summary.status || "-",
-    });
-  });
-
-  return groups;
+  return (producerBreakdown || []).map((summary) => ({
+    producerName: summary.producer_name || "Unknown producer",
+    fulfilmentType: getFulfilmentType(summary) || "Not specified",
+    date: getFulfilmentDate(summary),
+    slot: getFulfilmentSlot(summary),
+    address: getFulfilmentAddress(summary),
+    status: summary.status || "-",
+  }));
 }
 
 function renderFulfilmentSection(producerBreakdown) {
@@ -313,7 +443,7 @@ function renderFulfilmentSection(producerBreakdown) {
     <div class="mb-4">
       <h6 class="mb-3">Delivery / Collection Details</h6>
       <div class="row g-3">
-        ${groups.map(group => `
+        ${groups.map((group) => `
           <div class="col-12">
             <div class="border rounded p-3">
               <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -335,7 +465,9 @@ function renderFulfilmentSection(producerBreakdown) {
                 </div>
                 <div class="col-md-4">
                   <div class="small text-muted">
-                    ${group.fulfilmentType.toLowerCase().includes("collection") ? "Collection address" : "Delivery address"}
+                    ${group.fulfilmentType.toLowerCase().includes("collection")
+                      ? "Collection address"
+                      : "Delivery address"}
                   </div>
                   <div>${formatAddress(group.address)}</div>
                 </div>
@@ -363,7 +495,7 @@ function renderItemsSection(items) {
             </tr>
           </thead>
           <tbody>
-            ${(items || []).map(item => `
+            ${(items || []).map((item) => `
               <tr>
                 <td>${escapeHtml(item.product_name)}</td>
                 <td>${escapeHtml(item.producer)}</td>
@@ -393,7 +525,7 @@ function renderProducerSection(producerBreakdown) {
   return `
     <div class="mb-4">
       <h6 class="mb-3">Producer Details</h6>
-      ${(producerBreakdown || []).map(summary => `
+      ${(producerBreakdown || []).map((summary) => `
         <div class="card mb-3">
           <div class="card-body">
             <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
@@ -471,13 +603,7 @@ function renderOrderFooter(order) {
       </div>
 
       <div class="d-flex gap-2">
-        <button
-          type="button"
-          class="btn btn-dark"
-          onclick="reorderOrder(${order.id})"
-        >
-          Reorder
-        </button>
+        ${getReorderButtonHtml(order.id, order.status)}
         <a
           class="btn btn-outline-secondary"
           href="${RECEIPT_URL_BASE}${order.id}/"
@@ -513,7 +639,11 @@ async function openOrderDetails(orderId) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to load order details (${response.status})`);
+      const message = await parseErrorMessage(
+        response,
+        `Failed to load order details (${response.status})`,
+      );
+      throw new Error(message);
     }
 
     const order = await response.json();
@@ -551,14 +681,10 @@ async function reorderOrder(orderId) {
     });
 
     if (!response.ok) {
-      let message = `Reorder failed (${response.status})`;
-
-      try {
-        const errorData = await response.json();
-        message = errorData.detail || errorData.message || JSON.stringify(errorData);
-      } catch (_) {
-      }
-
+      const message = await parseErrorMessage(
+        response,
+        `Reorder failed (${response.status})`,
+      );
       throw new Error(message);
     }
 
@@ -588,7 +714,7 @@ function renderReorderResult(result) {
     <div class="mb-4">
       <h6>Added to Cart</h6>
       ${(result.added_items || []).length
-        ? result.added_items.map(item => `
+        ? result.added_items.map((item) => `
           <div class="border rounded p-2 mb-2">
             <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
             <div class="small text-muted">
@@ -604,7 +730,7 @@ function renderReorderResult(result) {
     <div class="mb-4">
       <h6>Unavailable Items</h6>
       ${(result.unavailable_items || []).length
-        ? result.unavailable_items.map(item => `
+        ? result.unavailable_items.map((item) => `
           <div class="border border-danger rounded p-2 mb-2 bg-light">
             <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
             <div class="small text-danger">
@@ -619,7 +745,7 @@ function renderReorderResult(result) {
     <div class="mb-4">
       <h6>Quantity Adjustments</h6>
       ${(result.quantity_adjusted_items || []).length
-        ? result.quantity_adjusted_items.map(item => `
+        ? result.quantity_adjusted_items.map((item) => `
           <div class="border border-warning rounded p-2 mb-2 bg-light">
             <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
             <div class="small text-warning-emphasis">
@@ -635,7 +761,7 @@ function renderReorderResult(result) {
     <div>
       <h6>Price Changes</h6>
       ${(result.price_changed_items || []).length
-        ? result.price_changed_items.map(item => `
+        ? result.price_changed_items.map((item) => `
           <div class="border border-primary rounded p-2 mb-2 bg-light">
             <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
             <div class="small text-primary">
@@ -655,7 +781,7 @@ function getCookie(name) {
   if (document.cookie && document.cookie !== "") {
     const cookies = document.cookie.split(";");
 
-    for (let i = 0; i < cookies.length; i++) {
+    for (let i = 0; i < cookies.length; i += 1) {
       const cookie = cookies[i].trim();
 
       if (cookie.substring(0, name.length + 1) === `${name}=`) {
