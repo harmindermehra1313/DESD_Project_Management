@@ -13,5 +13,5 @@ urlpatterns = [
     path("checkout/return/", stripe_return, name="stripe_return"),
     path("checkout/cod/", checkout_cod, name="checkout_cod"),
     # Order history
-    path("accounts/order-history/", order_history_page, name="order-history-page"),
+    path("order-history/", order_history_page, name="order-history-page"),
 ]
