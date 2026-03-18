@@ -1,4 +1,4 @@
-from .orders import OrderDetailApiView, OrderHistoryApiView, ReorderOrderApiView
+from .reorders import OrderDetailApiView, OrderHistoryApiView, ReorderOrderApiView
 
 __all__ = [
     "OrderHistoryApiView",

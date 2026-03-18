@@ -34,7 +34,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from orders.throttles import ReorderThrottle
 
-from orders.api.serializers.orders import (
+from orders.api.serializers.reorders import (
     OrderDetailSerializer,
     OrderHistorySerializer,
     ReorderResponseSerializer,
@@ -185,6 +185,18 @@ class OrderHistoryApiView(generics.ListAPIView):
         recurring_only = _parse_bool(params.get("recurring_only"))
         start_date = _parse_date(params.get("start_date"))
         end_date = _parse_date(params.get("end_date"))
+        today = date.today()
+
+        if start_date and start_date > today:
+            raise ValidationError({"start_date": "Start date cannot be in the future."})
+
+        if end_date and end_date > today:
+            raise ValidationError({"end_date": "End date cannot be in the future."})
+
+        if start_date and end_date and start_date > end_date:
+            raise ValidationError({
+                "date_range": "Start date must be earlier than or equal to end date."
+            })
         producer_id = _parse_int(params.get("producer_id"), "producer_id")
 
         return get_order_history_for_user(

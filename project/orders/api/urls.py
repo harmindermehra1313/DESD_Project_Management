@@ -1,6 +1,6 @@
 from django.urls import path
 
-from orders.api.views.orders import (
+from orders.api.views.reorders import (
     OrderHistoryApiView,
     OrderDetailApiView,
     ReorderOrderApiView,

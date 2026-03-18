@@ -60,6 +60,93 @@ function writeFiltersToForm(filters) {
   if (fulfilmentEl) fulfilmentEl.value = filters.delivery_or_collection || "";
   if (recurringEl) recurringEl.value = filters.recurring_only || "";
 }
+function getTodayDateString() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function clearDateValidationState() {
+  const startDateEl = document.getElementById("start_date");
+  const endDateEl = document.getElementById("end_date");
+  const errorBox = document.getElementById("orderListError");
+
+  [startDateEl, endDateEl].forEach((el) => {
+    if (!el) return;
+    el.classList.remove("is-invalid");
+    el.setCustomValidity("");
+  });
+
+  if (errorBox) {
+    errorBox.classList.add("d-none");
+    errorBox.textContent = "";
+  }
+}
+
+function showDateValidationError(message, fields = []) {
+  const errorBox = document.getElementById("orderListError");
+
+  fields.forEach((field) => {
+    field?.classList.add("is-invalid");
+    field?.setCustomValidity(message);
+  });
+
+  if (errorBox) {
+    errorBox.textContent = message;
+    errorBox.classList.remove("d-none");
+  }
+}
+
+function validateDateFilters() {
+  const startDateEl = document.getElementById("start_date");
+  const endDateEl = document.getElementById("end_date");
+
+  if (!startDateEl || !endDateEl) {
+    return true;
+  }
+
+  clearDateValidationState();
+
+  const startDate = startDateEl.value;
+  const endDate = endDateEl.value;
+  const today = getTodayDateString();
+
+  if (startDate && startDate > today) {
+    showDateValidationError("Start date cannot be in the future.", [startDateEl]);
+    return false;
+  }
+
+  if (endDate && endDate > today) {
+    showDateValidationError("End date cannot be in the future.", [endDateEl]);
+    return false;
+  }
+
+  if (startDate && endDate && startDate > endDate) {
+    showDateValidationError("Start date must be earlier than or equal to end date.", [
+      startDateEl,
+      endDateEl,
+    ]);
+    return false;
+  }
+
+  return true;
+}
+
+function applyDateInputLimits() {
+  const startDateEl = document.getElementById("start_date");
+  const endDateEl = document.getElementById("end_date");
+  const today = getTodayDateString();
+
+  if (startDateEl) {
+    startDateEl.max = today;
+  }
+
+  if (endDateEl) {
+    endDateEl.max = today;
+  }
+}
 
 function resetAppliedFilters() {
   appliedFilters = { ...DEFAULT_FILTERS };
@@ -70,10 +157,19 @@ function bindEvents() {
   const resetBtn = document.getElementById("resetFiltersBtn");
   const prevBtn = document.getElementById("prevPageBtn");
   const nextBtn = document.getElementById("nextPageBtn");
+  const startDateEl = document.getElementById("start_date");
+  const endDateEl = document.getElementById("end_date");
+
+  applyDateInputLimits();
 
   if (filtersForm) {
     filtersForm.addEventListener("submit", (event) => {
       event.preventDefault();
+
+      if (!validateDateFilters()) {
+        return;
+      }
+
       appliedFilters = readFiltersFromForm();
       currentPage = 1;
       loadOrders();
@@ -84,8 +180,22 @@ function bindEvents() {
     resetBtn.addEventListener("click", () => {
       resetAppliedFilters();
       writeFiltersToForm(appliedFilters);
+      clearDateValidationState();
+      applyDateInputLimits();
       currentPage = 1;
       loadOrders();
+    });
+  }
+
+  if (startDateEl) {
+    startDateEl.addEventListener("change", () => {
+      validateDateFilters();
+    });
+  }
+
+  if (endDateEl) {
+    endDateEl.addEventListener("change", () => {
+      validateDateFilters();
     });
   }
 
