@@ -32,6 +32,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from orders.throttles import ReorderThrottle
 
 from orders.api.serializers.orders import (
     OrderDetailSerializer,
@@ -245,6 +246,7 @@ class ReorderOrderApiView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ReorderThrottle]
 
     def post(self, request, order_id: int, *args, **kwargs):
         """

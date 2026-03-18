@@ -137,7 +137,7 @@ def reorder_order(*, user: User, order_id: int) -> dict:
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
     if order.status != Order.Status.COMPLETED:
-        raise ValidationError("Only completed orders can be reordered.")
+        raise ValidationError("This order cannot be reordered.")
 
     owner = CartOwner(user_id=user.id)
 
