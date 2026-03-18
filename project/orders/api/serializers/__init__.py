@@ -1,4 +1,4 @@
-from .orders import (
+from .reorders import (
     OrderDetailSerializer,
     OrderHistorySerializer,
     ReorderResponseSerializer,
