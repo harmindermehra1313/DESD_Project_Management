@@ -152,14 +152,12 @@ function buildQuery() {
   const params = new URLSearchParams();
 
   const status = document.getElementById("status")?.value.trim() || "";
-  const producerId = document.getElementById("producer_id")?.value.trim() || "";
   const startDate = document.getElementById("start_date")?.value || "";
   const endDate = document.getElementById("end_date")?.value || "";
   const deliveryOrCollection = document.getElementById("delivery_or_collection")?.value || "";
   const recurringOnly = document.getElementById("recurring_only")?.value || "";
 
   if (status) params.append("status", status);
-  if (producerId) params.append("producer_id", producerId);
   if (startDate) params.append("start_date", startDate);
   if (endDate) params.append("end_date", endDate);
   if (deliveryOrCollection) params.append("delivery_or_collection", deliveryOrCollection);
