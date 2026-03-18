@@ -185,8 +185,6 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
             "collection_address",
             "subtotal",
             "vat_total",
-            "commission_total",
-            "payout_amount",
             "special_instructions",
         ]
 
