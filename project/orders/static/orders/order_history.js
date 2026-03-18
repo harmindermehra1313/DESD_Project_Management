@@ -799,6 +799,13 @@ async function reorderOrder(orderId) {
     }
 
     const result = await response.json();
+    
+    // Sync cart indicator the same way shared cart logic does
+    document.dispatchEvent(
+      new CustomEvent("cart:updated", { detail: { action: "reorder" } })
+    );
+    await window.CartAPI?.getCartBadgeCount?.().catch(() => {});
+
     renderReorderResult(result);
     reorderModal?.show();
   } catch (error) {

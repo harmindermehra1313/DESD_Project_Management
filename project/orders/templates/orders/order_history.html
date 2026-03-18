@@ -130,6 +130,7 @@
         </div>
     </div>
     {% block scripts %}
+        {{ block.super }}
         <script src="{% static 'orders/order_history.js' %}"></script>
     {% endblock %}
 {% endblock %}
