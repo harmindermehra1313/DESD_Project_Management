@@ -13,17 +13,13 @@
                 <form id="orderFiltersForm" class="row g-3">
                     <div class="col-md-3">
                         <label for="status" class="form-label">Status</label>
-                        <input type="text"
-                               id="status"
-                               class="form-control"
-                               placeholder="e.g. completed">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="producer_id" class="form-label">Producer ID</label>
-                        <input type="number"
-                               id="producer_id"
-                               class="form-control"
-                               placeholder="e.g. 5">
+                        <select id="status" class="form-select">
+                            <option value="">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
                     </div>
                     <div class="col-md-2">
                         <label for="start_date" class="form-label">Start date</label>
