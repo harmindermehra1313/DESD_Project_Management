@@ -1,5 +1,5 @@
-const ORDER_HISTORY_API_URL = "/api/order-history/history/";
-const ORDER_DETAIL_API_BASE = "/api/order-history/";
+const ORDER_HISTORY_API_URL = "/api/orders/history/";
+const ORDER_DETAIL_API_BASE = "/api/orders/";
 const ORDER_REORDER_API_SUFFIX = "/reorder/";
 const RECEIPT_URL_BASE = "/orders/receipt/";
 

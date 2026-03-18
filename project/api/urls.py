@@ -121,7 +121,7 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("jwt-test/", jwt_test, name="jwt_test"),
     path("cart/", include(("carts.api.urls", "carts"), namespace="carts_api")),
-    path("order-history/", include(("orders.api.urls", "orders"), namespace="orders_api")),
+    path("orders/", include(("orders.api.urls", "orders"), namespace="orders_api")),
 ]
 
 urlpatterns += router.urls
