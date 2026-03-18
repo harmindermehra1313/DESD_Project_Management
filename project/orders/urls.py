@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from orders.views.checkout import checkout_save, checkout_cod, stripe_return
+from .views.order_history import order_history_page
 
 app_name = "orders"
 
@@ -11,4 +12,6 @@ urlpatterns = [
     path("checkout/save/", checkout_save, name="checkout_save"),
     path("checkout/return/", stripe_return, name="stripe_return"),
     path("checkout/cod/", checkout_cod, name="checkout_cod"),
+    # Order history
+    path("accounts/order-history/", order_history_page, name="order-history-page"),
 ]

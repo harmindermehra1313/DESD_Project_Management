@@ -41,6 +41,10 @@
               <li>
                 <a class="dropdown-item" href="/accounts/profile/">Profile</a>
               </li>
+              {% comment %} Order History {% endcomment %}
+              <li>
+                <a class="dropdown-item" href="{% url 'orders:order-history-page' %}">My Orders</a>
+              </li>
               <li>
                 <a class="dropdown-item text-danger" href="/accounts/logout/">Logout</a>
               </li>
@@ -55,83 +59,87 @@
     </div>
   </div>
 </div>
-
-  <!-- ===================== ROW 2 ===================== -->
+<!-- ===================== ROW 2 ===================== -->
 <nav class="navbar navbar-expand-lg header-row-2">
   <div class="container-fluid">
-
     <!-- Mobile Toggle -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navRow2">
+    <button class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navRow2">
       <span class="navbar-toggler-icon"></span>
     </button>
-
     <div class="collapse navbar-collapse" id="navRow2">
-
       <div class="row w-100 align-items-center">
-
         <!-- LEFT COLUMN: NAVIGATION -->
         <div class="col-12 col-xl-8 mb-3 mb-xl-0">
           <ul class="navbar-nav flex-wrap align-items-center">
-
             <!-- Home -->
             <li class="nav-item mx-2">
               <a class="nav-link custom-nav-link" href="/">Home</a>
             </li>
-
             <!-- Products Dropdown -->
             <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                Products
-              </a>
+              <a class="nav-link dropdown-toggle custom-nav-link"
+                 href="#"
+                 data-bs-toggle="dropdown">Products</a>
               <ul class="dropdown-menu custom-dropdown">
-                <li><a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a></li>
-                {% for cat in header_categories %}
                 <li>
-                  <a class="dropdown-item" href="{% url 'product_view' cat.id %}">
-                    {{ cat.name }}
-                  </a>
+                  <a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a>
                 </li>
+                {% for cat in header_categories %}
+                  <li>
+                    <a class="dropdown-item" href="{% url 'product_view' cat.id %}">{{ cat.name }}</a>
+                  </li>
                 {% endfor %}
-
-
-                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
                 {% for org in organic %}
-                <li><a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a></li>
+                  <li>
+                    <a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a>
+                  </li>
                 {% endfor %}
               </ul>
             </li>
-
             <!-- Producers -->
             <li class="nav-item mx-2">
               <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
             </li>
-
             <!-- More Dropdown -->
             <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                More
-              </a>
+              <a class="nav-link dropdown-toggle custom-nav-link"
+                 href="#"
+                 data-bs-toggle="dropdown">More</a>
               <ul class="dropdown-menu custom-dropdown">
-                <li><a class="dropdown-item" href="/about/">About Us</a></li>
-                <li><a class="dropdown-item" href="/contact/">Contact Us</a></li>
-                <li><a class="dropdown-item" href="/sustainability/">Food Miles</a></li>
-                <li><a class="dropdown-item" href="/community/">Community Projects</a></li>
+                <li>
+                  <a class="dropdown-item" href="/about/">About Us</a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="/contact/">Contact Us</a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="/sustainability/">Food Miles</a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="/community/">Community Projects</a>
+                </li>
               </ul>
-            </li>      
-            </ul>
-          </div>
-          <!-- RIGHT COLUMN: SEARCH BAR -->
-          <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
-            <form class="d-flex custom-search w-100" action="/search/">
-              <input class="form-control custom-search-input"
-                     name="q"
-                     placeholder="Search...">
-              <button class="btn custom-search-btn">Search</button>
-            </form>
-          </div>
+            </li>
+          </ul>
+        </div>
+        <!-- RIGHT COLUMN: SEARCH BAR -->
+        <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
+          <form class="d-flex custom-search w-100" action="/search/">
+            <input class="form-control custom-search-input"
+                   name="q"
+                   placeholder="Search...">
+            <button class="btn custom-search-btn">Search</button>
+          </form>
         </div>
       </div>
     </div>
-  </nav>
+  </div>
+</nav>
 </header>
 <!-- Harminder -->
