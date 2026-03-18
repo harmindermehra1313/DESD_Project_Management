@@ -266,7 +266,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>
 
         <div class="mb-4">
-          <h6 class="mb-3">Producer Breakdown</h6>
+          <h6 class="mb-3">Producer Details</h6>
           ${(order.producer_breakdown || []).map(summary => `
             <div class="card mb-3">
               <div class="card-body">
@@ -314,8 +314,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 <div class="row g-3 mt-1">
                   <div class="col-md-3"><small class="text-muted">VAT</small><div>${formatMoney(summary.vat_total)}</div></div>
-                  <div class="col-md-3"><small class="text-muted">Commission</small><div>${formatMoney(summary.commission_total)}</div></div>
-                  <div class="col-md-3"><small class="text-muted">Payout</small><div>${formatMoney(summary.payout_amount)}</div></div>
+                  
+                  </div>
+                  
                   <div class="col-md-3"><small class="text-muted">Instructions</small><div>${escapeHtml(summary.special_instructions || "-")}</div></div>
                 </div>
               </div>
