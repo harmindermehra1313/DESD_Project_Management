@@ -83,6 +83,7 @@
             </div>
         </div>
     </div>
+    <!-- Order detail modal -->
     <div class="modal fade"
          id="orderDetailModal"
          tabindex="-1"
@@ -90,10 +91,7 @@
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <div>
-                        <h5 class="modal-title mb-0">Order Details</h5>
-                        <small class="text-muted">Summary, delivery or collection information, items, and producer breakdown.</small>
-                    </div>
+                    <h5 class="modal-title">Order Details</h5>
                     <button type="button"
                             class="btn-close"
                             data-bs-dismiss="modal"
@@ -107,30 +105,31 @@
             </div>
         </div>
     </div>
-    <div class="modal fade"
-         id="reorderResultModal"
-         tabindex="-1"
-         aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <!-- Reorder preview/result modal -->
+    <div class="modal fade" id="reorderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Reorder Result</h5>
+                    <h5 class="modal-title" id="reorderModalTitle">Confirm Reorder</h5>
                     <button type="button"
                             class="btn-close"
                             data-bs-dismiss="modal"
                             aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="reorderResultContent"></div>
+                    <div id="reorderModalContent"></div>
                 </div>
-                <div class="modal-footer">
-                    <a href="/cart/" class="btn btn-dark">Go to Cart</a>
+                <div class="modal-footer" id="reorderModalFooter">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark" id="confirmReorderBtn">Confirm Reorder</button>
                 </div>
             </div>
         </div>
     </div>
-    {% block scripts %}
-        {{ block.super }}
-        <script src="{% static 'orders/order_history.js' %}"></script>
-    {% endblock %}
+{% endblock %}
+{% block scripts %}
+    {{ block.super }}
+    <script src="{% static 'orders/order_history.js' %}"></script>
 {% endblock %}
