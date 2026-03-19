@@ -80,6 +80,22 @@ def _get_customer_name(order: Order) -> str:
 
 
 def _get_payment_method_display(order: Order) -> str | None:
+    """
+    Build a safe payment method display string.
+
+    Behaviour:
+    - prefers a successful payment if one exists
+    - masks card payments
+    - otherwise returns the payment method display text
+
+    Args:
+        order:
+            Order instance.
+
+    Returns:
+        str | None:
+            Safe payment method display for receipt use.
+    """
     payments = list(order.payments.all().order_by("-created_at"))
 
     if not payments:
@@ -96,7 +112,10 @@ def _get_payment_method_display(order: Order) -> str | None:
     payment = successful_payment or payments[0]
 
     if payment.payment_method == payment.Method.CARD:
-        return "Card"
+        last4 = getattr(order, "payment_last4", None)
+        masked_card = _mask_card(last4)
+        if masked_card:
+            return masked_card
 
     return payment.get_payment_method_display()
 
