@@ -112,10 +112,12 @@ def _get_payment_method_display(order: Order) -> str | None:
     payment = successful_payment or payments[0]
 
     if payment.payment_method == payment.Method.CARD:
-        last4 = getattr(order, "payment_last4", None)
-        masked_card = _mask_card(last4)
-        if masked_card:
-            return masked_card
+        masked = _mask_card(payment.card_last4)
+        if masked and payment.card_brand:
+            return f"{payment.card_brand.title()} {masked}"
+        if masked:
+            return masked
+        return "Card"
 
     return payment.get_payment_method_display()
 
@@ -284,32 +286,38 @@ def _build_producer_breakdown(order: Order) -> list[dict]:
                 "delivery_or_collection": summary.get_delivery_or_collection_display(),
                 "delivery_date": (
                     summary.delivery_date
-                    if summary.delivery_or_collection == Order.DeliveryOrCollection.DELIVERY
+                    if summary.delivery_or_collection
+                    == Order.DeliveryOrCollection.DELIVERY
                     else None
                 ),
                 "collection_date": (
                     summary.delivery_date
-                    if summary.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION
+                    if summary.delivery_or_collection
+                    == Order.DeliveryOrCollection.COLLECTION
                     else None
                 ),
                 "delivery_time_slot": (
                     summary.delivery_time_slot
-                    if summary.delivery_or_collection == Order.DeliveryOrCollection.DELIVERY
+                    if summary.delivery_or_collection
+                    == Order.DeliveryOrCollection.DELIVERY
                     else None
                 ),
                 "collection_time_slot": (
                     summary.delivery_time_slot
-                    if summary.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION
+                    if summary.delivery_or_collection
+                    == Order.DeliveryOrCollection.COLLECTION
                     else None
                 ),
                 "delivery_address": (
                     address
-                    if summary.delivery_or_collection == Order.DeliveryOrCollection.DELIVERY
+                    if summary.delivery_or_collection
+                    == Order.DeliveryOrCollection.DELIVERY
                     else None
                 ),
                 "collection_address": (
                     address
-                    if summary.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION
+                    if summary.delivery_or_collection
+                    == Order.DeliveryOrCollection.COLLECTION
                     else None
                 ),
                 "subtotal": summary.subtotal,
@@ -366,7 +374,9 @@ def get_receipt_data(*, user: User, order_id: int) -> dict:
     }
 
 
-def _draw_wrapped_lines(pdf, text: str, *, x: int, y: int, max_width: int, line_height: int) -> int:
+def _draw_wrapped_lines(
+    pdf, text: str, *, x: int, y: int, max_width: int, line_height: int
+) -> int:
     """
     Draw text with naive wrapping for PDF rendering.
 
@@ -422,7 +432,6 @@ def build_receipt_pdf(*, user: User, order_id: int) -> tuple[Order, BytesIO]:
         tuple[Order, BytesIO]:
             The order and an in-memory PDF buffer.
     """
-   
 
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
@@ -457,7 +466,9 @@ def build_receipt_pdf(*, user: User, order_id: int) -> tuple[Order, BytesIO]:
     pdf.setFont("Helvetica", 10)
     pdf.drawString(left, y, f"Order number: {receipt['order_number']}")
     y -= line_gap
-    pdf.drawString(left, y, f"Order date: {receipt['order_date'].strftime('%d %B %Y %H:%M')}")
+    pdf.drawString(
+        left, y, f"Order date: {receipt['order_date'].strftime('%d %B %Y %H:%M')}"
+    )
     y -= line_gap
     pdf.drawString(left, y, f"Status: {receipt['status']}")
     y -= line_gap
@@ -524,25 +535,38 @@ def build_receipt_pdf(*, user: User, order_id: int) -> tuple[Order, BytesIO]:
         y -= line_gap
 
         if summary["delivery_date"]:
-            pdf.drawString(left, y, f"Delivery date: {summary['delivery_date'].strftime('%d %B %Y')}")
+            pdf.drawString(
+                left,
+                y,
+                f"Delivery date: {summary['delivery_date'].strftime('%d %B %Y')}",
+            )
             y -= line_gap
 
         if summary["collection_date"]:
-            pdf.drawString(left, y, f"Collection date: {summary['collection_date'].strftime('%d %B %Y')}")
+            pdf.drawString(
+                left,
+                y,
+                f"Collection date: {summary['collection_date'].strftime('%d %B %Y')}",
+            )
             y -= line_gap
 
         if summary["delivery_time_slot"]:
-            pdf.drawString(left, y, f"Delivery time slot: {summary['delivery_time_slot']}")
+            pdf.drawString(
+                left, y, f"Delivery time slot: {summary['delivery_time_slot']}"
+            )
             y -= line_gap
 
         if summary["collection_time_slot"]:
-            pdf.drawString(left, y, f"Collection time slot: {summary['collection_time_slot']}")
+            pdf.drawString(
+                left, y, f"Collection time slot: {summary['collection_time_slot']}"
+            )
             y -= line_gap
 
         address = summary["delivery_address"] or summary["collection_address"]
         if address:
             address_text = ", ".join(
-                part for part in [
+                part
+                for part in [
                     address.get("line_1"),
                     address.get("line_2"),
                     address.get("city"),
