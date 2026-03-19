@@ -2,7 +2,7 @@ from rest_framework import serializers
 from community.models import Recipe, RecipeProduct, FarmStory, FavouriteRecipe
 from accounts.models import Producer, User
 from api.serializers.accounts import UserSerializer, ProducerSerializer
-from api.serializers.products import ProductListSerializer
+from products.api.serializers.product_details import ProductListSerializer
 
 # Validation should happen here! TBC remove when added
 

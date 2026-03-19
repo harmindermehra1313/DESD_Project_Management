@@ -10,8 +10,8 @@ from orders.models import (
 )
 from api.serializers.accounts import UserSerializer, ProducerSerializer
 from api.serializers.accounts import AddressSerializer
-from api.serializers.products import ProductInlineSerializer
-from api.serializers.products import InventorySerializer
+from products.api.serializers.product_details import ProductInlineSerializer
+from products.api.serializers.product_details import InventorySerializer
 
 # Validation should happen here! TBC remove when added
 
