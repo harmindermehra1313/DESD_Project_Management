@@ -680,7 +680,7 @@ function renderOrderFooter(order) {
       <div class="d-flex gap-2">
         ${getReorderButtonHtml(order.id, order.status)}
         <a class="btn btn-outline-secondary" href="${RECEIPT_URL_BASE}${order.id}/">
-          Download Receipt
+          See Receipt
         </a>
       </div>
     </div>

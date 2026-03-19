@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from orders.views.checkout import checkout_save, checkout_cod, stripe_return
 from .views.order_history import order_history_page
+from .views.receipts import receipt_detail_page
 
 app_name = "orders"
 
@@ -14,4 +15,6 @@ urlpatterns = [
     path("checkout/cod/", checkout_cod, name="checkout_cod"),
     # Order history
     path("order-history/", order_history_page, name="order-history-page"),
+    # Recept Page
+    path("receipt/<int:order_id>/", receipt_detail_page, name="receipt-detail-page"),
 ]
