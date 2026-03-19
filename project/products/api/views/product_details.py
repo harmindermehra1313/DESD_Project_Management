@@ -6,25 +6,26 @@ from products.models import (
     Allergen,
     ProductAllergen,
 )
-from api.serializers.products import (
+from products.api.serializers.product_details import (
     CategorySerializer,
     AllergenSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
     ProductWriteSerializer,
     WholesalePriceInlineSerializer,
-    ProductAllergenInlineSerializer
-    
+    ProductAllergenInlineSerializer,
 )
+
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all().order_by("name")
     serializer_class = CategorySerializer
 
+
 class ProductViewSet(viewsets.ModelViewSet):
     """
-    list   -> lightweight serializer
-    retrieve -> rich serializer (includes related data)
+    list      -> lightweight serializer
+    retrieve  -> rich serializer (includes related data + effective price)
     create/update -> write serializer (IDs instead of nested objects)
     """
     queryset = Product.objects.all().order_by("-created_at")
@@ -41,12 +42,13 @@ class ProductViewSet(viewsets.ModelViewSet):
             .order_by("-created_at")
         )
 
-        # Only prefetch heavier relations for retrieve (detail)
         if getattr(self, "action", None) == "retrieve":
             qs = qs.prefetch_related(
                 "product_wholesale",
                 "product_allergen",
+                "inventory_batches",
             )
+
         return qs
 
     def get_serializer_class(self):
@@ -56,17 +58,17 @@ class ProductViewSet(viewsets.ModelViewSet):
             return ProductDetailSerializer
         return ProductWriteSerializer
 
+
 class WholesalePriceViewSet(viewsets.ModelViewSet):
     queryset = WholesalePrice.objects.all()
     serializer_class = WholesalePriceInlineSerializer
-
 
 
 class AllergenViewSet(viewsets.ModelViewSet):
     queryset = Allergen.objects.all().order_by("name")
     serializer_class = AllergenSerializer
 
+
 class ProductAllergenViewSet(viewsets.ModelViewSet):
     queryset = ProductAllergen.objects.all()
     serializer_class = ProductAllergenInlineSerializer
-    

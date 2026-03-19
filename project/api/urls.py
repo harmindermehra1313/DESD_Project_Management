@@ -43,7 +43,7 @@ from api.views.payments import (
     ProducerSettlementViewSet,
     SettlementLineItemViewSet,
 )
-from api.views.products import (
+from products.api.views.product_details import (
     CategoryViewSet,
     ProductViewSet,
     WholesalePriceViewSet,

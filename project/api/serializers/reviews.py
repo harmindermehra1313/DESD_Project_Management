@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from reviews.models import Review, ReviewResponse
-from api.serializers.products import ProductInlineSerializer
+from products.api.serializers.product_details import ProductInlineSerializer
 from api.serializers.accounts import CustomerSerializer, ProducerSerializer, AdminSerializer, UserSerializer
 from api.serializers.orders import OrderSerializer
 

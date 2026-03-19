@@ -231,48 +231,9 @@ def add_to_cart(request, product_id):
 #             "-created_at"
 #         )
 
-
-class ProductDetailView(DetailView):
-    model = Product
-    template_name = "products/product_detail.html"
-    context_object_name = "product"
-
-    def get_queryset(self):
-        return (
-            Product.objects.filter(status__in=["PUB", Product.Status.PUBLISHED])
-            .select_related("producer", "category")
-            .prefetch_related(
-                "product_wholesale",
-                "product_allergen__allergen",
-                "inventory_batches",
-            )
-        )
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        p = self.object
-
-        # Expiry label (Use by vs Best before) - purely for display
-        use_by_groups = {"MT", "DAE"}
-        food_group = getattr(getattr(p, "category", None), "food_groups", None)
-        ctx["expiry_label"] = "Use by" if food_group in use_by_groups else "Best before"
-
-        # Wholesale tiers for JS
-        tiers = list(
-            p.product_wholesale.order_by("min_quantity").values("min_quantity", "unit_price")
-        )
-        ctx["wholesale_tiers"] = tiers
-
-        batch = p.inventory_batches.order_by("expiry_date").first()
-        ctx["stock"] = batch.remaining_quantity if batch else 0
-        ctx["expiry"] = batch.expiry_date if batch else None
-        ctx["batch"] = batch
-
-        return ctx
-    # return redirect('products_list')
+# Oishik Edits
+def product_detail_page(request, product_id):
+    return render(request, "products/product_detail.html", {"product_id": product_id})
 
 # Harminder Edits
 def product_view(request, category_id):

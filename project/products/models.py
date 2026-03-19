@@ -237,11 +237,13 @@ class Inventory(models.Model):
 
     # Return the discounted price if surplus is active else normal price
     def get_discounted_price(self):
+        base_price = self.product.price
+    
         if self.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
             discount_factor = (Decimal('100') - self.surplus_discount_percentage) / Decimal('100')
-            return self.price * discount_factor
+            return base_price * discount_factor
         else:
-            return self.price
+            return base_price
 
     def __str__(self):
         return f"{self.product.name} batch ({self.harvest_date})"
