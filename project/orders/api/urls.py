@@ -6,6 +6,10 @@ from orders.api.views.reorders import (
     ReorderOrderApiView,
     ReorderPreviewApiView,
 )
+from orders.api.views.receipts import (
+    ReceiptDetailApiView,
+    ReceiptDownloadPdfApiView
+)
 
 app_name = "orders_api"
 
@@ -14,4 +18,6 @@ urlpatterns = [
     path("<int:order_id>/", OrderDetailApiView.as_view(), name="order-detail"),
     path("<int:order_id>/reorder-preview/", ReorderPreviewApiView.as_view(), name="order-reorder-preview"),
     path("<int:order_id>/reorder/", ReorderOrderApiView.as_view(), name="order-reorder"),
+    path("<int:order_id>/receipt/", ReceiptDetailApiView.as_view(), name="receipt-detail"),
+    path("<int:order_id>/receipt/download/", ReceiptDownloadPdfApiView.as_view(), name="receipt-download"),
 ]
