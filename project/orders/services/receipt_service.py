@@ -24,10 +24,18 @@ from rest_framework.exceptions import ValidationError
 from orders.models import Order
 from orders.selectors import get_order_detail_for_user
 
-from reportlab.lib.pagesizes import portrait
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.pdfgen import canvas
+from reportlab.platypus import (
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 
 User = get_user_model()
@@ -289,14 +297,11 @@ def get_receipt_data(*, user: User, order_id: int) -> dict:
     }
 
 
-
 def _safe_text(value) -> str:
     if value is None:
         return "-"
     text = str(value).strip()
     return text if text else "-"
-
-
 def _format_date(value) -> str:
     if not value:
         return "-"
@@ -305,10 +310,11 @@ def _format_date(value) -> str:
 
 def _wrap_text(text: str, font_name: str, font_size: int, max_width: float) -> list[str]:
     """
-    Simple manual text wrapper for thermal receipt layout.
+    Wrap a single line of text to fit within the given width.
     """
     text = _safe_text(text)
     words = text.split()
+
     if not words:
         return ["-"]
 
@@ -325,284 +331,406 @@ def _wrap_text(text: str, font_name: str, font_size: int, max_width: float) -> l
 
     lines.append(current)
     return lines
-
-
-def _draw_wrapped_line(c, text, x, y, width, font_name="Courier", font_size=9, leading=11):
-    lines = _wrap_text(text, font_name, font_size, width)
-    c.setFont(font_name, font_size)
-    for line in lines:
-        c.drawString(x, y, line)
-        y -= leading
+def _ensure_space(c, y, needed_height, page_width, page_height, left, right):
+    """
+    Start a new page if there is not enough vertical space left.
+    """
+    bottom_margin = 16 * mm
+    if y - needed_height < bottom_margin:
+        c.showPage()
+        c.setStrokeColor(colors.black)
+        return page_height - 18 * mm
     return y
 
 
-def _draw_key_value(c, key, value, x, y, width, key_font="Courier-Bold", value_font="Courier", font_size=9):
-    c.setFont(key_font, font_size)
-    c.drawString(x, y, key)
+def _draw_wrapped_text_block(
+    c,
+    text,
+    x,
+    y,
+    width,
+    *,
+    font_name="Helvetica",
+    font_size=9,
+    leading=11,
+):
+    """
+    Draw text preserving manual line breaks and wrapping long lines.
+    """
+    c.setFont(font_name, font_size)
+    text = _safe_text(text)
 
-    value_y = y - 11
-    value_y = _draw_wrapped_line(
+    for raw_line in text.split("\n"):
+        wrapped = _wrap_text(raw_line, font_name, font_size, width)
+        for line in wrapped:
+            c.drawString(x, y, line)
+            y -= leading
+
+    return y
+
+
+def _draw_label_value_inline(c, label, value, left, right, y, *, label_font="Helvetica-Bold", value_font="Helvetica", font_size=9):
+    c.setFont(label_font, font_size)
+    c.drawString(left, y, label)
+    c.setFont(value_font, font_size)
+    c.drawRightString(right, y, _safe_text(value))
+    return y - 11
+
+
+def _draw_section_title(c, title, left, right, y):
+    y -= 2
+    c.setLineWidth(0.8)
+    c.line(left, y, right, y)
+    y -= 11
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(left, y, title.upper())
+    return y - 10
+
+
+def _draw_receipt_header(c, page_width, left, right, y, receipt):
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(left, y, "Bristol Regional Food Network")
+    y -= 13
+
+    c.setFont("Helvetica", 10)
+    c.setFillColor(colors.HexColor("#444444"))
+    c.drawString(left, y, "Order Receipt")
+    c.setFillColor(colors.black)
+    y -= 16
+
+    c.setLineWidth(1)
+    c.line(left, y, right, y)
+    y -= 14
+
+    col_gap = 12 * mm
+    col_width = ((right - left) - col_gap) / 2
+    left_col_x = left
+    right_col_x = left + col_width + col_gap
+
+    top_y = y
+
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(left_col_x, y, "Order Number")
+    y -= 11
+    y = _draw_wrapped_text_block(
         c,
-        value,
-        x,
-        value_y,
-        width,
-        font_name=value_font,
-        font_size=font_size,
+        receipt["order_number"],
+        left_col_x,
+        y,
+        col_width,
+        font_name="Helvetica",
+        font_size=9,
         leading=11,
     )
-    return value_y - 4
+    y -= 2
 
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(left_col_x, y, "Order Date")
+    y -= 11
+    y = _draw_wrapped_text_block(
+        c,
+        receipt["order_date"].strftime("%d %b %Y, %H:%M"),
+        left_col_x,
+        y,
+        col_width,
+        font_name="Helvetica",
+        font_size=9,
+        leading=11,
+    )
 
-def _draw_separator(c, x1, x2, y):
-    c.setLineWidth(0.6)
-    c.line(x1, y, x2, y)
-    return y - 8
+    y_right = top_y
 
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(right_col_x, y_right, "Customer")
+    y_right -= 11
+    y_right = _draw_wrapped_text_block(
+        c,
+        receipt["customer_name"],
+        right_col_x,
+        y_right,
+        col_width,
+        font_name="Helvetica",
+        font_size=9,
+        leading=11,
+    )
+    y_right -= 2
 
-def _draw_center_text(c, text, page_width, y, font_name="Courier-Bold", font_size=10):
-    c.setFont(font_name, font_size)
-    text_width = stringWidth(text, font_name, font_size)
-    c.drawString((page_width - text_width) / 2, y, text)
-    return y - 12
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(right_col_x, y_right, "Payment")
+    y_right -= 11
+    y_right = _draw_wrapped_text_block(
+        c,
+        receipt["payment_method_display"] or "Not available",
+        right_col_x,
+        y_right,
+        col_width,
+        font_name="Helvetica",
+        font_size=9,
+        leading=11,
+    )
+
+    y = min(y, y_right) - 10
+    return y
 
 
 def build_receipt_pdf(*, user: User, order_id: int):
-    """
-    Thermal receipt style PDF:
-    - narrow receipt width
-    - monospace font
-    - simple, professional, print-like layout
-    """
     receipt = get_receipt_data(user=user, order_id=order_id)
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
     buffer = BytesIO()
 
-    # Thermal receipt style width
-    page_width = 80 * mm
-    page_height = 297 * mm  # tall page; enough space for long receipts
-
-    c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
-
-    left = 6 * mm
-    right = page_width - 6 * mm
-    content_width = right - left
-    y = page_height - 10 * mm
-
-    # ===== BRANDING =====
-    y = _draw_center_text(
-        c,
-        "BRISTOL REGIONAL FOOD NETWORK",
-        page_width,
-        y,
-        font_name="Courier-Bold",
-        font_size=10,
-    )
-    y = _draw_center_text(
-        c,
-        "ORDER RECEIPT",
-        page_width,
-        y,
-        font_name="Courier-Bold",
-        font_size=9,
-    )
-    y = _draw_separator(c, left, right, y)
-
-    # ===== SUMMARY =====
-    c.setFont("Courier-Bold", 9)
-    c.drawString(left, y, "RECEIPT SUMMARY")
-    y -= 12
-
-    y = _draw_key_value(c, "Order Number", receipt["order_number"], left, y, content_width)
-    y = _draw_key_value(
-        c,
-        "Order Date",
-        receipt["order_date"].strftime("%d %b %Y, %H:%M"),
-        left,
-        y,
-        content_width,
-    )
-    y = _draw_key_value(c, "Customer", receipt["customer_name"], left, y, content_width)
-    y = _draw_key_value(
-        c,
-        "Payment",
-        receipt["payment_method_display"] or "Not available",
-        left,
-        y,
-        content_width,
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
+        title=f"Receipt {receipt['order_number']}",
     )
 
-    y = _draw_separator(c, left, right, y)
+    styles = getSampleStyleSheet()
 
-    # ===== ITEMS =====
-    c.setFont("Courier-Bold", 9)
-    c.drawString(left, y, "ITEMS")
-    y -= 12
+    brand_style = ParagraphStyle(
+        "Brand",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=22,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=2,
+    )
+
+    subtitle_style = ParagraphStyle(
+        "Subtitle",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=12,
+        textColor=colors.HexColor("#555555"),
+        spaceAfter=10,
+    )
+
+    section_style = ParagraphStyle(
+        "Section",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        textColor=colors.black,
+        spaceBefore=6,
+        spaceAfter=6,
+    )
+
+    label_style = ParagraphStyle(
+        "Label",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=11,
+        textColor=colors.black,
+    )
+
+    value_style = ParagraphStyle(
+        "Value",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11,
+        textColor=colors.black,
+    )
+
+    small_muted_style = ParagraphStyle(
+        "SmallMuted",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#666666"),
+    )
+
+    total_style = ParagraphStyle(
+        "Total",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        leading=12,
+        alignment=TA_RIGHT,
+    )
+
+    story = []
+
+    # Header
+    story.append(Paragraph("Bristol Regional Food Network", brand_style))
+    story.append(Paragraph("Order Receipt", subtitle_style))
+
+    # Summary
+    story.append(Paragraph("Receipt Summary", section_style))
+
+    summary_data = [
+        [
+            Paragraph("<b>Order Number</b><br/>" + receipt["order_number"], value_style),
+            Paragraph(
+                "<b>Order Date</b><br/>" + receipt["order_date"].strftime("%d %b %Y, %H:%M"),
+                value_style,
+            ),
+        ],
+        [
+            Paragraph("<b>Customer</b><br/>" + _safe_text(receipt["customer_name"]), value_style),
+            Paragraph("<b>Payment</b><br/>" + _safe_text(receipt["payment_method_display"] or "Not available"), value_style),
+        ],
+    ]
+
+    summary_table = Table(summary_data, colWidths=[89 * mm, 89 * mm])
+    summary_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#D9D9D9")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#E5E5E5")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 10))
+
+    # Items
+    story.append(Paragraph("Items", section_style))
+
+    item_rows = [[
+        Paragraph("<b>Product</b>", small_muted_style),
+        Paragraph("<b>Producer</b>", small_muted_style),
+        Paragraph("<b>Quantity</b>", small_muted_style),
+        Paragraph("<b>Original</b>", small_muted_style),
+        Paragraph("<b>Discount Per unit</b>", small_muted_style),
+        Paragraph("<b>VAT</b>", small_muted_style),
+        Paragraph("<b>Paid</b>", small_muted_style),
+        Paragraph("<b>Total</b>", small_muted_style),
+    ]]
 
     for item in receipt["items"]:
-        unit_discount = item["discount_amount"]
-        total_saved = item["line_discount"]
+        item_rows.append([
+            Paragraph(_safe_text(item["product_name"]), value_style),
+            Paragraph(_safe_text(item["producer_name"]), value_style),
+            Paragraph(str(item["quantity"]), value_style),
+            Paragraph(_money(item["unit_price"]), value_style),
+            Paragraph(_money(item["discount_amount"]), value_style),
+            Paragraph(_money(item["vat_amount"]), value_style),
+            Paragraph(_money(item["final_unit_price"]), value_style),
+            Paragraph(_money(item["line_total"]), value_style),
+        ])
 
-        c.setFont("Courier-Bold", 9)
-        c.drawString(left, y, _safe_text(item["product_name"]))
-        y -= 11
+        if item["line_discount"] and item["line_discount"] > 0:
+            item_rows.append([
+                Paragraph(f"Saved {_money(item['line_discount'])} total", small_muted_style),
+                "", "", "", "", "", "", "",
+            ])
 
-        c.setFont("Courier", 9)
-        producer_lines = _wrap_text(
-            f"Producer: {_safe_text(item['producer_name'])}",
-            "Courier",
-            9,
-            content_width,
-        )
-        for line in producer_lines:
-            c.drawString(left, y, line)
-            y -= 10
+    items_table = Table(
+        item_rows,
+        colWidths=[34 * mm, 28 * mm, 16 * mm, 20 * mm, 20 * mm, 16 * mm, 20 * mm, 20 * mm],
+        repeatRows=1,
+    )
+    items_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F5F5F5")),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.7, colors.HexColor("#CFCFCF")),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.25, colors.HexColor("#E5E5E5")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("SPAN", (0, 2), (-1, 2)),
+    ]))
+    story.append(items_table)
+    story.append(Spacer(1, 10))
 
-        c.drawString(left, y, f"Quantity: {_safe_text(item['quantity'])}")
-        y -= 10
-        c.drawString(left, y, f"Original Unit Price: {_money(item['unit_price'])}")
-        y -= 10
-        c.drawString(left, y, f"Per Unit Discount: {_money(unit_discount)} each")
-        y -= 10
-        c.drawString(left, y, f"Total Saved: {_money(total_saved)}")
-        y -= 10
-        c.drawString(left, y, f"VAT: {_money(item['vat_amount'])}")
-        y -= 10
-        c.drawString(left, y, f"Paid Unit Price: {_money(item['final_unit_price'])}")
-        y -= 10
-        c.drawString(left, y, f"Line Total: {_money(item['line_total'])}")
-        y -= 12
-
-        y = _draw_separator(c, left, right, y)
-
-    # ===== FULFILMENT DETAILS =====
-    c.setFont("Courier-Bold", 9)
-    c.drawString(left, y, "FULFILMENT DETAILS")
-    y -= 12
+    # Fulfilment
+    story.append(Paragraph("Fulfilment Details", section_style))
 
     for producer in receipt["producer_breakdown"]:
-        c.setFont("Courier-Bold", 9)
-        producer_name_lines = _wrap_text(
-            _safe_text(producer["producer_name"]),
-            "Courier-Bold",
-            9,
-            content_width,
-        )
-        for line in producer_name_lines:
-            c.drawString(left, y, line)
-            y -= 10
-
-        c.setFont("Courier", 9)
-        fulfilment_type = _safe_text(producer["delivery_or_collection"])
-        c.drawString(left, y, fulfilment_type)
-        y -= 10
+        detail_rows = [
+            [Paragraph(f"<b>{_safe_text(producer['producer_name'])}</b>", value_style)],
+            [Paragraph(_safe_text(producer["delivery_or_collection"]), small_muted_style)],
+        ]
 
         if producer["delivery_date"]:
-            c.drawString(left, y, f"Date: {_format_date(producer['delivery_date'])}")
-            y -= 10
-
+            detail_rows.append([Paragraph(f"<b>Date</b><br/>{_format_date(producer['delivery_date'])}", value_style)])
         if producer["collection_date"]:
-            c.drawString(left, y, f"Date: {_format_date(producer['collection_date'])}")
-            y -= 10
-
+            detail_rows.append([Paragraph(f"<b>Date</b><br/>{_format_date(producer['collection_date'])}", value_style)])
         if producer["delivery_time_slot"]:
-            c.drawString(left, y, f"Time Slot: {_safe_text(producer['delivery_time_slot'])}")
-            y -= 10
-
+            detail_rows.append([Paragraph(f"<b>Time Slot</b><br/>{_safe_text(producer['delivery_time_slot'])}", value_style)])
         if producer["collection_time_slot"]:
-            c.drawString(left, y, f"Time Slot: {_safe_text(producer['collection_time_slot'])}")
-            y -= 10
+            detail_rows.append([Paragraph(f"<b>Time Slot</b><br/>{_safe_text(producer['collection_time_slot'])}", value_style)])
 
         if producer["delivery_address"]:
-            c.setFont("Courier-Bold", 9)
-            c.drawString(left, y, "Delivery Address")
-            y -= 10
-            c.setFont("Courier", 9)
-            address_text = _format_address(producer["delivery_address"])
-
-            for raw_line in address_text.split("\n"):
-                wrapped_lines = _wrap_text(raw_line, "Courier", 9, content_width)
-                for line in wrapped_lines:
-                    c.drawString(left, y, line)
-                    y -= 10
+            detail_rows.append([
+                Paragraph(
+                    "<b>Delivery Address</b><br/>" +
+                    _safe_text(_format_address(producer["delivery_address"])).replace("\n", "<br/>"),
+                    value_style,
+                )
+            ])
 
         if producer["collection_address"]:
-            c.setFont("Courier-Bold", 9)
-            c.drawString(left, y, "Collection Address")
-            y -= 10
-        
-            c.setFont("Courier", 9)
-        
-            address_text = _format_address(producer["collection_address"])
-        
-            for raw_line in address_text.split("\n"):
-                wrapped_lines = _wrap_text(raw_line, "Courier", 9, content_width)
-                for line in wrapped_lines:
-                    c.drawString(left, y, line)
-                    y -= 10
+            detail_rows.append([
+                Paragraph(
+                    "<b>Collection Address</b><br/>" +
+                    _safe_text(_format_address(producer["collection_address"])).replace("\n", "<br/>"),
+                    value_style,
+                )
+            ])
 
-        c.setFont("Courier-Bold", 9)
-        c.drawString(left, y, "Special Instructions")
-        y -= 10
-        c.setFont("Courier", 9)
-        instruction_lines = _wrap_text(
-            _safe_text(producer["special_instructions"]),
-            "Courier",
-            9,
-            content_width,
-        )
-        for line in instruction_lines:
-            c.drawString(left, y, line)
-            y -= 10
+        detail_rows.append([
+            Paragraph(
+                "<b>Special Instructions</b><br/>" + _safe_text(producer["special_instructions"]),
+                value_style,
+            )
+        ])
 
-        y = _draw_separator(c, left, right, y)
+        card = Table(detail_rows, colWidths=[178 * mm])
+        card.setStyle(TableStyle([
+            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#D9D9D9")),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#ECECEC")),
+        ]))
+        story.append(card)
+        story.append(Spacer(1, 8))
 
-    # ===== TOTALS =====
-    c.setFont("Courier-Bold", 9)
-    c.drawString(left, y, "TOTALS")
-    y -= 12
+    # Totals
+    story.append(Paragraph("Totals", section_style))
 
-    totals = receipt["totals"]
+    totals_rows = [
+        [Paragraph("Subtotal", value_style), Paragraph(_money(receipt["totals"]["subtotal"]), value_style)],
+        [Paragraph("Discount", value_style), Paragraph(_money(receipt["totals"]["discount"]), value_style)],
+        [Paragraph("VAT", value_style), Paragraph(_money(receipt["totals"]["vat"]), value_style)],
+        [Paragraph("<b>Final Total</b>", label_style), Paragraph(_money(receipt["totals"]["final_total"]), total_style)],
+    ]
 
-    c.setFont("Courier", 9)
-    c.drawString(left, y, "Subtotal")
-    c.drawRightString(right, y, _money(totals["subtotal"]))
-    y -= 10
+    totals_table = Table(totals_rows, colWidths=[120 * mm, 58 * mm], hAlign="RIGHT")
+    totals_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#D9D9D9")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#ECECEC")),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("BACKGROUND", (0, 3), (-1, 3), colors.HexColor("#FAFAFA")),
+    ]))
+    story.append(totals_table)
+    story.append(Spacer(1, 10))
 
-    c.drawString(left, y, "Discount")
-    c.drawRightString(right, y, _money(totals["discount"]))
-    y -= 10
+    # Footer
+    story.append(Paragraph("Thank you for your order.", small_muted_style))
+    story.append(Paragraph("Keep this receipt for support, delivery, or collection reference.", small_muted_style))
 
-    c.drawString(left, y, "VAT")
-    c.drawRightString(right, y, _money(totals["vat"]))
-    y -= 10
-
-    c.setFont("Courier-Bold", 9)
-    c.drawString(left, y, "Final Total")
-    c.drawRightString(right, y, _money(totals["final_total"]))
-    y -= 12
-
-    y = _draw_separator(c, left, right, y)
-
-    # ===== FOOTER =====
-    y = _draw_center_text(
-        c,
-        "Thank you for your order",
-        page_width,
-        y,
-        font_name="Courier",
-        font_size=9,
-    )
-    y = _draw_center_text(
-        c,
-        "Keep this receipt for support or collection",
-        page_width,
-        y,
-        font_name="Courier",
-        font_size=8,
-    )
-
-    c.save()
+    doc.build(story)
     buffer.seek(0)
     return order, buffer
