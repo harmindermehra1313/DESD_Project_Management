@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const allergensWrap = document.getElementById("allergensWrap");
   const storageGuidance = document.getElementById("storageGuidance");
   const farmOrigin = document.getElementById("farmOrigin");
-
+  const organicCertification = document.getElementById("organicCertification");
   const unitPriceEl = document.getElementById("unitPriceLabel");
   const compareAtEl = document.getElementById("compareAtPrice");
   const surplusPercentPillEl = document.getElementById("surplusPercentPill");
@@ -283,6 +283,16 @@ document.addEventListener("DOMContentLoaded", () => {
       data.description || "No description available.";
     storageGuidance.textContent = data.storage_guidance || "—";
     farmOrigin.textContent = data.farm_origin || "—";
+    const organicStatus = data.organic_certification_status;
+
+    if (organicStatus === "CERTIFIED") {
+      organicCertification.innerHTML =
+        '<span class="badge text-bg-success">Certified organic</span>';
+    } else if (organicStatus) {
+      organicCertification.innerHTML = `<span class="badge text-bg-secondary">${organicStatus.replaceAll("_", " ")}</span>`;
+    } else {
+      organicCertification.textContent = "—";
+    }
 
     const imageUrl = data.image || productImage.src;
     productImage.src = imageUrl;
