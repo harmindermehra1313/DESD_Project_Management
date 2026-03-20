@@ -73,10 +73,12 @@
               <div class="d-flex flex-wrap align-items-center gap-3">
                 <div class="input-group" style="width: 160px;">
                   <button class="btn btn-outline-secondary" type="button" id="qtyMinus">−</button>
-                  <input type="text"
+                  <input type="number"
                          class="form-control text-center"
                          id="qtyInput"
                          value="1"
+                         min="1"
+                         step="1"
                          inputmode="numeric"
                          autocomplete="off">
                   <button class="btn btn-outline-secondary" type="button" id="qtyPlus">+</button>
