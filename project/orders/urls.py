@@ -7,7 +7,6 @@ from .views.receipts import receipt_detail_page
 app_name = "orders"
 
 urlpatterns = [
-    path("", views.index, name='index'),
     path("checkout/", views.checkout, name="checkout"),
     path("success/<str:reference>/", views.order_success, name="order_success"),
     path("checkout/save/", checkout_save, name="checkout_save"),
