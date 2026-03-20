@@ -190,6 +190,7 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
         product = item.product
         inventory = item.inventory
         requested_quantity = item.quantity
+        producer_name = item.producer.farm_name
 
         # Check whether the product itself is still reorderable.
         # Example failures:
@@ -197,12 +198,16 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
         # - product marked unavailable
         reorderable, reason = _product_reorderable(product)
         if not reorderable:
-            result["unavailable_items"].append({
-                "product_id": product.pk,
-                "product_name": product.name,
-                "requested_quantity": requested_quantity,
-                "reason": reason,
-            })
+            result["unavailable_items"].append(
+                {
+                    "product_id": product.pk,
+                    "product_name": product.name,
+                    "producer_id": item.producer_id,
+                    "producer_name": producer_name,
+                    "requested_quantity": requested_quantity,
+                    "reason": reason,
+                }
+            )
             continue
 
         # Check whether the historical inventory batch is still valid.
@@ -210,12 +215,16 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
         # - expired batch
         inventory_ok, inventory_reason = _inventory_reorderable(inventory)
         if not inventory_ok:
-            result["unavailable_items"].append({
-                "product_id": product.pk,
-                "product_name": product.name,
-                "requested_quantity": requested_quantity,
-                "reason": inventory_reason,
-            })
+            result["unavailable_items"].append(
+                {
+                    "product_id": product.pk,
+                    "product_name": product.name,
+                    "producer_id": item.producer_id,
+                    "producer_name": producer_name,
+                    "requested_quantity": requested_quantity,
+                    "reason": inventory_reason,
+                }
+            )
             continue
 
         # Read the live remaining stock from the inventory batch.
@@ -223,12 +232,16 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
 
         # If no stock remains at all, the item cannot be reordered.
         if available_quantity <= 0:
-            result["unavailable_items"].append({
-                "product_id": product.pk,
-                "product_name": product.name,
-                "requested_quantity": requested_quantity,
-                "reason": "Product batch is out of stock.",
-            })
+            result["unavailable_items"].append(
+                {
+                    "product_id": product.pk,
+                    "product_name": product.name,
+                    "producer_id": item.producer_id,
+                    "producer_name": producer_name,
+                    "requested_quantity": requested_quantity,
+                    "reason": "Product batch is out of stock.",
+                }
+            )
             continue
 
         quantity_to_add = min(requested_quantity, available_quantity)
@@ -237,24 +250,28 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
             inventory_id=inventory.pk,
             qty=quantity_to_add,
         )
-        
+
         if item.original_unit_price != current_unit_price:
-            result["price_changed_items"].append({
+            result["price_changed_items"].append(
+                {
+                    "product_id": product.pk,
+                    "product_name": product.name,
+                    "original_price": item.original_unit_price,
+                    "current_price": current_unit_price,
+                }
+            )
+
+        result["addable_items"].append(
+            {
                 "product_id": product.pk,
                 "product_name": product.name,
-                "original_price": item.original_unit_price,
+                "producer_id": item.producer_id,
+                "producer_name": producer_name,
+                "requested_quantity": requested_quantity,
+                "added_quantity": quantity_to_add,
                 "current_price": current_unit_price,
-            })
-        
-        result["addable_items"].append({
-            "product_id": product.pk,
-            "product_name": product.name,
-            "producer_id": item.producer_id,
-            "producer_name": str(item.producer),
-            "requested_quantity": requested_quantity,
-            "added_quantity": quantity_to_add,
-            "current_price": current_unit_price,
-        })
+            }
+        )
 
         # Only perform the actual cart mutation in commit mode.
         if commit:
@@ -266,15 +283,17 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                 )
 
                 # Record successful cart additions separately from preview items.
-                result["added_items"].append({
-                    "product_id": product.pk,
-                    "product_name": product.name,
-                    "producer_id": item.producer_id,
-                    "producer_name": str(item.producer),
-                    "requested_quantity": requested_quantity,
-                    "added_quantity": quantity_to_add,
-                    "inventory_id": inventory.pk,
-                })
+                result["added_items"].append(
+                    {
+                        "product_id": product.pk,
+                        "product_name": product.name,
+                        "producer_id": item.producer_id,
+                        "producer_name": producer_name,
+                        "requested_quantity": requested_quantity,
+                        "added_quantity": quantity_to_add,
+                        "inventory_id": inventory.pk,
+                    }
+                )
 
             except ValidationError as exc:
                 # Cart-level validation can still fail even after earlier checks.
@@ -282,14 +301,16 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                 # - producer/cart rules
                 # - cart state restrictions
                 # - quantity/business validation inside cart service
-                result["unavailable_items"].append({
-                    "product_id": product.pk,
-                    "product_name": product.name,
-                    "producer_id": item.producer_id,
-                    "producer_name": str(item.producer),
-                    "requested_quantity": requested_quantity,
-                    "reason": str(exc),
-                })
+                result["unavailable_items"].append(
+                    {
+                        "product_id": product.pk,
+                        "product_name": product.name,
+                        "producer_id": item.producer_id,
+                        "producer_name": producer_name,
+                        "requested_quantity": requested_quantity,
+                        "reason": str(exc),
+                    }
+                )
 
     # Build summary counts for final messaging.
     addable = len(result["addable_items"])
