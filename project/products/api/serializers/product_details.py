@@ -81,6 +81,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     surplus_discount_percentage = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
 
+    availability_label = serializers.SerializerMethodField()
+    availability_badge_class = serializers.SerializerMethodField()
+    stock_message = serializers.SerializerMethodField()
+    is_purchasable = serializers.SerializerMethodField()
+    add_to_cart_button_label = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = (
@@ -96,6 +102,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "surplus_active",
             "surplus_discount_percentage",
             "remaining_quantity",
+            "availability_label",
+            "availability_badge_class",
+            "stock_message",
+            "is_purchasable",
+            "add_to_cart_button_label",
             "unit",
             "image",
             "low_stock_threshold",
@@ -120,6 +131,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             .order_by("expiry_date", "created_at")
             .first()
         )
+
+    def _get_remaining_quantity_value(self, obj):
+        active_inventory = self._get_active_inventory(obj)
+        if not active_inventory:
+            return 0
+        return active_inventory.remaining_quantity or 0
+
+    def _is_out_of_stock(self, obj):
+        return self._get_remaining_quantity_value(obj) <= 0
+
+    def _is_low_stock(self, obj):
+        stock = self._get_remaining_quantity_value(obj)
+        threshold = obj.low_stock_threshold or 0
+        return stock > 0 and stock <= threshold
 
     def get_effective_price(self, obj):
         active_inventory = self._get_active_inventory(obj)
@@ -156,61 +181,50 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return active_inventory.surplus_discount_percentage
 
     def get_remaining_quantity(self, obj):
-        active_inventory = self._get_active_inventory(obj)
-        if not active_inventory:
-            return 0
-        return active_inventory.remaining_quantity
+        return self._get_remaining_quantity_value(obj)
+
+    def get_availability_label(self, obj):
+        if self._is_out_of_stock(obj):
+            return "Out of stock"
+        if obj.availability_status == "UNAV":
+            return "Unavailable"
+        return "Available"
+
+    def get_availability_badge_class(self, obj):
+        if self._is_out_of_stock(obj):
+            return "text-bg-danger"
+        if obj.availability_status == "UNAV":
+            return "text-bg-secondary"
+        return "text-bg-success"
+
+    def get_stock_message(self, obj):
+        stock = self._get_remaining_quantity_value(obj)
+
+        if stock <= 0:
+            return "Out of stock"
+        if self._is_low_stock(obj):
+            return f"Low stock — only {stock} left"
+        return "In stock"
+
+    def get_is_purchasable(self, obj):
+        return bool(self.get_active_inventory_id(obj)) and not self._is_out_of_stock(obj)
+
+    def get_add_to_cart_button_label(self, obj):
+        if self.get_is_purchasable(obj):
+            return "Add to cart"
+        return "Out of stock"
 
 
-class ProductWriteSerializer(serializers.ModelSerializer):
-    producer_id = serializers.PrimaryKeyRelatedField(
-        source="producer",
-        queryset=Producer.objects.all(),
-        write_only=True,
-    )
-    category_id = serializers.PrimaryKeyRelatedField(
-        source="category",
-        queryset=Category.objects.all(),
-        write_only=True,
-    )
-
-    class Meta:
-        model = Product
-        fields = "__all__"
-
-
+# Following serializers are being used by others
 class ProductInlineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = (
-            "id",
-            "name",
-            "price",
-            "unit",
-            "image",
-            "availability_status",
-            "status",
-        )
-        read_only_fields = fields
-
-
+        fields = ("id", "name", "image", "price", "unit")
 class InventorySerializer(serializers.ModelSerializer):
-    product = ProductInlineSerializer(read_only=True)
-
     class Meta:
         model = Inventory
-        fields = [
-            "id",
-            "product",
-            "remaining_quantity",
-            "harvest_date",
-            "expiry_date",
-            "expiry_type",
-            "surplus_status",
-            "surplus_discount_percentage",
-            "surplus_expiry",
-            "surplus_note",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = fields
+        fields = "__all__"
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = "__all__"

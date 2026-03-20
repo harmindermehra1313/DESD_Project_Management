@@ -18,7 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const productProducer = document.getElementById("productProducer");
   const availabilityBadge = document.getElementById("availabilityBadge");
   const stockText = document.getElementById("stockText");
-  const stockCount = document.getElementById("stockCount");
   const productDescription = document.getElementById("productDescription");
   const allergensWrap = document.getElementById("allergensWrap");
   const storageGuidance = document.getElementById("storageGuidance");
@@ -34,13 +33,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let productData = null;
   let wholesaleTiers = [];
 
-  function moneyGBP(v) {
-    const n = Number(v);
+  function moneyGBP(value) {
+    const n = Number(value);
     return Number.isFinite(n) ? `£${n.toFixed(2)}` : "£0.00";
   }
 
-  function clampQty(v) {
-    const n = Number(String(v ?? "").trim());
+  function clampQty(value) {
+    const n = Number(String(value ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
     return Math.floor(n);
   }
@@ -51,7 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function clearMsg() {
-    if (msg) msg.innerHTML = "";
+    if (!msg) return;
+    msg.innerHTML = "";
   }
 
   function setElVisible(el, visible) {
@@ -59,16 +59,28 @@ document.addEventListener("DOMContentLoaded", () => {
     el.style.display = visible ? "" : "none";
   }
 
+  function normalizeQtyInput() {
+    const quantity = clampQty(qtyInput?.value ?? 1);
+    if (qtyInput) {
+      qtyInput.value = String(quantity);
+    }
+    return quantity;
+  }
+
   function getCurrentTierPrice(qty) {
     let best = null;
-    for (const t of wholesaleTiers) {
-      if (qty >= t.min) best = t;
+
+    for (const tier of wholesaleTiers) {
+      if (qty >= tier.min) {
+        best = tier;
+      }
     }
-    return best ? best.price : Number(productData.effective_price);
+
+    return best ? best.price : Number(productData?.effective_price);
   }
 
   function renderWholesaleNotice(qty) {
-    if (!wholesaleNoticeEl) return;
+    if (!wholesaleNoticeEl || !productData) return;
 
     if (!wholesaleTiers.length) {
       wholesaleNoticeEl.innerHTML = "";
@@ -76,48 +88,65 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let currentTier = null;
-    for (const t of wholesaleTiers) {
-      if (qty >= t.min) currentTier = t;
+    for (const tier of wholesaleTiers) {
+      if (qty >= tier.min) {
+        currentTier = tier;
+      }
     }
 
-    const nextTier = wholesaleTiers.find((t) => qty < t.min) || null;
+    const nextTier = wholesaleTiers.find((tier) => qty < tier.min) || null;
     const effectiveBasePrice = Number(productData.effective_price);
+    const stock = Number(productData.remaining_quantity ?? 0);
 
     if (currentTier) {
       const savingPerUnit = effectiveBasePrice - currentTier.price;
 
       wholesaleNoticeEl.innerHTML = `
-        <div class="alert alert-success py-2 mb-0" role="status">
-          <div class="fw-semibold">Wholesale price active</div>
-          <div class="small">
-            You’re paying <span class="fw-semibold">${moneyGBP(currentTier.price)}</span> per unit.
-            ${savingPerUnit > 0 ? `<span class="ms-1">Save ${moneyGBP(savingPerUnit)} per unit.</span>` : ""}
-          </div>
-          ${nextTier ? `<div class="small mt-1">Next tier at ${nextTier.min}+ units: ${moneyGBP(nextTier.price)} per unit.</div>` : `<div class="small mt-1">Best available tier unlocked.</div>`}
+      <div class="alert alert-success py-2 mb-0" role="status">
+        <div class="fw-semibold">Wholesale price active</div>
+        <div class="small">
+          You’re paying <span class="fw-semibold">${moneyGBP(currentTier.price)}</span> per unit.
+          ${savingPerUnit > 0 ? `<span class="ms-1">Save ${moneyGBP(savingPerUnit)} per unit.</span>` : ""}
         </div>
-      `;
+        ${
+          nextTier
+            ? `<div class="small mt-1">Next tier at ${nextTier.min}+ units: ${moneyGBP(nextTier.price)} per unit.</div>`
+            : `<div class="small mt-1">Best available tier unlocked.</div>`
+        }
+      </div>
+    `;
       return;
     }
 
     const firstTier = wholesaleTiers[0];
-    const remaining = Math.max(0, firstTier.min - qty);
+    const reachable = stock >= firstTier.min;
 
-    wholesaleNoticeEl.innerHTML = `
+    wholesaleNoticeEl.innerHTML = reachable
+      ? `
       <div class="alert alert-warning py-2 mb-0" role="status">
         <div class="fw-semibold">Wholesale pricing available</div>
         <div class="small">
           Buy ${firstTier.min}+ to pay ${moneyGBP(firstTier.price)} per unit.
         </div>
-        <div class="small mt-1">Add ${remaining} more to unlock this price.</div>
+        <div class="small mt-1">Increase quantity to unlock this price.</div>
+      </div>
+    `
+      : `
+      <div class="alert alert-secondary py-2 mb-0" role="status">
+        <div class="fw-semibold">Wholesale tier: ${firstTier.min}+ units at ${moneyGBP(firstTier.price)}</div>
+        <div class="small mt-1">Not currently reachable with available stock.</div>
       </div>
     `;
   }
 
   function renderSurplusNotice(wholesaleActive) {
-    if (!surplusNoticeEl) return;
+    if (!surplusNoticeEl || !productData) return;
+
     surplusNoticeEl.innerHTML = "";
 
-    if (!productData.surplus_active) return;
+    if (!productData.surplus_active) {
+      return;
+    }
 
     if (wholesaleActive) {
       surplusNoticeEl.innerHTML = `
@@ -138,26 +167,27 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderPrice() {
-    const qty = clampQty(qtyInput?.value ?? 1);
+    if (!productData) return;
 
-    const baseEffectivePrice = Number(productData.effective_price);
-    const rawBasePrice = Number(productData.price);
+    const qty = normalizeQtyInput();
+    const effectivePrice = Number(productData.effective_price);
+    const basePrice = Number(productData.price);
     const tierPrice = getCurrentTierPrice(qty);
-    const wholesaleActive = tierPrice !== baseEffectivePrice;
-
-    let appliedPrice = wholesaleActive ? tierPrice : baseEffectivePrice;
+    const wholesaleActive = tierPrice !== effectivePrice;
+    const appliedPrice = wholesaleActive ? tierPrice : effectivePrice;
 
     unitPriceEl.textContent = moneyGBP(appliedPrice);
 
     if (wholesaleActive) {
-      compareAtEl.textContent = moneyGBP(baseEffectivePrice);
+      compareAtEl.textContent = moneyGBP(effectivePrice);
       setElVisible(compareAtEl, true);
 
-      const saving = baseEffectivePrice - appliedPrice;
-      surplusPercentPillEl.textContent = saving > 0 ? `Save ${moneyGBP(saving)}` : "Wholesale";
+      const saving = effectivePrice - appliedPrice;
+      surplusPercentPillEl.textContent =
+        saving > 0 ? `Save ${moneyGBP(saving)}` : "Wholesale";
       setElVisible(surplusPercentPillEl, true);
-    } else if (productData.surplus_active && rawBasePrice > baseEffectivePrice) {
-      compareAtEl.textContent = moneyGBP(rawBasePrice);
+    } else if (productData.surplus_active && basePrice > effectivePrice) {
+      compareAtEl.textContent = moneyGBP(basePrice);
       setElVisible(compareAtEl, true);
 
       if (productData.surplus_discount_percentage) {
@@ -176,61 +206,81 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderStock() {
+    if (!productData) return;
+
+    const purchasable = Boolean(productData.is_purchasable);
+    const badgeClass =
+      productData.availability_badge_class || "text-bg-secondary";
+    const badgeLabel = productData.availability_label || "Unknown";
+    const buttonLabel =
+      productData.add_to_cart_button_label ||
+      (purchasable ? "Add to cart" : "Unavailable");
     const stock = Number(productData.remaining_quantity ?? 0);
-    const threshold = Number(productData.low_stock_threshold ?? 0);
-    const outOfStock = stock <= 0;
 
-    availabilityBadge.className = "badge";
-    if (productData.availability_status === "AV") {
-      availabilityBadge.classList.add("text-bg-success");
-    } else if (productData.availability_status === "OOS") {
-      availabilityBadge.classList.add("text-bg-danger");
+    availabilityBadge.className = `badge ${badgeClass}`;
+    availabilityBadge.textContent = badgeLabel;
+
+    stockText.className = "small";
+
+    if (purchasable && stock > 0) {
+      stockText.classList.add(stock <= 5 ? "text-warning" : "text-muted");
+      stockText.textContent = `${stock} left`;
     } else {
-      availabilityBadge.classList.add("text-bg-secondary");
-    }
-    availabilityBadge.textContent = productData.availability_status;
-
-    if (outOfStock) {
-      stockText.className = "text-danger small";
-      stockText.textContent = "Out of stock";
-    } else if (stock <= threshold) {
-      stockText.className = "text-warning small";
-      stockText.textContent = `Low stock — only ${stock} left`;
-    } else {
-      stockText.className = "text-muted small";
-      stockText.textContent = "In stock";
+      stockText.classList.add("text-muted");
+      stockText.textContent = "Currently unavailable";
     }
 
-    stockCount.textContent = `Stock: ${stock}`;
+    btn.disabled = !purchasable;
+    qtyInput.disabled = !purchasable;
+    minus.disabled = !purchasable;
+    plus.disabled = !purchasable;
 
-    btn.disabled = outOfStock || !productData.active_inventory_id;
-    qtyInput.disabled = outOfStock;
-    minus.disabled = outOfStock;
-    plus.disabled = outOfStock;
+    btn.classList.remove("btn-primary", "btn-secondary");
+    btn.classList.add(purchasable ? "btn-primary" : "btn-secondary");
+    btn.innerHTML = purchasable
+      ? `<i class="bi bi-cart-plus me-1"></i>${buttonLabel}`
+      : buttonLabel;
+  }
 
-    if (outOfStock) {
-      btn.classList.remove("btn-primary");
-      btn.classList.add("btn-secondary");
-      btn.innerHTML = "Out of stock";
+  function renderAllergens(allergens) {
+    allergensWrap.innerHTML = "";
+
+    if (Array.isArray(allergens) && allergens.length) {
+      for (const item of allergens) {
+        const span = document.createElement("span");
+        span.className = "badge bg-warning text-dark";
+        span.textContent = item.allergen?.name || "Unknown";
+        allergensWrap.appendChild(span);
+      }
+      return;
     }
+
+    allergensWrap.innerHTML = `<div class="text-muted small">No known allergens.</div>`;
   }
 
   function renderProduct(data) {
     productData = data;
     wholesaleTiers = (data.wholesale_prices || [])
-      .map((t) => ({
-        min: Number(t.min_quantity),
-        price: Number(t.unit_price),
+      .map((tier) => ({
+        min: Number(tier.min_quantity),
+        price: Number(tier.unit_price),
       }))
-      .filter((t) => Number.isFinite(t.min) && Number.isFinite(t.price))
+      .filter(
+        (tier) => Number.isFinite(tier.min) && Number.isFinite(tier.price),
+      )
       .sort((a, b) => a.min - b.min);
 
     productName.textContent = data.name || "";
     productUnit.textContent = data.unit || "";
     unitLabel.textContent = data.unit || "";
     productCategory.textContent = data.category?.name || "Uncategorized";
-    productProducer.textContent = data.producer?.business_name || data.producer?.name || "Unknown producer";
-    productDescription.textContent = data.description || "No description available.";
+    productProducer.textContent =
+      data.producer?.farm_name ||
+      data.producer?.business_name ||
+      data.producer?.name ||
+      "Unknown producer";
+    productDescription.textContent =
+      data.description || "No description available.";
     storageGuidance.textContent = data.storage_guidance || "—";
     farmOrigin.textContent = data.farm_origin || "—";
 
@@ -238,18 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
     productImage.src = imageUrl;
     productImage.alt = data.name || "Product image";
 
-    allergensWrap.innerHTML = "";
-    if (Array.isArray(data.allergens) && data.allergens.length) {
-      for (const item of data.allergens) {
-        const span = document.createElement("span");
-        span.className = "badge bg-warning text-dark";
-        span.textContent = item.allergen?.name || "Unknown";
-        allergensWrap.appendChild(span);
-      }
-    } else {
-      allergensWrap.innerHTML = `<div class="text-muted small">No known allergens.</div>`;
-    }
-
+    renderAllergens(data.allergens);
     renderStock();
     renderPrice();
 
@@ -259,56 +298,68 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadProduct() {
     if (!Number.isInteger(productId) || productId <= 0) {
+      if (loadingEl) {
+        loadingEl.classList.add("d-none");
+      }
       setMsg("Invalid product id.");
       return;
     }
 
     try {
-      const res = await fetch(`/api/products/${productId}/`, {
+      const response = await fetch(`/api/products/${productId}/`, {
         headers: { Accept: "application/json" },
         credentials: "same-origin",
       });
 
-      if (!res.ok) {
-        throw new Error(`Failed to load product (${res.status})`);
+      if (!response.ok) {
+        throw new Error(`Failed to load product (${response.status})`);
       }
 
-      const data = await res.json();
+      const data = await response.json();
       clearMsg();
       renderProduct(data);
     } catch (err) {
-      loadingEl.classList.add("d-none");
+      if (loadingEl) {
+        loadingEl.classList.add("d-none");
+      }
       setMsg(err?.message || "Failed to load product.");
     }
   }
 
-  function normalizeQtyInput() {
-    const q = clampQty(qtyInput?.value ?? 1);
-    qtyInput.value = String(q);
-    return q;
-  }
-
   minus?.addEventListener("click", () => {
-    const q = normalizeQtyInput();
-    qtyInput.value = String(Math.max(1, q - 1));
+    const qty = normalizeQtyInput();
+    qtyInput.value = String(Math.max(1, qty - 1));
     renderPrice();
   });
 
   plus?.addEventListener("click", () => {
-    const q = normalizeQtyInput();
-    qtyInput.value = String(q + 1);
+    const qty = normalizeQtyInput();
+    qtyInput.value = String(qty + 1);
     renderPrice();
   });
 
-  qtyInput?.addEventListener("input", renderPrice);
+  qtyInput?.addEventListener("input", () => {
+    normalizeQtyInput();
+    renderPrice();
+  });
+
   qtyInput?.addEventListener("blur", () => {
     normalizeQtyInput();
     renderPrice();
   });
 
   btn?.addEventListener("click", async () => {
+    if (!productData?.is_purchasable) {
+      setMsg(
+        productData?.stock_message ||
+          "This product is not currently available.",
+        "warning",
+      );
+      return;
+    }
+
     if (!productData?.active_inventory_id) {
-      setMsg("This product is not currently available.", "warning");
+      setMsg("This product cannot be added to cart right now.", "warning");
       return;
     }
 
