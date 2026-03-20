@@ -55,6 +55,7 @@ async function request(method, path, { body } = {}) {
 
   const data = await parseJsonSafe(res);
 
+
   function extractErrorMessage(data, fallback) {
     if (!data) return fallback;
 
@@ -121,6 +122,7 @@ export async function getCart() {
 //   return data;
 // }
 export async function addToCart({ inventoryId, quantity = 1 } = {}) {
+  console.log("DEBUG addToCart called with:", { inventoryId, quantity });
   if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
     throw new Error("addToCart: inventoryId must be a positive integer");
   }
@@ -129,12 +131,15 @@ export async function addToCart({ inventoryId, quantity = 1 } = {}) {
   if (!Number.isFinite(q) || q < 1) {
     throw new Error("addToCart: quantity must be >= 1");
   }
-
+  const payload = { inventory_id: inventoryId, quantity: q };
+  console.log("DEBUG addToCart payload:", payload);
   const { data } = await request("POST", "/cart/items/", {
-    body: { inventory_id: inventoryId, quantity: q },
+    body: payload,
   });
 
-  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "add" } }));
+  document.dispatchEvent(
+    new CustomEvent("cart:updated", { detail: { action: "add" } }),
+  );
   await getCartBadgeCount().catch(() => {});
   return data;
 }
@@ -174,7 +179,9 @@ export async function setItemQuantity({ inventoryId, quantity } = {}) {
     body: { quantity: q },
   });
 
-  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "set_qty" } }));
+  document.dispatchEvent(
+    new CustomEvent("cart:updated", { detail: { action: "set_qty" } }),
+  );
   await getCartBadgeCount().catch(() => {});
   return res.status === 204 ? null : data;
 }
@@ -198,7 +205,9 @@ export async function removeItem({ inventoryId } = {}) {
   }
 
   await request("DELETE", `/cart/items/${inventoryId}/`);
-  document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "remove" } }));
+  document.dispatchEvent(
+    new CustomEvent("cart:updated", { detail: { action: "remove" } }),
+  );
   await getCartBadgeCount().catch(() => {});
   return { ok: true };
 }
