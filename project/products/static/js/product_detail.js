@@ -58,6 +58,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!el) return;
     el.style.display = visible ? "" : "none";
   }
+  function getTypedQty() {
+    const raw = String(qtyInput?.value ?? "").trim();
+
+    if (raw === "") return null;
+
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+
+    return Math.floor(n);
+  }
 
   function normalizeQtyInput() {
     const quantity = clampQty(qtyInput?.value ?? 1);
@@ -349,8 +359,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   qtyInput?.addEventListener("input", () => {
-    normalizeQtyInput();
-    renderPrice();
+    const typedQty = getTypedQty();
+
+    if (typedQty !== null && typedQty >= 1) {
+      renderPrice();
+    }
   });
 
   qtyInput?.addEventListener("blur", () => {
