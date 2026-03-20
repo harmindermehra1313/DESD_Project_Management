@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4 landscape;
+    margin: 20px;
+  }
+
+  body {
+    font-family: DejaVu Sans, sans-serif;
+    font-size: 11px;
+    color: #333;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    vertical-align: top;
+  }
+
+  th {
+    background: #eee;
+    font-weight: bold;
+  }
+
+  .text-end {
+    text-align: right;
+  }
+
+  .producer-list {
+    margin: 0;
+    padding-left: 14px;
+  }
+
+  .producer-item {
+    margin-bottom: 4px;
+  }
+
+  .order-header-row {
+    background: #f7f7f7;
+    font-weight: bold;
+  }
+</style>
+
+</head>
+<body>
+
+<h2>Financial Report</h2>
+
+{% for row in order_rows %}
+
+<table>
+  <thead>
+    <tr>
+      <th>Order ID</th>
+      <th>Reference</th>
+      <th>Date</th>
+      <th>Status</th>
+      <th class="text-end">Order total</th>
+      <th class="text-end">Commission (5% calc)</th>
+      <th class="text-end">Commission (recorded)</th>
+      <th class="text-end">Producer payout (95%)</th>
+      <th>Producers breakdown</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr class="order-header-row">
+      <td>{{ row.order.id }}</td>
+      <td>{{ row.order.unique_reference }}</td>
+      <td>{{ row.order.order_date|date:"Y-m-d H:i" }}</td>
+      <td>{{ row.order.get_status_display }}</td>
+      <td class="text-end">£{{ row.order_total|floatformat:2 }}</td>
+      <td class="text-end">£{{ row.commission_calc|floatformat:2 }}</td>
+      <td class="text-end">£{{ row.commission_recorded|floatformat:2 }}</td>
+      <td class="text-end">£{{ row.producer_payout_total|floatformat:2 }}</td>
+      <td>
+        {% if row.producer_breakdown %}
+          <ul class="producer-list">
+            {% for pb in row.producer_breakdown %}
+              <li class="producer-item">
+                <strong>{{ pb.producer_name }}</strong><br>
+                Subtotal: £{{ pb.subtotal|floatformat:2 }}<br>
+                Commission: £{{ pb.commission_total|floatformat:2 }}<br>
+                Payout: £{{ pb.payout_amount|floatformat:2 }}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span>No producer breakdown</span>
+        {% endif %}
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+{% endfor %}
+
+</body>
+</html>

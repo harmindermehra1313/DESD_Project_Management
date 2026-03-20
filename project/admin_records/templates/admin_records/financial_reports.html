@@ -17,19 +17,30 @@
        class="btn btn-outline-secondary btn-sm">
       Download CSV
     </a>
+    <a href="{% url 'admin_records:financial_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
+   class="btn btn-outline-secondary btn-sm">
+  Download PDF
+</a>
   </div>
 
   <!-- Filters -->
   <form method="get" class="row g-3 mb-4 align-items-end" id="filtersForm">
     <div class="col-md-3">
       <label class="form-label">Start date</label>
-      <input type="date" name="start_date" class="form-control"
-             value="{{ start_date|date:'Y-m-d' }}">
+      <input type="date"
+       name="start_date"
+       class="form-control"
+       value="{{ start_date|default:''|date:'Y-m-d' }}">
+
+
     </div>
     <div class="col-md-3">
       <label class="form-label">End date</label>
-      <input type="date" name="end_date" class="form-control"
-             value="{{ end_date|date:'Y-m-d' }}">
+      <input type="date"
+       name="end_date"
+       class="form-control"
+       value="{{ end_date|default:''|date:'Y-m-d' }}">
+
     </div>
     <div class="col-md-3">
       <label class="form-label">Producer</label>
