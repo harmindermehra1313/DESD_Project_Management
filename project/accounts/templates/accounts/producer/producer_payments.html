@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Payments Summary{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'producer_payments.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="summary-container">
+
+    <h1 class="text-center mb-4">Weekly Payment Summary</h1>
+
+    <!-- Change Week View -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <a href="{% url 'accounts:producer_payments' %}?week={{ previous_week_id }}"
+           class="btn btn-outline-primary">
+            ← Previous Week
+        </a>
+
+        <a href="{% url 'accounts:producer_payments' %}"
+           class="btn btn-secondary">
+            Jump to Current Week
+        </a>
+
+        <a href="{% url 'accounts:producer_payments' %}?week={{ next_week_id }}"
+           class="btn btn-outline-primary">
+            Next Week →
+        </a>
+    </div>
+
+    <!-- Tax Year Running Total -->
+    <section class="producer-box mb-4">
+        <h3>Tax Year Running Total</h3>
+        <p class="fs-5"><strong>Total Earnings:</strong> £{{ tax_year_total }}</p>
+        <p class="text-muted small">Tax year: {{ tax_year_start }} → {{ tax_year_end }}</p>
+        <div class="d-flex gap-2 mt-3">
+            <a href="{% url 'accounts:download_tax_year_pdf' %}" class="btn btn-primary">
+                Download Tax Year PDF
+            </a>
+            <a href="{% url 'accounts:download_tax_year_csv' %}" class="btn btn-outline-primary">
+                Download Tax Year CSV
+            </a>
+            <a href="{% url 'accounts:download_tax_year_zip' %}" class="btn btn-secondary">
+                Download All Weekly Reports (ZIP)
+            </a>
+        </div>
+    </section>
+
+    <!-- Weekly Summary -->
+    <section class="producer-box mb-4">
+        <h3>Completed Week: {{ week_start }} - {{ week_end }}</h3>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <p><strong>Total Completed Order Value:</strong> £{{ week_total }}</p>
+                <p><strong>Network Commission (5%):</strong> £{{ week_commission }}</p>
+                <p><strong>Producer Payout (95%):</strong> £{{ week_payout }}</p>
+                <p><strong>Card Payments:</strong> £{{ card_total }}</p>
+                <p><strong>Cash Payments:</strong> £{{ cash_total }}</p>
+
+                {% if pending_total > 0 %}
+                <p class="mt-3">
+                    <strong>Upcoming Orders (Future Earnings):</strong>
+                    <span class="text-primary">£{{ pending_total }}</span>
+                </p>
+                {% endif %}
+
+                {% if pending_total > 0 %}
+                    <hr>
+                    <p class="mt-3"><strong>Upcoming Card Payments:</strong> £{{ pending_card_total }}</p>
+                    <p><strong>Upcoming Cash Payments:</strong> £{{ pending_cash_total }}</p>
+                {% endif %}
+
+            </div>
+
+            <div class="col-md-6 text-md-end">
+                <p>
+                    <strong>Status:</strong>
+                    {% if payment_status == "processed" %}
+                        <span class="badge bg-success">Processed</span>
+
+                    {% elif payment_status == "pending" %}
+                        <span class="badge bg-warning text-dark">Pending Bank Transfer</span>
+
+                    {% else %}
+                        <span class="badge bg-secondary">No completed orders</span>
+                    {% endif %}
+                </p>
+
+                <div class="d-flex justify-content-md-end gap-2">
+                    <a href="{% url 'accounts:download_payment_report' week_id=week_id %}"
+                       class="btn btn-primary">
+                        Download PDF
+                    </a>
+
+                    <a href="{% url 'accounts:download_payment_csv' week_id=week_id %}"
+                       class="btn btn-outline-primary">
+                        Download CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- COMPLETED ORDERS -->
+        <h4 class="mb-3">Completed Orders (Earned This Week)</h4>
+
+        {% if has_completed %}
+        <div class="table-responsive mb-4">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Order Ref</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Items Sold</th>
+                        <th>Order Total</th>
+                        <th>Commission</th>
+                        <th>Payout</th>
+                        <th>Payment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in completed_orders %}
+                    <tr>
+                        <td>{{ o.reference }}</td>
+                        <td>{{ o.date|date:"d M Y" }}</td>
+                        <td>
+                            {% if anonymise %}
+                                Customer #{{ o.customer_id }}
+                            {% else %}
+                                {{ o.customer_name }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <ul class="small mb-0">
+                                {% for item in o.items %}
+                                    <li>{{ item.quantity }} × {{ item.product_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>£{{ o.total }}</td>
+                        <td>£{{ o.commission }}</td>
+                        <td>£{{ o.payout }}</td>
+                        <td>
+                            {% if o.payment_method == "CRD" %}
+                                <span class="badge bg-primary">Card</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Cash</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="text-muted">No completed orders found for this week.</p>
+        {% endif %}
+
+        <!-- PENDING ORDERS -->
+        <h4 class="mb-3 mt-4">Upcoming Orders (Future Earnings)</h4>
+        <p class="text-muted small">
+            These orders are scheduled for future delivery or collection and will be paid once completed.
+        </p>
+
+        {% if has_pending %}
+        <div class="table-responsive">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Order Ref</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Items Sold</th>
+                        <th>Order Total</th>
+                        <th>Commission</th>
+                        <th>Payout</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in pending_orders %}
+                    <tr>
+                        <td>{{ o.reference }}</td>
+                        <td>{{ o.date|date:"d M Y" }}</td>
+                        <td>
+                            {% if anonymise %}
+                                Customer #{{ o.customer_id }}
+                            {% else %}
+                                {{ o.customer_name }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <ul class="small mb-0">
+                                {% for item in o.items %}
+                                    <li>{{ item.quantity }} × {{ item.product_name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>£{{ o.total }}</td>
+                        <td>£{{ o.commission }}</td>
+                        <td>£{{ o.payout }}</td>
+                        <td>
+                            {% if o.status == "PEN" %}
+                                <span class="badge bg-warning text-dark">Not Completed Yet</span>
+                            {% elif o.status == "SHP" %}
+                                <span class="badge bg-info text-dark">Shipped</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Other</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if o.payment_method == "CRD" %}
+                                <span class="badge bg-primary">Card</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Cash</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="text-muted">No upcoming orders for this week.</p>
+        {% endif %}
+
+        {% if not has_completed and not has_pending %}
+            <div class="info-banner">
+                <i class="bi bi-info-circle"></i> No orders found for this week.
+            </div>
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}

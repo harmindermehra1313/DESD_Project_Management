@@ -16,10 +16,10 @@ class Payment(models.Model):
         FAILED = "FAI", "Failed"
         REFUNDED = "REF", "Refunded"
 
-    order = models.ForeignKey(
+    order = models.OneToOneField(
         "orders.Order",
         on_delete = models.CASCADE,
-        related_name = "payments",
+        related_name = "payment",
     )
 
     stripe_payment_intent = models.CharField(
