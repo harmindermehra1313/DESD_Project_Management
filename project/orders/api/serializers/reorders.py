@@ -47,8 +47,8 @@ class OrderHistorySerializer(serializers.ModelSerializer):
 
 class OrderItemDetailSerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
-    price = serializers.DecimalField(
-        source="original_unit_price",
+    paid_unit_price  = serializers.DecimalField(
+        source="final_unit_price",
         max_digits=10,
         decimal_places=2,
         read_only=True,
@@ -61,7 +61,7 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
             "id",
             "product_name",
             "quantity",
-            "price",
+            "paid_unit_price",
             "producer",
         ]
 
