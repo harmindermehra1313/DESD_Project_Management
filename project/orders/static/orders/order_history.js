@@ -321,6 +321,10 @@ function isReorderAllowed(status) {
   const value = normaliseStatus(status);
   return !value.includes("pending") && !value.includes("cancel");
 }
+function isReceiptAllowed(status) {
+  const value = normaliseStatus(status);
+  return value.includes("completed");
+}
 
 function getReorderButtonHtml(orderId, status, extraClass = "") {
   const allowed = isReorderAllowed(status);
@@ -342,7 +346,31 @@ function getReorderButtonHtml(orderId, status, extraClass = "") {
     </button>
   `;
 }
+function getReceiptButtonHtml(orderId, status) {
+  const allowed = isReceiptAllowed(status);
 
+  if (!allowed) {
+    return `
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        disabled
+        title="Receipt is only available for completed orders"
+      >
+        See Receipt
+      </button>
+    `;
+  }
+
+  return `
+    <a
+      class="btn btn-outline-secondary"
+      href="${RECEIPT_URL_BASE}${orderId}/"
+    >
+      See Receipt
+    </a>
+  `;
+}
 function setLoadingState() {
   document.getElementById("orderListLoading")?.classList.remove("d-none");
   document.getElementById("orderListError")?.classList.add("d-none");
@@ -679,9 +707,7 @@ function renderOrderFooter(order) {
 
       <div class="d-flex gap-2">
         ${getReorderButtonHtml(order.id, order.status)}
-        <a class="btn btn-outline-secondary" href="${RECEIPT_URL_BASE}${order.id}/">
-          See Receipt
-        </a>
+        ${getReceiptButtonHtml(order.id, order.status)}
       </div>
     </div>
   `;
