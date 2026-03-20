@@ -4,12 +4,13 @@ from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from datetime import datetime
-from .models import Product, Category, Allergen, ProductAllergen
+from decimal import Decimal, InvalidOperation
+from .models import Product, Category, Allergen, ProductAllergen, WholesalePrice
 from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
 
@@ -120,8 +121,66 @@ def add_product(request):
         )
         unit_code = request.POST.get('unit')
         stock_quantity = request.POST.get('stock_quantity')
+        wholesale_price_raw = (request.POST.get('wholesale_price') or '').strip()
         description = request.POST.get('description')
         uploaded_image = request.FILES.get('image')
+
+        try:
+            base_price_value = Decimal(str(price))
+        except (TypeError, ValueError, InvalidOperation):
+            return render(
+                request,
+                'products/add_product.html',
+                _build_add_product_context('Please enter a valid base price.'),
+            )
+
+        try:
+            stock_quantity_value = int(stock_quantity)
+        except (TypeError, ValueError):
+            return render(
+                request,
+                'products/add_product.html',
+                _build_add_product_context('Please enter a valid stock quantity.'),
+            )
+
+        if stock_quantity_value < 0:
+            return render(
+                request,
+                'products/add_product.html',
+                _build_add_product_context('Stock quantity cannot be negative.'),
+            )
+
+        wholesale_price = None
+        if wholesale_price_raw:
+            try:
+                wholesale_price = Decimal(wholesale_price_raw)
+            except (TypeError, ValueError, InvalidOperation):
+                return render(
+                    request,
+                    'products/add_product.html',
+                    _build_add_product_context('Please enter a valid wholesale price.'),
+                )
+
+            if wholesale_price <= 0:
+                return render(
+                    request,
+                    'products/add_product.html',
+                    _build_add_product_context('Wholesale price must be greater than 0.'),
+                )
+
+            if wholesale_price > base_price_value:
+                return render(
+                    request,
+                    'products/add_product.html',
+                    _build_add_product_context('Wholesale price cannot be higher than the base price.'),
+                )
+
+            if stock_quantity_value < 20:
+                return render(
+                    request,
+                    'products/add_product.html',
+                    _build_add_product_context('At least 20 items in stock are required to set a wholesale price.'),
+                )
 
         valid_expiry_types = {choice[0] for choice in Inventory.ExpiryType.choices}
         if expiry_type not in valid_expiry_types:
@@ -179,7 +238,7 @@ def add_product(request):
             producer=producer,
             category=category_obj,
             name=name,
-            price=price,
+            price=base_price_value,
             availability_status=availability_status,
             unit=unit_code,
             organic_certification_status=organic_certification_status,
@@ -194,14 +253,21 @@ def add_product(request):
         
         Inventory.objects.create(
             product=new_product,
-            original_quantity=stock_quantity,
-            remaining_quantity=stock_quantity,
+            original_quantity=stock_quantity_value,
+            remaining_quantity=stock_quantity_value,
             harvest_date=harvest_dt.date(),
             expiry_date=expiry_dt.date(),
             expiry_type=expiry_type,
             surplus_status="NONE",
             surplus_discount_percentage=0,
         )
+
+        if wholesale_price is not None:
+            WholesalePrice.objects.create(
+                product=new_product,
+                min_quantity=20,
+                unit_price=wholesale_price,
+            )
 
         allergen_ids = request.POST.getlist('allergen')
         for a_code in allergen_ids:
@@ -225,10 +291,19 @@ def producer_products(request):
         Product.objects
         .filter(producer=producer)
         .select_related('category')
-        .prefetch_related('inventory_batches', 'product_allergen__allergen')
+        .prefetch_related(
+            'inventory_batches',
+            'product_allergen__allergen',
+            Prefetch(
+                'product_wholesale',
+                queryset=WholesalePrice.objects.filter(min_quantity=20).order_by('-id'),
+                to_attr='product_wholesale_20',
+            ),
+        )
         .annotate(total_stock=Sum('inventory_batches__remaining_quantity'))
         .order_by("-created_at")
     )
+
     categories = Category.objects.all()
 
     return render(request, "products/producer_products.html", {
@@ -259,6 +334,8 @@ def edit_producer_product(request, pk):
         except (TypeError, ValueError):
             return JsonResponse({'success': False, 'error': 'Invalid price value.'})
 
+        base_price_value = Decimal(str(price))
+
         unit = data.get('unit', product.unit)
         valid_units = {choice[0] for choice in Product.Unit.choices}
         if unit not in valid_units:
@@ -280,6 +357,27 @@ def edit_producer_product(request, pk):
         else:
             category = product.category
 
+        wholesale_price_raw = str(data.get('wholesale_price', '') or '').strip()
+        wholesale_price = None
+        if wholesale_price_raw:
+            try:
+                wholesale_price = Decimal(wholesale_price_raw)
+            except (TypeError, ValueError, InvalidOperation):
+                return JsonResponse({'success': False, 'error': 'Please enter a valid wholesale price.'})
+
+            if wholesale_price <= 0:
+                return JsonResponse({'success': False, 'error': 'Wholesale price must be greater than 0.'})
+
+            if wholesale_price > base_price_value:
+                return JsonResponse({'success': False, 'error': 'Wholesale price cannot be higher than the base price.'})
+
+            stock_total = product.inventory_batches.aggregate(total=Sum('remaining_quantity')).get('total') or 0
+            if stock_total < 20:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'At least 20 items in stock are required to set a wholesale price.',
+                })
+
         product.name = name
         product.price = price
         product.unit = unit
@@ -288,6 +386,15 @@ def edit_producer_product(request, pk):
         product.description = data.get('description', product.description)
         product.category = category
         product.save()
+
+        if wholesale_price is not None:
+            WholesalePrice.objects.update_or_create(
+                product=product,
+                min_quantity=20,
+                defaults={'unit_price': wholesale_price},
+            )
+        else:
+            product.product_wholesale.filter(min_quantity=20).delete()
 
         return JsonResponse({
             'success': True,
@@ -301,6 +408,7 @@ def edit_producer_product(request, pk):
             'availability_display': product.get_availability_status_display(),
             'organic_certification_status': product.organic_certification_status,
             'description': product.description or '',
+            'wholesale_price': str(wholesale_price) if wholesale_price is not None else '',
         })
 
     except json.JSONDecodeError:

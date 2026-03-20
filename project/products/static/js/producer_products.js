@@ -170,6 +170,7 @@ function openEditModal() {
     document.getElementById('editAvailability').value = row.getAttribute('data-edit-availability') || 'AV';
     document.getElementById('editOrganic').value     = row.getAttribute('data-edit-organic') || 'NOT_CERTIFIED';
     document.getElementById('editDescription').value = row.getAttribute('data-edit-description') || '';
+    document.getElementById('editWholesalePrice').value = row.getAttribute('data-edit-wholesale-price') || '';
 
     // Clear any previous alert
     const alert = document.getElementById('editFormAlert');
@@ -178,6 +179,37 @@ function openEditModal() {
 
     const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
     modal.show();
+}
+
+function updateDetailsTemplateAfterEdit(productId, data) {
+    const template = document.getElementById(`details-template-${productId}`);
+    if (!template) return;
+
+    const content = template.content;
+    const setText = (selector, value) => {
+        const el = content.querySelector(selector);
+        if (el) el.textContent = value;
+    };
+
+    const organicSelect = document.getElementById('editOrganic');
+    const organicDisplay = organicSelect
+        ? organicSelect.options[organicSelect.selectedIndex].text
+        : '';
+
+    const priceText = `£${parseFloat(data.price).toFixed(2)} per ${data.unit_display}`;
+    const wholesaleText = data.wholesale_price
+        ? `£${parseFloat(data.wholesale_price).toFixed(2)} per ${data.unit_display}`
+        : 'Not set';
+    const descriptionText = data.description && data.description.trim()
+        ? data.description
+        : 'No description provided.';
+
+    setText('.js-detail-name', data.name);
+    setText('.js-detail-category', data.category);
+    setText('.js-detail-price', priceText);
+    setText('.js-detail-wholesale', wholesaleText);
+    if (organicDisplay) setText('.js-detail-organic', organicDisplay);
+    setText('.js-detail-description', descriptionText);
 }
 
 // ─── 8. Submit Edit Form (AJAX) ───────────────────────────────────────────────
@@ -196,12 +228,24 @@ async function submitEditForm() {
         availability_status:         document.getElementById('editAvailability').value,
         organic_certification_status: document.getElementById('editOrganic').value,
         description:                 document.getElementById('editDescription').value,
+        wholesale_price:             document.getElementById('editWholesalePrice').value.trim(),
     };
 
     if (!payload.name) {
         alertEl.className = 'alert alert-danger mt-3';
         alertEl.textContent = 'Product name is required.';
         return;
+    }
+
+    if (payload.wholesale_price) {
+        const basePrice = parseFloat(payload.price);
+        const wholesalePrice = parseFloat(payload.wholesale_price);
+
+        if (!Number.isNaN(basePrice) && !Number.isNaN(wholesalePrice) && wholesalePrice > basePrice) {
+            alertEl.className = 'alert alert-danger mt-3';
+            alertEl.textContent = 'Wholesale price cannot be higher than the base price.';
+            return;
+        }
     }
 
     document.getElementById('saveEditBtn').disabled = true;
@@ -219,8 +263,9 @@ async function submitEditForm() {
         const data = await response.json();
 
         if (data.success) {
+            const editedProductId = selectedProductId;
             // Update row data attributes
-            const row = document.getElementById(`row-${selectedProductId}`);
+            const row = document.getElementById(`row-${editedProductId}`);
             row.setAttribute('data-edit-name',          data.name);
             row.setAttribute('data-edit-price',         data.price);
             row.setAttribute('data-edit-unit',          data.unit);
@@ -228,6 +273,7 @@ async function submitEditForm() {
             row.setAttribute('data-edit-availability',  data.availability_status);
             row.setAttribute('data-edit-organic',       data.organic_certification_status);
             row.setAttribute('data-edit-description',   data.description);
+            row.setAttribute('data-edit-wholesale-price', data.wholesale_price || '');
             row.setAttribute('data-product-name',       data.name.toLowerCase());
             row.setAttribute('data-category',           data.category.toLowerCase());
             row.setAttribute('data-availability',       data.availability_status);
@@ -245,11 +291,17 @@ async function submitEditForm() {
                 availBadge.className = `status-badge avail-${data.availability_status.toLowerCase()}`;
             }
 
+            updateDetailsTemplateAfterEdit(editedProductId, data);
+
             // Update detail panel name
             document.getElementById('detailProductName').textContent = data.name;
 
             bootstrap.Modal.getInstance(document.getElementById('editProductModal')).hide();
             applyAllFilters(false);
+
+            if (row.style.display !== 'none') {
+                showProductDetails(editedProductId, row);
+            }
         } else {
             alertEl.className = 'alert alert-danger mt-3';
             alertEl.textContent = data.error || 'An error occurred. Please try again.';

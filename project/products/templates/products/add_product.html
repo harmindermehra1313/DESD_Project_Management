@@ -100,6 +100,16 @@
                     <label for="id_stock_quantity" class="form-label custom-form-label">Stock</label>
                     <input type="number" class="form-control" name="stock_quantity" id="id_stock_quantity" placeholder="100" required>
                 </div>
+
+                <div class="mb-3">
+                    <label for="id_wholesale_price" class="form-label custom-form-label">Wholesale Price (Optional)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">£</span>
+                        <input type="number" class="form-control" name="wholesale_price" id="id_wholesale_price" step="0.01" min="0" placeholder="2.50">
+                    </div>
+                    <small class="text-muted">If set, this wholesale unit price applies to orders of 20+ units.</small>
+                </div>
+
                 <div class="mb-3">
                     <label for="id_allergen" class="form-label custom-form-label">Allergen Information</label>
                     <select class="form-select" name="allergen" id="id_allergen" multiple size="6">
@@ -140,4 +150,34 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script src="{% static 'js/allergen_select.js' %}"></script>
 <script src="{% static 'js/expiry_type_select.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const basePriceInput = document.getElementById('id_price');
+        const wholesaleInput = document.getElementById('id_wholesale_price');
+
+        if (!basePriceInput || !wholesaleInput) {
+            return;
+        }
+
+        const validateWholesaleVsBase = function () {
+            const base = parseFloat(basePriceInput.value);
+            const wholesaleRaw = wholesaleInput.value;
+
+            if (!wholesaleRaw || Number.isNaN(base)) {
+                wholesaleInput.setCustomValidity('');
+                return;
+            }
+
+            const wholesale = parseFloat(wholesaleRaw);
+            if (!Number.isNaN(wholesale) && wholesale > base) {
+                wholesaleInput.setCustomValidity('Wholesale price cannot be higher than the base price.');
+            } else {
+                wholesaleInput.setCustomValidity('');
+            }
+        };
+
+        basePriceInput.addEventListener('input', validateWholesaleVsBase);
+        wholesaleInput.addEventListener('input', validateWholesaleVsBase);
+    });
+</script>
 {% endblock %}
