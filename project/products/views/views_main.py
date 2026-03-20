@@ -5,9 +5,8 @@ from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from .models import Product, Category, Allergen, ProductAllergen, WholesalePrice
+from ..models import Product, Category, Allergen, ProductAllergen, WholesalePrice
 from datetime import date, timedelta
-from .models import Product, Category, Allergen, ProductAllergen
 from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView

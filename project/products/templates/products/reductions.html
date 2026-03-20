@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/products.css' %}">
+<link rel="stylesheet" href="{% static 'css/reductions.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="page-title mb-3">Manage Surplus & Last-Minute Deals</h1>
+
+    <div id="errorBanner" class="alert alert-danger d-none"></div>
+    <div id="successBanner" class="alert alert-success d-none"></div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-pills surplus-tabs mb-4" id="surplusTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#current">
+                Current Reductions
+            </button>
+        </li>
+
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#past">
+                Past Reductions
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#add">
+                Add Reduction
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#update">
+                Update Reduction
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#cancel">
+                Cancel Reduction
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#expired">
+                Expired Products
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+
+        <!-- ========================================================= -->
+        <!-- CURRENT REDUCTIONS -->
+        <!-- ========================================================= -->
+        <div class="tab-pane fade show active" id="current">
+            <div class="surplus-card p-4 mb-4">
+                <h2 class="section-title mb-3">Current Active Reductions</h2>
+
+                <ul class="list-group" id="current-reductions-list">
+                    {% if active_reductions %}
+                        {% for r in active_reductions %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ r.product.name }} —
+                                {{ r.surplus_discount_percentage|floatformat:2 }}% off —
+                                {{ r.remaining_quantity }} in stock —
+
+                                {# PRODUCT expiry #}
+                                {% if r.expiry_type == "UB" %}
+                                    Use by: {{ r.expiry_date|date:"j F Y" }}
+                                {% else %}
+                                    Best before: {{ r.expiry_date|date:"j F Y" }}
+                                {% endif %}
+
+                                {# DEAL expiry #}
+                                (deal ends: {{ r.surplus_expiry|date:"j F Y" }})
+
+                                <span class="badge bg-success">Active</span>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-muted no-current-reductions">
+                            You currently have no active reductions.
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- PAST REDUCTIONS -->
+        <!-- ========================================================= -->
+        <div class="tab-pane fade" id="past">
+            <div class="surplus-card p-4 mb-4">
+                <h2 class="section-title mb-3">Past Reductions</h2>
+
+                <ul class="list-group" id="past-reductions-list">
+                    {% if past_reductions %}
+                        {% for r in past_reductions %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+
+                                {{ r.product.name }} —
+
+                                {# DISCOUNT #}
+                                {% if r.last_discount %}
+                                    {{ r.last_discount }}% off —
+                                {% else %}
+                                    Cancelled reduction —
+                                {% endif %}
+
+                                {# PRODUCT EXPIRY #}
+                                {% if r.expiry_type == "UB" %}
+                                    Use by: {{ r.expiry_date|date:"j F Y" }}
+                                {% else %}
+                                    Best before: {{ r.expiry_date|date:"j F Y" }}
+                                {% endif %}
+
+                                {# DEAL END DATE #}
+                                {% if r.ended_reason == "expired" %}
+                                    (deal ended: {{ r.last_expiry|date:"j F Y" }})
+                                {% elif r.ended_reason == "cancelled" %}
+                                    (cancelled: {{ r.ended_at|date:"j F Y" }})
+                                {% endif %}
+
+                                <span class="badge bg-secondary">Ended</span>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-muted no-past-reductions">
+                            You have no past reductions.
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- ADD REDUCTION -->
+        <!-- ========================================================= -->
+        <div class="tab-pane fade" id="add">
+            <div class="surplus-card p-4 mb-4">
+                <h2 class="section-title mb-3">Create a New Surplus Reduction</h2>
+
+                <!-- Select Product -->
+                <div class="mb-3">
+                    <label class="custom-form-label">Select product</label>
+
+                    {% if available_products %}
+                        <select id="add_product_id" class="form-select form-control-lg" required>
+                            <option value="">Choose a product</option>
+                            {% for batch in available_products %}
+                                <option value="{{ batch.id }}"
+                                        data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
+                                    {{ batch.product.name }} — {{ batch.remaining_quantity }} in stock —
+                                    {% if batch.expiry_type == "UB" %}
+                                        Use by: {{ batch.expiry_date|date:"j F Y" }}
+                                    {% else %}
+                                        Best before: {{ batch.expiry_date|date:"j F Y" }}
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <select id="add_product_id" class="form-select form-control-lg" disabled>
+                            <option>No products available</option>
+                        </select>
+                        <p class="text-muted mt-2">
+                            No products are currently eligible for reductions.  
+                            This may be because you have no inventory, or because all products have expired or already have active reductions.
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Discount -->
+                <div class="mb-3">
+                    <label class="custom-form-label">Discount percentage</label>
+                    <div class="input-group">
+                        <input type="number" id="add_discount" class="form-control"
+                               min="1" max="90" step="0.01" required placeholder="30"
+                               {% if not available_products %}disabled{% endif %}>
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+
+                <!-- Expiry -->
+                <div class="mb-3">
+                    <label class="custom-form-label">Deal expiry</label>
+                    <input type="date" id="add_expiry" class="form-control"
+                           required {% if not available_products %}disabled{% endif %}>
+                </div>
+
+                <!-- Note -->
+                <div class="mb-3">
+                    <label class="custom-form-label">Note</label>
+                    <textarea id="add_note" class="form-control" rows="3"
+                              placeholder="Perfect condition, must sell quickly"
+                              {% if not available_products %}disabled{% endif %}></textarea>
+                </div>
+
+                <button class="reduction-btn"
+                        onclick="createReduction()"
+                        {% if not available_products %}disabled{% endif %}>
+                    Save Surplus Listing
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- UPDATE REDUCTION -->
+        <!-- ========================================================= -->
+        <div class="tab-pane fade" id="update">
+            <div class="surplus-card p-4 mb-4">
+                <h2 class="section-title mb-3">Update an Existing Reduction</h2>
+
+                {% if active_reductions %}
+                    <div class="mb-3">
+                        <label class="custom-form-label">Select active reduction</label>
+                        <select id="update_reduction_id" class="form-select" required>
+                            <option value="">Select a reduction</option>
+                            {% for r in active_reductions %}
+                                <option value="{{ r.id }}"
+                                        data-expiry="{{ r.expiry_date|date:'Y-m-d' }}">
+                                    {{ r.product.name }} — {{ r.surplus_discount_percentage|floatformat:2 }}% off —
+                                    {{ r.remaining_quantity }} in stock —
+                                    {% if r.expiry_type == "UB" %}
+                                        Use by: {{ r.expiry_date|date:"j F Y" }}
+                                    {% else %}
+                                        Best before: {{ r.expiry_date|date:"j F Y" }}
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- WRAP FORM -->
+                    <div id="updateFormSection" class="d-none">
+
+                        <div class="mb-3">
+                            <label class="custom-form-label">New discount percentage</label>
+                            <div class="input-group">
+                                <input type="number" id="update_discount" class="form-control"
+                                    min="1" max="90" step="0.01" placeholder="Leave blank to keep current">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="custom-form-label">New expiry</label>
+                            <input type="date" id="update_expiry" class="form-control">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="custom-form-label">Update note</label>
+                            <textarea id="update_note" class="form-control" rows="3" placeholder="Leave blank to keep current"></textarea>
+                        </div>
+
+                        <button class="reduction-btn" onclick="updateReduction()">Update Reduction</button>
+                    </div>
+
+                {% else %}
+                    <p class="text-muted">No active reductions to update.</p>
+                    <select class="form-select" disabled>
+                        <option>No reductions available</option>
+                    </select>
+                    <button class="reduction-btn mt-3" disabled>Update Reduction</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- CANCEL REDUCTION -->
+        <!-- ========================================================= -->
+        <div class="tab-pane fade" id="cancel">
+            <div class="surplus-card p-4 mb-4">
+                <h2 class="section-title mb-3">Cancel a Reduction</h2>
+
+                {% if active_reductions %}
+                    <div class="mb-3">
+                        <label class="custom-form-label">Select reduction to cancel</label>
+                        <select id="cancel_reduction_id" class="form-select" required>
+                            <option value="">Select a reduction</option>
+                            {% for r in active_reductions %}
+                                <option value="{{ r.id }}"
+                                        data-expiry="{{ r.expiry_date|date:'Y-m-d' }}">
+                                        {{ r.product.name }} — {{ r.surplus_discount_percentage|floatformat:0 }}% off —
+                                        {{ r.remaining_quantity }} in stock —
+                                        {% if r.expiry_type == "UB" %}
+                                            Use by: {{ r.expiry_date|date:"j F Y" }}
+                                        {% else %}
+                                            Best before: {{ r.expiry_date|date:"j F Y" }}
+                                        {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- WRAP FORM -->
+                    <div id="cancelFormSection" class="d-none">
+                        <button class="reduction-btn" onclick="cancelReduction()">Cancel Reduction</button>
+                    </div>
+
+                {% else %}
+                    <p class="text-muted">No active reductions to cancel.</p>
+                    <select class="form-select" disabled>
+                        <option>No reductions available</option>
+                    </select>
+                    <button class="reduction-btn mt-3" disabled>Cancel Reduction</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- EXPIRED PRODUCTS -->
+        <!-- ========================================================= -->
+        <div class="tab-pane fade" id="expired">
+            <div class="surplus-card p-4 mb-4">
+                <h2 class="section-title mb-3">Expired or Removed From Sale</h2>
+
+                <p class="text-muted">
+                    These products are no longer available because they have passed their
+                    Use By or Best Before dates, and have been automatically removed from sale.
+                </p>
+            </div>
+
+            <!-- Removed From Sale (Use By) -->
+            <div class="surplus-card p-4 mb-4">
+                <h3 class="section-title">Removed From Sale (Use By)</h3>
+                {% if expired_use_by_products %}
+                    <ul class="list-group">
+                        {% for batch in expired_use_by_products %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ batch.product.name }} — {{ batch.remaining_quantity }} in stock — Use by: {{ batch.expiry_date|date:"j F Y" }}
+                                <span class="badge bg-danger">Removed</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No expired Use By products.</p>
+                {% endif %}
+            </div>
+
+            <!-- Removed From Sale (Best Before) -->
+            <div class="surplus-card p-4 mb-4">
+                <h3 class="section-title">Removed From Sale (Best Before)</h3>
+                {% if expired_best_before_products %}
+                    <ul class="list-group">
+                        {% for batch in expired_best_before_products %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ batch.product.name }} — {{ batch.remaining_quantity }} in stock — Best before: {{ batch.expiry_date|date:"j F Y" }}
+                                <span class="badge bg-warning text-dark">Removed</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No expired Best Before products.</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="{% static 'js/reductions.js' %}"></script>
+{% endblock %}

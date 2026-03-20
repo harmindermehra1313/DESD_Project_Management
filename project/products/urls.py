@@ -2,14 +2,21 @@
 
 from django.urls import path
 from . import views
-from .views import ProductDetailView
+from .views.views_main import ProductDetailView, add_product, product_view, producer_products
+from .views import reductions, api_reductions
 
 urlpatterns = [
     # path('', views.product_list, name='products_list'),
-    path('add/', views.add_product, name='add_product'),
+    path('add/', add_product, name='add_product'),
     # path('cart/add/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
     path("<int:pk>/", ProductDetailView.as_view(), name="detail"),  # /products/<pk>/
     # Harminder Edits
-    path("category/<int:category_id>/", views.product_view, name="product_view"),
-    path("producer/products/", views.producer_products, name="producer_products"),
+    path("category/<int:category_id>/", product_view, name="product_view"),
+    path("producer/products/", producer_products, name="producer_products"),
+    # Hannah edit: reductions handling
+    path("reductions/", reductions.manage_reductions, name="producer_manage_reductions"),
+    path("api/surplus/", api_reductions.SurplusListAPI.as_view(), name="api_surplus_list"),
+    path("api/surplus/<int:pk>/create/", api_reductions.SurplusCreateAPI.as_view(), name="api_surplus_create"),
+    path("api/surplus/<int:pk>/update/", api_reductions.SurplusUpdateAPI.as_view(), name="api_surplus_update"),
+    path("api/surplus/<int:pk>/cancel/", api_reductions.SurplusCancelAPI.as_view(), name="api_surplus_cancel"),
 ]
