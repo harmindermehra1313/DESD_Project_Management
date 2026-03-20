@@ -11,7 +11,6 @@ from products.api.serializers.product_details import (
     AllergenSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
-    ProductWriteSerializer,
     WholesalePriceInlineSerializer,
     ProductAllergenInlineSerializer,
 )
@@ -22,18 +21,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
 
-class ProductViewSet(viewsets.ModelViewSet):
-    """
-    list      -> lightweight serializer
-    retrieve  -> rich serializer (includes related data + effective price)
-    create/update -> write serializer (IDs instead of nested objects)
-    """
+class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.all().order_by("-created_at")
-
-    def get_permissions(self):
-        if self.action in ("list", "retrieve"):
-            return [permissions.AllowAny()]
-        return [permissions.IsAdminUser()]
 
     def get_queryset(self):
         qs = (
@@ -54,10 +43,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return ProductListSerializer
-        if self.action == "retrieve":
-            return ProductDetailSerializer
-        return ProductWriteSerializer
-
+        return ProductDetailSerializer
+     
 
 class WholesalePriceViewSet(viewsets.ModelViewSet):
     queryset = WholesalePrice.objects.all()
@@ -72,3 +59,4 @@ class AllergenViewSet(viewsets.ModelViewSet):
 class ProductAllergenViewSet(viewsets.ModelViewSet):
     queryset = ProductAllergen.objects.all()
     serializer_class = ProductAllergenInlineSerializer
+    
