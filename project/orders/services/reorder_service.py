@@ -31,7 +31,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from carts.services import CartOwner, cart_add_item_for_owner
+from carts.services import CartOwner, cart_add_item_for_owner, _get_effective_unit_price
 from orders.models import Order
 from orders.selectors import get_order_detail_for_user
 
@@ -231,35 +231,21 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
             })
             continue
 
-        # Determine how much can actually be reordered right now.
-        # If stock has decreased since the original order, this may be smaller
-        # than the original requested quantity.
         quantity_to_add = min(requested_quantity, available_quantity)
 
-        # Record price changes for customer transparency.
-        # This does not block reorder; it is informational.
-        if item.original_unit_price != product.price:
+        current_unit_price = _get_effective_unit_price(
+            inventory_id=inventory.pk,
+            qty=quantity_to_add,
+        )
+        
+        if item.original_unit_price != current_unit_price:
             result["price_changed_items"].append({
                 "product_id": product.pk,
                 "product_name": product.name,
                 "original_price": item.original_unit_price,
-                "current_price": product.price,
+                "current_price": current_unit_price,
             })
-
-        # Record quantity adjustments if the original quantity can no longer
-        # be fully satisfied by current stock.
-        if quantity_to_add < requested_quantity:
-            result["quantity_adjusted_items"].append({
-                "product_id": product.pk,
-                "product_name": product.name,
-                "requested_quantity": requested_quantity,
-                "added_quantity": quantity_to_add,
-                "reason": "Quantity reduced due to limited stock.",
-            })
-
-        # Always build preview data, regardless of commit mode.
-        # This is what the frontend uses to show:
-        # "Available Items To Be Added"
+        
         result["addable_items"].append({
             "product_id": product.pk,
             "product_name": product.name,
@@ -267,7 +253,7 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
             "producer_name": str(item.producer),
             "requested_quantity": requested_quantity,
             "added_quantity": quantity_to_add,
-            "current_price": product.price,
+            "current_price": current_unit_price,
         })
 
         # Only perform the actual cart mutation in commit mode.
