@@ -16,7 +16,7 @@ class Payment(models.Model):
         FAILED = "FAI", "Failed"
         REFUNDED = "REF", "Refunded"
 
-    order = models.OneToOneField(
+    order = models.ForeignKey(
         "orders.Order",
         on_delete=models.CASCADE,
         related_name="payments",
