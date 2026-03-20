@@ -330,31 +330,18 @@ def _build_producer_breakdown(order: Order) -> list[dict]:
 
 
 def get_receipt_data(*, user: User, order_id: int) -> dict:
-    """
-    Build the receipt payload for a completed order.
-
-    Rules:
-    - the order must belong to the authenticated user
-    - only completed orders can have receipts
-
-    Args:
-        user:
-            Authenticated user requesting the receipt.
-        order_id:
-            Order primary key.
-
-    Returns:
-        dict:
-            Receipt payload ready for serializer/output.
-
-    Raises:
-        ValidationError:
-            If the order is not completed.
-    """
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
     if order.status != Order.Status.COMPLETED:
         raise ValidationError("Receipt is only available for completed orders.")
+
+    items = _build_receipt_items(order)
+    producer_breakdown = _build_producer_breakdown(order)
+
+    subtotal = sum(item["line_subtotal"] for item in items)
+    discount = sum(item["line_discount"] for item in items)
+    vat = sum(item["line_vat"] for item in items)
+    final_total = sum(item["line_total"] for item in items)
 
     return {
         "id": order.id,
@@ -363,13 +350,13 @@ def get_receipt_data(*, user: User, order_id: int) -> dict:
         "status": order.get_status_display(),
         "customer_name": _get_customer_name(order),
         "payment_method_display": _get_payment_method_display(order),
-        "items": _build_receipt_items(order),
-        "producer_breakdown": _build_producer_breakdown(order),
+        "items": items,
+        "producer_breakdown": producer_breakdown,
         "totals": {
-            "subtotal": order.total_price,
-            "discount": order.total_discount,
-            "vat": order.total_vat,
-            "final_total": order.final_total_price,
+            "subtotal": subtotal,
+            "discount": discount,
+            "vat": vat,
+            "final_total": final_total,
         },
     }
 
@@ -484,11 +471,14 @@ def build_receipt_pdf(*, user: User, order_id: int) -> tuple[Order, BytesIO]:
     pdf.drawString(left, y, "Items")
     y -= 18
 
-    pdf.setFont("Helvetica-Bold", 10)
+    pdf.setFont("Helvetica-Bold", 9)
     pdf.drawString(left, y, "Product")
-    pdf.drawString(280, y, "Qty")
-    pdf.drawString(320, y, "Unit")
-    pdf.drawString(390, y, "Total")
+    pdf.drawString(250, y, "Qty")
+    pdf.drawString(285, y, "Original")
+    pdf.drawString(345, y, "Discount")
+    pdf.drawString(405, y, "VAT")
+    pdf.drawString(445, y, "Paid")
+    pdf.drawString(500, y, "Total")
     y -= 12
 
     pdf.line(left, y, right, y)
@@ -509,9 +499,12 @@ def build_receipt_pdf(*, user: User, order_id: int) -> tuple[Order, BytesIO]:
         )
 
         row_y = y + 12
-        pdf.drawString(280, row_y, str(item["quantity"]))
-        pdf.drawRightString(370, row_y, _format_money(item["final_unit_price"]))
-        pdf.drawRightString(460, row_y, _format_money(item["line_total"]))
+        pdf.drawString(250, row_y, str(item["quantity"]))
+        pdf.drawRightString(335, row_y, _format_money(item["unit_price"]))
+        pdf.drawRightString(395, row_y, _format_money(item["line_discount"]))
+        pdf.drawRightString(435, row_y, _format_money(item["line_vat"]))
+        pdf.drawRightString(490, row_y, _format_money(item["final_unit_price"]))
+        pdf.drawRightString(545, row_y, _format_money(item["line_total"]))
         y -= 4
 
     y -= 10
