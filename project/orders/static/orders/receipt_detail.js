@@ -202,9 +202,9 @@ function renderReceiptItems(items) {
             <tr>
     <th>Product</th>
     <th>Producer</th>
-    <th>Qty</th>
+    <th>Quantity</th>
     <th>Original Unit Price</th>
-    <th>Discount</th>
+    <th>Per Unit Discount</th>
     <th>VAT</th>
     <th>Paid Unit Price</th>
     <th>Line Total</th>
@@ -219,7 +219,12 @@ function renderReceiptItems(items) {
               <td>${escapeHtml(item.producer_name)}</td>
               <td>${escapeHtml(item.quantity)}</td>
               <td>${formatMoney(item.unit_price)}</td>
-              <td>${formatMoney(item.line_discount)}</td>
+              <td>
+  ${formatMoney(item.discount_amount)} each
+  <div class="small text-muted">
+    Total saved: ${formatMoney(item.line_discount)}
+  </div>
+</td>
               <td>${formatMoney(item.line_vat)}</td>
               <td>${formatMoney(item.final_unit_price)}</td>
               <td class="fw-semibold">${formatMoney(item.line_total)}</td>

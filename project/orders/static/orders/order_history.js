@@ -192,13 +192,22 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+const MIN_ORDER_FILTER_DATE = "2000-01-01";
+
 function applyDateInputLimits() {
   const today = getTodayDateString();
   const startDateEl = document.getElementById("start_date");
   const endDateEl = document.getElementById("end_date");
 
-  if (startDateEl) startDateEl.max = today;
-  if (endDateEl) endDateEl.max = today;
+  if (startDateEl) {
+    startDateEl.min = MIN_ORDER_FILTER_DATE;
+    startDateEl.max = today;
+  }
+
+  if (endDateEl) {
+    endDateEl.min = MIN_ORDER_FILTER_DATE;
+    endDateEl.max = today;
+  }
 }
 
 function clearDateValidationState() {
@@ -249,6 +258,22 @@ function validateDateFilters() {
   const endDate = endDateEl.value;
   const today = getTodayDateString();
 
+  if (startDate && startDate < MIN_ORDER_FILTER_DATE) {
+    showDateValidationError(
+      `Start date cannot be earlier than ${MIN_ORDER_FILTER_DATE}.`,
+      [startDateEl],
+    );
+    return false;
+  }
+
+  if (endDate && endDate < MIN_ORDER_FILTER_DATE) {
+    showDateValidationError(
+      `End date cannot be earlier than ${MIN_ORDER_FILTER_DATE}.`,
+      [endDateEl],
+    );
+    return false;
+  }
+
   if (startDate && startDate > today) {
     showDateValidationError("Start date cannot be in the future.", [startDateEl]);
     return false;
@@ -269,7 +294,6 @@ function validateDateFilters() {
 
   return true;
 }
-
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -573,7 +597,7 @@ function renderItemsSection(items) {
               <th>Product</th>
               <th>Producer</th>
               <th>Quantity</th>
-              <th>Price</th>
+              <th>Unit Price</th>
             </tr>
           </thead>
           <tbody>
