@@ -31,7 +31,12 @@ async function loadReceipt() {
     });
 
     if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, `Failed to load receipt (${response.status})`));
+      throw new Error(
+        await parseErrorMessage(
+          response,
+          `Failed to load receipt (${response.status})`,
+        ),
+      );
     }
 
     const receipt = await response.json();
@@ -194,19 +199,21 @@ function renderReceiptItems(items) {
     <div class="table-responsive">
       <table class="table align-middle table-bordered">
         <thead class="table-light">
-          <tr>
-            <th>Product</th>
-            <th>Producer</th>
-            <th>Qty</th>
-            <th>Unit Price</th>
-            <th>Discount</th>
-            <th>VAT</th>
-            <th>Final Unit Price</th>
-            <th>Line Total</th>
-          </tr>
+            <tr>
+    <th>Product</th>
+    <th>Producer</th>
+    <th>Qty</th>
+    <th>Original Unit Price</th>
+    <th>Discount</th>
+    <th>VAT</th>
+    <th>Paid Unit Price</th>
+    <th>Line Total</th>
+  </tr>
         </thead>
         <tbody>
-          ${items.map((item) => `
+          ${items
+            .map(
+              (item) => `
             <tr>
               <td>${escapeHtml(item.product_name)}</td>
               <td>${escapeHtml(item.producer_name)}</td>
@@ -217,7 +224,9 @@ function renderReceiptItems(items) {
               <td>${formatMoney(item.final_unit_price)}</td>
               <td class="fw-semibold">${formatMoney(item.line_total)}</td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -235,14 +244,25 @@ function renderReceiptFulfilment(producerBreakdown) {
 
   el.innerHTML = `
     <div class="row g-3">
-      ${producerBreakdown.map((summary) => {
-        const isCollection = (summary.delivery_or_collection || "").toLowerCase().includes("collection");
-        const date = isCollection ? summary.collection_date : summary.delivery_date;
-        const timeSlot = isCollection ? summary.collection_time_slot : summary.delivery_time_slot;
-        const address = isCollection ? summary.collection_address : summary.delivery_address;
-        const addressLabel = isCollection ? "Collection address" : "Delivery address";
+      ${producerBreakdown
+        .map((summary) => {
+          const isCollection = (summary.delivery_or_collection || "")
+            .toLowerCase()
+            .includes("collection");
+          const date = isCollection
+            ? summary.collection_date
+            : summary.delivery_date;
+          const timeSlot = isCollection
+            ? summary.collection_time_slot
+            : summary.delivery_time_slot;
+          const address = isCollection
+            ? summary.collection_address
+            : summary.delivery_address;
+          const addressLabel = isCollection
+            ? "Collection address"
+            : "Delivery address";
 
-        return `
+          return `
           <div class="col-12">
             <div class="border rounded p-3">
               <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -264,22 +284,12 @@ function renderReceiptFulfilment(producerBreakdown) {
                   <div class="fw-semibold">${escapeHtml(timeSlot || "-")}</div>
                 </div>
 
-                <div class="col-md-3">
-                  <div class="small text-muted">Subtotal</div>
-                  <div class="fw-semibold">${formatMoney(summary.subtotal)}</div>
-                </div>
-
-                <div class="col-md-3">
-                  <div class="small text-muted">VAT</div>
-                  <div class="fw-semibold">${formatMoney(summary.vat_total)}</div>
-                </div>
-
-                <div class="col-md-8">
+                <div class="col-md-6">
                   <div class="small text-muted">${escapeHtml(addressLabel)}</div>
                   <div>${formatAddress(address)}</div>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-12">
                   <div class="small text-muted">Special Instructions</div>
                   <div>${escapeHtml(summary.special_instructions || "-")}</div>
                 </div>
@@ -287,7 +297,8 @@ function renderReceiptFulfilment(producerBreakdown) {
             </div>
           </div>
         `;
-      }).join("")}
+        })
+        .join("")}
     </div>
   `;
 }
