@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Financial Reports | BRFN Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'financial_reports.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container my-4 admin-report-container">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Network Commission & Financial Reports</h2>
+    <a href="{% url 'admin_records:financial_reports_csv' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
+       class="btn btn-outline-secondary btn-sm">
+      Download CSV
+    </a>
+    <a href="{% url 'admin_records:financial_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
+   class="btn btn-outline-secondary btn-sm">
+  Download PDF
+</a>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="row g-3 mb-4 align-items-end" id="filtersForm">
+    <div class="col-md-3">
+      <label class="form-label">Start date</label>
+      <input type="date"
+       name="start_date"
+       class="form-control"
+       value="{{ start_date|default:''|date:'Y-m-d' }}">
+
+
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">End date</label>
+      <input type="date"
+       name="end_date"
+       class="form-control"
+       value="{{ end_date|default:''|date:'Y-m-d' }}">
+
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Producer</label>
+      <select name="producer" class="form-select">
+        <option value="">All producers</option>
+        {% for p in producers %}
+          <option value="{{ p.id }}" {% if selected_producer == p.id %}selected{% endif %}>
+            {{ p.farm_name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Order status</label>
+      <select name="status" class="form-select">
+        <option value="">All</option>
+        {% for code,label in order_rows.0.order.Status.choices %}
+          <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1 d-flex gap-2">
+      <button type="submit" class="btn btn-brand w-100">Filter</button>
+    </div>
+    <div class="col-12 d-flex gap-2 mt-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm quick-range" data-range="14">
+        Last 2 weeks
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm quick-range" data-range="30">
+        Last 30 days
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
+        Clear filters
+      </button>
+    </div>
+  </form>
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="summary-card">
+        <div class="summary-label">Total order value</div>
+        <div class="summary-value">£{{ total_order_value }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="summary-card">
+        <div class="summary-label">Commission (5% calculated)</div>
+        <div class="summary-value text-primary">£{{ total_commission_calc }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="summary-card">
+        <div class="summary-label">Commission (recorded)</div>
+        <div class="summary-value text-warning">£{{ total_commission_recorded }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="summary-card">
+        <div class="summary-label">Producer payouts (95% approx)</div>
+        <div class="summary-value text-success">£{{ total_producer_payout }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YTD -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="summary-card">
+        <div class="summary-label">YTD order total</div>
+        <div class="summary-value">£{{ ytd_total }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="summary-card">
+        <div class="summary-label">YTD commission (5% calc)</div>
+        <div class="summary-value text-muted">£{{ ytd_commission_calc }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders table -->
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle admin-report-table">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Reference</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th class="text-end">Order total</th>
+          <th class="text-end">Commission (5% calc)</th>
+          <th class="text-end">Commission (recorded)</th>
+          <th class="text-end">Producer payout (95%)</th>
+          <th>Producers breakdown</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in order_rows %}
+          <tr>
+            <td>{{ row.order.id }}</td>
+            <td>{{ row.order.unique_reference }}</td>
+            <td>{{ row.order.order_date|date:"Y-m-d H:i" }}</td>
+            <td>{{ row.order.get_status_display }}</td>
+            <td class="text-end">£{{ row.order_total|floatformat:2 }}</td>
+            <td class="text-end text-primary">£{{ row.commission_calc|floatformat:2 }}</td>
+            <td class="text-end text-warning">£{{ row.commission_recorded|floatformat:2 }}</td>
+            <td class="text-end text-success">£{{ row.producer_payout_total|floatformat:2 }}</td>
+            <td>
+              {% if row.producer_breakdown %}
+                <ul class="mb-0 small">
+                  {% for pb in row.producer_breakdown %}
+                    <li>
+                      {{ pb.producer_name }}:
+                      £{{ pb.subtotal|floatformat:2 }}
+                      → payout £{{ pb.payout_amount|floatformat:2 }}
+                      (commission £{{ pb.commission_total|floatformat:2 }})
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <span class="text-muted small">No producer breakdown</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">
+              No orders found for this filter.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% block extra_js %}
+<script src="{% static 'financial_reports.js' %}"></script>
+{% endblock %}
+
+{% endblock %}
