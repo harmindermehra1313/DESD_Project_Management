@@ -6,7 +6,7 @@ if (typeof Choices !== 'undefined') {
             new Choices(allergenSelect, {
                 removeItemButton: true,
                 placeholder: true,
-                placeholderValue: 'Select allergens...',
+                placeholderValue: 'Select all that apply. Leave blank if none.',
                 searchEnabled: true,
                 shouldSort: false,
                 silent: false

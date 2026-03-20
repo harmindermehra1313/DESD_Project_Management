@@ -79,14 +79,21 @@
               </a>
               <ul class="dropdown-menu custom-dropdown">
                 <li><a class="dropdown-item" href="/products/add/">Add Products</a></li>
-                <li><a class="dropdown-item" href="/producer/products/">View Products List</a></li>
-                <li><a class="dropdown-item" href="/admin/categories/">Surplus</a></li>
+                <li><a class="dropdown-item" href="/products/producer/products/">View Products List</a></li>
+                <li><a class="dropdown-item" href="{% url 'producer_manage_reductions' %}">Reductions</a></li>
               </ul>
             </li>
 
             <!-- Orders -->
             <li class="nav-item mx-2">
               <a class="nav-link custom-nav-link" href="{% url 'accounts:producer_dashboard' %}">Orders</a>
+            </li>
+
+            <!-- Payments -->
+            <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link" href="{% url 'accounts:producer_payments' %}">
+                    Payments
+                </a>
             </li>
 
             <!-- Records -->
