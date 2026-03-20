@@ -655,3 +655,7 @@ def product_view(request, category_id):
         "show_filters": show_filters,
         "organic": certified_organic,
     })
+
+# Pippal
+def product_detail_page(request, product_id):
+    return render(request, "products/product_detail.html", {"product_id": product_id})
