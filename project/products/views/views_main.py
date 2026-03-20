@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.http import HttpResponse # Imported for the placeholder view
 from django.conf import settings
 from datetime import datetime
-from .models import Product, Category, Allergen, ProductAllergen
+from ..models import Product, Category, Allergen, ProductAllergen
 from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
