@@ -554,7 +554,7 @@ function renderItemsSection(items) {
                 <td>${escapeHtml(item.product_name)}</td>
                 <td>${escapeHtml(item.producer)}</td>
                 <td>${escapeHtml(item.quantity)}</td>
-                <td>${formatMoney(item.price)}</td>
+                <td>${formatMoney(item.paid_unit_price)}</td>
               </tr>
             `).join("")}
           </tbody>
