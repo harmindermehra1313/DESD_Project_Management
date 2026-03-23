@@ -60,6 +60,19 @@ def login_view(request):
             expiry_timestamp = request.session.get_expiry_date()
             request.session["expiry_time"] = expiry_timestamp.isoformat()
 
+            print("LOGIN TIME:", login_time)
+            print("SESSION EXPIRES AT:", expiry_timestamp)
+
+            # Calculate remaining time safely
+            remaining = expiry_timestamp - login_time
+            print("TIME UNTIL LOGOUT:", remaining)
+
+            # Debug print (optional)
+            print("JWT ACCESS:", access_token)
+            print("USER:", request.user)
+            print("ROLE:", request.user.role)
+            print("AUTH:", request.user.is_authenticated)
+
             # Redirect based on role
             if user.role == "ADMIN":
                 return redirect("home:dashboard")

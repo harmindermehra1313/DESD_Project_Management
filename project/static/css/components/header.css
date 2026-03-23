@@ -9,13 +9,13 @@
 .header-row-1 {
     background: var(--dusk-blue);
     padding: 14px 60px;
-    color: var(--alabaster-grey);
+    color: #fff;
 }
 
 /* Brand block */
 .custom-brand {
     text-decoration: none;
-    color: var(--alabaster-grey);
+    color: #fff;
     font-family: var(--font-brand);
     line-height: 1.1;
 }
@@ -54,7 +54,7 @@
    ROW 2 (NAVIGATION BAR)
    ============================================ */
 .header-row-2 {
-    background: var(--alabaster-grey);
+    background: var(--background-header-row2);
     border-radius: 50px;
     margin: 10px 50px;
     padding: 8px 15px;
