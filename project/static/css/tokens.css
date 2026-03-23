@@ -6,14 +6,17 @@
     --headback:#39a396;
     --ink-black: #0d1b2a;        /* Ultra-dark blue-black */
     --prussian-blue: #1b263b;    /* Deep academic blue */
-    --dusk-blue: #415a77;        /* Twilight blue */
+    --dusk-blue: #37526f;        /* Twilight blue */
     --lavender-grey: #778da9;    /* Muted purple-grey */
     --alabaster-grey: #e0e1dd;   /* Soft light grey */
-
+    --dark-green: #4CAF50;       /* Darkish green */
+    --background-grey: #f6f7f9;  /* Background grey for forms */
+    --background-header-row2: #e2e5ec; /*Background drak grey for Header row 2*/
 
     /* Text Colors */
     --text-dark: #333;
     --text-light: #fff;
+    
 
     /* Fonts */
     --font-main: system-ui, Arial, sans-serif;
@@ -32,3 +35,76 @@ body {
 a {
     text-decoration: none;
 }
+
+.title {
+    font-weight: bold;
+    color: var(--prussian-blue);
+}
+
+/* Main buttons */
+
+.btn-primary {
+    border-color: var(--dusk-blue);
+    background-color: var(--dusk-blue);
+    color: var(--text-light);
+}
+
+.btn-primary:hover {
+    border-color: var(--ink-black);
+    background-color: var(--ink-black);
+    color: var(--text-light);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5rem;
+}
+
+/* Secondary buttons */
+.btn-outline-secondary {
+    background-color: #fff;
+    border-color: #6c757d;
+}
+.btn-outline-secondary:hover {
+    background-color: var(--ink-black);
+    border-color:var(--ink-black);
+    color: #fff;
+}
+
+/* Cards */
+.card {
+    border-radius: 10px;
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+.card-divider {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid var(--ink-black);
+    line-height: 0.1em;
+    margin: 20px 0;
+}
+
+/* Tables */
+.main-table th {
+    background-color: var(--prussian-blue);
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: none;
+}
+.order-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.order-row:hover {
+    background-color: #f8f9fa;
+}
+
+.order-row.selected {
+    background-color: #e9ecef;
+    border-left: 4px solid var(--accent);
+}
+
+/* Bootstrap for cancellation buttons and badges! */
+/* opacity 0.5rem for disabled buttons */
