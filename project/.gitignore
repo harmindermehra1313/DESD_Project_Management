@@ -7,3 +7,6 @@ db.sqlite3
 .docker_data/
 
 firebase-key.json
+
+home/management/commands/seed_database.py
+home/management/commands/seed_orders.py
