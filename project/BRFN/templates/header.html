@@ -59,6 +59,7 @@
     </div>
   </div>
 </div>
+<<<<<<< HEAD
 <!-- ===================== ROW 2 ===================== -->
 <nav class="navbar navbar-expand-lg header-row-2">
   <div class="container-fluid">
@@ -74,38 +75,119 @@
         <!-- LEFT COLUMN: NAVIGATION -->
         <div class="col-12 col-xl-8 mb-3 mb-xl-0">
           <ul class="navbar-nav flex-wrap align-items-center">
-            <!-- Home -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/">Home</a>
-            </li>
-            <!-- Products Dropdown -->
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link"
-                 href="#"
-                 data-bs-toggle="dropdown">Products</a>
-              <ul class="dropdown-menu custom-dropdown">
-                <li>
-                  <a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a>
-                </li>
-                {% for cat in header_categories %}
-                  <li>
-                    <a class="dropdown-item" href="{% url 'product_view' cat.id %}">{{ cat.name }}</a>
-                  </li>
-                {% endfor %}
-                <li>
-                  <hr class="dropdown-divider">
-                </li>
-                {% for org in organic %}
-                  <li>
-                    <a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a>
-                  </li>
-                {% endfor %}
-              </ul>
-            </li>
-            <!-- Producers -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
-            </li>
+            =======
+            <!-- ===================== ROW 2 ===================== -->
+            <nav class="navbar navbar-expand-lg header-row-2">
+              <div class="container-fluid">
+                <!-- Mobile Toggle -->
+                <button class="navbar-toggler"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navRow2">
+                  <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navRow2">
+                  <div class="row w-100 align-items-center">
+                    <!-- LEFT COLUMN: NAVIGATION -->
+                    <div class="col-12 col-xl-8 mb-3 mb-xl-0">
+                      <ul class="navbar-nav flex-wrap align-items-center">
+                        >>>>>>> origin/main
+                        <!-- Home -->
+                        <li class="nav-item mx-2">
+                          <a class="nav-link custom-nav-link" href="/">Home</a>
+                        </li>
+                        <<<<<<< HEAD
+                        <!-- Products Dropdown -->
+                        <li class="nav-item dropdown mx-2">
+                          <a class="nav-link dropdown-toggle custom-nav-link"
+                             href="#"
+                             data-bs-toggle="dropdown">Products</a>
+                          <ul class="dropdown-menu custom-dropdown">
+                            <li>
+                              <a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a>
+                            </li>
+                            {% for cat in header_categories %}
+                              <li>
+                                <a class="dropdown-item" href="{% url 'product_view' cat.id %}">{{ cat.name }}</a>
+                              </li>
+                            {% endfor %}
+                            <li>
+                              <hr class="dropdown-divider">
+                            </li>
+                            {% for org in organic %}
+                              <li>
+                                <a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </li>
+                        =======
+                        <!-- Products Dropdown -->
+                        <li class="nav-item dropdown mx-2">
+                          <a class="nav-link dropdown-toggle custom-nav-link"
+                             href="#"
+                             data-bs-toggle="dropdown">Products</a>
+                          <ul class="dropdown-menu custom-dropdown">
+                            <li>
+                              <a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a>
+                            </li>
+                            {% for cat in header_categories %}
+                              <li>
+                                <a class="dropdown-item" href="{% url 'product_view' cat.id %}">{{ cat.name }}</a>
+                              </li>
+                            {% endfor %}
+                            <li>
+                              <hr class="dropdown-divider">
+                            </li>
+                            {% for org in organic %}
+                              <li>
+                                <a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </li>
+                        >>>>>>> origin/main
+                        <!-- Producers -->
+                        <li class="nav-item mx-2">
+                          <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
+                        </li>
+                        <<<<<<< HEAD
+                        <!-- More Dropdown -->
+                        <li class="nav-item dropdown mx-2">
+                          <a class="nav-link dropdown-toggle custom-nav-link"
+                             href="#"
+                             data-bs-toggle="dropdown">More</a>
+                          <ul class="dropdown-menu custom-dropdown">
+                            <li>
+                              <a class="dropdown-item" href="/about/">About Us</a>
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="/contact/">Contact Us</a>
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="/sustainability/">Food Miles</a>
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="/community/">Community Projects</a>
+                            </li>
+                          </ul>
+                        </li>
+                      </ul>
+                    </div>
+                    <!-- RIGHT COLUMN: SEARCH BAR -->
+                    <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
+                      <form class="d-flex custom-search w-100" action="/search/">
+                        <input class="form-control custom-search-input"
+                               name="q"
+                               placeholder="Search...">
+                        <button class="btn custom-search-btn">Search</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </nav>
+            =======
             <!-- More Dropdown -->
             <li class="nav-item dropdown mx-2">
               <a class="nav-link dropdown-toggle custom-nav-link"
@@ -141,5 +223,6 @@
     </div>
   </div>
 </nav>
+>>>>>>> origin/main
 </header>
 <!-- Harminder -->

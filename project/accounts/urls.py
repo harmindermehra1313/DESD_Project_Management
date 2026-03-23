@@ -17,9 +17,15 @@ urlpatterns = [
     path("login/", views_main.login_view, name="login"),
     path("logout/", views_main.logout_view, name="logout"),
     path("api/register/", UnifiedRegistrationView.as_view(), name="api-register"),
+    
+    # Dashboard & Order Management
     path("producer_dashboard/", views_main.producer_dashboard, name="producer_dashboard"),
     path("update-order-status/<int:summary_id>/", views_main.update_order_status, name="update_order_status"),
+    path("cancel-subscription/<int:sub_id>/", views_main.cancel_subscription, name="cancel_subscription"),
+    
     path("profile/", views_main.profile, name="profile"),
+    
+    # Producer Payments
     path("producer/payments/", producer_payments_view, name="producer_payments"),
     path("producer/payments/report/<str:week_id>/", download_payment_report_view, name="download_payment_report"),
     path("producer/payments/csv/<str:week_id>/", download_payment_csv_view, name="download_payment_csv"),

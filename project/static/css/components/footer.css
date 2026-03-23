@@ -1,5 +1,5 @@
 /* Footer */
 .custom-footer {
-    background-color: #3a4b53;
+    background-color: var(--dusk-blue);
     color: var(--text-light);
 }

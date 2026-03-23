@@ -29,7 +29,7 @@
     border-color: var(--lavender-grey); 
 }
 /* Nested fields */
-.nested-fields { padding:10px; border-left:3px solid #f1f1f1; background:#fbfbfb; border-radius:6px; margin-top:8px; }
+.nested-fields { padding:10px; border-left:3px solid #f1f1f1; background:var(--background-grey); border-radius:6px; margin-top:8px; }
 
 /* Utility to hide visually and from assistive tech when needed */
 .visually-hidden { display:none !important; }
