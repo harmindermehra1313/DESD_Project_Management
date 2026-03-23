@@ -7,7 +7,7 @@
 
     <!-- LEFT: Website Name -->
     <div class="col-4 d-flex align-items-center">
-      <a href="/dashboard/" class="custom-brand">
+      <a href="/" class="custom-brand">
         <span class="brand-line-1">Bristol Regional</span><br>
         <span class="brand-line-2">Food Network</span>
       </a>
@@ -67,33 +67,42 @@
         <div class="col-12 col-xl-8 mb-3 mb-xl-0">
           <ul class="navbar-nav flex-wrap align-items-center">
 
-            <!-- Admin Dashboard -->
+            <!-- Dashboard -->
             <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/dashboard/">Dashboard</a>
+              <a class="nav-link custom-nav-link" href="/admin/dashboard/">Dashboard</a>
             </li>
 
-                 
-            <!-- Records -->
+            <!-- Users -->
             <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="{% url 'admin_records:financial_reports' %}">Financial Reports</a>
+              <a class="nav-link custom-nav-link" href="/admin/users/">Users</a>
             </li>
 
-            <!-- Approval Request of Products -->
+            <!-- Producers -->
             <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/admin/admin_records/">Approval Request</a>
+              <a class="nav-link custom-nav-link" href="/admin/producers/">Producers</a>
             </li>
 
-            <!-- More Dropdown -->
+            <!-- Products -->
             <li class="nav-item dropdown mx-2">
               <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                View
+                Products
               </a>
               <ul class="dropdown-menu custom-dropdown">
-                <li><a class="dropdown-item" href="{% url 'admin_records:user_list' %}">Current User List</a></li>
-                <li><a class="dropdown-item" href="{% url 'admin_records:producer_list' %}">Producer List</a></li>
-                <li><a class="dropdown-item" href="/contact_messages/">Contact Messages</a></li>
+                <li><a class="dropdown-item" href="/admin/products/">Product Approvals</a></li>
+                <li><a class="dropdown-item" href="/admin/products/all/">All Products</a></li>
+                <li><a class="dropdown-item" href="/admin/categories/">Categories</a></li>
               </ul>
-            </li> 
+            </li>
+
+            <!-- Orders -->
+            <li class="nav-item mx-2">
+              <a class="nav-link custom-nav-link" href="/admin/orders/">Orders</a>
+            </li>
+
+            <!-- Records -->
+            <li class="nav-item mx-2">
+              <a class="nav-link custom-nav-link" href="/admin/admin_records/">Admin Records</a>
+            </li>
 
           </ul>
         </div>

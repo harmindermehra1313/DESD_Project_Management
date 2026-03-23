@@ -200,7 +200,6 @@ class ProducerOrderSummary(models.Model):
         PACKAGED = "PAC", "Packaged"
         SHIPPED = "SHP", "Shipped"
         CANCELLED = "CAN", "Cancelled"
-        COMPLETED = "COM", "Completed"
         
     order = models.ForeignKey(
         "orders.Order",
