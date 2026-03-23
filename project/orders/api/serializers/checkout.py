@@ -15,25 +15,6 @@ PHONE_REGEX = re.compile(r"^\+?\d{7,15}$")  # simple, international-safe
 NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$")
 
 class CheckoutSerializer(serializers.Serializer):
-    # # Payment method
-    # payment_method = serializers.ChoiceField(
-    #     choices=Payment.Method.choices
-    # )
-
-    # # Delivery or collection
-    # delivery_or_collection = serializers.ChoiceField(
-    #     choices=Order.DeliveryOrCollection.choices
-    # )
-
-    # # Delivery date
-    # delivery_date = serializers.DateTimeField()
-
-    # # Optional field
-    # special_instructions = serializers.CharField(
-    #     allow_blank=True,
-    #     required=False
-    # )
-
     is_guest = serializers.BooleanField()
 
     # Logged-in user fields
@@ -64,9 +45,15 @@ class CheckoutSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         validated = super().to_internal_value(data)
 
-        # Pass through dynamic producer fields
+        # Pass through dynamic producer fields including recurring fields
         for key, value in data.items():
-            if key.startswith(("delivery_or_collection_", "delivery_date_", "delivery_time_")):
+            if key.startswith((
+                "delivery_or_collection_", 
+                "delivery_date_", 
+                "delivery_time_",
+                "is_recurring_",      # <-- Added recurring flags
+                "recurrence_day_"     # <-- Added recurring days
+            )):
                 validated[key] = value
 
         return validated

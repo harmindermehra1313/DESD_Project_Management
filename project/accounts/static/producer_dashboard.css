@@ -21,16 +21,16 @@
     border-bottom: none;
 }
 
-.order-row {
+.order-row, .sub-row {
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
 
-.order-row:hover {
+.order-row:hover, .sub-row:hover {
     background-color: #f8f9fa;
 }
 
-.order-row.selected {
+.order-row.selected, .sub-row.selected {
     background-color: #e9ecef;
     border-left: 4px solid var(--accent);
 }
