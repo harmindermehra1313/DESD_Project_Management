@@ -1,0 +1,123 @@
+:root {
+    --brand: #35524A;
+    --accent: #32DE8A;
+    --muted: #627C85;
+    --bg: #ffffff;
+    --radius: 8px;
+    --gap: 12px;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Table Styling */
+.order-table th {
+    background-color: #3a4b53;
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: none;
+}
+
+.order-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.order-row:hover {
+    background-color: #f8f9fa;
+}
+
+.order-row.selected {
+    background-color: #e9ecef;
+    border-left: 4px solid var(--accent);
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Availability badges */
+.avail-av   { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.avail-oos  { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.avail-dis  { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+/* Listing status badges */
+.listing-pub { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.listing-hid { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+.listing-flg { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.listing-rmv { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+
+/* Action Buttons */
+#editProductBtn {
+    transition: all 0.2s ease-in-out;
+}
+
+#editProductBtn:disabled {
+    background-color: #fff;
+    color: #6c757d;
+    border-color: #6c757d;
+    border: 1px solid #6c757d;
+    opacity: 1;
+}
+
+#editProductBtn:not(:disabled) {
+    background-color: #3a4b53;
+    color: #fff;
+    border-color: #3a4b53;
+}
+
+#editProductBtn:not(:disabled):hover {
+    background-color: #2e3d43;
+    border-color: #2e3d43;
+}
+
+#cancelProductBtn:disabled {
+    opacity: 0.5;
+}
+
+/* Save button in edit modal */
+.save-btn {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+
+.save-btn:hover {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--brand);
+}
+
+/* Details Card */
+.details-card {
+    border-radius: var(--radius);
+    border: 1px solid #e9ecef;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.details-header {
+    background-color: #fbfbfb;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+    font-weight: bold;
+    color: var(--brand);
+}
+
+.details-body {
+    padding: 1.5rem;
+    min-height: 150px;
+}
+
+/* Modal header colour */
+.modal-header {
+    border-bottom: 1px solid #dee2e6;
+}

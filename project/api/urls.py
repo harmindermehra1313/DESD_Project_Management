@@ -55,7 +55,6 @@ from api.views.reviews import (
     ReviewResponseViewSet,
 )
 
-# from api.views.carts import CartAPIView, CartItemAddView, CartItemDetailView, CartMergeAPIView
 
 
 from django.urls import path, include
@@ -122,6 +121,7 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("jwt-test/", jwt_test, name="jwt_test"),
     path("cart/", include(("carts.api.urls", "carts"), namespace="carts_api")),
+    path("order-history/", include(("orders.api.urls", "orders"), namespace="orders_api")),
 ]
 
 urlpatterns += router.urls

@@ -1,8 +1,9 @@
 from decimal import Decimal
+from datetime import datetime
 from django.db import transaction
 from django.utils import timezone
 from orders.models import (
-    Order, OrderItem, ProducerOrderSummary
+    Order, OrderItem, ProducerOrderSummary, RecurringOrder, RecurringOrderItem
 )
 from payments.models import Payment
 from accounts.models import Address
@@ -61,16 +62,13 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
         # Validate stock
         # -----------------------------
         for entry in items:
-            # product = entry.product
             product = entry.inventory.product
             quantity = entry.quantity
             inventory = entry.inventory
 
-            # if product.stock_quantity < quantity:
             if inventory.remaining_quantity < quantity:
                 raise ValueError(
                     f"Insufficient stock for {product.name}. "
-                    # f"Available: {product.stock_quantity}, Requested: {quantity}"
                     f"Available: {inventory.remaining_quantity}, Requested: {quantity}"
                 )
 
@@ -140,15 +138,11 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
             commission_per = Decimal("0.05")
 
             for entry in items:
-                # product = entry.product
                 product = entry.inventory.product
                 quantity = entry.quantity
                 inventory = entry.inventory
                 producer = product.producer
 
-                # discounted_price = inventory.get_discounted_price()
-                # wholesale_tier = product.get_wholesale_price(quantity)
-                # unit_price = wholesale_tier or discounted_price
                 # _get_effective_unit_price returns cheapest price if both wholesale & discount are active
                 unit_price = _get_effective_unit_price(
                     inventory_id=inventory.id,
@@ -173,19 +167,6 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 total_discount += discount_amount
                 commission_total += commission_amount
 
-                # item = OrderItem.objects.create(
-                #     order=order,
-                #     product=product,
-                #     producer=product.producer,
-                #     quantity=quantity,
-                #     original_unit_price=original_unit_price,
-                #     final_unit_price=unit_price,
-                #     vat_amount=vat_amount,
-                #     vat_rate=vat_rate,
-                #     commission_amount=commission_amount,
-                #     discount_amount=discount_amount,
-                #     preparation_deadline=timezone.now() + timezone.timedelta(hours=48),
-                # )
                 item = OrderItem.objects.create(
                     order=order,
                     inventory=inventory,
@@ -222,8 +203,6 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                     )
 
                 # Reduce stock
-                # product.stock_quantity = max(product.stock_quantity - quantity, 0)
-                # product.save(update_fields=["stock_quantity"])
                 inventory.remaining_quantity = max(inventory.remaining_quantity - quantity, 0)
                 inventory.save(update_fields=["remaining_quantity"])
 
@@ -238,7 +217,7 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
             order.save()
 
             # -----------------------------
-            # Producer summaries
+            # Producer summaries & Recurring
             # -----------------------------
             for producer, producer_items in items_by_producer.items():
 
@@ -289,6 +268,45 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                     city=addr_city,
                     postcode=addr_postcode,
                 )
+
+                # -----------------------------
+                # Create Recurring Order Template
+                # -----------------------------
+                is_recurring = validated_data.get(f"is_recurring_{producer.id}")
+                recurrence_day = validated_data.get(f"recurrence_day_{producer.id}")
+
+                if (is_recurring == "true" or is_recurring is True) and not is_guest:
+                    # Map selected delivery_date to a Day string (e.g. "WED")
+                    del_day_str = "WED"
+                    if delivery_date:
+                        try:
+                            dt = datetime.strptime(delivery_date, "%Y-%m-%d")
+                            days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+                            del_day_str = days[dt.weekday()]
+                        except ValueError:
+                            pass
+
+                    recurring_template = RecurringOrder.objects.create(
+                        user=user,
+                        delivery_address=addr if delivery_or_collection == "DEL" else None,
+                        recurrence_pattern=RecurringOrder.RecurrencePattern.WEEKLY,
+                        recurrence_day=recurrence_day,
+                        delivery_day=del_day_str,
+                        special_instructions=special_instructions,
+                        status=RecurringOrder.Status.ACTIVE
+                    )
+
+                    # Add items to the template
+                    for item in producer_items:
+                        RecurringOrderItem.objects.create(
+                            recurring_order=recurring_template,
+                            product=item.product,
+                            quantity=item.quantity
+                        )
+                    
+                    # Link the initial physical order to this template
+                    order.recurring_order = recurring_template
+                    order.save(update_fields=['recurring_order'])
 
             # -----------------------------
             # Payment record
