@@ -34,7 +34,7 @@ urlpatterns = [
     path('orders/', include("orders.urls", namespace="orders")),
     path('payments/', include('payments.urls', namespace="payments")),
     path('products/', include('products.urls')),
-    path('producer/', include('products.producer_urls')),
+    # path('producer/', include('products.urls')),
     path('reviews/', include('reviews.urls', namespace='reviews')),
     path('api/', include('api.urls', namespace='api')),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),

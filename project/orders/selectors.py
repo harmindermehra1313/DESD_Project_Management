@@ -1,19 +1,31 @@
 """
-selectors.py
+orders/selectors.py
 
-Read-only query logic for the order history feature.
+Purpose:
+Centralise read-only database access for the order history feature.
+
+This module contains selector functions responsible for retrieving order
+data for authenticated users without performing any write operations.
+It exists to keep ORM query construction out of views and services,
+while also ensuring that related objects are loaded efficiently.
 
 Responsibilities:
-- Order history fetching
-- Filtering
-- Order detail retrieval
-- Query optimisation with related objects
+- build the base queryset used by order history and order detail flows
+- apply supported order history filters
+- return user-scoped order history querysets
+- return a single user-scoped order by internal ID or public reference
+- provide small convenience selectors for dashboards and recent activity
 
-Design notes:
-- Selectors must remain read-only.
-- Views should call selectors instead of embedding ORM logic directly.
-- Filtering is always scoped to the current authenticated user's orders.
-- Query optimisation is handled here with select_related() and prefetch_related().
+Architectural rules:
+- selector functions must remain read-only
+- user ownership must always be enforced at query level
+- query optimisation belongs here, not in views
+- views should call selectors instead of embedding ORM logic directly
+
+Query optimisation strategy:
+- select_related() is used for single-valued foreign key relations
+- prefetch_related() is used for reverse and multi-valued relations
+- nested producer status history is prefetched to reduce follow-up queries
 """
 
 from __future__ import annotations
@@ -29,17 +41,28 @@ from orders.models import Order, OrderItem, ProducerOrderSummary, ProducerOrderS
 User = get_user_model()
 
 
-# Base query builders
-
 def _get_order_history_base_queryset() -> QuerySet[Order]:
     """
-    Return the base optimised queryset for order history pages.
+    Build the shared optimised queryset for order history and order detail retrieval.
 
-    Optimisation strategy:
-    - select_related() is used for single-valued joins from Order
-    - prefetch_related() is used for reverse and multi-valued relations
-    - nested producer history is prefetched for detail/history rendering
+    The returned queryset loads the related objects commonly needed by:
+    - order history list endpoints
+    - order detail endpoints
+    - receipt rendering
+    - reorder flows
+
+    Related loading plan:
+    - Order.delivery_address, Order.billing_address, and Order.recurring_order
+      are loaded with select_related() because each relation is single-valued.
+    - Order.items is prefetched with product, inventory, and producer joins.
+    - Order.producer_summaries is prefetched with producer joins.
+    - ProducerOrderSummary.status_history is prefetched with updated_by joins.
+
+    Returns:
+        QuerySet[Order]:
+            Base queryset ordered from newest to oldest.
     """
+
     item_queryset = (
         OrderItem.objects.select_related(
             "product",
@@ -85,17 +108,38 @@ def _apply_order_history_filters(
     recurring_only: Optional[bool] = None,
 ) -> QuerySet[Order]:
     """
-    Apply optional filters to an order history queryset.
+    Apply optional order history filters to an existing queryset.
 
     Supported filters:
-    - status: order-level status
-    - producer_id: only orders containing a producer summary for that producer
-    - start_date / end_date: filter by order_date date component
-    - delivery_or_collection: filter through producer summaries
+    - status:
+        Match the order-level status field.
+    - producer_id:
+        Return only orders linked to the specified producer through
+        producer summaries.
+    - start_date / end_date:
+        Filter using the date component of order_date.
+    - delivery_or_collection:
+        Filter using producer summary fulfilment mode.
     - recurring_only:
-        * True  -> only orders generated from recurring orders
-        * False -> only one-off orders
-        * None  -> no filter
+        * True  -> orders created from a recurring order
+        * False -> one-off orders only
+        * None  -> no recurring filter
+
+    distinct() is applied at the end because joins through related tables
+    may otherwise duplicate rows.
+
+    Args:
+        queryset: Base queryset to filter.
+        status: Optional order status code.
+        producer_id: Optional producer primary key.
+        start_date: Optional inclusive lower bound for order date.
+        end_date: Optional inclusive upper bound for order date.
+        delivery_or_collection: Optional fulfilment mode code.
+        recurring_only: Optional recurring-order filter flag.
+
+    Returns:
+        QuerySet[Order]:
+            Filtered queryset with duplicate rows removed.
     """
     if status:
         queryset = queryset.filter(status=status)
@@ -122,8 +166,6 @@ def _apply_order_history_filters(
     return queryset.distinct()
 
 
-# Public selectors
-
 def get_order_history_for_user(
     *,
     user: User,
@@ -135,19 +177,30 @@ def get_order_history_for_user(
     recurring_only: Optional[bool] = None,
 ) -> QuerySet[Order]:
     """
-    Return an optimised queryset of orders belonging to the given user.
+    Return an optimised order history queryset scoped to one authenticated user.
 
-    The queryset is:
-    - ownership-scoped
-    - ordered newest first
-    - safe for use in list views / DRF list endpoints / pagination
+    This selector is intended for list-style consumers such as:
+    - paginated API endpoints
+    - account history pages
+    - filtered dashboard views
 
-    Example:
-        get_order_history_for_user(
-            user=request.user,
-            status=Order.Status.COMPLETED,
-            producer_id=12,
-        )
+    Behaviour:
+    - restricts results to orders owned by the supplied user
+    - applies optional filters
+    - preserves newest-first ordering from the base queryset
+
+    Args:
+        user: Authenticated user whose orders should be returned.
+        status: Optional order status code.
+        producer_id: Optional producer primary key.
+        start_date: Optional inclusive lower bound for order date.
+        end_date: Optional inclusive upper bound for order date.
+        delivery_or_collection: Optional fulfilment mode code.
+        recurring_only: Optional recurring-order filter flag.
+
+    Returns:
+        QuerySet[Order]:
+            Optimised, user-scoped queryset ready for list views or pagination.
     """
     queryset = _get_order_history_base_queryset().filter(user=user)
 
@@ -164,27 +217,51 @@ def get_order_history_for_user(
 
 def get_order_detail_for_user(*, user: User, order_id: int) -> Order:
     """
-    Return one fully optimised order belonging to the given user.
+    Return one fully optimised order belonging to the supplied user.
 
     This selector is suitable for:
     - order detail pages
-    - receipt preparation
-    - reorder source retrieval
+    - receipt generation
+    - reorder source lookup
     - API detail endpoints
+
+    Security rule:
+    - both the primary key and the user ownership condition are enforced
+      in the query itself
+
+    Args:
+        user: Authenticated owner of the order.
+        order_id: Internal primary key of the order.
+
+    Returns:
+        Order:
+            Matching order instance with related objects already loaded.
 
     Raises:
         Order.DoesNotExist:
-            If the order does not belong to the given user or does not exist.
+            Raised when the order does not exist or does not belong to the user.
     """
     return _get_order_history_base_queryset().get(pk=order_id, user=user)
 
 
 def get_order_by_reference_for_user(*, user: User, unique_reference: str) -> Order:
     """
-    Return one fully optimised order using the public unique reference.
+    Return one fully optimised order using its public reference value.
 
-    This is useful when the frontend or receipt flow uses the public
-    order reference instead of the internal primary key.
+    This selector is useful when the external interface uses a public
+    order reference instead of an internal database primary key.
+
+    Args:
+        user: Authenticated owner of the order.
+        unique_reference: Public-facing order reference.
+
+    Returns:
+        Order:
+            Matching order instance with related objects already loaded.
+
+    Raises:
+        Order.DoesNotExist:
+            Raised when the order does not exist or does not belong to the user.
     """
     return _get_order_history_base_queryset().get(
         unique_reference=unique_reference,
@@ -198,24 +275,41 @@ def get_orders_for_status_dashboard(
     status: str,
 ) -> QuerySet[Order]:
     """
-    Convenience selector for status-specific slices of a user's orders.
+    Return a status-specific slice of a user's order history.
 
-    This keeps repeated view logic out of controllers when separate tabs
-    or dashboard sections are needed, such as:
+    This function exists as a small convenience wrapper for dashboard
+    sections or tabs that repeatedly request the same filtered subset,
+    for example:
     - completed orders
     - cancelled orders
     - in-progress orders
+
+    Args:
+        user: Authenticated user whose orders should be returned.
+        status: Order status code to filter by.
+
+    Returns:
+        QuerySet[Order]:
+            Optimised user-scoped queryset filtered by status.
     """
     return get_order_history_for_user(user=user, status=status)
 
 
 def get_recent_orders_for_user(*, user: User, limit: int = 5) -> QuerySet[Order]:
     """
-    Return the most recent orders for the given user.
+    Return a limited slice of the most recent orders for one user.
 
-    Useful for:
+    Typical use cases:
     - account dashboard widgets
     - quick reorder panels
-    - homepage summaries
+    - homepage order summaries
+
+    Args:
+        user: Authenticated user whose recent orders should be returned.
+        limit: Maximum number of records to return.
+
+    Returns:
+        QuerySet[Order]:
+            Slice of the newest orders for the user.
     """
     return get_order_history_for_user(user=user)[:limit]
