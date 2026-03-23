@@ -224,7 +224,7 @@ class Inventory(models.Model):
     )
 
     surplus_discount_percentage = models.DecimalField(
-        max_digits=5,
+        max_digits=4,
         decimal_places=2,
         null=True
     )
@@ -247,6 +247,44 @@ class Inventory(models.Model):
 
     def __str__(self):
         return f"{self.product.name} batch ({self.harvest_date})"
+
+class InventoryUpdateHistory(models.Model):
+    inventory = models.ForeignKey(
+        Inventory,
+        on_delete=models.CASCADE,
+        related_name="history"
+    )
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE
+    )
+
+    field_changed = models.CharField(max_length=100)
+    old_value = models.TextField(null=True)
+    new_value = models.TextField(null=True)
+
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    event_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("field_change", "Field Change"),
+            ("reduction_started", "Reduction Started"),
+            ("reduction_ended", "Reduction Ended"),
+        ],
+        default="field_change"
+    )
+
+    ended_reason = models.CharField(
+        max_length=20,
+        choices=[("cancelled", "Cancelled"), ("expired", "Expired")],
+        null=True
+    )
+
+    snapshot_discount = models.DecimalField(max_digits=4, decimal_places=2, null=True)
+    snapshot_expiry = models.DateTimeField(null=True)
+    snapshot_note = models.TextField(null=True)
 
 class WholesalePrice(models.Model):
 
