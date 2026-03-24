@@ -64,23 +64,22 @@
 
 /* --- GREY BACKGROUND WRAPPER --- */
 .how-it-works-section {
-    background-color: #f8f9fa; /* Light grey */
-    border-bottom: 1px solid #eeeeee; /* Optional separator line */
+    background-color: #f8f9fa; 
+    border-bottom: 1px solid #eeeeee; 
 }
 
 /* --- HOW IT WORKS --- */
-/* NEW: General column styling */
 .how-it-works-col {
-    display: flex; /* Helps create equal height boxes */
+    display: flex;
 }
 
-/* NEW: The Box itself */
+
 .how-it-works-box {
-    background-color: #fff; /* White background within grey section */
-    border: 1px solid #dee2e6; /* Thin grey border */
-    border-radius: 8px; /* Rounded corners */
-    height: 100%; /* Ensures all boxes are same height */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Optional: dynamic look */
+    background-color: #fff;
+    border: 1px solid #dee2e6; 
+    border-radius: 8px;
+    height: 100%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
 .how-it-works-col h4 {
