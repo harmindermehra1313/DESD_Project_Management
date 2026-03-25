@@ -69,19 +69,7 @@ a {
     border-color:var(--ink-black);
     color: #fff;
 }
-/* Button Focus */
-.btn-primary:focus,
-.btn-primary:active,
-.btn-primary:focus-visible {
-    background-color: var(--ink-black);
-    border-color: var(--ink-black);
-    box-shadow: 0 0 0 0.2rem rgba(55, 82, 111, 0.22);
-}
 
-.btn-primary:not(:disabled):not(.disabled):active {
-    background-color: var(--ink-black);
-    border-color: var(--ink-black);
-}
 
 /* Cards */
 .card {

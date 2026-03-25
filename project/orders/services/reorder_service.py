@@ -33,7 +33,7 @@ from rest_framework.exceptions import ValidationError
 
 from carts.services import CartOwner, cart_add_item_for_owner, _get_effective_unit_price
 from orders.models import Order
-from orders.selectors import get_order_detail_for_user
+from orders.selectors import get_order_detail_for_user, get_reorder_suggestion_inventories
 
 User = get_user_model()
 
@@ -91,7 +91,117 @@ def _inventory_reorderable(inventory):
         return False, "Product batch has expired."
 
     return True, None
+def _serialize_wholesale_tier(tier):
+    if not tier:
+        return None
 
+    return {
+        "min_quantity": tier.min_quantity,
+        "unit_price": tier.unit_price,
+    }
+
+def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
+    product = inventory.product
+    evaluated_quantity = min(requested_quantity, inventory.remaining_quantity)
+
+    base_unit_price = product.price
+
+    surplus_active = (
+        inventory.surplus_status == inventory.SurplusStatus.SURPLUS_ACTIVE
+    )
+    surplus_unit_price = (
+        inventory.get_discounted_price() if surplus_active else None
+    )
+
+    wholesale_qs = product.product_wholesale.order_by("min_quantity")
+    matched_wholesale_tier = (
+        wholesale_qs.filter(min_quantity__lte=evaluated_quantity)
+        .order_by("-min_quantity")
+        .first()
+    )
+    next_wholesale_tier = (
+        wholesale_qs.filter(min_quantity__gt=evaluated_quantity)
+        .order_by("min_quantity")
+        .first()
+    )
+
+    wholesale_unit_price = (
+        matched_wholesale_tier.unit_price if matched_wholesale_tier else None
+    )
+
+    effective_unit_price = _get_effective_unit_price(
+        inventory_id=inventory.pk,
+        qty=evaluated_quantity,
+    )
+
+    if surplus_active and wholesale_unit_price is not None:
+        pricing_source = (
+            "surplus"
+            if effective_unit_price == surplus_unit_price
+            else "wholesale"
+        )
+    elif surplus_active:
+        pricing_source = "surplus"
+    elif wholesale_unit_price is not None:
+        pricing_source = "wholesale"
+    else:
+        pricing_source = "base"
+
+    return {
+        "base_unit_price": base_unit_price,
+        "effective_unit_price": effective_unit_price,
+        "pricing_source": pricing_source,
+        "surplus": {
+            "is_active": surplus_active,
+            "discount_percentage": inventory.surplus_discount_percentage if surplus_active else None,
+            "discounted_unit_price": surplus_unit_price,
+        },
+        "wholesale": {
+            "has_wholesale_tiers": product.product_wholesale.exists(),
+            "active_for_quantity": matched_wholesale_tier is not None,
+            "evaluated_quantity": evaluated_quantity,
+            "matched_tier": _serialize_wholesale_tier(matched_wholesale_tier),
+            "next_tier": _serialize_wholesale_tier(next_wholesale_tier),
+        },
+    }
+
+
+def _build_suggested_items(*, product, original_producer_id: int, requested_quantity: int) -> list[dict]:
+    suggestion_inventories = get_reorder_suggestion_inventories(
+        source_product=product,
+        original_producer_id=original_producer_id,
+        limit=3,
+    )
+
+    match_basis = "product_type" if getattr(product, "product_type_id", None) else "category"
+    suggestions: list[dict] = []
+
+    for inventory in suggestion_inventories:
+        suggested_product = inventory.product
+        pricing = _build_pricing_context(
+            inventory=inventory,
+            requested_quantity=requested_quantity,
+        )
+
+        suggestions.append(
+            {
+                "product_id": suggested_product.pk,
+                "product_name": suggested_product.name,
+                "producer_id": suggested_product.producer_id,
+                "producer_name": suggested_product.producer.farm_name,
+                "inventory_id": inventory.pk,
+                "available_quantity": inventory.remaining_quantity,
+                "current_price": pricing["effective_unit_price"],  # keep for compatibility
+                "pricing": pricing,
+                "category_id": suggested_product.category_id,
+                "category_name": suggested_product.category.name,
+                "product_type_id": getattr(suggested_product, "product_type_id", None),
+                "product_type_name": getattr(getattr(suggested_product, "product_type", None), "name", None),
+                "match_basis": match_basis,
+            }
+        )
+
+    return suggestions
 
 @transaction.atomic
 def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
@@ -191,7 +301,13 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
         inventory = item.inventory
         requested_quantity = item.quantity
         producer_name = item.producer.farm_name
-
+        # Suggested Items
+        suggested_items = _build_suggested_items(
+            product=product,
+            original_producer_id=item.producer_id,
+            requested_quantity=requested_quantity,
+        )
+        
         # Check whether the product itself is still reorderable.
         # Example failures:
         # - unpublished product
@@ -206,6 +322,7 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                     "producer_name": producer_name,
                     "requested_quantity": requested_quantity,
                     "reason": reason,
+                    "suggested_items": suggested_items,
                 }
             )
             continue
@@ -223,6 +340,7 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                     "producer_name": producer_name,
                     "requested_quantity": requested_quantity,
                     "reason": inventory_reason,
+                    "suggested_items": suggested_items,
                 }
             )
             continue
@@ -240,16 +358,27 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                     "producer_name": producer_name,
                     "requested_quantity": requested_quantity,
                     "reason": "Product batch is out of stock.",
+                    "suggested_items": suggested_items,
                 }
             )
             continue
 
         quantity_to_add = min(requested_quantity, available_quantity)
-
-        current_unit_price = _get_effective_unit_price(
-            inventory_id=inventory.pk,
-            qty=quantity_to_add,
+        if quantity_to_add < requested_quantity:
+            result["quantity_adjusted_items"].append(
+                {
+                    "product_id": product.pk,
+                    "product_name": product.name,
+                    "requested_quantity": requested_quantity,
+                    "added_quantity": quantity_to_add,
+                    "reason": "Available quantity is lower than originally ordered quantity.",
+                }
+            )
+        pricing = _build_pricing_context(
+            inventory=inventory,
+            requested_quantity=quantity_to_add,
         )
+        current_unit_price = pricing["effective_unit_price"]
 
         if item.original_unit_price != current_unit_price:
             result["price_changed_items"].append(
@@ -258,6 +387,9 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                     "product_name": product.name,
                     "original_price": item.original_unit_price,
                     "current_price": current_unit_price,
+                    "pricing_source": pricing["pricing_source"],
+                    "surplus_active": pricing["surplus"]["is_active"],
+                    "wholesale_active_for_quantity": pricing["wholesale"]["active_for_quantity"],
                 }
             )
 
@@ -270,6 +402,8 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                 "requested_quantity": requested_quantity,
                 "added_quantity": quantity_to_add,
                 "current_price": current_unit_price,
+                "pricing": pricing,
+                "suggested_items": suggested_items,
             }
         )
 
@@ -309,6 +443,7 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                         "producer_name": producer_name,
                         "requested_quantity": requested_quantity,
                         "reason": str(exc),
+                        "suggested_items": suggested_items,
                     }
                 )
 
