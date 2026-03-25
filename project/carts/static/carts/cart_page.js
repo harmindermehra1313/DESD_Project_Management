@@ -138,13 +138,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const isOutOfStock = stockQty <= 0;
 
     const row = document.createElement("div");
-    row.className =
-      "cart-row border rounded p-3 mb-3 d-flex gap-3 align-items-start";
+    row.className = "cart-row mb-3";
     row.dataset.itemId = String(itemId ?? "");
-    // row.dataset.productId = String(productId ?? "");
     row.dataset.inventoryId = String(item.inventory_id ?? "");
 
-    // image (always render, always fallback)
+    // image
     const placeholder =
       cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
 
@@ -155,80 +153,78 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const imgWrap = document.createElement("div");
-    imgWrap.className = "bg-light rounded flex-shrink-0 overflow-hidden";
-    imgWrap.style.width = "64px";
-    imgWrap.style.height = "64px";
+    imgWrap.className = "cart-thumb-wrap";
 
     imgWrap.innerHTML = `
   <img
+    class="cart-thumb"
     src="${imgSrc}"
     alt="${name}"
-    style="width:100%;height:100%;object-fit:cover;"
     loading="lazy"
     onerror="this.onerror=null;this.src='${placeholder}';"
   >
 `;
 
-    // meta (name + producer + badges)
+    // meta
     const meta = document.createElement("div");
+    meta.className = "cart-meta";
     meta.innerHTML = `
-      <div class="fw-semibold d-flex flex-wrap align-items-center gap-2">
-        <span>${name}</span>
-        ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-         ${isWholesale ? `<span class="badge text-bg-success">Wholesale</span>` : ""}
-       ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
-      </div>
-      ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
-      ${
-        isWholesale
-          ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
-          : ``
-      }
-      ${
-        isSurplus
-          ? `<div class="small text-danger mt-1">
-               Surplus reduction: you save ${money(surplusSavingsTotal)}
-             </div>
-             ${
-               hasMeaningfulNote(surplusNote)
-                 ? `<div class="text-muted small">${surplusNote}</div>`
-                 : ``
-             }`
-          : ``
-      }
-    `;
+  <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
+    <span>${name}</span>
+    ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
+    ${isWholesale ? `<span class="badge text-bg-success">Wholesale</span>` : ""}
+    ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
+  </div>
+  ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+  ${
+    isWholesale
+      ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
+      : ``
+  }
+  ${
+    isSurplus
+      ? `<div class="small text-danger mt-1">
+           Surplus reduction: you save ${money(surplusSavingsTotal)}
+         </div>
+         ${
+           hasMeaningfulNote(surplusNote)
+             ? `<div class="text-muted small">${surplusNote}</div>`
+             : ``
+         }`
+      : ``
+  }
+`;
 
-    // qty editor + unit label
+    // qty
     const qtyWrap = document.createElement("div");
-    qtyWrap.className = "d-flex align-items-center gap-2";
+    qtyWrap.className = "cart-qty";
 
     const minus = document.createElement("button");
     minus.type = "button";
-    minus.className = "btn btn-outline-secondary btn-sm";
+    minus.className = "qty-btn";
     minus.textContent = "−";
 
     const qtyInput = document.createElement("input");
     qtyInput.type = "text";
-    qtyInput.className = "form-control form-control-sm text-center";
-    qtyInput.style.width = "72px";
+    qtyInput.className = "qty-input";
     qtyInput.value = String(qty);
     qtyInput.inputMode = "numeric";
     qtyInput.autocomplete = "off";
 
     const plus = document.createElement("button");
     plus.type = "button";
-    plus.className = "btn btn-outline-secondary btn-sm";
+    plus.className = "qty-btn";
     plus.textContent = "+";
 
     const unitLabel = document.createElement("span");
-    unitLabel.className = "text-muted small";
+    unitLabel.className = "cart-unit";
     unitLabel.textContent = unitLabelText;
 
     qtyWrap.append(minus, qtyInput, plus, unitLabel);
 
-    // prices (professional: show was->now when wholesale)
+    // prices
     const prices = document.createElement("div");
-    prices.className = "text-end";
+    prices.className = "cart-prices";
     const showWasNow =
       (isWholesale || isSurplus) &&
       baseUnitPrice > 0 &&
@@ -237,22 +233,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     prices.innerHTML = showWasNow
       ? `
-        <div class="small text-muted">
-          Unit:
-          <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
-          <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
-        </div>
-        <div class="fw-semibold">Line: ${money(lineTotal)}</div>
-      `
+    <div class="small text-muted">
+      Unit:
+      <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
+      <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
+    </div>
+    <div class="fw-semibold">Line: ${money(lineTotal)}</div>
+  `
       : `
-        <div class="small text-muted">Unit: ${money(unitPrice)}</div>
-        <div class="fw-semibold">Line: ${money(lineTotal)}</div>
-      `;
+    <div class="small text-muted">Unit: ${money(unitPrice)}</div>
+    <div class="fw-semibold">Line: ${money(lineTotal)}</div>
+  `;
 
     // remove
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
-    removeBtn.className = "btn btn-outline-danger btn-sm";
+    removeBtn.className = "btn btn-outline-danger btn-sm cart-remove-btn";
     removeBtn.textContent = "Remove";
 
     function setDisabled(disabled) {
@@ -274,7 +270,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const q = clampQty(newQty);
       setDisabled(true);
       try {
-        // await window.CartAPI.setItemQuantity({ productId, quantity: q });
         await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
         window.CartAPI.showToast?.(`Updated quantity to ${q}`, {
           title: "Cart",
@@ -306,7 +301,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       setDisabled(true);
       try {
-        // await window.CartAPI.removeItem({ productId });
         await window.CartAPI.removeItem({ inventoryId });
         window.CartAPI.showToast?.(`Removed “${name}”`, {
           title: "Cart",
