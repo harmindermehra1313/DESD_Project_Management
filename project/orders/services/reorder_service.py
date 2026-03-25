@@ -31,7 +31,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from carts.services import CartOwner, cart_add_item_for_owner, _get_effective_unit_price
+from carts.services import CartOwner, _get_effective_unit_price, cart_add_item_for_owner
 from orders.models import Order
 from orders.selectors import get_order_detail_for_user, get_reorder_suggestion_inventories
 
@@ -91,6 +91,8 @@ def _inventory_reorderable(inventory):
         return False, "Product batch has expired."
 
     return True, None
+
+
 def _serialize_wholesale_tier(tier):
     if not tier:
         return None
@@ -100,18 +102,15 @@ def _serialize_wholesale_tier(tier):
         "unit_price": tier.unit_price,
     }
 
+
 def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
     product = inventory.product
     evaluated_quantity = min(requested_quantity, inventory.remaining_quantity)
 
     base_unit_price = product.price
 
-    surplus_active = (
-        inventory.surplus_status == inventory.SurplusStatus.SURPLUS_ACTIVE
-    )
-    surplus_unit_price = (
-        inventory.get_discounted_price() if surplus_active else None
-    )
+    surplus_active = inventory.surplus_status == inventory.SurplusStatus.SURPLUS_ACTIVE
+    surplus_unit_price = inventory.get_discounted_price() if surplus_active else None
 
     wholesale_qs = product.product_wholesale.order_by("min_quantity")
     matched_wholesale_tier = (
@@ -125,9 +124,7 @@ def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
         .first()
     )
 
-    wholesale_unit_price = (
-        matched_wholesale_tier.unit_price if matched_wholesale_tier else None
-    )
+    wholesale_unit_price = matched_wholesale_tier.unit_price if matched_wholesale_tier else None
 
     effective_unit_price = _get_effective_unit_price(
         inventory_id=inventory.pk,
@@ -166,15 +163,31 @@ def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
     }
 
 
-def _build_suggested_items(*, product, original_producer_id: int, requested_quantity: int) -> list[dict]:
+def _get_match_basis_for_product(product) -> str:
+    return "product_type" if getattr(product, "product_type_id", None) else "category"
+
+
+def _build_suggestion_candidates(
+    *,
+    product,
+    original_producer_id: int,
+    requested_quantity: int,
+) -> list[dict]:
+    """
+    Build live alternative candidates for one historical order item.
+
+    Each returned entry keeps both:
+    - ORM objects needed for commit-time cart mutation
+    - a serialised payload suitable for preview UI rendering
+    """
     suggestion_inventories = get_reorder_suggestion_inventories(
         source_product=product,
         original_producer_id=original_producer_id,
         limit=3,
     )
 
-    match_basis = "product_type" if getattr(product, "product_type_id", None) else "category"
-    suggestions: list[dict] = []
+    match_basis = _get_match_basis_for_product(product)
+    candidates: list[dict] = []
 
     for inventory in suggestion_inventories:
         suggested_product = inventory.product
@@ -183,28 +196,213 @@ def _build_suggested_items(*, product, original_producer_id: int, requested_quan
             requested_quantity=requested_quantity,
         )
 
-        suggestions.append(
+        candidates.append(
             {
-                "product_id": suggested_product.pk,
-                "product_name": suggested_product.name,
-                "producer_id": suggested_product.producer_id,
-                "producer_name": suggested_product.producer.farm_name,
-                "inventory_id": inventory.pk,
+                "product": suggested_product,
+                "inventory": inventory,
                 "available_quantity": inventory.remaining_quantity,
-                "current_price": pricing["effective_unit_price"],  # keep for compatibility
-                "pricing": pricing,
-                "category_id": suggested_product.category_id,
-                "category_name": suggested_product.category.name,
-                "product_type_id": getattr(suggested_product, "product_type_id", None),
-                "product_type_name": getattr(getattr(suggested_product, "product_type", None), "name", None),
                 "match_basis": match_basis,
+                "serialized": {
+                    "product_id": suggested_product.pk,
+                    "product_name": suggested_product.name,
+                    "producer_id": suggested_product.producer_id,
+                    "producer_name": suggested_product.producer.farm_name,
+                    "inventory_id": inventory.pk,
+                    "available_quantity": inventory.remaining_quantity,
+                    "current_price": pricing["effective_unit_price"],
+                    "pricing": pricing,
+                    "category_id": suggested_product.category_id,
+                    "category_name": suggested_product.category.name,
+                    "product_type_id": getattr(suggested_product, "product_type_id", None),
+                    "product_type_name": getattr(
+                        getattr(suggested_product, "product_type", None),
+                        "name",
+                        None,
+                    ),
+                    "match_basis": match_basis,
+                },
             }
         )
 
-    return suggestions
+    return candidates
+
+
+def _serialise_suggested_items_from_candidates(suggestion_candidates: list[dict]) -> list[dict]:
+    return [candidate["serialized"] for candidate in suggestion_candidates]
+
+
+def _build_original_candidate(*, item) -> tuple[dict | None, str | None]:
+    """
+    Build the original-product candidate for one order item if it is still live.
+
+    Returns:
+        tuple[candidate | None, reason | None]
+    """
+    product = item.product
+    inventory = item.inventory
+
+    reorderable, reason = _product_reorderable(product)
+    if not reorderable:
+        return None, reason
+
+    inventory_ok, inventory_reason = _inventory_reorderable(inventory)
+    if not inventory_ok:
+        return None, inventory_reason
+
+    available_quantity = inventory.remaining_quantity
+    if available_quantity <= 0:
+        return None, "Product batch is out of stock."
+
+    return (
+        {
+            "product": product,
+            "inventory": inventory,
+            "available_quantity": available_quantity,
+            "match_basis": "original",
+        },
+        None,
+    )
+
+
+def _build_selection_map(*, order, selections: list[dict] | None) -> dict[int, dict]:
+    """
+    Validate selection references and return them keyed by order_item_id.
+    """
+    if not selections:
+        return {}
+
+    valid_item_ids = {item.pk for item in order.items.all()}
+    selection_map: dict[int, dict] = {}
+
+    for selection in selections:
+        order_item_id = selection["order_item_id"]
+
+        if order_item_id not in valid_item_ids:
+            raise ValidationError(
+                {
+                    "selections": [
+                        f"Order item {order_item_id} does not belong to this order."
+                    ]
+                }
+            )
+
+        if order_item_id in selection_map:
+            raise ValidationError(
+                {
+                    "selections": [
+                        f"Duplicate selection received for order item {order_item_id}."
+                    ]
+                }
+            )
+
+        selection_map[order_item_id] = selection
+
+    return selection_map
+
+
+def _resolve_candidate_for_item(
+    *,
+    item,
+    selection: dict | None,
+    original_candidate: dict | None,
+    suggestion_candidates: list[dict],
+) -> tuple[dict | None, str | None, int | None]:
+    """
+    Resolve which live candidate should be used for one order item.
+
+    Returns:
+        tuple[candidate | None, rejection_reason | None, requested_quantity | None]
+    """
+    if selection is None:
+        if original_candidate is None:
+            return None, None, None
+        return original_candidate, None, item.quantity
+
+    action = selection["action"]
+
+    if action == "skip":
+        return None, "skipped", None
+
+    if action == "keep":
+        if original_candidate is None:
+            return None, "The original product is no longer available for reorder.", None
+
+        selected_product_id = selection.get("selected_product_id")
+        selected_inventory_id = selection.get("inventory_id")
+
+        if selected_product_id is not None and selected_product_id != original_candidate["product"].pk:
+            return None, "Selected product does not match the original reorder item.", None
+
+        if selected_inventory_id is not None and selected_inventory_id != original_candidate["inventory"].pk:
+            return None, "Selected inventory does not match the original reorder item.", None
+
+        return original_candidate, None, selection["quantity"]
+
+    if action == "replace":
+        selected_product_id = selection.get("selected_product_id")
+        selected_inventory_id = selection.get("inventory_id")
+
+        for candidate in suggestion_candidates:
+            if (
+                candidate["product"].pk == selected_product_id
+                and candidate["inventory"].pk == selected_inventory_id
+            ):
+                return candidate, None, selection["quantity"]
+
+        return None, "Selected replacement is not a valid suggestion for this order item.", None
+
+    return None, "Unsupported reorder action.", None
+
+
+def _append_unavailable_item(
+    *,
+    result: dict,
+    item,
+    reason: str,
+    requested_quantity: int,
+    suggested_items: list[dict],
+) -> None:
+    result["unavailable_items"].append(
+        {
+            "order_item_id": item.pk,
+            "product_id": item.product.pk,
+            "product_name": item.product.name,
+            "producer_id": item.producer_id,
+            "producer_name": item.producer.farm_name,
+            "requested_quantity": requested_quantity,
+            "reason": reason,
+            "suggested_items": suggested_items,
+        }
+    )
+
+
+def _append_producer_changed_item(*, result: dict, item, selected_candidate: dict) -> None:
+    selected_product = selected_candidate["product"]
+
+    if selected_product.producer_id == item.producer_id:
+        return
+
+    result["producer_changed_items"].append(
+        {
+            "order_item_id": item.pk,
+            "product_id": selected_product.pk,
+            "product_name": selected_product.name,
+            "original_producer_id": item.producer_id,
+            "original_producer_name": item.producer.farm_name,
+            "current_producer_id": selected_product.producer_id,
+            "current_producer_name": selected_product.producer.farm_name,
+        }
+    )
+
 
 @transaction.atomic
-def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
+def reorder_order(
+    *,
+    user: User,
+    order_id: int,
+    commit: bool = True,
+    selections: list[dict] | None = None,
+) -> dict:
     """
     Preview or execute a reorder for a previously completed order.
 
@@ -217,6 +415,7 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
     - inspect each historical order item one by one
     - validate whether the product can still be reordered
     - validate whether the original inventory batch is still valid
+    - optionally apply user-provided replacement and quantity selections
     - check current stock availability
     - record any price changes
     - record any quantity reductions caused by lower stock
@@ -230,152 +429,97 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
             Primary key of the historical order to reorder from.
         commit:
             Controls whether this call is a preview or a real reorder.
-
-            - ``False``:
-              Preview mode only. No cart mutation happens.
-              Valid items are returned in ``addable_items``.
-            - ``True``:
-              Confirm mode. Valid items are added to cart and returned
-              in ``added_items``.
+        selections:
+            Optional frontend-provided user choices keyed by order item.
+            Each entry may keep the original product, choose a suggested
+            replacement, or skip the item entirely.
 
     Returns:
         dict:
             A structured response describing the reorder outcome.
-
-            Keys:
-            - ``addable_items``:
-                Items that are eligible to be reordered based on the
-                current product/inventory state. Used mainly for preview.
-            - ``added_items``:
-                Items actually added to cart during commit mode.
-            - ``unavailable_items``:
-                Items that could not be reordered, with reasons.
-            - ``quantity_adjusted_items``:
-                Items whose reorder quantity had to be reduced because
-                current stock is lower than the original ordered quantity.
-            - ``price_changed_items``:
-                Items whose current price differs from the original order price.
-            - ``producer_changed_items``:
-                Reserved for future producer-change handling.
-            - ``message``:
-                A summary message describing the overall result.
-
-    Raises:
-        ValidationError:
-            Raised when the order is not eligible for reorder, such as when
-            it is not in completed status.
-        Order.DoesNotExist:
-            Propagated if the order does not belong to the user or does not exist.
-
-    Transaction behaviour:
-        The function is wrapped in ``transaction.atomic`` so that cart updates
-        are executed safely as one database transaction in commit mode.
     """
-    # Fetch the full order detail for this user.
-    # This also enforces ownership at the selector level.
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
-    # Only completed orders are allowed to be reordered.
-    # Pending, cancelled, or in-progress orders must be rejected.
     if order.status != Order.Status.COMPLETED:
         raise ValidationError("This order cannot be reordered.")
 
-    # Build the cart owner object once so it can be reused
-    # for each valid item during commit mode.
     owner = CartOwner(user_id=user.id)
+    selection_map = _build_selection_map(order=order, selections=selections)
 
-    # Structured response payload used by both preview and commit flows.
     result = {
         "addable_items": [],
         "added_items": [],
         "unavailable_items": [],
         "quantity_adjusted_items": [],
         "price_changed_items": [],
-        "producer_changed_items": [],  # reserved for future enhancement
+        "producer_changed_items": [],
         "message": "",
     }
 
-    # Process each historical order item independently.
+    skipped_count = 0
+
     for item in order.items.all():
-        product = item.product
-        inventory = item.inventory
-        requested_quantity = item.quantity
-        producer_name = item.producer.farm_name
-        # Suggested Items
-        suggested_items = _build_suggested_items(
-            product=product,
+        suggestion_candidates = _build_suggestion_candidates(
+            product=item.product,
             original_producer_id=item.producer_id,
-            requested_quantity=requested_quantity,
+            requested_quantity=item.quantity,
         )
-        
-        # Check whether the product itself is still reorderable.
-        # Example failures:
-        # - unpublished product
-        # - product marked unavailable
-        reorderable, reason = _product_reorderable(product)
-        if not reorderable:
-            result["unavailable_items"].append(
-                {
-                    "product_id": product.pk,
-                    "product_name": product.name,
-                    "producer_id": item.producer_id,
-                    "producer_name": producer_name,
-                    "requested_quantity": requested_quantity,
-                    "reason": reason,
-                    "suggested_items": suggested_items,
-                }
+        suggested_items = _serialise_suggested_items_from_candidates(suggestion_candidates)
+
+        original_candidate, original_unavailable_reason = _build_original_candidate(item=item)
+        selection = selection_map.get(item.pk)
+
+        if selection is None and original_candidate is None:
+            _append_unavailable_item(
+                result=result,
+                item=item,
+                reason=original_unavailable_reason or "Product cannot be reordered.",
+                requested_quantity=item.quantity,
+                suggested_items=suggested_items,
             )
             continue
 
-        # Check whether the historical inventory batch is still valid.
-        # Example failures:
-        # - expired batch
-        inventory_ok, inventory_reason = _inventory_reorderable(inventory)
-        if not inventory_ok:
-            result["unavailable_items"].append(
-                {
-                    "product_id": product.pk,
-                    "product_name": product.name,
-                    "producer_id": item.producer_id,
-                    "producer_name": producer_name,
-                    "requested_quantity": requested_quantity,
-                    "reason": inventory_reason,
-                    "suggested_items": suggested_items,
-                }
+        selected_candidate, rejection_reason, selected_quantity = _resolve_candidate_for_item(
+            item=item,
+            selection=selection,
+            original_candidate=original_candidate,
+            suggestion_candidates=suggestion_candidates,
+        )
+
+        if rejection_reason == "skipped":
+            skipped_count += 1
+            continue
+
+        if selected_candidate is None:
+            _append_unavailable_item(
+                result=result,
+                item=item,
+                reason=rejection_reason or original_unavailable_reason or "Product cannot be reordered.",
+                requested_quantity=selected_quantity or item.quantity,
+                suggested_items=suggested_items,
             )
             continue
 
-        # Read the live remaining stock from the inventory batch.
-        available_quantity = inventory.remaining_quantity
-
-        # If no stock remains at all, the item cannot be reordered.
-        if available_quantity <= 0:
-            result["unavailable_items"].append(
-                {
-                    "product_id": product.pk,
-                    "product_name": product.name,
-                    "producer_id": item.producer_id,
-                    "producer_name": producer_name,
-                    "requested_quantity": requested_quantity,
-                    "reason": "Product batch is out of stock.",
-                    "suggested_items": suggested_items,
-                }
-            )
-            continue
-
+        selected_product = selected_candidate["product"]
+        selected_inventory = selected_candidate["inventory"]
+        requested_quantity = selected_quantity or item.quantity
+        available_quantity = selected_candidate["available_quantity"]
         quantity_to_add = min(requested_quantity, available_quantity)
+
         if quantity_to_add < requested_quantity:
             result["quantity_adjusted_items"].append(
                 {
-                    "product_id": product.pk,
-                    "product_name": product.name,
+                    "order_item_id": item.pk,
+                    "product_id": selected_product.pk,
+                    "product_name": selected_product.name,
                     "requested_quantity": requested_quantity,
                     "added_quantity": quantity_to_add,
-                    "reason": "Available quantity is lower than originally ordered quantity.",
+                    "reason": "Available quantity is lower than the requested reorder quantity.",
                 }
             )
+
         pricing = _build_pricing_context(
-            inventory=inventory,
+            inventory=selected_inventory,
             requested_quantity=quantity_to_add,
         )
         current_unit_price = pricing["effective_unit_price"]
@@ -383,8 +527,9 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
         if item.original_unit_price != current_unit_price:
             result["price_changed_items"].append(
                 {
-                    "product_id": product.pk,
-                    "product_name": product.name,
+                    "order_item_id": item.pk,
+                    "product_id": selected_product.pk,
+                    "product_name": selected_product.name,
                     "original_price": item.original_unit_price,
                     "current_price": current_unit_price,
                     "pricing_source": pricing["pricing_source"],
@@ -393,80 +538,78 @@ def reorder_order(*, user: User, order_id: int, commit: bool = True) -> dict:
                 }
             )
 
+        _append_producer_changed_item(
+            result=result,
+            item=item,
+            selected_candidate=selected_candidate,
+        )
+
         result["addable_items"].append(
             {
-                "product_id": product.pk,
-                "product_name": product.name,
-                "producer_id": item.producer_id,
-                "producer_name": producer_name,
+                "order_item_id": item.pk,
+                "product_id": selected_product.pk,
+                "product_name": selected_product.name,
+                "producer_id": selected_product.producer_id,
+                "producer_name": selected_product.producer.farm_name,
                 "requested_quantity": requested_quantity,
                 "added_quantity": quantity_to_add,
+                "inventory_id": selected_inventory.pk,
+                "available_quantity": available_quantity,
                 "current_price": current_unit_price,
                 "pricing": pricing,
+                "match_basis": selected_candidate["match_basis"],
                 "suggested_items": suggested_items,
             }
         )
 
-        # Only perform the actual cart mutation in commit mode.
         if commit:
             try:
                 cart_add_item_for_owner(
                     owner=owner,
-                    inventory_id=inventory.pk,
+                    inventory_id=selected_inventory.pk,
                     quantity=quantity_to_add,
                 )
 
-                # Record successful cart additions separately from preview items.
                 result["added_items"].append(
                     {
-                        "product_id": product.pk,
-                        "product_name": product.name,
-                        "producer_id": item.producer_id,
-                        "producer_name": producer_name,
+                        "order_item_id": item.pk,
+                        "product_id": selected_product.pk,
+                        "product_name": selected_product.name,
+                        "producer_id": selected_product.producer_id,
+                        "producer_name": selected_product.producer.farm_name,
                         "requested_quantity": requested_quantity,
                         "added_quantity": quantity_to_add,
-                        "inventory_id": inventory.pk,
+                        "inventory_id": selected_inventory.pk,
                     }
                 )
-
             except ValidationError as exc:
-                # Cart-level validation can still fail even after earlier checks.
-                # Example:
-                # - producer/cart rules
-                # - cart state restrictions
-                # - quantity/business validation inside cart service
-                result["unavailable_items"].append(
-                    {
-                        "product_id": product.pk,
-                        "product_name": product.name,
-                        "producer_id": item.producer_id,
-                        "producer_name": producer_name,
-                        "requested_quantity": requested_quantity,
-                        "reason": str(exc),
-                        "suggested_items": suggested_items,
-                    }
+                _append_unavailable_item(
+                    result=result,
+                    item=item,
+                    reason=str(exc),
+                    requested_quantity=requested_quantity,
+                    suggested_items=suggested_items,
                 )
 
-    # Build summary counts for final messaging.
     addable = len(result["addable_items"])
     added = len(result["added_items"])
     unavailable = len(result["unavailable_items"])
 
-    # Preview mode:
-    # no cart mutation happened, so the message should describe preview outcome.
     if not commit:
         if addable:
             result["message"] = "Preview generated successfully."
+        elif skipped_count and unavailable == 0:
+            result["message"] = "No items selected for reorder preview."
         else:
             result["message"] = "No items can be reordered from this order."
         return result
 
-    # Commit mode:
-    # describe actual cart insertion outcome.
     if added and unavailable == 0:
-        result["message"] = "All items successfully added to cart."
+        result["message"] = "All selected items successfully added to cart."
     elif added:
         result["message"] = "Reorder partially completed."
+    elif skipped_count and unavailable == 0:
+        result["message"] = "No items were selected for reorder."
     else:
         result["message"] = "No items could be reordered."
 

@@ -10,6 +10,7 @@ Responsibilities:
 - preview reorder changes without mutating cart
 - execute reorder into cart
 - validate and parse query-string filter values
+- validate reorder request payloads
 - convert missing-order cases into HTTP 404 responses
 """
 
@@ -28,6 +29,7 @@ from orders.api.serializers.reorders import (
     OrderDetailSerializer,
     OrderHistorySerializer,
     ReorderResponseSerializer,
+    ReorderSelectionRequestSerializer,
 )
 from orders.selectors import get_order_detail_for_user, get_order_history_for_user
 from orders.services.reorder_service import reorder_order
@@ -110,9 +112,9 @@ class OrderHistoryApiView(generics.ListAPIView):
             raise ValidationError({"end_date": ["End date cannot be in the future."]})
 
         if start_date and end_date and start_date > end_date:
-            raise ValidationError({
-                "date_range": ["Start date must be earlier than or equal to end date."]
-            })
+            raise ValidationError(
+                {"date_range": ["Start date must be earlier than or equal to end date."]}
+            )
 
         return get_order_history_for_user(
             user=self.request.user,
@@ -153,13 +155,22 @@ class BaseReorderApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ReorderThrottle]
     commit = False
+    request_serializer_class = ReorderSelectionRequestSerializer
+
+    def _get_validated_selections(self, request) -> list[dict] | None:
+        serializer = self.request_serializer_class(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data.get("selections")
 
     def post(self, request, order_id: int, *args, **kwargs):
+        selections = self._get_validated_selections(request)
+
         try:
             result = reorder_order(
                 user=request.user,
                 order_id=order_id,
                 commit=self.commit,
+                selections=selections,
             )
         except ValidationError:
             raise
@@ -173,6 +184,10 @@ class BaseReorderApiView(APIView):
 class ReorderPreviewApiView(BaseReorderApiView):
     """
     Preview reorder changes without adding anything to the cart.
+
+    This endpoint also accepts an optional selections payload so the
+    frontend can recalculate preview pricing and quantities for the user's
+    current choices.
     """
 
     commit = False
@@ -180,7 +195,7 @@ class ReorderPreviewApiView(BaseReorderApiView):
 
 class ReorderOrderApiView(BaseReorderApiView):
     """
-    Execute reorder and add available items to the cart.
+    Execute reorder and add selected items to the cart.
     """
 
     commit = True

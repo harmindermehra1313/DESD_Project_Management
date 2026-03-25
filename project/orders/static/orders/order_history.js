@@ -12,15 +12,6 @@ const DEFAULT_FILTERS = {
   recurring_only: "",
 };
 
-const REORDER_PREVIEW_FOOTER = `
-  <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-    Cancel
-  </button>
-  <button type="button" class="btn btn-primary" id="confirmReorderBtn">
-    Confirm Reorder
-  </button>
-`;
-
 const REORDER_RESULT_FOOTER = `
   <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
     Close
@@ -36,6 +27,7 @@ let pageSize = 10;
 let detailModal = null;
 let reorderModal = null;
 let pendingReorderOrderId = null;
+let reorderPlannerState = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   const detailModalEl = document.getElementById("orderDetailModal");
@@ -138,6 +130,36 @@ function bindEvents() {
     const confirmBtn = event.target.closest("#confirmReorderBtn");
     if (confirmBtn && pendingReorderOrderId) {
       await confirmReorder(pendingReorderOrderId);
+      return;
+    }
+
+    const qtyMinusBtn = event.target.closest("[data-action='reorder-qty-minus']");
+    if (qtyMinusBtn) {
+      const groupId = qtyMinusBtn.dataset.groupId;
+      changeGroupQuantity(groupId, -1);
+      return;
+    }
+
+    const qtyPlusBtn = event.target.closest("[data-action='reorder-qty-plus']");
+    if (qtyPlusBtn) {
+      const groupId = qtyPlusBtn.dataset.groupId;
+      changeGroupQuantity(groupId, 1);
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    const optionInput = event.target.closest(".js-reorder-option-input");
+    if (optionInput) {
+      const groupId = optionInput.dataset.groupId;
+      const optionKey = optionInput.dataset.optionKey;
+      updateGroupSelectedOption(groupId, optionKey);
+      return;
+    }
+
+    const qtyInput = event.target.closest(".js-reorder-qty-input");
+    if (qtyInput) {
+      const groupId = qtyInput.dataset.groupId;
+      updateGroupQuantity(groupId, qtyInput.value);
     }
   });
 
@@ -294,6 +316,7 @@ function validateDateFilters() {
 
   return true;
 }
+
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -345,6 +368,7 @@ function isReorderAllowed(status) {
   const value = normaliseStatus(status);
   return !value.includes("pending") && !value.includes("cancel");
 }
+
 function isReceiptAllowed(status) {
   const value = normaliseStatus(status);
   return value.includes("completed");
@@ -370,6 +394,7 @@ function getReorderButtonHtml(orderId, status, extraClass = "") {
     </button>
   `;
 }
+
 function getReceiptButtonHtml(orderId, status) {
   const allowed = isReceiptAllowed(status);
 
@@ -395,6 +420,7 @@ function getReceiptButtonHtml(orderId, status) {
     </a>
   `;
 }
+
 function setLoadingState() {
   document.getElementById("orderListLoading")?.classList.remove("d-none");
   document.getElementById("orderListError")?.classList.add("d-none");
@@ -789,32 +815,296 @@ async function openOrderDetails(orderId) {
   }
 }
 
-function resetReorderModal() {
-  const title = document.getElementById("reorderModalTitle");
-  const content = document.getElementById("reorderModalContent");
-  const footer = document.getElementById("reorderModalFooter");
+/* =========================
+   REORDER PLANNER HELPERS
+   ========================= */
 
-  if (title) title.textContent = "Confirm Reorder";
-  if (content) content.innerHTML = "";
-  if (footer) footer.innerHTML = REORDER_PREVIEW_FOOTER;
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
-function setReorderModalLoading() {
-  const title = document.getElementById("reorderModalTitle");
-  const content = document.getElementById("reorderModalContent");
-  const footer = document.getElementById("reorderModalFooter");
-
-  if (title) title.textContent = "Confirm Reorder";
-  if (content) content.innerHTML = `<div class="text-muted">Loading reorder preview...</div>`;
-  if (footer) footer.innerHTML = REORDER_PREVIEW_FOOTER;
+function toNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
-function setReorderSubmittingState() {
-  const confirmBtn = document.getElementById("confirmReorderBtn");
-  if (confirmBtn) {
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = "Reordering...";
+function makeDomSafeId(value) {
+  return String(value || "")
+    .replaceAll(":", "-")
+    .replaceAll(" ", "-")
+    .replaceAll("/", "-")
+    .replaceAll(".", "-");
+}
+
+function clampQuantity(quantity, maxAvailable) {
+  const parsed = Math.max(1, parseInt(quantity, 10) || 1);
+
+  if (maxAvailable === null || maxAvailable === undefined || maxAvailable === "") {
+    return parsed;
   }
+
+  const max = Math.max(1, parseInt(maxAvailable, 10) || 1);
+  return Math.min(parsed, max);
+}
+
+function buildLookupByOrderItemId(items) {
+  const lookup = new Map();
+
+  ensureArray(items).forEach((item) => {
+    if (item && item.order_item_id !== null && item.order_item_id !== undefined) {
+      lookup.set(String(item.order_item_id), item);
+    }
+  });
+
+  return lookup;
+}
+
+function createOptionFromAddableItem(item) {
+  return {
+    key: `keep:${item.product_id}:${item.inventory_id ?? "none"}`,
+    action: "keep",
+    product_id: item.product_id,
+    product_name: item.product_name,
+    producer_id: item.producer_id,
+    producer_name: item.producer_name,
+    inventory_id: item.inventory_id ?? null,
+    available_quantity: item.available_quantity ?? item.added_quantity ?? item.requested_quantity ?? null,
+    current_price: item.current_price,
+    pricing: item.pricing || null,
+    match_basis: item.match_basis || "same_product",
+    source_label: "Original product",
+  };
+}
+
+function createOptionFromSuggestedItem(item) {
+  return {
+    key: `replace:${item.product_id}:${item.inventory_id ?? "none"}`,
+    action: "replace",
+    product_id: item.product_id,
+    product_name: item.product_name,
+    producer_id: item.producer_id,
+    producer_name: item.producer_name,
+    inventory_id: item.inventory_id ?? null,
+    available_quantity: item.available_quantity ?? null,
+    current_price: item.current_price,
+    pricing: item.pricing || null,
+    match_basis: item.match_basis || "",
+    source_label: "Alternative product",
+  };
+}
+
+function createSkipOption(groupId) {
+  return {
+    key: `skip:${groupId}`,
+    action: "skip",
+    product_id: null,
+    product_name: "Skip this item",
+    producer_id: null,
+    producer_name: "",
+    inventory_id: null,
+    available_quantity: null,
+    current_price: 0,
+    pricing: null,
+    match_basis: "",
+    source_label: "Skip",
+  };
+}
+
+function buildReorderPlannerState(orderId, preview) {
+  const quantityAdjustedLookup = buildLookupByOrderItemId(preview.quantity_adjusted_items);
+  const priceChangedLookup = buildLookupByOrderItemId(preview.price_changed_items);
+  const producerChangedLookup = buildLookupByOrderItemId(preview.producer_changed_items);
+
+  const groups = [];
+
+  ensureArray(preview.addable_items).forEach((item, index) => {
+    const groupId = String(item.order_item_id ?? `available-${index}`);
+    const originalRequestedQuantity = toNumber(
+      item.requested_quantity ?? item.added_quantity,
+      1,
+    );
+
+    const originalOption = createOptionFromAddableItem(item);
+    const suggestedOptions = ensureArray(item.suggested_items).map(createOptionFromSuggestedItem);
+
+    groups.push({
+      groupId,
+      orderItemId: item.order_item_id ?? null,
+      kind: "available",
+      original: {
+        product_name: item.product_name,
+        producer_name: item.producer_name,
+        requested_quantity: originalRequestedQuantity,
+        reason: null,
+      },
+      selectedOptionKey: originalOption.key,
+      quantity: clampQuantity(
+        originalRequestedQuantity,
+        originalOption.available_quantity,
+      ),
+      options: [originalOption, ...suggestedOptions],
+      signals: {
+        quantityAdjusted: quantityAdjustedLookup.get(groupId) || null,
+        priceChanged: priceChangedLookup.get(groupId) || null,
+        producerChanged: producerChangedLookup.get(groupId) || null,
+      },
+    });
+  });
+
+  ensureArray(preview.unavailable_items).forEach((item, index) => {
+    const groupId = String(item.order_item_id ?? `unavailable-${index}`);
+    const originalRequestedQuantity = toNumber(item.requested_quantity, 1);
+    const suggestedOptions = ensureArray(item.suggested_items).map(createOptionFromSuggestedItem);
+    const hasSuggestions = suggestedOptions.length > 0;
+    const selectedOption = hasSuggestions ? suggestedOptions[0] : createSkipOption(groupId);
+
+    groups.push({
+      groupId,
+      orderItemId: item.order_item_id ?? null,
+      kind: hasSuggestions ? "needs-choice" : "unavailable",
+      original: {
+        product_name: item.product_name,
+        producer_name: item.producer_name || "",
+        requested_quantity: originalRequestedQuantity,
+        reason: item.reason || "Unavailable",
+      },
+      selectedOptionKey: selectedOption.key,
+      quantity: hasSuggestions
+        ? clampQuantity(originalRequestedQuantity, selectedOption.available_quantity)
+        : 0,
+      options: hasSuggestions
+        ? [...suggestedOptions, createSkipOption(groupId)]
+        : [createSkipOption(groupId)],
+      signals: {
+        quantityAdjusted: quantityAdjustedLookup.get(groupId) || null,
+        priceChanged: priceChangedLookup.get(groupId) || null,
+        producerChanged: producerChangedLookup.get(groupId) || null,
+      },
+    });
+  });
+
+  return {
+    orderId,
+    preview,
+    groups,
+  };
+}
+
+function getGroupById(groupId) {
+  if (!reorderPlannerState) return null;
+  return reorderPlannerState.groups.find((group) => String(group.groupId) === String(groupId)) || null;
+}
+
+function getSelectedOption(group) {
+  if (!group) return null;
+  return group.options.find((option) => option.key === group.selectedOptionKey) || null;
+}
+
+function getPlannerStats() {
+  if (!reorderPlannerState) {
+    return {
+      selectedCount: 0,
+      skippedCount: 0,
+      estimatedSubtotal: 0,
+      actionableCount: 0,
+    };
+  }
+
+  return reorderPlannerState.groups.reduce((stats, group) => {
+    const selectedOption = getSelectedOption(group);
+
+    if (!selectedOption || selectedOption.action === "skip") {
+      stats.skippedCount += 1;
+      return stats;
+    }
+
+    const quantity = clampQuantity(group.quantity, selectedOption.available_quantity);
+    const unitPrice = toNumber(
+      selectedOption.pricing?.effective_unit_price ?? selectedOption.current_price,
+      0,
+    );
+
+    stats.selectedCount += 1;
+    stats.actionableCount += 1;
+    stats.estimatedSubtotal += quantity * unitPrice;
+    return stats;
+  }, {
+    selectedCount: 0,
+    skippedCount: 0,
+    estimatedSubtotal: 0,
+    actionableCount: 0,
+  });
+}
+
+function serializeSelectionsFromState() {
+  if (!reorderPlannerState) return [];
+
+  return reorderPlannerState.groups
+    .map((group) => {
+      const selectedOption = getSelectedOption(group);
+
+      if (!selectedOption || group.orderItemId === null || group.orderItemId === undefined) {
+        return null;
+      }
+
+      if (selectedOption.action === "skip") {
+        return {
+          order_item_id: group.orderItemId,
+          action: "skip",
+        };
+      }
+
+      return {
+        order_item_id: group.orderItemId,
+        action: selectedOption.action,
+        selected_product_id: selectedOption.product_id,
+        inventory_id: selectedOption.inventory_id,
+        quantity: clampQuantity(group.quantity, selectedOption.available_quantity),
+      };
+    })
+    .filter(Boolean);
+}
+
+function updateGroupSelectedOption(groupId, optionKey) {
+  const group = getGroupById(groupId);
+  if (!group) return;
+
+  group.selectedOptionKey = optionKey;
+
+  const selectedOption = getSelectedOption(group);
+  if (!selectedOption) return;
+
+  if (selectedOption.action === "skip") {
+    group.quantity = 0;
+  } else {
+    const fallbackQuantity = group.quantity || group.original.requested_quantity || 1;
+    group.quantity = clampQuantity(fallbackQuantity, selectedOption.available_quantity);
+  }
+
+  updateReorderPlannerUI();
+}
+
+function updateGroupQuantity(groupId, rawValue) {
+  const group = getGroupById(groupId);
+  if (!group) return;
+
+  const selectedOption = getSelectedOption(group);
+  if (!selectedOption || selectedOption.action === "skip") return;
+
+  group.quantity = clampQuantity(rawValue, selectedOption.available_quantity);
+  updateReorderPlannerUI();
+}
+
+function changeGroupQuantity(groupId, delta) {
+  const group = getGroupById(groupId);
+  if (!group) return;
+
+  const selectedOption = getSelectedOption(group);
+  if (!selectedOption || selectedOption.action === "skip") return;
+
+  const current = clampQuantity(group.quantity, selectedOption.available_quantity);
+  group.quantity = clampQuantity(current + delta, selectedOption.available_quantity);
+  updateReorderPlannerUI();
 }
 
 function renderSimpleMessageCard(title, body, className = "alert-info") {
@@ -826,99 +1116,462 @@ function renderSimpleMessageCard(title, body, className = "alert-info") {
   `;
 }
 
-function renderReorderPreview(preview) {
-  const hasChanges =
-    (preview.unavailable_items || []).length ||
-    (preview.quantity_adjusted_items || []).length ||
-    (preview.price_changed_items || []).length ||
-    (preview.producer_changed_items || []).length;
+function renderPlannerSummaryCard() {
+  const stats = getPlannerStats();
+  const previewMessage = reorderPlannerState?.preview?.message || "Review your selections before adding items to cart.";
 
   return `
-    ${renderSimpleMessageCard(
-      hasChanges ? "Please review these changes before confirming." : "No changes detected.",
-      "Only available items will be added to the cart after confirmation.",
-      hasChanges ? "alert-warning" : "alert-success",
-    )}
+    <div class="border rounded p-3 mb-4 bg-light">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <div class="fw-semibold mb-1">Review Reorder</div>
+          <div class="small text-muted">
+            ${escapeHtml(previewMessage)}
+          </div>
+        </div>
+        <div class="text-md-end">
+          <div class="small text-muted">Estimated subtotal</div>
+          <div class="fs-5 fw-bold">${formatMoney(stats.estimatedSubtotal)}</div>
+        </div>
+      </div>
 
-    <div class="mb-4">
-      <h6>Available Items To Be Added</h6>
-      ${(preview.addable_items || []).length
-        ? preview.addable_items.map((item) => `
-            <div class="border rounded p-3 mb-2">
-              <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small text-muted">
-                Producer: ${escapeHtml(item.producer_name)} |
-                Quantity: ${escapeHtml(item.added_quantity)} |
-                Current price: ${formatMoney(item.current_price)}
-              </div>
-            </div>
-          `).join("")
-        : `<div class="text-muted">No items can be added from this order.</div>`}
-    </div>
-
-    <div class="mb-4">
-      <h6>Unavailable Items</h6>
-      ${(preview.unavailable_items || []).length
-        ? preview.unavailable_items.map((item) => `
-            <div class="border border-danger rounded p-3 mb-2 bg-light">
-              <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small text-danger">
-                Producer: ${escapeHtml(item.producer_name || "-")} |
-                Requested: ${escapeHtml(item.requested_quantity)} |
-                Reason: ${escapeHtml(item.reason)}
-              </div>
-            </div>
-          `).join("")
-        : `<div class="text-muted">No unavailable items.</div>`}
-    </div>
-
-    <div class="mb-4">
-      <h6>Quantity Changes</h6>
-      ${(preview.quantity_adjusted_items || []).length
-        ? preview.quantity_adjusted_items.map((item) => `
-            <div class="border border-warning rounded p-3 mb-2 bg-light">
-              <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small">
-                Requested: ${escapeHtml(item.requested_quantity)} |
-                Will add: ${escapeHtml(item.added_quantity)} |
-                Reason: ${escapeHtml(item.reason)}
-              </div>
-            </div>
-          `).join("")
-        : `<div class="text-muted">No quantity changes.</div>`}
-    </div>
-
-    <div class="mb-4">
-      <h6>Price Changes</h6>
-      ${(preview.price_changed_items || []).length
-        ? preview.price_changed_items.map((item) => `
-            <div class="border border-primary rounded p-3 mb-2 bg-light">
-              <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small text-primary">
-                Original price: ${formatMoney(item.original_price)} |
-                Current price: ${formatMoney(item.current_price)}
-              </div>
-            </div>
-          `).join("")
-        : `<div class="text-muted">No price changes.</div>`}
-    </div>
-
-    <div class="mb-0">
-      <h6>Producer Changes</h6>
-      ${(preview.producer_changed_items || []).length
-        ? preview.producer_changed_items.map((item) => `
-            <div class="border border-secondary rounded p-3 mb-2 bg-light">
-              <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small">
-                Previous producer: ${escapeHtml(item.original_producer_name)} |
-                Current producer: ${escapeHtml(item.current_producer_name)}
-              </div>
-            </div>
-          `).join("")
-        : `<div class="text-muted">No producer changes.</div>`}
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <span class="badge text-bg-light border">Selected items: ${escapeHtml(stats.selectedCount)}</span>
+        <span class="badge text-bg-light border">Skipped items: ${escapeHtml(stats.skippedCount)}</span>
+      </div>
     </div>
   `;
 }
+
+function renderPlannerSection(title, subtitle, groups) {
+  if (!groups.length) {
+    return "";
+  }
+
+  return `
+    <div class="mb-4">
+      <div class="mb-3">
+        <h6 class="mb-1">${escapeHtml(title)}</h6>
+        ${subtitle ? `<div class="small text-muted">${escapeHtml(subtitle)}</div>` : ""}
+      </div>
+      ${groups.map((group) => renderPlannerGroup(group)).join("")}
+    </div>
+  `;
+}
+
+function renderMatchBasisLabel(matchBasis) {
+  const value = String(matchBasis || "").replaceAll("_", " ").trim();
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function renderOptionBadges(group, option) {
+  const badges = [];
+
+  if (group.kind === "available" && option.action === "keep") {
+    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">Original product</span>`);
+  }
+
+  if (option.action === "replace") {
+    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">Alternative producer</span>`);
+  }
+
+  if (option.match_basis && option.match_basis !== "same_product") {
+    badges.push(`
+      <span class="badge rounded-pill text-bg-light border me-1 mb-1">
+        ${escapeHtml(renderMatchBasisLabel(option.match_basis))} match
+      </span>
+    `);
+  }
+
+  if (option.pricing?.surplus?.is_active) {
+    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">Surplus</span>`);
+  }
+
+  if (option.pricing?.wholesale?.has_wholesale_tiers) {
+    const label = option.pricing?.wholesale?.active_for_quantity
+      ? "Wholesale active"
+      : "Wholesale available";
+    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">${escapeHtml(label)}</span>`);
+  }
+
+  return badges.join("");
+}
+
+function renderQuantityAdjustmentNotice(signal) {
+  if (!signal) return "";
+
+  return `
+    <div class="small text-warning-emphasis mt-2">
+      Requested ${escapeHtml(signal.requested_quantity)} · available now ${escapeHtml(signal.added_quantity)}.
+      ${escapeHtml(signal.reason || "")}
+    </div>
+  `;
+}
+
+function renderPriceChangeNotice(signal) {
+  if (!signal) return "";
+
+  return `
+    <div class="small text-primary mt-2">
+      Price changed from ${formatMoney(signal.original_price)} to ${formatMoney(signal.current_price)}.
+    </div>
+  `;
+}
+
+function renderProducerChangeNotice(signal) {
+  if (!signal) return "";
+
+  return `
+    <div class="small text-secondary mt-2">
+      Producer change: ${escapeHtml(signal.original_producer_name)} → ${escapeHtml(signal.current_producer_name)}.
+    </div>
+  `;
+}
+
+function renderPricingHelper(option, quantity) {
+  const pricing = option.pricing || {};
+  const wholesale = pricing.wholesale || null;
+
+  if (wholesale?.active_for_quantity) {
+    return `<div class="small text-success mt-1">Wholesale active at this quantity.</div>`;
+  }
+
+  if (wholesale?.has_wholesale_tiers && wholesale?.next_tier?.min_quantity) {
+    const nextTierQuantity = toNumber(wholesale.next_tier.min_quantity, 0);
+    if (nextTierQuantity > quantity) {
+      const difference = nextTierQuantity - quantity;
+      return `
+        <div class="small text-muted mt-1">
+          Add ${escapeHtml(difference)} more to unlock ${formatMoney(wholesale.next_tier.unit_price)} per unit.
+        </div>
+      `;
+    }
+  }
+
+  if (pricing?.surplus?.is_active) {
+    return `<div class="small text-success mt-1">Surplus discount is active for this option.</div>`;
+  }
+
+  return "";
+}
+
+function renderQuantityControls(group, option) {
+  const quantity = clampQuantity(group.quantity, option.available_quantity);
+  const minusDisabled = quantity <= 1 ? "disabled" : "";
+  const plusDisabled = option.available_quantity !== null && option.available_quantity !== undefined
+    ? quantity >= toNumber(option.available_quantity, quantity)
+      ? "disabled"
+      : ""
+    : "";
+
+  const stockNote = option.available_quantity !== null && option.available_quantity !== undefined
+    ? `<div class="small text-muted mt-1">Available now: ${escapeHtml(option.available_quantity)}</div>`
+    : "";
+
+  return `
+    <div class="mt-3 pt-3 border-top">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label small text-muted mb-1">Quantity</label>
+          <div class="input-group">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-action="reorder-qty-minus"
+              data-group-id="${escapeHtml(group.groupId)}"
+              ${minusDisabled}
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min="1"
+              ${option.available_quantity !== null && option.available_quantity !== undefined ? `max="${escapeHtml(option.available_quantity)}"` : ""}
+              class="form-control text-center js-reorder-qty-input"
+              data-group-id="${escapeHtml(group.groupId)}"
+              value="${escapeHtml(quantity)}"
+            >
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-action="reorder-qty-plus"
+              data-group-id="${escapeHtml(group.groupId)}"
+              ${plusDisabled}
+            >
+              +
+            </button>
+          </div>
+          ${stockNote}
+        </div>
+
+        <div class="col-md-8">
+          <div class="small text-muted">Pricing</div>
+          <div class="fw-semibold">
+            ${formatMoney(option.pricing?.effective_unit_price ?? option.current_price)} each
+          </div>
+          <div class="small text-muted">
+            Base: ${formatMoney(option.pricing?.base_unit_price ?? option.current_price)} each
+          </div>
+          ${renderPricingHelper(option, quantity)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderOptionCard(group, option) {
+  const selected = option.key === group.selectedOptionKey;
+  const inputId = `reorder-option-${makeDomSafeId(group.groupId)}-${makeDomSafeId(option.key)}`;
+  const cardClass = selected
+    ? "border-primary shadow-sm"
+    : "border";
+
+  if (group.kind === "unavailable" && option.action === "skip") {
+    return `
+      <div class="border rounded p-3 bg-light">
+        <div class="fw-semibold">No alternative currently available</div>
+        <div class="small text-muted mt-1">
+          This item cannot be reordered right now.
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="rounded p-3 mb-2 ${cardClass}">
+      <div class="form-check">
+        <input
+          class="form-check-input js-reorder-option-input"
+          type="radio"
+          name="reorder-choice-${escapeHtml(group.groupId)}"
+          id="${escapeHtml(inputId)}"
+          data-group-id="${escapeHtml(group.groupId)}"
+          data-option-key="${escapeHtml(option.key)}"
+          ${selected ? "checked" : ""}
+        >
+        <label class="form-check-label d-block" for="${escapeHtml(inputId)}">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+              <div class="fw-semibold">${escapeHtml(option.product_name)}</div>
+              <div class="small text-muted">
+                ${option.producer_name ? `${escapeHtml(option.producer_name)} · ` : ""}${escapeHtml(option.source_label)}
+              </div>
+            </div>
+            <div class="text-md-end">
+              <div class="fw-semibold">
+                ${option.action === "skip" ? "Skip" : formatMoney(option.pricing?.effective_unit_price ?? option.current_price)}
+              </div>
+              ${option.action !== "skip" ? `<div class="small text-muted">per unit</div>` : ""}
+            </div>
+          </div>
+
+          <div class="mt-2">
+            ${renderOptionBadges(group, option)}
+          </div>
+
+          ${option.action !== "skip" ? `
+            <div class="small text-muted mt-2">
+              ${option.available_quantity !== null && option.available_quantity !== undefined
+                ? `Available: ${escapeHtml(option.available_quantity)}`
+                : "Availability not specified"}
+            </div>
+          ` : `
+            <div class="small text-muted mt-2">
+              This item will not be added to the cart.
+            </div>
+          `}
+        </label>
+      </div>
+
+      ${selected && option.action !== "skip" ? renderQuantityControls(group, option) : ""}
+    </div>
+  `;
+}
+
+function renderPlannerGroup(group) {
+  const selectedOption = getSelectedOption(group);
+  const alternativeCount = Math.max(0, group.options.filter((option) => option.action === "replace").length);
+
+  let groupTitle = "Ready to add";
+  let groupSubtitle = "Original product is available.";
+
+  if (group.kind === "needs-choice") {
+    groupTitle = "Choose a replacement";
+    groupSubtitle = "Original product is unavailable. Pick an alternative or skip this item.";
+  } else if (group.kind === "unavailable") {
+    groupTitle = "Not currently available";
+    groupSubtitle = "No alternative product was found.";
+  } else if (alternativeCount > 0) {
+    groupSubtitle = "Original product is available. Alternative producer options are also shown.";
+  }
+
+  return `
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+          <div>
+            <div class="small text-muted">${escapeHtml(groupTitle)}</div>
+            <h6 class="mb-1">${escapeHtml(group.original.product_name)}</h6>
+            <div class="small text-muted">
+              ${group.original.producer_name ? `${escapeHtml(group.original.producer_name)} · ` : ""}Requested quantity: ${escapeHtml(group.original.requested_quantity)}
+            </div>
+            <div class="small text-muted mt-1">${escapeHtml(groupSubtitle)}</div>
+            ${group.original.reason ? `<div class="small text-danger mt-1">Reason: ${escapeHtml(group.original.reason)}</div>` : ""}
+          </div>
+
+          <div class="text-md-end">
+            ${selectedOption && selectedOption.action !== "skip"
+              ? `
+                <div class="small text-muted">Selected</div>
+                <div class="fw-semibold">${escapeHtml(selectedOption.product_name)}</div>
+                <div class="small text-muted">${escapeHtml(selectedOption.producer_name || "")}</div>
+              `
+              : `
+                <div class="small text-muted">Selected</div>
+                <div class="fw-semibold">Skip this item</div>
+              `}
+          </div>
+        </div>
+
+        ${renderQuantityAdjustmentNotice(group.signals.quantityAdjusted)}
+        ${renderPriceChangeNotice(group.signals.priceChanged)}
+        ${renderProducerChangeNotice(group.signals.producerChanged)}
+
+        <div class="mt-3">
+          ${group.options.map((option) => renderOptionCard(group, option)).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReorderPlanner() {
+  if (!reorderPlannerState || !reorderPlannerState.groups.length) {
+    return `
+      ${renderSimpleMessageCard(
+        "No reorderable items found.",
+        "This order does not currently contain any items that can be reordered.",
+        "alert-warning",
+      )}
+    `;
+  }
+
+  const availableGroups = reorderPlannerState.groups.filter((group) => group.kind === "available");
+  const needsChoiceGroups = reorderPlannerState.groups.filter((group) => group.kind === "needs-choice");
+  const unavailableGroups = reorderPlannerState.groups.filter((group) => group.kind === "unavailable");
+
+  return `
+    ${renderPlannerSummaryCard()}
+
+    ${renderPlannerSection(
+      "Ready to add",
+      "These products are still available and are selected by default.",
+      availableGroups,
+    )}
+
+    ${renderPlannerSection(
+      "Choose replacements",
+      "These original products are unavailable, so choose an alternative producer/product or skip them.",
+      needsChoiceGroups,
+    )}
+
+    ${renderPlannerSection(
+      "Not available",
+      "These products currently have no replacement options.",
+      unavailableGroups,
+    )}
+  `;
+}
+
+function getReorderPlannerFooterHtml() {
+  const stats = getPlannerStats();
+
+  if (!reorderPlannerState || !reorderPlannerState.groups.length || stats.actionableCount === 0) {
+    return `
+      <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+        Close
+      </button>
+    `;
+  }
+
+  return `
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+      Cancel
+    </button>
+    <button type="button" class="btn btn-primary" id="confirmReorderBtn">
+      Add Selected Items to Cart
+    </button>
+  `;
+}
+
+function updateReorderPlannerUI() {
+  const title = document.getElementById("reorderModalTitle");
+  const content = document.getElementById("reorderModalContent");
+  const footer = document.getElementById("reorderModalFooter");
+
+  if (title) title.textContent = "Review Reorder";
+  if (content) content.innerHTML = renderReorderPlanner();
+  if (footer) footer.innerHTML = getReorderPlannerFooterHtml();
+}
+
+/* =========================
+   REORDER MODAL STATES
+   ========================= */
+
+function resetReorderModal() {
+  const title = document.getElementById("reorderModalTitle");
+  const content = document.getElementById("reorderModalContent");
+  const footer = document.getElementById("reorderModalFooter");
+
+  reorderPlannerState = null;
+
+  if (title) title.textContent = "Confirm Reorder";
+  if (content) content.innerHTML = "";
+  if (footer) {
+    footer.innerHTML = `
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+        Cancel
+      </button>
+      <button type="button" class="btn btn-primary" id="confirmReorderBtn" disabled>
+        Confirm Reorder
+      </button>
+    `;
+  }
+}
+
+function setReorderModalLoading() {
+  const title = document.getElementById("reorderModalTitle");
+  const content = document.getElementById("reorderModalContent");
+  const footer = document.getElementById("reorderModalFooter");
+
+  reorderPlannerState = null;
+
+  if (title) title.textContent = "Review Reorder";
+  if (content) content.innerHTML = `<div class="text-muted">Loading reorder preview...</div>`;
+  if (footer) {
+    footer.innerHTML = `
+      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+        Cancel
+      </button>
+      <button type="button" class="btn btn-primary" id="confirmReorderBtn" disabled>
+        Add Selected Items to Cart
+      </button>
+    `;
+  }
+}
+
+function setReorderSubmittingState() {
+  const confirmBtn = document.getElementById("confirmReorderBtn");
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Adding to Cart...";
+  }
+}
+
+/* =========================
+   REORDER RESULT RENDERING
+   ========================= */
 
 function renderReorderResult(result) {
   return `
@@ -993,20 +1646,29 @@ function renderReorderResult(result) {
   `;
 }
 
+/* =========================
+   REORDER API ACTIONS
+   ========================= */
+
 async function openReorderPreview(orderId) {
   pendingReorderOrderId = orderId;
   setReorderModalLoading();
   reorderModal?.show();
 
   try {
-    const response = await fetch(`${ORDER_DETAIL_API_BASE}${orderId}${ORDER_REORDER_PREVIEW_API_SUFFIX}`, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": getCookie("csrftoken"),
-        "X-Requested-With": "XMLHttpRequest",
+    const response = await fetch(
+      `${ORDER_DETAIL_API_BASE}${orderId}${ORDER_REORDER_PREVIEW_API_SUFFIX}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({}),
+        credentials: "same-origin",
       },
-      credentials: "same-origin",
-    });
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -1015,46 +1677,16 @@ async function openReorderPreview(orderId) {
     }
 
     const preview = await response.json();
-    const content = document.getElementById("reorderModalContent");
-    const footer = document.getElementById("reorderModalFooter");
-
-    if (content) {
-      content.innerHTML = renderReorderPreview(preview);
-    }
-
-    const addableItems = Array.isArray(preview.addable_items) ? preview.addable_items : [];
-    const addedItems = Array.isArray(preview.added_items) ? preview.added_items : [];
-    const unavailableItems = Array.isArray(preview.unavailable_items) ? preview.unavailable_items : [];
-    const quantityAdjustedItems = Array.isArray(preview.quantity_adjusted_items) ? preview.quantity_adjusted_items : [];
-    const priceChangedItems = Array.isArray(preview.price_changed_items) ? preview.price_changed_items : [];
-    const producerChangedItems = Array.isArray(preview.producer_changed_items) ? preview.producer_changed_items : [];
-
-    const hasExplicitAddableItems = addableItems.length > 0;
-
-    const hasAnyReorderableSignal =
-      hasExplicitAddableItems ||
-      addedItems.length > 0 ||
-      quantityAdjustedItems.length > 0 ||
-      priceChangedItems.length > 0 ||
-      producerChangedItems.length > 0;
-
-    const definitelyNothingToAdd =
-      !hasAnyReorderableSignal &&
-      unavailableItems.length > 0;
-
-    if (footer) {
-      footer.innerHTML = definitelyNothingToAdd
-        ? `
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-            Close
-          </button>
-        `
-        : REORDER_PREVIEW_FOOTER;
-    }
+    reorderPlannerState = buildReorderPlannerState(orderId, preview);
+    updateReorderPlannerUI();
   } catch (error) {
     const content = document.getElementById("reorderModalContent");
     const footer = document.getElementById("reorderModalFooter");
+    const title = document.getElementById("reorderModalTitle");
 
+    reorderPlannerState = null;
+
+    if (title) title.textContent = "Review Reorder";
     if (content) {
       content.innerHTML = `
         <div class="alert alert-danger mb-0">
@@ -1077,14 +1709,23 @@ async function confirmReorder(orderId) {
   try {
     setReorderSubmittingState();
 
-    const response = await fetch(`${ORDER_DETAIL_API_BASE}${orderId}${ORDER_REORDER_API_SUFFIX}`, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": getCookie("csrftoken"),
-        "X-Requested-With": "XMLHttpRequest",
+    const payload = {
+      selections: serializeSelectionsFromState(),
+    };
+
+    const response = await fetch(
+      `${ORDER_DETAIL_API_BASE}${orderId}${ORDER_REORDER_API_SUFFIX}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify(payload),
+        credentials: "same-origin",
       },
-      credentials: "same-origin",
-    });
+    );
 
     if (!response.ok) {
       throw new Error(
@@ -1097,6 +1738,8 @@ async function confirmReorder(orderId) {
     const content = document.getElementById("reorderModalContent");
     const footer = document.getElementById("reorderModalFooter");
     const title = document.getElementById("reorderModalTitle");
+
+    reorderPlannerState = null;
 
     if (title) title.textContent = "Reorder Result";
     if (content) content.innerHTML = renderReorderResult(result);
@@ -1128,7 +1771,7 @@ async function confirmReorder(orderId) {
 
     if (confirmBtn) {
       confirmBtn.disabled = false;
-      confirmBtn.textContent = "Confirm Reorder";
+      confirmBtn.textContent = "Add Selected Items to Cart";
     }
   }
 }
