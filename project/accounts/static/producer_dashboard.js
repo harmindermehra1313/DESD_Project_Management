@@ -49,7 +49,6 @@ function applyAllFilters(resetPage = true) {
     const totalRows = matchingRows.length;
     const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
 
-    // Safety check: if we filter and the current page no longer exists
     if (currentPage > totalPages) {
         currentPage = totalPages;
     }
@@ -57,7 +56,6 @@ function applyAllFilters(resetPage = true) {
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
 
-    // Loop through the matched rows and only display the 10 for the current page
     matchingRows.forEach((row, index) => {
         if (index >= startIndex && index < endIndex) {
             row.style.display = '';
@@ -66,28 +64,26 @@ function applyAllFilters(resetPage = true) {
         }
     });
 
-    // Handle Empty State Message
     const emptyRow = document.getElementById('emptyStateRow');
     if (emptyRow) {
         emptyRow.style.display = totalRows === 0 ? '' : 'none';
     }
 
-    // Render the page buttons
     renderPagination(totalPages);
 
     // --- RESET DETAILS PANEL ---
     selectedSummaryId = null;
     document.querySelectorAll('.order-row').forEach(r => r.classList.remove('selected'));
+    document.querySelectorAll('.sub-row').forEach(r => r.classList.remove('selected'));
     
     const detailOrderId = document.getElementById('detailOrderId');
     const detailsContent = document.getElementById('detailsContent');
     
     if (detailOrderId) detailOrderId.textContent = 'Select an order';
     if (detailsContent) {
-        detailsContent.innerHTML = '<p class="text-muted mb-0">Click on a specific order from the table above to view complete customer details, delivery address, itemised product list, and special instructions.</p>';
+        detailsContent.innerHTML = '<p class="text-muted mb-0">Click on a specific order or subscription from the tables above to view complete details.</p>';
     }
     
-    // Disable the Change Status button since the row selection was cleared
     const updateBtn = document.getElementById('updateStatusBtn');
     if (updateBtn) {
         updateBtn.disabled = true;
@@ -106,12 +102,10 @@ function renderPagination(totalPages) {
 
     let html = '<ul class="pagination mb-0 shadow-sm">';
     
-    // "Previous" Button
     html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage - 1})" style="color: var(--brand);">Previous</button>
              </li>`;
 
-    // Numbered Pages
     for (let i = 1; i <= totalPages; i++) {
         const activeClass = currentPage === i ? 'active' : '';
         const activeStyle = currentPage === i ? 'background-color: #3a4b53; border-color: #3a4b53; color: #fff;' : 'color: var(--brand);';
@@ -121,7 +115,6 @@ function renderPagination(totalPages) {
                  </li>`;
     }
 
-    // "Next" Button
     html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage + 1})" style="color: var(--brand);">Next</button>
              </li>`;
@@ -143,13 +136,11 @@ function clearFilters() {
     document.getElementById('filterDateFrom').value = '';
     document.getElementById('filterDateTo').value = '';
     
-    // Reset Checkboxes
     document.getElementById('filterPen').checked = true;
     document.getElementById('filterPre').checked = true;
     document.getElementById('filterPac').checked = true;
     document.getElementById('filterShp').checked = false;
 
-    // Apply filters and reset to page 1
     applyAllFilters(true); 
 }
 
@@ -158,9 +149,10 @@ function showOrderDetails(summaryId, rowElement) {
     selectedSummaryId = summaryId;
 
     document.querySelectorAll('.order-row').forEach(row => row.classList.remove('selected'));
+    document.querySelectorAll('.sub-row').forEach(row => row.classList.remove('selected'));
     rowElement.classList.add('selected');
 
-    const orderRef = rowElement.cells[0].innerText;
+    const orderRef = rowElement.cells[0].innerText.split('\n')[0].trim();
     document.getElementById('detailOrderId').textContent = `Order ${orderRef}`;
 
     const templateContent = document.getElementById(`details-template-${summaryId}`).innerHTML;
@@ -170,7 +162,26 @@ function showOrderDetails(summaryId, rowElement) {
     if (updateBtn) updateBtn.disabled = false;
 }
 
-// 6. Send AJAX update with the newly selected status, then manipulate DOM
+// 6. Show Subscription Details
+function showSubscriptionDetails(subId, rowElement) {
+    selectedSummaryId = null;
+
+    document.querySelectorAll('.order-row').forEach(row => row.classList.remove('selected'));
+    document.querySelectorAll('.sub-row').forEach(row => row.classList.remove('selected'));
+    rowElement.classList.add('selected');
+
+    document.getElementById('detailOrderId').textContent = `Subscription #SUB-${subId}`;
+
+    const template = document.getElementById(`sub-details-template-${subId}`);
+    if (template) {
+        document.getElementById('detailsContent').innerHTML = template.innerHTML;
+    }
+
+    const updateBtn = document.getElementById('updateStatusBtn');
+    if (updateBtn) updateBtn.disabled = true;
+}
+
+// 7. Send AJAX update with the newly selected status
 async function changeStatus(newStatus) {
     if (!selectedSummaryId) return;
 
@@ -179,13 +190,12 @@ async function changeStatus(newStatus) {
         alert("CSRF token not found.");
         return;
     }
-    const csrfToken = csrfInput.value;
 
     try {
         const response = await fetch(`/accounts/update-order-status/${selectedSummaryId}/`, {
             method: 'POST',
             headers: {
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': csrfInput.value,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ status: newStatus })
@@ -220,21 +230,49 @@ async function changeStatus(newStatus) {
     }
 }
 
-// 7. Initialize when the DOM loads
+// 8. Send AJAX to Cancel Subscription
+async function cancelSubscription(subId) {
+    if (!confirm("Are you sure you want to cancel this subscription?\n\nThis will stop future orders from generating and cancel any existing future orders (except the nearest incoming one).")) {
+        return;
+    }
+
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfInput) return;
+
+    try {
+        const response = await fetch(`/accounts/cancel-subscription/${subId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfInput.value,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            alert("Subscription cancelled successfully.");
+            // Reload the page to refresh the active subscriptions and cancelled orders table
+            window.location.reload(); 
+        } else {
+            alert("Something went wrong cancelling the subscription.");
+        }
+    } catch (error) {
+        console.error("Error cancelling subscription:", error);
+        alert("Network error occurred.");
+    }
+}
+
+// 9. Initialize when the DOM loads
 document.addEventListener('DOMContentLoaded', () => {
     const resetAndFilter = () => applyAllFilters(true);
 
-    // Attach live event listeners to our text and date inputs
     document.getElementById('filterOrderId').addEventListener('input', resetAndFilter);
     document.getElementById('filterCustomerName').addEventListener('input', resetAndFilter);
     document.getElementById('filterDateFrom').addEventListener('change', resetAndFilter);
     document.getElementById('filterDateTo').addEventListener('change', resetAndFilter);
     
-    // Attach change listeners to all status checkboxes
     document.querySelectorAll('.status-filter').forEach(cb => {
         cb.addEventListener('change', resetAndFilter);
     });
     
-    // Run the filter immediately on page load
     applyAllFilters(true);
 });
