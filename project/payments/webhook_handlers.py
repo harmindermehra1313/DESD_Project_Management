@@ -75,9 +75,24 @@ def handle_payment_intent_succeeded(event):
                 "user_id": user_id or "",
             }
         )
+        # Retrieve fresh Stripe data with expanded relations
+        payment_intent = stripe.PaymentIntent.retrieve(
+            intent["id"],
+            expand=["latest_charge", "payment_method"],
+        )
+        card_brand = None
+        card_last4 = None
+        payment_method = payment_intent.get("payment_method")
+        if isinstance(payment_method, dict):
+            card = payment_method.get("card") or {}
+            card_brand = card.get("brand")
+            card_last4 = card.get("last4")
 
         # Mark payment as PAID
         payment = order.payments.get(stripe_payment_intent=intent["id"])
+        
+        payment.card_brand = card_brand
+        payment.card_last4 = card_last4
         payment.payment_status = Payment.Status.SUCCESS
         payment.save()
 

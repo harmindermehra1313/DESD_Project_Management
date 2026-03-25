@@ -148,7 +148,6 @@ def producer_dashboard(request):
     
     return render(request, "accounts/producer_dashboard.html", context)
 
-
 @login_required
 @require_POST
 def update_order_status(request, summary_id):

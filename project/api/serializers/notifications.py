@@ -6,7 +6,7 @@ from notifications.models import (
     TraceabilityRecord,
 )
 from api.serializers.accounts import UserSerializer, ProducerSerializer, CustomerSerializer
-from api.serializers.products import ProductInlineSerializer
+from products.api.serializers.product_details import ProductInlineSerializer
 from api.serializers.orders import OrderSerializer, OrderItemSerializer
 
 # Validation should happen here! TBC remove when added

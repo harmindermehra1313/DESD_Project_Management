@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="mb-1">My Orders</h2>
+                <p class="text-muted mb-0">View past purchases and reorder previous items.</p>
+            </div>
+        </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form id="orderFiltersForm" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select id="status" class="form-select">
+                            <option value="">All</option>
+                            {% for value, label in order_status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="start_date" class="form-label">Start date</label>
+                        <input type="date" id="start_date" class="form-control">
+                        <div class="invalid-feedback">Please enter a valid start date.</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="end_date" class="form-label">End date</label>
+                        <input type="date" id="end_date" class="form-control">
+                        <div class="invalid-feedback">Please enter a valid end date.</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="delivery_or_collection" class="form-label">Fulfilment</label>
+                        <select id="delivery_or_collection" class="form-select">
+                            <option value="">All</option>
+                            {% for value, label in fulfilment_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="recurring_only" class="form-label">Recurring only</label>
+                        <select id="recurring_only" class="form-select">
+                            <option value="">All</option>
+                            {% for value, label in recurring_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-dark">Apply filters</button>
+                        <button type="button" id="resetFiltersBtn" class="btn btn-outline-secondary">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="orderListError" class="alert alert-danger d-none" role="alert"></div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <strong>Order History</strong>
+            </div>
+            <div class="card-body">
+                <div id="orderListLoading" class="text-muted">Loading orders...</div>
+                <div id="orderListEmpty" class="alert alert-light d-none mb-0">No orders found.</div>
+                <div class="table-responsive d-none" id="orderTableWrapper">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Producers</th>
+                                <th>Total Paid</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <small id="paginationInfo" class="text-muted"></small>
+                    <div class="d-flex gap-2">
+                        <button id="prevPageBtn" class="btn btn-outline-secondary btn-sm">Previous</button>
+                        <button id="nextPageBtn" class="btn btn-outline-secondary btn-sm">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Order detail modal -->
+    <div class="modal fade"
+         id="orderDetailModal"
+         tabindex="-1"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Order Details</h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="orderDetailLoading" class="text-muted">Loading order details...</div>
+                    <div id="orderDetailError" class="alert alert-danger d-none"></div>
+                    <div id="orderDetailContent" class="d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Reorder preview/result modal -->
+    <div class="modal fade" id="reorderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reorderModalTitle">Confirm Reorder</h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="reorderModalContent"></div>
+                </div>
+                <div class="modal-footer" id="reorderModalFooter">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark" id="confirmReorderBtn">Confirm Reorder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    {{ block.super }}
+    <script src="{% static 'orders/order_history.js' %}"></script>
+{% endblock %}
