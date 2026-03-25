@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
-
+from django.core.paginator import Paginator
 
 def _get_category_default_image(category_obj):
     image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
@@ -579,13 +579,20 @@ def product_view(request, category_id):
     # Producer list for dropdown
     producers = products.values_list("producer__farm_name", flat=True).distinct()
 
+    # Pagination
+    page_size = 24  # how many products per page
+    paginator = Paginator(products, page_size)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
     # Helper: earliest-expiring batch
     def get_active_batch(product):
         return product.inventory_batches.order_by("expiry_date").first()
 
     product_json = []
 
-    for p in products:
+    #for p in products:
+    for p in page_obj.object_list:
         batch = get_active_batch(p)
 
         # -----------------------------
@@ -654,6 +661,7 @@ def product_view(request, category_id):
         "selected_category": selected_category,
         "show_filters": show_filters,
         "organic": certified_organic,
+        "page_obj": page_obj,
     })
 
 # Pippal

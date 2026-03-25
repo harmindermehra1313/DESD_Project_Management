@@ -81,12 +81,6 @@ class ReviewResponse(models.Model):
         on_delete=models.CASCADE, 
         related_name="producer_reviews"
     )
-    # moderated_by_admin_id = models.ForeignKey(
-    #   "admin_records.AdmintionLog", 
-    #   on_delete=models.CASCADE, 
-    #   related_name="moderated_by_admin_id", 
-    #   null=True
-    #) 
 
     moderated_by_admin = models.ForeignKey(
         "accounts.Admin", 

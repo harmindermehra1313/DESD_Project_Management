@@ -169,3 +169,43 @@
         height: 120px;
     }
 }
+
+/* Page button styling */
+/* PAGINATION STYLING */
+.pagination {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    gap: 6px;
+}
+
+.pagination .page-item {
+    list-style: none;
+}
+
+.pagination .page-link {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    color: #333;
+    background: #fff;
+    transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover {
+    background: #f0f0f0;
+    text-decoration: none;
+}
+
+.pagination .page-item.active .page-link {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+    font-weight: 600;
+}
+
+.pagination .page-item.disabled .page-link {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
