@@ -13,19 +13,19 @@ const DEFAULT_FILTERS = {
 };
 
 const REORDER_PREVIEW_FOOTER = `
-  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+  <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
     Cancel
   </button>
-  <button type="button" class="btn btn-dark" id="confirmReorderBtn">
+  <button type="button" class="btn btn-primary" id="confirmReorderBtn">
     Confirm Reorder
   </button>
 `;
 
 const REORDER_RESULT_FOOTER = `
-  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+  <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
     Close
   </button>
-  <a href="/cart/" class="btn btn-dark">Go to Cart</a>
+  <a href="/cart/" class="btn btn-primary">Go to Cart</a>
 `;
 
 let appliedFilters = { ...DEFAULT_FILTERS };
@@ -360,7 +360,7 @@ function getReorderButtonHtml(orderId, status, extraClass = "") {
   return `
     <button
       type="button"
-      class="btn btn-dark ${escapeHtml(extraClass)}"
+      class="btn btn-primary ${escapeHtml(extraClass)}"
       data-action="open-reorder-preview"
       data-order-id="${escapeHtml(orderId)}"
       ${disabledAttr}
@@ -377,7 +377,7 @@ function getReceiptButtonHtml(orderId, status) {
     return `
       <button
         type="button"
-        class="btn btn-outline-secondary"
+        class="btn btn-primary"
         disabled
         title="Receipt is only available for completed orders"
       >
@@ -388,7 +388,7 @@ function getReceiptButtonHtml(orderId, status) {
 
   return `
     <a
-      class="btn btn-outline-secondary"
+      class="btn btn-primary"
       href="${RECEIPT_URL_BASE}${orderId}/"
     >
       See Receipt
@@ -522,13 +522,13 @@ function renderOrdersTable(orders) {
       <td class="text-end">
         <button
           type="button"
-          class="btn btn-sm btn-outline-dark me-2"
+          class="btn btn-sm btn-primary me-2"
           data-action="view-details"
           data-order-id="${escapeHtml(order.id)}"
         >
           View Details
         </button>
-        ${getReorderButtonHtml(order.id, order.order_status, "btn-sm")}
+        ${getReorderButtonHtml(order.id, order.order_status, "btn-sm btn-primary")}
       </td>
     </tr>
   `).join("");
@@ -1045,7 +1045,7 @@ async function openReorderPreview(orderId) {
     if (footer) {
       footer.innerHTML = definitelyNothingToAdd
         ? `
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
             Close
           </button>
         `
@@ -1065,7 +1065,7 @@ async function openReorderPreview(orderId) {
 
     if (footer) {
       footer.innerHTML = `
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
           Close
         </button>
       `;

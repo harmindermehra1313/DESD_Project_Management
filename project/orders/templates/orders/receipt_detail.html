@@ -8,9 +8,8 @@
                 <p class="text-muted mb-0">View and download the receipt for this completed order.</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{% url 'orders:order-history-page' %}"
-                   class="btn btn-outline-secondary">Back</a>
-                <button type="button" id="downloadReceiptBtn" class="btn btn-dark">Download</button>
+                <a href="{% url 'orders:order-history-page' %}" class="btn btn-primary">Back</a>
+                <button type="button" id="downloadReceiptBtn" class="btn btn-primary">Download</button>
             </div>
         </div>
         <div id="receiptLoading" class="text-muted">Loading receipt...</div>

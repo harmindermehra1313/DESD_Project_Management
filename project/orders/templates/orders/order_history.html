@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'orders/order_history.css' %}">
+{% endblock %}
 {% block content %}
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -43,8 +47,8 @@
                         </select>
                     </div>
                     <div class="col-12 d-flex gap-2">
-                        <button type="submit" class="btn btn-dark">Apply filters</button>
-                        <button type="button" id="resetFiltersBtn" class="btn btn-outline-secondary">Reset</button>
+                        <button type="submit" class="btn btn-primary">Apply filters</button>
+                        <button type="button" id="resetFiltersBtn" class="btn btn-primary">Reset</button>
                     </div>
                 </form>
             </div>
@@ -58,7 +62,7 @@
                 <div id="orderListLoading" class="text-muted">Loading orders...</div>
                 <div id="orderListEmpty" class="alert alert-light d-none mb-0">No orders found.</div>
                 <div class="table-responsive d-none" id="orderTableWrapper">
-                    <table class="table align-middle">
+                    <table class="table align-middle main-table">
                         <thead>
                             <tr>
                                 <th>Order ID</th>
@@ -76,8 +80,8 @@
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <small id="paginationInfo" class="text-muted"></small>
                     <div class="d-flex gap-2">
-                        <button id="prevPageBtn" class="btn btn-outline-secondary btn-sm">Previous</button>
-                        <button id="nextPageBtn" class="btn btn-outline-secondary btn-sm">Next</button>
+                        <button id="prevPageBtn" class="btn btn-primary">Previous</button>
+                        <button id="nextPageBtn" class="btn btn-primary">Next</button>
                     </div>
                 </div>
             </div>
@@ -123,7 +127,7 @@
                     <button type="button"
                             class="btn btn-outline-secondary"
                             data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-dark" id="confirmReorderBtn">Confirm Reorder</button>
+                    <button type="button" class="btn btn-primary" id="confirmReorderBtn">Confirm Reorder</button>
                 </div>
             </div>
         </div>
