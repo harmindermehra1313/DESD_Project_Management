@@ -1,419 +1,404 @@
-// products/static/products/product_detail.js
 document.addEventListener("DOMContentLoaded", () => {
+  const root = document.getElementById("productDetailPage");
+  const productId = Number(root?.dataset.productId ?? "0");
+
+  const loadingEl = document.getElementById("productDetailLoading");
+  const contentEl = document.getElementById("productDetailContent");
+  const msg = document.getElementById("productDetailMsg");
+
   const minus = document.getElementById("qtyMinus");
   const plus = document.getElementById("qtyPlus");
   const qtyInput = document.getElementById("qtyInput");
   const btn = document.getElementById("addToCartBtn");
-  const msg = document.getElementById("productDetailMsg");
 
+  const productImage = document.getElementById("productImage");
+  const productName = document.getElementById("productName");
+  const productUnit = document.getElementById("productUnit");
+  const productCategory = document.getElementById("productCategory");
+  const productProducer = document.getElementById("productProducer");
+  const availabilityBadge = document.getElementById("availabilityBadge");
+  const stockText = document.getElementById("stockText");
+  const productDescription = document.getElementById("productDescription");
+  const allergensWrap = document.getElementById("allergensWrap");
+  const storageGuidance = document.getElementById("storageGuidance");
+  const farmOrigin = document.getElementById("farmOrigin");
+  const organicCertification = document.getElementById("organicCertification");
   const unitPriceEl = document.getElementById("unitPriceLabel");
-  const wholesaleNoticeEl = document.getElementById("wholesaleNotice");
-
-  const surplusNoticeEl = document.getElementById("surplusNotice");
   const compareAtEl = document.getElementById("compareAtPrice");
   const surplusPercentPillEl = document.getElementById("surplusPercentPill");
+  const surplusNoticeEl = document.getElementById("surplusNotice");
+  const wholesaleNoticeEl = document.getElementById("wholesaleNotice");
+  const unitLabel = document.getElementById("unitLabel");
 
-  // Base price (normal) + surplus price (discounted)
-  const baseUnitPrice = Number(btn?.dataset.basePrice ?? "0");
-  const surplusActive = (btn?.dataset.surplusActive ?? "0") === "1";
-  const surplusUnitPrice = Number(btn?.dataset.surplusPrice ?? "0");
-  const surplusPercent = Number(btn?.dataset.surplusPercent ?? "0");
-  const surplusNote = (btn?.dataset.surplusNote ?? "").trim();
+  let productData = null;
+  let wholesaleTiers = [];
 
-  // Values injected from template via data-*
-  const stockQty = Number(btn?.dataset.stockQty ?? "0");
-  const isOutOfStock = !Number.isFinite(stockQty) || stockQty <= 0;
+  function moneyGBP(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? `£${n.toFixed(2)}` : "£0.00";
+  }
 
-  function clampQty(v) {
-    const n = Number(String(v ?? "").trim());
+  function clampQty(value) {
+    const n = Number(String(value ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
-    return Math.floor(n); // integer-only
+    return Math.floor(n);
   }
 
-  function setMsg(text, variant = "success", { timeout = 2000 } = {}) {
+  function setMsg(text, variant = "danger") {
     if (!msg) return;
-
     msg.innerHTML = `<div class="alert alert-${variant} py-2 mb-0" role="alert">${text}</div>`;
-
-    // auto-dismiss
-    window.clearTimeout(setMsg._t);
-    setMsg._t = window.setTimeout(() => {
-      if (msg) msg.innerHTML = "";
-    }, timeout);
   }
 
-  function setLoading(isLoading) {
-    if (!btn) return;
-
-    // Never enable if out of stock
-    btn.disabled = isLoading || isOutOfStock;
-
-    if (isLoading) {
-      btn.dataset.originalHtml = btn.innerHTML;
-      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Adding…`;
-    } else if (btn.dataset.originalHtml) {
-      btn.innerHTML = btn.dataset.originalHtml;
-      delete btn.dataset.originalHtml;
-    }
-  }
-
-  // ---------- Wholesale helpers ----------
-  function getWholesaleTiers() {
-    const el = document.getElementById("wholesaleTiersJson");
-    if (!el) return [];
-    try {
-      // [{"min_quantity": 5, "unit_price": "2.50"}, ...]
-      return JSON.parse(el.textContent) || [];
-    } catch {
-      return [];
-    }
-  }
-
-  const wholesaleTiers = getWholesaleTiers()
-    .map((t) => ({
-      min: Number(t.min_quantity),
-      price: Number(t.unit_price),
-    }))
-    .filter((t) => Number.isFinite(t.min) && Number.isFinite(t.price))
-    .sort((a, b) => a.min - b.min);
-
-  function effectiveUnitPriceForQty(qty) {
-    let best = null;
-    for (const t of wholesaleTiers) {
-      if (qty >= t.min) best = t;
-    }
-    return best ? best.price : baseUnitPrice;
-  }
-
-  function moneyGBP(v) {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return "£0.00";
-    return `£${n.toFixed(2)}`;
+  function clearMsg() {
+    if (!msg) return;
+    msg.innerHTML = "";
   }
 
   function setElVisible(el, visible) {
     if (!el) return;
     el.style.display = visible ? "" : "none";
   }
+  function getTypedQty() {
+    const raw = String(qtyInput?.value ?? "").trim();
 
-  // ---------- Surplus notice ----------
-  function renderSurplusNotice({ wholesaleActive }) {
-    if (!surplusNoticeEl) return;
+    if (raw === "") return null;
 
-    surplusNoticeEl.innerHTML = "";
-    if (!surplusActive) return;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
 
-    if (wholesaleActive) {
-      surplusNoticeEl.innerHTML = `
-        <div class="alert alert-info py-2 mb-0" role="status"
-             style="border-left: 6px solid rgba(13,110,253,.85);">
-          <div class="fw-semibold">Surplus reduction</div>
-          <div class="small">
-            This item is marked for surplus reduction, but wholesale pricing is currently applied based on quantity.
-          </div>
-        </div>
-      `;
-      return;
+    return Math.floor(n);
+  }
+
+  function normalizeQtyInput() {
+    const quantity = clampQty(qtyInput?.value ?? 1);
+    if (qtyInput) {
+      qtyInput.value = String(quantity);
+    }
+    return quantity;
+  }
+
+  function getCurrentTierPrice(qty) {
+    let best = null;
+
+    for (const tier of wholesaleTiers) {
+      if (qty >= tier.min) {
+        best = tier;
+      }
     }
 
-    const defaultLine = "Discount applied to clear excess stock.";
-    const noteLine =
-      surplusNote && surplusNote.toLowerCase() !== "none" ? surplusNote : "";
-
-    surplusNoticeEl.innerHTML = `
-      <div class="alert alert-danger py-2 mb-0" role="status"
-           style="border-left: 6px solid rgba(220,53,69,.9);">
-        <div class="fw-semibold">Surplus reduction</div>
-        ${noteLine ? `<div class="small mt-1">${noteLine}</div>` : ""}
-      </div>
-    `;
+    return best ? best.price : Number(productData?.effective_price);
   }
 
-  // ---------- Wholesale notice ----------
-  function renderTierListHtml(qty) {
-    const rows = wholesaleTiers
-      .map((t) => {
-        const active = qty >= t.min;
-        return `
-          <li class="list-group-item d-flex justify-content-between align-items-center ${
-            active ? "fw-semibold" : ""
-          }">
-            <span>${t.min}+ units</span>
-            <span>${moneyGBP(t.price)}</span>
-          </li>
-        `;
-      })
-      .join("");
-
-    return `
-      <div class="collapse mt-2" id="wholesaleTierList">
-        <div class="card card-body p-2">
-          <div class="small text-muted mb-1">Wholesale tiers</div>
-          <ul class="list-group list-group-flush">
-            ${rows}
-          </ul>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderWholesaleNotice() {
-    if (!wholesaleNoticeEl) return;
+  function renderWholesaleNotice(qty) {
+    if (!wholesaleNoticeEl || !productData) return;
 
     if (!wholesaleTiers.length) {
       wholesaleNoticeEl.innerHTML = "";
       return;
     }
 
-    const qty = clampQty(qtyInput?.value ?? 1);
-
-    // Current tier (best applicable)
     let currentTier = null;
-    for (const t of wholesaleTiers) {
-      if (qty >= t.min) currentTier = t;
+    for (const tier of wholesaleTiers) {
+      if (qty >= tier.min) {
+        currentTier = tier;
+      }
     }
 
-    // Next tier
-    const nextTier = wholesaleTiers.find((t) => qty < t.min) || null;
+    const nextTier = wholesaleTiers.find((tier) => qty < tier.min) || null;
+    const effectiveBasePrice = Number(productData.effective_price);
+    const stock = Number(productData.remaining_quantity ?? 0);
 
     if (currentTier) {
-      const savingPerUnit = baseUnitPrice - currentTier.price;
-      const savingText =
-        savingPerUnit > 0 ? `Save ${moneyGBP(savingPerUnit)} per unit` : "";
+      const savingPerUnit = effectiveBasePrice - currentTier.price;
 
       wholesaleNoticeEl.innerHTML = `
-        <div class="alert alert-success d-flex align-items-start gap-2 py-2 mb-0"
-             role="status"
-             style="border-left: 6px solid rgba(25,135,84,.9);">
-          <div class="flex-grow-1">
-            <div class="fw-semibold">Wholesale price active!</div>
-            <div class="small">
-              You’re paying <span class="fw-semibold">${moneyGBP(
-                currentTier.price,
-              )}</span> per unit.
-              ${
-                savingText
-                  ? `<span class="ms-1 text-success-emphasis">${savingText}</span>`
-                  : ``
-              }
-            </div>
-            ${
-              nextTier
-                ? `<div class="small mt-1">
-                     Next tier at <span class="fw-semibold">${nextTier.min}+</span>:
-                     <span class="fw-semibold">${moneyGBP(
-                       nextTier.price,
-                     )}</span> per unit.
-                   </div>`
-                : `<div class="small mt-1">You’ve unlocked the best available tier!</div>`
-            }
-          </div>
-
-          <button class="btn btn-sm btn-outline-success" type="button"
-                  data-bs-toggle="collapse" data-bs-target="#wholesaleTierList"
-                  aria-expanded="false" aria-controls="wholesaleTierList">
-            View tiers
-          </button>
+      <div class="alert alert-success py-2 mb-0" role="status">
+        <div class="fw-semibold">Wholesale price active</div>
+        <div class="small">
+          You’re paying <span class="fw-semibold">${moneyGBP(currentTier.price)}</span> per unit.
+          ${savingPerUnit > 0 ? `<span class="ms-1">Save ${moneyGBP(savingPerUnit)} per unit.</span>` : ""}
         </div>
-
-        ${renderTierListHtml(qty)}
-      `;
+        ${
+          nextTier
+            ? `<div class="small mt-1">Next tier at ${nextTier.min}+ units: ${moneyGBP(nextTier.price)} per unit.</div>`
+            : `<div class="small mt-1">Best available tier unlocked.</div>`
+        }
+      </div>
+    `;
       return;
     }
 
     const firstTier = wholesaleTiers[0];
-    const remaining = Math.max(0, firstTier.min - qty);
+    const reachable = stock >= firstTier.min;
 
-    wholesaleNoticeEl.innerHTML = `
-      <div class="alert alert-warning d-flex align-items-start gap-2 py-2 mb-0"
-           role="status"
-           style="border-left: 6px solid rgba(255,193,7,.95);">
-        <div class="flex-grow-1">
-          <div class="fw-semibold">Wholesale pricing available!</div>
-          <div class="small">
-            Buy <span class="fw-semibold">${firstTier.min}+</span> to pay
-            <span class="fw-semibold">${moneyGBP(firstTier.price)}</span> per unit.
-          </div>
-          <div class="small mt-1">
-            Add <span class="fw-semibold">${remaining}</span> more to unlock this price.
-          </div>
+    wholesaleNoticeEl.innerHTML = reachable
+      ? `
+      <div class="alert alert-warning py-2 mb-0" role="status">
+        <div class="fw-semibold">Wholesale pricing available</div>
+        <div class="small">
+          Buy ${firstTier.min}+ to pay ${moneyGBP(firstTier.price)} per unit.
         </div>
-
-        <button class="btn btn-sm btn-outline-warning" type="button"
-                data-bs-toggle="collapse" data-bs-target="#wholesaleTierList"
-                aria-expanded="false" aria-controls="wholesaleTierList">
-          View tiers
-        </button>
+        <div class="small mt-1">Increase quantity to unlock this price.</div>
       </div>
-
-      ${renderTierListHtml(qty)}
+    `
+      : `
+      <div class="alert alert-secondary py-2 mb-0" role="status">
+        <div class="fw-semibold">Wholesale tier: ${firstTier.min}+ units at ${moneyGBP(firstTier.price)}</div>
+        <div class="small mt-1">Not currently reachable with available stock.</div>
+      </div>
     `;
   }
 
-  // ---------- Price rendering ----------
-  function renderUnitPrice() {
-    if (!unitPriceEl) return;
+  function renderSurplusNotice(wholesaleActive) {
+    if (!surplusNoticeEl || !productData) return;
 
-    const qty = clampQty(qtyInput?.value ?? 1);
+    surplusNoticeEl.innerHTML = "";
 
-    const tierPrice = effectiveUnitPriceForQty(qty);
-    const wholesaleActive = tierPrice !== baseUnitPrice;
-
-    let appliedPrice = baseUnitPrice;
-    let appliedMode = "none"; // "none" | "surplus" | "wholesale"
-
-    if (wholesaleActive) {
-      appliedPrice = tierPrice;
-      appliedMode = "wholesale";
-    } else if (
-      surplusActive &&
-      Number.isFinite(surplusUnitPrice) &&
-      surplusUnitPrice > 0
-    ) {
-      appliedPrice = surplusUnitPrice;
-      appliedMode = "surplus";
-    }
-
-    unitPriceEl.textContent = `£${appliedPrice.toFixed(2)}`;
-
-    if (compareAtEl && surplusPercentPillEl) {
-      if (appliedMode === "surplus") {
-        // Surplus: show base as compare-at + % off
-        compareAtEl.textContent = `£${baseUnitPrice.toFixed(2)}`;
-        setElVisible(compareAtEl, true);
-
-        if (Number.isFinite(surplusPercent) && surplusPercent > 0) {
-          surplusPercentPillEl.textContent = `${surplusPercent}% off`;
-          setElVisible(surplusPercentPillEl, true);
-        } else {
-          setElVisible(surplusPercentPillEl, false);
-        }
-      } else if (appliedMode === "wholesale") {
-        // Wholesale: show base as compare-at + savings pill
-        compareAtEl.textContent = `£${baseUnitPrice.toFixed(2)}`;
-        setElVisible(compareAtEl, true);
-
-        const saving = baseUnitPrice - appliedPrice; // appliedPrice is tierPrice here
-        if (Number.isFinite(saving) && saving > 0) {
-          // Option A: show savings amount
-          surplusPercentPillEl.textContent = `Save ${moneyGBP(saving)}`;
-          setElVisible(surplusPercentPillEl, true);
-        } else {
-          // If no savings, still show "Wholesale" label (optional)
-          surplusPercentPillEl.textContent = "Wholesale";
-          setElVisible(surplusPercentPillEl, true);
-        }
-      } else {
-        setElVisible(compareAtEl, false);
-        setElVisible(surplusPercentPillEl, false);
-      }
-    }
-
-    renderSurplusNotice({ wholesaleActive });
-  }
-
-  function onQtyChanged() {
-    renderUnitPrice();
-    renderWholesaleNotice();
-
-    // Optional pro UX: disable minus at 1
-    if (minus) minus.disabled = clampQty(qtyInput?.value ?? 1) <= 1;
-  }
-
-  // ---------- Guards ----------
-  if (isOutOfStock) {
-    setMsg("This product is currently out of stock.", "warning");
-    if (btn) btn.disabled = true;
-    if (minus) minus.disabled = true;
-    if (plus) plus.disabled = true;
-    if (qtyInput) qtyInput.disabled = true;
-    onQtyChanged();
-    return;
-  }
-
-  // ---------- Qty events (cart-style: free typing, clamp on commit) ----------
-  function normalizeQtyInput() {
-    if (!qtyInput) return 1;
-    const q = clampQty(qtyInput.value);
-    qtyInput.value = String(q);
-    return q;
-  }
-
-  minus?.addEventListener("click", () => {
-    const q = normalizeQtyInput();
-    qtyInput.value = String(Math.max(1, q - 1));
-    onQtyChanged();
-  });
-
-  plus?.addEventListener("click", () => {
-    const q = normalizeQtyInput();
-    qtyInput.value = String(q + 1);
-    onQtyChanged();
-  });
-
-  // While typing: don't clamp; just re-render using clampQty for preview
-  qtyInput?.addEventListener("input", () => {
-    onQtyChanged();
-  });
-
-  // Commit: when they finish editing, clamp to int >= 1
-  qtyInput?.addEventListener("blur", () => {
-    normalizeQtyInput();
-    onQtyChanged();
-  });
-
-  qtyInput?.addEventListener("change", () => {
-    normalizeQtyInput();
-    onQtyChanged();
-  });
-
-  qtyInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      normalizeQtyInput();
-      onQtyChanged();
-      qtyInput.blur();
-    }
-  });
-
-  // Initial render
-  onQtyChanged();
-
-  // ---------- Add to cart ----------
-  btn?.addEventListener("click", async () => {
-    // const productId = Number(btn.dataset.productId);
-    const quantity = normalizeQtyInput();
-    const inventoryId = Number(btn.dataset.inventoryId);
-
-
-    // if (!Number.isInteger(productId) || productId <= 0) {
-    //   setMsg("Invalid product id.", "danger");
-    //   return;
-    // }
-    if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
-      setMsg("Invalid product id.", "danger");
+    if (!productData.surplus_active) {
       return;
     }
 
-    if (!window.CartAPI?.addToCart) {
+    if (wholesaleActive) {
+      surplusNoticeEl.innerHTML = `
+        <div class="alert alert-info py-2 mb-0" role="status">
+          <div class="fw-semibold">Surplus reduction</div>
+          <div class="small">This item has a surplus reduction, but wholesale pricing is currently applied.</div>
+        </div>
+      `;
+      return;
+    }
+
+    surplusNoticeEl.innerHTML = `
+      <div class="alert alert-danger py-2 mb-0" role="status">
+        <div class="fw-semibold">Surplus reduction</div>
+        <div class="small">Discount applied to help clear excess stock.</div>
+      </div>
+    `;
+  }
+
+  function renderPrice() {
+    if (!productData) return;
+
+    const qty = normalizeQtyInput();
+    const effectivePrice = Number(productData.effective_price);
+    const basePrice = Number(productData.price);
+    const tierPrice = getCurrentTierPrice(qty);
+    const wholesaleActive = tierPrice !== effectivePrice;
+    const appliedPrice = wholesaleActive ? tierPrice : effectivePrice;
+
+    unitPriceEl.textContent = moneyGBP(appliedPrice);
+
+    if (wholesaleActive) {
+      compareAtEl.textContent = moneyGBP(effectivePrice);
+      setElVisible(compareAtEl, true);
+
+      const saving = effectivePrice - appliedPrice;
+      surplusPercentPillEl.textContent =
+        saving > 0 ? `Save ${moneyGBP(saving)}` : "Wholesale";
+      setElVisible(surplusPercentPillEl, true);
+    } else if (productData.surplus_active && basePrice > effectivePrice) {
+      compareAtEl.textContent = moneyGBP(basePrice);
+      setElVisible(compareAtEl, true);
+
+      if (productData.surplus_discount_percentage) {
+        surplusPercentPillEl.textContent = `${productData.surplus_discount_percentage}% off`;
+        setElVisible(surplusPercentPillEl, true);
+      } else {
+        setElVisible(surplusPercentPillEl, false);
+      }
+    } else {
+      setElVisible(compareAtEl, false);
+      setElVisible(surplusPercentPillEl, false);
+    }
+
+    renderSurplusNotice(wholesaleActive);
+    renderWholesaleNotice(qty);
+  }
+
+  function renderStock() {
+    if (!productData) return;
+
+    const purchasable = Boolean(productData.is_purchasable);
+    const badgeClass =
+      productData.availability_badge_class || "text-bg-secondary";
+    const badgeLabel = productData.availability_label || "Unknown";
+    const buttonLabel =
+      productData.add_to_cart_button_label ||
+      (purchasable ? "Add to cart" : "Unavailable");
+    const stock = Number(productData.remaining_quantity ?? 0);
+
+    availabilityBadge.className = `badge ${badgeClass}`;
+    availabilityBadge.textContent = badgeLabel;
+
+    stockText.className = "small";
+
+    if (purchasable && stock > 0) {
+      stockText.classList.add(stock <= 5 ? "text-warning" : "text-muted");
+      stockText.textContent = `${stock} left`;
+    } else {
+      stockText.classList.add("text-muted");
+      stockText.textContent = "Currently unavailable";
+    }
+
+    btn.disabled = !purchasable;
+    qtyInput.disabled = !purchasable;
+    minus.disabled = !purchasable;
+    plus.disabled = !purchasable;
+
+    btn.classList.remove("btn-primary", "btn-secondary");
+    btn.classList.add(purchasable ? "btn-primary" : "btn-secondary");
+    btn.innerHTML = purchasable
+      ? `<i class="bi bi-cart-plus me-1"></i>${buttonLabel}`
+      : buttonLabel;
+  }
+
+  function renderAllergens(allergens) {
+    allergensWrap.innerHTML = "";
+
+    if (Array.isArray(allergens) && allergens.length) {
+      for (const item of allergens) {
+        const span = document.createElement("span");
+        span.className = "badge bg-warning text-dark";
+        span.textContent = item.allergen?.name || "Unknown";
+        allergensWrap.appendChild(span);
+      }
+      return;
+    }
+
+    allergensWrap.innerHTML = `<div class="text-muted small">No known allergens.</div>`;
+  }
+
+  function renderProduct(data) {
+    productData = data;
+    wholesaleTiers = (data.wholesale_prices || [])
+      .map((tier) => ({
+        min: Number(tier.min_quantity),
+        price: Number(tier.unit_price),
+      }))
+      .filter(
+        (tier) => Number.isFinite(tier.min) && Number.isFinite(tier.price),
+      )
+      .sort((a, b) => a.min - b.min);
+
+    productName.textContent = data.name || "";
+    productUnit.textContent = data.unit || "";
+    unitLabel.textContent = data.unit || "";
+    productCategory.textContent = data.category?.name || "Uncategorized";
+    productProducer.textContent =
+      data.producer?.farm_name ||
+      data.producer?.business_name ||
+      data.producer?.name ||
+      "Unknown producer";
+    productDescription.textContent =
+      data.description || "No description available.";
+    storageGuidance.textContent = data.storage_guidance || "—";
+    farmOrigin.textContent = data.farm_origin || "—";
+    const organicStatus = data.organic_certification_status;
+
+    if (organicStatus === "CERTIFIED") {
+      organicCertification.innerHTML =
+        '<span class="badge text-bg-success">Certified organic</span>';
+    } else if (organicStatus) {
+      organicCertification.innerHTML = `<span class="badge text-bg-secondary">${organicStatus.replaceAll("_", " ")}</span>`;
+    } else {
+      organicCertification.textContent = "—";
+    }
+
+    const imageUrl = data.image || productImage.src;
+    productImage.src = imageUrl;
+    productImage.alt = data.name || "Product image";
+
+    renderAllergens(data.allergens);
+    renderStock();
+    renderPrice();
+
+    loadingEl.classList.add("d-none");
+    contentEl.classList.remove("d-none");
+  }
+
+  async function loadProduct() {
+    if (!Number.isInteger(productId) || productId <= 0) {
+      if (loadingEl) {
+        loadingEl.classList.add("d-none");
+      }
+      setMsg("Invalid product id.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/products/${productId}/`, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load product (${response.status})`);
+      }
+
+      const data = await response.json();
+      clearMsg();
+      renderProduct(data);
+    } catch (err) {
+      if (loadingEl) {
+        loadingEl.classList.add("d-none");
+      }
+      setMsg(err?.message || "Failed to load product.");
+    }
+  }
+
+  minus?.addEventListener("click", () => {
+    const qty = normalizeQtyInput();
+    qtyInput.value = String(Math.max(1, qty - 1));
+    renderPrice();
+  });
+
+  plus?.addEventListener("click", () => {
+    const qty = normalizeQtyInput();
+    qtyInput.value = String(qty + 1);
+    renderPrice();
+  });
+
+  qtyInput?.addEventListener("input", () => {
+    const typedQty = getTypedQty();
+
+    if (typedQty !== null && typedQty >= 1) {
+      renderPrice();
+    }
+  });
+
+  qtyInput?.addEventListener("blur", () => {
+    normalizeQtyInput();
+    renderPrice();
+  });
+
+  btn?.addEventListener("click", async () => {
+    if (!productData?.is_purchasable) {
       setMsg(
-        "CartAPI not found. Check base.html loads static 'carts/cart.js' as type=module.",
-        "danger",
+        productData?.stock_message ||
+          "This product is not currently available.",
+        "warning",
       );
       return;
     }
 
-    setLoading(true);
+    if (!productData?.active_inventory_id) {
+      setMsg("This product cannot be added to cart right now.", "warning");
+      return;
+    }
+
+    if (!window.CartAPI?.addToCart) {
+      setMsg("CartAPI not found.", "danger");
+      return;
+    }
+
+    const quantity = normalizeQtyInput();
 
     try {
-      // IMPORTANT: server decides wholesale/surplus unit price.
-      // We only send product + quantity.
       await window.CartAPI.addToCart({
-        inventoryId,
+        inventoryId: Number(productData.active_inventory_id),
         quantity,
       });
 
-      // Prefer toast (short), fallback to inline auto-dismiss
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast("Added to cart.", {
           title: "Cart",
@@ -421,23 +406,12 @@ document.addEventListener("DOMContentLoaded", () => {
           delay: 1500,
         });
       } else {
-        setMsg("Added to cart.", "success", { timeout: 1500 });
+        setMsg("Added to cart.", "success");
       }
-    } catch (e) {
-      const text = e?.message ? e.message : String(e);
-
-      // Errors: show longer so user can read
-      if (typeof window.CartAPI?.showToast === "function") {
-        window.CartAPI.showToast(`Add to cart failed: ${text}`, {
-          title: "Cart",
-          variant: "danger",
-          delay: 3500,
-        });
-      } else {
-        setMsg(`Add to cart failed: ${text}`, "danger", { timeout: 4000 });
-      }
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setMsg(`Add to cart failed: ${err?.message || String(err)}`, "danger");
     }
   });
+
+  loadProduct();
 });

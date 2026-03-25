@@ -16,10 +16,10 @@ class Payment(models.Model):
         FAILED = "FAI", "Failed"
         REFUNDED = "REF", "Refunded"
 
-    order = models.OneToOneField(
+    order = models.ForeignKey(
         "orders.Order",
-        on_delete = models.CASCADE,
-        related_name = "payment",
+        on_delete=models.CASCADE,
+        related_name="payments",
     )
 
     stripe_payment_intent = models.CharField(
@@ -27,36 +27,31 @@ class Payment(models.Model):
         null=True,
         blank=True,
     )
-
-    amount = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2
+    card_brand = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
     )
 
-    payment_method = models.CharField(
-        max_length = 20, 
-        choices = Method.choices
+    card_last4 = models.CharField(
+        max_length=4,
+        null=True,
+        blank=True,
     )
+
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    payment_method = models.CharField(max_length=20, choices=Method.choices)
 
     payment_status = models.CharField(
-        max_length = 10, 
-        choices = Status.choices, 
-        default = Status.PENDING
+        max_length=10, choices=Status.choices, default=Status.PENDING
     )
 
-    transaction_reference = models.CharField(
-        max_length = 255, 
-        null = True, 
-        blank = True
-    )
+    transaction_reference = models.CharField(max_length=255, null=True, blank=True)
 
-    sandbox_mode = models.BooleanField(
-        default=False
-    )
+    sandbox_mode = models.BooleanField(default=False)
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Payment #{self.pk} for Order #{self.order.pk} ({self.payment_status})"
@@ -70,39 +65,27 @@ class ProducerSettlement(models.Model):
         FAILED = "FAI", "Failed"
 
     producer = models.ForeignKey(
-        "accounts.Producer",  
-        on_delete = models.PROTECT,
-        related_name = "settlements"
+        "accounts.Producer", on_delete=models.PROTECT, related_name="settlements"
     )
 
     settlement_week = models.DateField()
 
     total_sales = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2, 
-        default = Decimal("0.00")
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
 
     total_commission = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2, 
-        default = Decimal("0.00")
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
 
-    payment_reference = models.CharField(
-        max_length = 255
-    )
+    payment_reference = models.CharField(max_length=255)
 
     payout_amount = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2, 
-        default = Decimal("0.00")
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
 
     payout_status = models.CharField(
-        max_length = 12, 
-        choices = PayoutStatus.choices, 
-        default = PayoutStatus.PENDING
+        max_length=12, choices=PayoutStatus.choices, default=PayoutStatus.PENDING
     )
 
     generated_at = models.DateTimeField(auto_now_add=True)
@@ -110,8 +93,8 @@ class ProducerSettlement(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields = ["producer", "settlement_week"],
-                name = "uniq_settlement_per_producer_per_week",
+                fields=["producer", "settlement_week"],
+                name="uniq_settlement_per_producer_per_week",
             )
         ]
 
@@ -122,31 +105,23 @@ class ProducerSettlement(models.Model):
 class SettlementLineItem(models.Model):
     settlement = models.ForeignKey(
         "payments.ProducerSettlement",
-        on_delete = models.CASCADE,
-        related_name = "line_items"
+        on_delete=models.CASCADE,
+        related_name="line_items",
     )
 
     order_item = models.ForeignKey(
         "orders.OrderItem",
-        on_delete = models.PROTECT,
-        related_name = "settlement_line_items",
+        on_delete=models.PROTECT,
+        related_name="settlement_line_items",
     )
 
-    amount = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2
-    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     commission = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2, 
-        default = Decimal("0.00")
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
 
-    net_amount = models.DecimalField(
-        max_digits = 10, 
-        decimal_places = 2
-    )
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return f"SettlementLineItem #{self.pk} (Settlement #{self.settlement.pk})"

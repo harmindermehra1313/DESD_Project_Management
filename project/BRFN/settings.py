@@ -134,21 +134,6 @@ DATABASES = {
 #     }
 # }
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("POSTGRES_DB"),
-#         "USER": os.getenv("POSTGRES_USER"),
-#         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-#         "HOST": os.getenv("POSTGRES_HOST"),
-#         "PORT": os.getenv("POSTGRES_PORT", "5432"),
-#         "OPTIONS": {
-#             "sslmode": os.getenv("POSTGRES_SSLMODE", "require"),
-#             "channel_binding": os.getenv("POSTGRES_CHANNEL_BINDING", "require"),
-#         },
-#     }
-# }
-
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -230,6 +215,9 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "reorder": "4/min",
+    }
 }
 
 LOGGING = {
