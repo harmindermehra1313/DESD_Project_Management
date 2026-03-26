@@ -101,9 +101,18 @@ def _serialize_wholesale_tier(tier):
         "min_quantity": tier.min_quantity,
         "unit_price": tier.unit_price,
     }
+def _is_wholesale_customer(user: User) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+
+    customer = getattr(user, "customer_profile", None)
+    if not customer:
+        return False
+
+    return customer.organisation_type in {"BUSINESS", "COMMUNITY_GROUP"}
 
 
-def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
+def _build_pricing_context(*, user: User, inventory, requested_quantity: int) -> dict:
     product = inventory.product
     evaluated_quantity = min(requested_quantity, inventory.remaining_quantity)
 
@@ -112,23 +121,33 @@ def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
     surplus_active = inventory.surplus_status == inventory.SurplusStatus.SURPLUS_ACTIVE
     surplus_unit_price = inventory.get_discounted_price() if surplus_active else None
 
-    wholesale_qs = product.product_wholesale.order_by("min_quantity")
-    matched_wholesale_tier = (
-        wholesale_qs.filter(min_quantity__lte=evaluated_quantity)
-        .order_by("-min_quantity")
-        .first()
-    )
-    next_wholesale_tier = (
-        wholesale_qs.filter(min_quantity__gt=evaluated_quantity)
-        .order_by("min_quantity")
-        .first()
-    )
+    wholesale_allowed = _is_wholesale_customer(user)
 
-    wholesale_unit_price = matched_wholesale_tier.unit_price if matched_wholesale_tier else None
+    if wholesale_allowed:
+        wholesale_qs = product.product_wholesale.order_by("min_quantity")
+        matched_wholesale_tier = (
+            wholesale_qs.filter(min_quantity__lte=evaluated_quantity)
+            .order_by("-min_quantity")
+            .first()
+        )
+        next_wholesale_tier = (
+            wholesale_qs.filter(min_quantity__gt=evaluated_quantity)
+            .order_by("min_quantity")
+            .first()
+        )
+        wholesale_unit_price = (
+            matched_wholesale_tier.unit_price if matched_wholesale_tier else None
+        )
+    else:
+        wholesale_qs = product.product_wholesale.none()
+        matched_wholesale_tier = None
+        next_wholesale_tier = None
+        wholesale_unit_price = None
 
     effective_unit_price = _get_effective_unit_price(
         inventory_id=inventory.pk,
         qty=evaluated_quantity,
+        wholesale_allowed=wholesale_allowed,
     )
 
     if surplus_active and wholesale_unit_price is not None:
@@ -150,11 +169,13 @@ def _build_pricing_context(*, inventory, requested_quantity: int) -> dict:
         "pricing_source": pricing_source,
         "surplus": {
             "is_active": surplus_active,
-            "discount_percentage": inventory.surplus_discount_percentage if surplus_active else None,
+            "discount_percentage": (
+                inventory.surplus_discount_percentage if surplus_active else None
+            ),
             "discounted_unit_price": surplus_unit_price,
         },
         "wholesale": {
-            "has_wholesale_tiers": product.product_wholesale.exists(),
+            "has_wholesale_tiers": wholesale_allowed and product.product_wholesale.exists(),
             "active_for_quantity": matched_wholesale_tier is not None,
             "evaluated_quantity": evaluated_quantity,
             "matched_tier": _serialize_wholesale_tier(matched_wholesale_tier),
@@ -169,6 +190,7 @@ def _get_match_basis_for_product(product) -> str:
 
 def _build_suggestion_candidates(
     *,
+    user: User,
     product,
     original_producer_id: int,
     requested_quantity: int,
@@ -192,6 +214,7 @@ def _build_suggestion_candidates(
     for inventory in suggestion_inventories:
         suggested_product = inventory.product
         pricing = _build_pricing_context(
+            user=user,
             inventory=inventory,
             requested_quantity=requested_quantity,
         )
@@ -460,6 +483,7 @@ def reorder_order(
 
     for item in order.items.all():
         suggestion_candidates = _build_suggestion_candidates(
+            user=user,
             product=item.product,
             original_producer_id=item.producer_id,
             requested_quantity=item.quantity,
@@ -519,6 +543,7 @@ def reorder_order(
             )
 
         pricing = _build_pricing_context(
+            user=user,
             inventory=selected_inventory,
             requested_quantity=quantity_to_add,
         )
