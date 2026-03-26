@@ -2112,101 +2112,232 @@ function setReorderSubmittingState() {
 /* =========================
    REORDER RESULT RENDERING
    ========================= */
+/* =========================
+   REORDER RESULT RENDERING
+   ========================= */
 
-function renderReorderResult(result) {
+function getResultCounts(result) {
+  return {
+    added: (result.added_items || []).length,
+    unavailable: (result.unavailable_items || []).length,
+    quantityAdjusted: (result.quantity_adjusted_items || []).length,
+    priceChanged: (result.price_changed_items || []).length,
+  };
+}
+
+function renderResultSummaryBadges(result) {
+  const counts = getResultCounts(result);
+
   return `
-    ${renderSimpleMessageCard(
-      result.message || "Reorder completed.",
-      `Added: ${(result.added_items || []).length} | Unavailable: ${(result.unavailable_items || []).length} | Quantity adjusted: ${(result.quantity_adjusted_items || []).length} | Price changed: ${(result.price_changed_items || []).length}`,
-      "alert-info",
-    )}
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <span class="badge text-bg-light border">
+        ${escapeHtml(counts.added)} added
+      </span>
 
-    <div class="mb-4">
-      <h6>Added to Cart</h6>
       ${
-        (result.added_items || []).length
-          ? result.added_items
-              .map(
-                (item) => `
+        counts.unavailable > 0
+          ? `
+            <span class="badge text-bg-light border">
+              ${escapeHtml(counts.unavailable)} unavailable
+            </span>
+          `
+          : ""
+      }
+
+      ${
+        counts.quantityAdjusted > 0
+          ? `
+            <span class="badge text-bg-light border">
+              ${escapeHtml(counts.quantityAdjusted)} quantity updated
+            </span>
+          `
+          : ""
+      }
+
+      ${
+        counts.priceChanged > 0
+          ? `
+            <span class="badge text-bg-light border">
+              ${escapeHtml(counts.priceChanged)} price changed
+            </span>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderAddedItemsSection(items) {
+  if (!items || !items.length) {
+    return "";
+  }
+
+  return `
+    <div class="mb-4">
+      <h6 class="mb-3">Added to cart</h6>
+      ${items
+        .map(
+          (item) => `
             <div class="border rounded p-3 mb-2">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small text-muted">
-                Producer: ${escapeHtml(item.producer_name)} |
-                Requested: ${escapeHtml(item.requested_quantity)} |
-                Added: ${escapeHtml(item.added_quantity)}
+
+              ${
+                item.producer_name
+                  ? `
+                    <div class="small text-muted mt-1">
+                      Producer: ${escapeHtml(item.producer_name)}
+                    </div>
+                  `
+                  : ""
+              }
+
+              <div class="small text-muted mt-2">
+                Quantity added: ${escapeHtml(item.added_quantity)}
               </div>
             </div>
           `,
-              )
-              .join("")
-          : `<div class="text-muted">No items added.</div>`
-      }
+        )
+        .join("")}
     </div>
+  `;
+}
 
+function renderUnavailableItemsSection(items) {
+  if (!items || !items.length) {
+    return "";
+  }
+
+  return `
     <div class="mb-4">
-      <h6>Unavailable Items</h6>
-      ${
-        (result.unavailable_items || []).length
-          ? result.unavailable_items
-              .map(
-                (item) => `
+      <h6 class="mb-3">Unavailable items</h6>
+      ${items
+        .map(
+          (item) => `
             <div class="border border-danger rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small text-danger">
-                Producer: ${escapeHtml(item.producer_name || "-")} |
-                Requested: ${escapeHtml(item.requested_quantity)} |
-                Reason: ${escapeHtml(item.reason)}
+
+              ${
+                item.producer_name
+                  ? `
+                    <div class="small text-muted mt-1">
+                      Producer: ${escapeHtml(item.producer_name)}
+                    </div>
+                  `
+                  : ""
+              }
+
+              <div class="small text-danger mt-2">
+                Requested: ${escapeHtml(item.requested_quantity)} ·
+                Reason: ${escapeHtml(item.reason || "Unavailable")}
               </div>
             </div>
           `,
-              )
-              .join("")
-          : `<div class="text-muted">No unavailable items.</div>`
-      }
+        )
+        .join("")}
     </div>
+  `;
+}
 
+function renderQuantityAdjustmentsSection(items) {
+  if (!items || !items.length) {
+    return "";
+  }
+
+  return `
     <div class="mb-4">
-      <h6>Quantity Adjustments</h6>
-      ${
-        (result.quantity_adjusted_items || []).length
-          ? result.quantity_adjusted_items
-              .map(
-                (item) => `
+      <h6 class="mb-3">Quantity updates</h6>
+      ${items
+        .map(
+          (item) => `
             <div class="border border-warning rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small">
-                Requested: ${escapeHtml(item.requested_quantity)} |
-                Added: ${escapeHtml(item.added_quantity)} |
-                Reason: ${escapeHtml(item.reason)}
+              <div class="small text-muted mt-2">
+                Requested: ${escapeHtml(item.requested_quantity)} ·
+                Added: ${escapeHtml(item.added_quantity)}
               </div>
+
+              ${
+                item.reason
+                  ? `
+                    <div class="small text-warning-emphasis mt-1">
+                      ${escapeHtml(item.reason)}
+                    </div>
+                  `
+                  : ""
+              }
             </div>
           `,
-              )
-              .join("")
-          : `<div class="text-muted">No quantity adjustments.</div>`
-      }
+        )
+        .join("")}
     </div>
+  `;
+}
 
+function renderPriceChangesSection(items) {
+  if (!items || !items.length) {
+    return "";
+  }
+
+  return `
     <div class="mb-0">
-      <h6>Price Changes</h6>
-      ${
-        (result.price_changed_items || []).length
-          ? result.price_changed_items
-              .map(
-                (item) => `
+      <h6 class="mb-3">Price updates</h6>
+      ${items
+        .map(
+          (item) => `
             <div class="border border-primary rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-              <div class="small text-primary">
-                Original: ${formatMoney(item.original_price)} |
-                Current: ${formatMoney(item.current_price)}
+
+              ${
+                item.producer_name
+                  ? `
+                    <div class="small text-muted mt-1">
+                      Producer: ${escapeHtml(item.producer_name)}
+                    </div>
+                  `
+                  : ""
+              }
+
+              <div class="small text-primary mt-2">
+                ${formatMoney(item.original_price)} →
+                ${formatMoney(item.current_price)}
               </div>
             </div>
           `,
-              )
-              .join("")
-          : `<div class="text-muted">No price changes.</div>`
-      }
+        )
+        .join("")}
     </div>
+  `;
+}
+
+function renderReorderResult(result) {
+  const counts = getResultCounts(result);
+  const hasUpdates =
+    counts.unavailable > 0 ||
+    counts.quantityAdjusted > 0 ||
+    counts.priceChanged > 0;
+
+  const title =
+    counts.added > 0
+      ? "Your selected items were added to the cart."
+      : "No items were added to the cart.";
+
+  const body = hasUpdates
+    ? "A few updates were made while processing your reorder. Review the details below."
+    : "Everything selected was added successfully.";
+
+  return `
+    <div class="border rounded p-3 mb-4 bg-light">
+      <div class="fw-semibold mb-1">${escapeHtml(title)}</div>
+      <div class="small text-muted">
+        ${escapeHtml(body)}
+      </div>
+      ${renderResultSummaryBadges(result)}
+    </div>
+
+    ${renderAddedItemsSection(result.added_items || [])}
+    ${renderUnavailableItemsSection(result.unavailable_items || [])}
+    ${renderQuantityAdjustmentsSection(result.quantity_adjusted_items || [])}
+    ${renderPriceChangesSection(result.price_changed_items || [])}
   `;
 }
 
@@ -2311,7 +2442,7 @@ async function confirmReorder(orderId) {
 
     reorderPlannerState = null;
 
-    if (title) title.textContent = "Reorder Result";
+    if (title) title.textContent = "Added to cart";
     if (content) content.innerHTML = renderReorderResult(result);
     if (footer) footer.innerHTML = REORDER_RESULT_FOOTER;
 
