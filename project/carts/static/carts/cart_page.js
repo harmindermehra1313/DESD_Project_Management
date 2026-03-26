@@ -16,6 +16,45 @@ document.addEventListener("DOMContentLoaded", () => {
     currency: "GBP",
   });
 
+  function formatDate(value) {
+    if (!value) return "—";
+
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  }
+
+  function getItemStatus(product) {
+    const stockQty = toNum(product?.stock_quantity ?? 0, 0);
+    const isExpired = Boolean(product?.is_expired);
+    const isOutOfStock = stockQty <= 0;
+    const isPurchasable =
+      typeof product?.is_purchasable === "boolean"
+        ? product.is_purchasable
+        : !isExpired && !isOutOfStock;
+
+    return {
+      stockQty,
+      isExpired,
+      isOutOfStock,
+      isPurchasable,
+      isBlocked: isExpired || isOutOfStock || !isPurchasable,
+    };
+  }
+
+  function getBlockedMessage(product) {
+  if (product?.is_expired) {
+    return "This product has expired. Please remove the item.";
+  }
+
+  return product?.stock_message || "This item is currently unavailable.";
+}
+
   function money(v) {
     const n = Number(v);
     return GBP.format(Number.isFinite(n) ? n : 0);
@@ -87,6 +126,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const itemId = item.id;
     // const productId = product.id;
     const inventoryId = Number(item.inventory_id ?? 0);
+    const productId = Number(product.id ?? item.product_id ?? 0);
+    const productUrl = productId ? `/products/${productId}/` : "#";
 
     const name = product.name ?? "Product";
     const producer = product.producer_name ?? "";
@@ -134,8 +175,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ? (baseUnitPrice - unitPrice) * qty
       : 0;
 
-    const stockQty = toNum(product.stock_quantity ?? 0, 0);
-    const isOutOfStock = stockQty <= 0;
+    const { isExpired, isOutOfStock, isPurchasable, isBlocked } =
+      getItemStatus(product);
 
     const row = document.createElement("div");
     row.className = "cart-row mb-3";
@@ -169,31 +210,46 @@ document.addEventListener("DOMContentLoaded", () => {
     const meta = document.createElement("div");
     meta.className = "cart-meta";
     meta.innerHTML = `
-  <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
-    <span>${name}</span>
-    ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-    ${isWholesale ? `<span class="badge text-bg-warning">Wholesale</span>` : ""}
-    ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
-  </div>
-  ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
-  ${
-    isWholesale
-      ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
-      : ``
-  }
-  ${
-    isSurplus
-      ? `<div class="small text-danger mt-1">
-           Surplus reduction: you save ${money(surplusSavingsTotal)}
-         </div>
-         ${
-           hasMeaningfulNote(surplusNote)
-             ? `<div class="text-muted small">${surplusNote}</div>`
-             : ``
-         }`
-      : ``
-  }
-`;
+    <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
+      <a href="${productUrl}" class="cart-product-link text-decoration-none">
+        ${name}
+      </a>
+      ${isExpired ? `<span class="badge text-bg-danger">Expired</span>` : ""}
+      ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
+      ${isWholesale ? `<span class="badge text-bg-warning">Wholesale</span>` : ""}
+      ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
+    </div>
+    ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+    ${
+      product.expiry_date
+        ? `<div class="small mt-1 ${isExpired ? "text-danger fw-semibold" : "text-muted"}">
+             ${product.expiry_type_label || "Expiry"}: ${formatDate(product.expiry_date)}
+           </div>`
+        : ``
+    }
+    ${
+      isBlocked
+        ? `<div class="small text-danger mt-1">${getBlockedMessage(product)}</div>`
+        : ``
+    }
+    ${
+      isWholesale
+        ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
+        : ``
+    }
+    ${
+      isSurplus
+        ? `<div class="small text-danger mt-1">
+             Surplus reduction: you save ${money(surplusSavingsTotal)}
+           </div>
+           ${
+             hasMeaningfulNote(surplusNote)
+               ? `<div class="text-muted small">${surplusNote}</div>`
+               : ``
+           }`
+        : ``
+    }
+  `;
 
     // qty
     const qtyWrap = document.createElement("div");
@@ -258,7 +314,7 @@ document.addEventListener("DOMContentLoaded", () => {
       removeBtn.disabled = disabled;
     }
 
-    if (isOutOfStock) {
+    if (isBlocked) {
       row.classList.add("is-oos");
       minus.disabled = true;
       plus.disabled = true;
@@ -267,6 +323,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function commitQty(newQty) {
+      if (isBlocked) {
+        flash(getBlockedMessage(product), "warning", { persist: true });
+        return;
+      }
       const q = clampQty(newQty);
       setDisabled(true);
       try {
@@ -278,8 +338,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         await refresh();
       } catch (e) {
-        const m = e?.message ? e.message : String(e);
-        flash(`Update failed: ${m}`, "danger", { persist: true });
+        const raw = e?.message ? e.message : String(e);
+        const message = /expired/i.test(raw) ? getBlockedMessage(product) : raw;
+        flash(`Update failed: ${message}`, "danger", { persist: true });
       } finally {
         setDisabled(false);
       }
@@ -322,9 +383,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function render(cart) {
     const items = cart?.items ?? [];
-    const hasOutOfStock = items.some(
-      (it) => toNum(it?.product?.stock_quantity ?? 0) <= 0,
-    );
+    const hasBlockedItems = items.some((it) => {
+      const status = getItemStatus(it?.product || {});
+      return status.isBlocked;
+    });
 
     cartItemsEl?.replaceChildren();
 
@@ -338,15 +400,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (checkoutBtn) {
-      checkoutBtn.disabled = !items.length || hasOutOfStock;
+      checkoutBtn.disabled = !items.length || hasBlockedItems;
     }
 
-    if (hasOutOfStock) {
+    if (hasBlockedItems) {
       flash(
-        "Some items are out of stock. Remove them to proceed to checkout.",
+        "Some items are expired or unavailable. Remove them to proceed to checkout.",
         "warning",
         { persist: true },
       );
+    } else if (cartMsg) {
+      cartMsg.innerHTML = "";
     }
 
     // Professional summary: show wholesale savings if any

@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Order Management{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'producer_dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'css/producer_dashboard.css' %}">
 {% endblock %}
 {% block content %}
     <div class="container py-4 dashboard-container">
@@ -412,5 +412,5 @@
         {% endfor %}
     </div>
     {% csrf_token %}
-    <script src="{% static 'producer_dashboard.js' %}?v=4.0"></script>
+    <script src="{% static 'js/producer_dashboard.js' %}?v=2.0"></script>
 {% endblock %}

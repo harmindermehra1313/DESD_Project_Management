@@ -31,6 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const surplusNoticeEl = document.getElementById("surplusNotice");
   const wholesaleNoticeEl = document.getElementById("wholesaleNotice");
   const unitLabel = document.getElementById("unitLabel");
+  const expiryInfoRow = document.getElementById("expiryInfoRow");
+  const expiryTypeLabel = document.getElementById("expiryTypeLabel");
+  const expiryValue = document.getElementById("expiryValue");
+  
 
   let productData = null;
   let wholesaleTiers = [];
@@ -54,6 +58,68 @@ document.addEventListener("DOMContentLoaded", () => {
   function clearMsg() {
     if (!msg) return;
     msg.innerHTML = "";
+  }
+  function formatDate(value) {
+    if (!value) return "—";
+
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  }
+
+  function buildUnavailableMessage() {
+    if (!productData) {
+      return "This product is not currently available.";
+    }
+
+    if (productData.is_expired) {
+      const label = productData.expiry_type_label || "Expiry date";
+      const dateText = productData.expiry_date
+        ? formatDate(productData.expiry_date)
+        : null;
+
+      return dateText
+        ? `This item has expired. ${label} was ${dateText}.`
+        : "This item has expired and cannot be added to cart.";
+    }
+
+    return (
+      productData.stock_message ||
+      productData.add_to_cart_button_label ||
+      "This product is not currently available."
+    );
+  }
+
+  function renderExpiry() {
+    if (!productData || !expiryInfoRow || !expiryTypeLabel || !expiryValue)
+      return;
+
+    const hasExpiry = Boolean(
+      productData.expiry_date || productData.expiry_type_label,
+    );
+
+    setElVisible(expiryInfoRow, hasExpiry);
+
+    if (!hasExpiry) {
+      expiryTypeLabel.textContent = "Expiry";
+      expiryValue.textContent = "—";
+      expiryValue.className = "product-meta-value";
+      return;
+    }
+
+    expiryTypeLabel.textContent = productData.expiry_type_label || "Expiry";
+    expiryValue.textContent = productData.expiry_date
+      ? formatDate(productData.expiry_date)
+      : "—";
+
+    expiryValue.className = productData.is_expired
+      ? "product-meta-value text-danger fw-semibold"
+      : "product-meta-value";
   }
 
   function setElVisible(el, visible) {
@@ -233,27 +299,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const purchasable = Boolean(productData.is_purchasable);
     const badgeLabel = productData.availability_label || "Unknown";
+    const badgeClass =
+      productData.availability_badge_class ||
+      (purchasable ? "text-bg-success" : "text-bg-secondary");
     const buttonLabel =
       productData.add_to_cart_button_label ||
       (purchasable ? "Add to cart" : "Unavailable");
-    const stock = Number(productData.remaining_quantity ?? 0);
 
-    availabilityBadge.className =
-      purchasable && stock > 0
-        ? "badge rounded-pill text-bg-success"
-        : "badge rounded-pill text-bg-secondary";
-
+    availabilityBadge.className = `badge rounded-pill ${badgeClass}`;
     availabilityBadge.textContent = badgeLabel;
 
     stockText.className = "product-stock-text small";
+    stockText.textContent = buildUnavailableMessage();
 
-    if (purchasable && stock > 0) {
-      if (stock <= 5) {
-        stockText.classList.add("is-low");
+    if (purchasable) {
+      const stock = Number(productData.remaining_quantity ?? 0);
+      if (stock > 0) {
+        stockText.textContent = productData.stock_message || `${stock} left`;
+
+        if (stock <= 5) {
+          stockText.classList.add("is-low");
+        }
       }
-      stockText.textContent = `${stock} left`;
-    } else {
-      stockText.textContent = "Currently unavailable";
     }
 
     btn.disabled = !purchasable;
@@ -329,6 +396,7 @@ document.addEventListener("DOMContentLoaded", () => {
     productImage.alt = data.name || "Product image";
 
     renderAllergens(data.allergens);
+    renderExpiry();
     renderStock();
     renderPrice();
 
@@ -392,11 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btn?.addEventListener("click", async () => {
     if (!productData?.is_purchasable) {
-      setMsg(
-        productData?.stock_message ||
-          "This product is not currently available.",
-        "warning",
-      );
+      setMsg(buildUnavailableMessage(), "warning");
       return;
     }
 
@@ -428,16 +492,19 @@ document.addEventListener("DOMContentLoaded", () => {
         setMsg("Added to cart.", "success");
       }
     } catch (err) {
-      const errorText = `Add to cart failed: ${err?.message || String(err)}`;
+      const rawMessage = err?.message || String(err);
+      const friendlyMessage = /expired/i.test(rawMessage)
+        ? buildUnavailableMessage()
+        : rawMessage;
 
       if (typeof window.CartAPI?.showToast === "function") {
-        window.CartAPI.showToast(errorText, {
+        window.CartAPI.showToast(`Add to cart failed: ${friendlyMessage}`, {
           title: "Cart",
           variant: "danger",
           delay: 2500,
         });
       } else {
-        setMsg(errorText, "danger");
+        setMsg(`Add to cart failed: ${friendlyMessage}`, "danger");
       }
     }
   });

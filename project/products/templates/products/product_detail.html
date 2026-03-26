@@ -21,7 +21,7 @@
               </div>
             </div>
             <div class="col-lg-7">
-              <h1 id="productName" class="h3 mb-2"></h1>
+              <h1 id="productName" class="h1 mb-2"></h1>
               <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <span id="productUnit" class="badge rounded-pill text-bg-primary"></span>
                 <span id="productCategory" class="badge rounded-pill text-bg-secondary"></span>
@@ -30,6 +30,10 @@
               <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <span id="availabilityBadge" class="badge rounded-pill text-bg-secondary"></span>
                 <span id="stockText" class="product-stock-text small"></span>
+              </div>
+              <div id="expiryInfoRow" class="mb-3" style="display:none;">
+                <div class="product-meta-label" id="expiryTypeLabel">Expiry</div>
+                <div id="expiryValue" class="product-meta-value">—</div>
               </div>
               <div class="mb-3">
                 <div class="product-price-row">
@@ -46,7 +50,7 @@
                 <div id="wholesaleNotice" class="mt-2"></div>
               </div>
               <div class="mt-3">
-                <h2 class="product-section-title">Details</h2>
+                <h3 class="product-section-title">Details</h3>
                 <div class="mb-3">
                   <div class="product-meta-label">Description</div>
                   <div id="productDescription" class="product-meta-value"></div>

@@ -11,6 +11,15 @@
   background: #fff;
   border-radius: 10px;
 }
+.cart-product-link {
+  color: inherit;
+  font-weight: 600;
+}
+
+.cart-product-link:hover,
+.cart-product-link:focus {
+  text-decoration: underline !important;
+}
 
 @media (min-width: 992px) {
   .cart-summary-sticky {

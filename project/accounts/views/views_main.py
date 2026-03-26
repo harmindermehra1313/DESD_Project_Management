@@ -1,37 +1,87 @@
+# ---------------------------------------
+# Standard Library
+# ---------------------------------------
 import json
+import datetime
+
+# ---------------------------------------
+# Django Core
+# ---------------------------------------
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.utils import Order, timezone
+from django.db.models import Prefetch
+
+# ---------------------------------------
+# Django Models
+# ---------------------------------------
+from accounts.models import User
+from orders.models import (
+    ProducerOrderSummary,
+    OrderItem,
+    RecurringOrder,
+    ProducerOrderStatusHistory,
+)
+
+# ---------------------------------------
+# Django REST Framework
+# ---------------------------------------
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.http import JsonResponse                   
-from orders.models import Order, ProducerOrderSummary, OrderItem, RecurringOrder, ProducerOrderStatusHistory
-from django.db.models import Prefetch
-from django.contrib.auth import logout
+
+# ---------------------------------------
+# JWT / Authentication
+# ---------------------------------------
 from rest_framework_simplejwt.tokens import RefreshToken
-from accounts.models import User
-import datetime
-from django.utils import timezone
+
+# ---------------------------------------
+# Firebase
+# ---------------------------------------
+from firebase_admin import auth as firebase_auth
+
+# ---------------------------------------
+# Serializers
+# ---------------------------------------
 from accounts.serializers.registration_customer import CustomerRegistrationSerializer
 from accounts.serializers.registration_producer import ProducerRegistrationSerializer
 
+
+# ---------------------------------------
+# Register URL
+# ---------------------------------------
 def register(request):
     return render(request, "accounts/register.html")
 
+# ---------------------------------------
+# Logout URL
+# ---------------------------------------
 def logout_view(request):
     logout(request)
     return redirect("home:index")
 
 # New Login function to generate jwt tokens
+
 # def login_view(request):
 #     if request.method == "POST":
 #         email = request.POST.get("email", "").strip().lower()
 #         password = request.POST.get("password")
 #         remember = request.POST.get("remember")
 
+#         # STEP 1 — Check if user exists BEFORE authenticate()
+#         try:
+#             user_obj = User.objects.get(email=email)
+#             if not user_obj.is_active:
+#                 messages.error(request, "Your account has been deactivated. Please contact support.")
+#                 return render(request, "accounts/login.html")
+#         except User.DoesNotExist:
+#             user_obj = None
+
+#         # STEP 2 — Authenticate normally
 #         user = authenticate(request, username=email, password=password)
 
 #         if user is not None:
@@ -47,37 +97,21 @@ def logout_view(request):
 #             refresh = RefreshToken.for_user(user)
 #             access_token = str(refresh.access_token)
 
-#             # Store tokens in session (optional)
+
 #             request.session["jwt_access"] = access_token
 #             request.session["jwt_refresh"] = str(refresh)
-            
-#             from django.utils import timezone
 
-#             # Record login time (timezone-aware)
 #             login_time = timezone.now()
 #             request.session["login_time"] = login_time.isoformat()
 
-#             # Get session expiry (already timezone-aware)
 #             expiry_timestamp = request.session.get_expiry_date()
+            
 #             request.session["expiry_time"] = expiry_timestamp.isoformat()
-
-#             print("LOGIN TIME:", login_time)
-#             print("SESSION EXPIRES AT:", expiry_timestamp)
-
-#             # Calculate remaining time safely
-#             remaining = expiry_timestamp - login_time
-#             print("TIME UNTIL LOGOUT:", remaining)
-
-#             # Debug print (optional)
-#             print("JWT ACCESS:", access_token)
-#             print("USER:", request.user)
-#             print("ROLE:", request.user.role)
-#             print("AUTH:", request.user.is_authenticated)
 
 #             # Redirect based on role
 #             if user.role == "ADMIN":
 #                 return redirect("home:dashboard")
-#             elif user.role =='PRODUCER':
+#             elif user.role == "PRODUCER":
 #                 return redirect("home:producer")
 #             else:
 #                 return redirect("home:index")
@@ -88,65 +122,51 @@ def logout_view(request):
 #     return render(request, "accounts/login.html")
 
 def login_view(request):
-    if request.method == "POST":
-        email = request.POST.get("email", "").strip().lower()
-        password = request.POST.get("password")
-        remember = request.POST.get("remember")
-
-        # STEP 1 — Check if user exists BEFORE authenticate()
-        try:
-            user_obj = User.objects.get(email=email)
-            if not user_obj.is_active:
-                messages.error(request, "Your account has been deactivated. Please contact support.")
-                return render(request, "accounts/login.html")
-        except User.DoesNotExist:
-            user_obj = None
-
-        # STEP 2 — Authenticate normally
-        user = authenticate(request, username=email, password=password)
-
-        if user is not None:
-            login(request, user)
-
-            # Session expiry
-            if not remember:
-                request.session.set_expiry(0)
-            else:
-                request.session.set_expiry(60 * 60 * 24 * 1)
-
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
-
-
-            request.session["jwt_access"] = access_token
-            request.session["jwt_refresh"] = str(refresh)
-
-            login_time = timezone.now()
-            request.session["login_time"] = login_time.isoformat()
-
-            expiry_timestamp = request.session.get_expiry_date()
-            
-            request.session["expiry_time"] = expiry_timestamp.isoformat()
-
-            # Redirect based on role
-            if user.role == "ADMIN":
-                return redirect("home:dashboard")
-            elif user.role == "PRODUCER":
-                return redirect("home:producer")
-            else:
-                return redirect("home:index")
-
-        else:
-            messages.error(request, "Invalid email or password.")
-
     return render(request, "accounts/login.html")
 
+# ---------------------------------------
+# Firebase Autheciation function
+# ---------------------------------------
+def firebase_auth_view(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=400)
 
+    data = json.loads(request.body)
+    token = data.get("token")
+
+    try:
+        decoded = firebase_auth.verify_id_token(token)
+        email = decoded.get("email")
+
+        user, created = User.objects.get_or_create(email=email)
+
+        # Check if user is active
+        if not user.is_active:
+            print("DEBUG: User is deactivated")   # <-- This will show in your terminal
+            return JsonResponse({"error": "Your account is deactivated. Please contact support."}, status=403)
+
+        login(request, user)
+
+        if user.role == "ADMIN":
+            return JsonResponse({"redirect": "/dashboard/"})
+        elif user.role == "PRODUCER":
+            return JsonResponse({"redirect": "/producer/"})
+        else:
+            return JsonResponse({"redirect": "/"})
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+# ---------------------------------------
+# Profile URL
+# ---------------------------------------
 @login_required
 def profile(request):
     return render(request, "accounts/profile.html")
 
+# ---------------------------------------
+# Producer URL
+# ---------------------------------------
 @login_required
 def producer_dashboard(request):
     if request.user.role != 'PRODUCER' or not hasattr(request.user, 'producer_profile'):
@@ -426,7 +446,9 @@ def toggle_subscription(request, sub_id):
     except RecurringOrder.DoesNotExist:
         return JsonResponse({'error': 'Subscription not found'}, status=404)
 
-
+# ---------------------------------------
+# API Endpoint URL
+# ---------------------------------------
 class UnifiedRegistrationView(APIView):
     def post(self, request):
         role = request.data.get("role", "").lower()

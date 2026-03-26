@@ -298,7 +298,24 @@ def producer_products(request):
         .filter(producer=producer)
         .select_related('category')
         .prefetch_related(
-            'inventory_batches',
+            Prefetch(
+                'inventory_batches',
+                queryset=Inventory.objects.filter(status="ACT").order_by('expiry_date'),
+                to_attr='active_batches',
+            ),
+            Prefetch(
+                'inventory_batches',
+                queryset=Inventory.objects.filter(status="DEL").order_by('expiry_date'),
+                to_attr='deleted_batches',
+            ),
+            Prefetch(
+                'inventory_batches',
+                queryset=Inventory.objects.filter(
+                    status="ACT",
+                    expiry_date__lt=date.today()
+                ).order_by('expiry_date'),
+                to_attr='expired_batches',
+            ),
             'product_allergen__allergen',
             Prefetch(
                 'product_wholesale',

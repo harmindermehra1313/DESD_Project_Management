@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
+from django.utils import timezone
 
 
 class Category(models.Model):
@@ -193,6 +194,10 @@ class Inventory(models.Model):
         NONE = "NN", "None"
         SURPLUS_ACTIVE = "SA", "Surplus Active"
         SURPLUS_EXPIRED = "SE", "Surplus Expired"
+    
+    class BatchStatus(models.TextChoices):
+        ACTIVE = "ACT", "Active"
+        DELETED = "DEL", "Deleted"
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="inventory_batches"
@@ -228,6 +233,8 @@ class Inventory(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    status = models.CharField(max_length=20, choices=BatchStatus.choices, default=BatchStatus.ACTIVE)
+
     # Return the discounted price if surplus is active else normal price
     def get_discounted_price(self):
         base_price = self.product.price
@@ -239,12 +246,15 @@ class Inventory(models.Model):
             return base_price * discount_factor
         else:
             return base_price
+    def is_expired(self) -> bool:
+        return self.expiry_date < timezone.localdate()
 
     def __str__(self):
         return f"{self.product.name} batch ({self.harvest_date})"
 
 
 class InventoryUpdateHistory(models.Model):
+
     inventory = models.ForeignKey(
         Inventory, on_delete=models.CASCADE, related_name="history"
     )

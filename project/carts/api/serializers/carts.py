@@ -36,6 +36,13 @@ class ProductMiniSerializer(serializers.Serializer):
     )
     surplus_note = serializers.CharField(read_only=True, allow_null=True)
 
+    expiry_date = serializers.DateField(read_only=True)
+    expiry_type = serializers.CharField(read_only=True)
+    expiry_type_label = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+    is_purchasable = serializers.SerializerMethodField()
+    stock_message = serializers.SerializerMethodField()
+
     def get_producer_name(self, obj):
         producer = obj.product.producer
         return getattr(producer, "business_name", None) or getattr(
@@ -45,6 +52,38 @@ class ProductMiniSerializer(serializers.Serializer):
     def get_image(self, obj):
         img = getattr(obj.product, "image", None)
         return getattr(img, "url", None) if img else None
+
+    def get_expiry_type_label(self, obj):
+        return obj.get_expiry_type_display() if obj.expiry_type else None
+
+    def get_is_expired(self, obj):
+        return obj.is_expired()
+
+    def get_is_purchasable(self, obj):
+        product = obj.product
+        return (
+            product.status == product.Status.PUBLISHED
+            and product.availability_status == product.Availability_status.AVAILABLE
+            and obj.remaining_quantity > 0
+            and not obj.is_expired()
+        )
+
+    def get_stock_message(self, obj):
+        product = obj.product
+
+        if obj.is_expired():
+            return "This product has expired. Please remove the item."
+
+        if product.status != product.Status.PUBLISHED:
+            return "This product is not available. Please remove the item."
+
+        if product.availability_status != product.Availability_status.AVAILABLE:
+            return "This product is unavailable. Please remove the item."
+
+        if obj.remaining_quantity <= 0:
+            return "This item is out of stock. Please remove the item."
+
+        return "In stock"
 
 
 #

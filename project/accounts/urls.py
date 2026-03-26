@@ -17,6 +17,7 @@ urlpatterns = [
     path("login/", views_main.login_view, name="login"),
     path("logout/", views_main.logout_view, name="logout"),
     path("api/register/", UnifiedRegistrationView.as_view(), name="api-register"),
+    path("auth/firebase/", views_main.firebase_auth_view),
     
     # Dashboard & Order Management
     path("producer_dashboard/", views_main.producer_dashboard, name="producer_dashboard"),
