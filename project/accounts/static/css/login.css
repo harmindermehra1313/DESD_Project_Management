@@ -45,3 +45,35 @@
     border-color:var(--ink-black);
     color: #fff;
 }
+
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);   /* centers it horizontally */
+    min-width: 280px;
+    max-width: 90%;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    font-weight: 500;
+    display: none;
+    z-index: 9999;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.toast.success {
+    background-color: #28a745; /* green */
+}
+
+.toast.error {
+    background-color: #dc3545; /* red */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}

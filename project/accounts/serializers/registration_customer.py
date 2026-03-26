@@ -2,107 +2,12 @@
 # # - User (role=CUSTOMER)
 # # - Customer profile
 # # - Address entry
-# # All wrapped in a single atomic transaction so nothing breaks halfway.
-
-# from rest_framework import serializers
-# from django.contrib.auth.password_validation import validate_password
-# from django.db import transaction
-# from accounts.models import User, Customer, Address
-
-
-# class CustomerRegistrationSerializer(serializers.Serializer):
-#     # Basic user info
-#     name = serializers.CharField(max_length=100)
-#     email = serializers.EmailField()
-#     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
-
-#     # Password fields
-#     password = serializers.CharField(write_only=True)
-#     confirm_password = serializers.CharField(write_only=True)
-#     accept_terms = serializers.BooleanField(write_only=True)
-
-#     # Customer type
-#     customer_account_type = serializers.ChoiceField(
-#         choices=["INDIVIDUAL", "BUSINESS", "COMMUNITY_GROUP"]
-#     )
-
-#     # Business fields
-#     business_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
-#     business_registration_number = serializers.CharField(max_length=100, required=False, allow_blank=True)
-#     business_contact_person = serializers.CharField(max_length=150, required=False, allow_blank=True)
-
-#     # Community fields
-#     community_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
-#     community_contact = serializers.CharField(max_length=150, required=False, allow_blank=True)
-#     community_registration_number = serializers.CharField(max_length=100, required=False, allow_blank=True)
-
-#     # Address fields
-#     line1 = serializers.CharField(max_length=255)
-#     line2 = serializers.CharField(max_length=255, required=False, allow_blank=True)
-#     city = serializers.CharField(max_length=100)
-#     postcode = serializers.CharField(max_length=20)
-#     accept_terms = serializers.BooleanField(write_only=True)
-
-#     def validate(self, data):
-#         # Check password match
-#         if data["password"] != data["confirm_password"]:
-#             raise serializers.ValidationError({"password": "Passwords do not match."})
-
-#         # Check terms
-#         if not data["accept_terms"]:
-#             raise serializers.ValidationError({"accept_terms": "You must accept the terms."})
-
-#         validate_password(data["password"])
-#         return data
-
-#     @transaction.atomic
-#     def create(self, validated_data):
-#         # Remove fields not needed for User creation
-#         validated_data.pop("confirm_password")
-#         validated_data.pop("accept_terms")
-
-#         # Extract address fields
-#         address_fields = {
-#             "line1": validated_data.pop("line1"),
-#             "line2": validated_data.pop("line2", ""),
-#             "city": validated_data.pop("city"),
-#             "postcode": validated_data.pop("postcode"),
-#             "is_default_delivery": True,
-#             "is_default_billing": True,
-#         }
-
-#         # Extract customer type
-#         customer_type = validated_data.pop("customer_account_type")
-
-#         # Create user
-#         user = User.objects.create_user(
-#             email=validated_data["email"],
-#             password=validated_data["password"],
-#             name=validated_data["name"],
-#             phone=validated_data.get("phone", ""),
-#             role="CUSTOMER",
-#         )
-
-#         # Create customer profile
-#         Customer.objects.create(
-#             user=user,
-#             organisation_type=customer_type,
-#             registration_number=validated_data.get("business_registration_number")
-#             or validated_data.get("community_registration_number"),
-#             contact_person_name=validated_data.get("business_contact_person")
-#             or validated_data.get("community_contact"),
-#         )
-
-#         # Create address
-#         Address.objects.create(user=user, **address_fields)
-
-#         return user
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from accounts.models import User, Customer, Address
 import re
-
+from firebase_admin import auth as firebase_auth
 
 class CustomerRegistrationSerializer(serializers.Serializer):
     # User fields
@@ -188,6 +93,10 @@ class CustomerRegistrationSerializer(serializers.Serializer):
             name=validated_data["name"],
             phone=validated_data.get("phone", ""),
             role="CUSTOMER",
+        )
+        firebase_auth.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"]
         )
 
         # Create customer profile
