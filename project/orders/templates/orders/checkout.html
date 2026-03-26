@@ -9,14 +9,15 @@
 {% block content %}
 <div class="checkout-container">
 
-    <h1>Checkout</h1>
+    <h1 class="title">Checkout</h1>
 
     <!-- Cart Summary -->
     <section class="checkout-section">
         <h2>Cart Overview</h2>
 
         {% if cart.items %}
-            <table class="checkout-table">
+            <!-- <table class="checkout-table"> -->
+            <table class="table main-table">
                 <thead>
                     <tr>
                         <th>Product</th>
@@ -109,7 +110,8 @@
                 <div class="producer-grid">
                     <!-- LEFT: Products -->
                     <div class="producer-products">
-                        <table class="checkout-table">
+                        <!-- <table class="checkout-table"> -->
+                        <table class="table main-table">
                             <thead>
                                 <tr>
                                     <th>Product</th>
