@@ -1,0 +1,125 @@
+.js-reorder-option-input:checked {
+  background-color: var(--dusk-blue);
+  border-color: var(--dusk-blue);
+}
+
+.js-reorder-option-input:focus {
+  border-color: var(--dusk-blue);
+  box-shadow: 0 0 0 0.25rem rgba(55, 82, 111, 0.25);
+}
+
+@media (max-width: 720px) {
+  /* Page spacing */
+  .container.py-4 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Filter actions */
+  #orderFiltersForm .col-12.d-flex.gap-2 {
+    flex-direction: column;
+  }
+
+  #orderFiltersForm .col-12.d-flex.gap-2 .btn {
+    width: 100%;
+  }
+
+  /* Order table: keep readable with horizontal scroll */
+  #orderTableWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .main-table {
+    min-width: 760px;
+  }
+
+  .main-table th,
+  .main-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  /* Action buttons inside table */
+  .main-table td.text-end {
+    min-width: 180px;
+    white-space: normal;
+  }
+
+  .main-table td.text-end .btn {
+    display: block;
+    width: 100%;
+    margin-right: 0 !important;
+  }
+
+  .main-table td.text-end .btn + .btn {
+    margin-top: 0.5rem;
+  }
+
+  /* Pagination row */
+  #paginationInfo {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+
+  #paginationInfo + div {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  #paginationInfo + div .btn {
+    flex: 1 1 0;
+  }
+
+  .card-body > .d-flex.justify-content-between.align-items-center.mt-3 {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.75rem;
+  }
+
+  /* Modals */
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  .modal-xl {
+    max-width: calc(100% - 1rem);
+  }
+
+  .modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-footer .btn,
+  .modal-footer .btn-primary,
+  .modal-footer .btn-outline-secondary,
+  .modal-footer a.btn {
+    width: 100%;
+    margin: 0;
+  }
+
+  .modal-footer .btn + .btn,
+  .modal-footer .btn + a.btn,
+  .modal-footer a.btn + .btn {
+    margin-top: 0.5rem;
+  }
+
+  /* Order detail footer actions */
+  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 .d-flex.gap-2 {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 .btn,
+  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 a.btn {
+    width: 100%;
+  }
+}

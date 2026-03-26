@@ -15,6 +15,8 @@ from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
 
+from admin_records.models import ModerationLog
+from django.db.models import Prefetch
 
 def _get_category_default_image(category_obj):
     image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
@@ -123,6 +125,7 @@ def add_product(request):
         unit_code = request.POST.get('unit')
         stock_quantity = request.POST.get('stock_quantity')
         wholesale_price_raw = (request.POST.get('wholesale_price') or '').strip()
+        wholesale_min_qty_raw = (request.POST.get('wholesale_min_quantity') or '').strip()
         description = request.POST.get('description')
         uploaded_image = request.FILES.get('image')
 
@@ -152,6 +155,7 @@ def add_product(request):
             )
 
         wholesale_price = None
+        wholesale_min_quantity = 20
         if wholesale_price_raw:
             try:
                 wholesale_price = Decimal(wholesale_price_raw)
@@ -176,11 +180,27 @@ def add_product(request):
                     _build_add_product_context('Wholesale price cannot be higher than the base price.'),
                 )
 
-            if stock_quantity_value < 20:
+            if wholesale_min_qty_raw:
+                try:
+                    wholesale_min_quantity = int(wholesale_min_qty_raw)
+                except (TypeError, ValueError):
+                    return render(
+                        request,
+                        'products/add_product.html',
+                        _build_add_product_context('Please enter a valid minimum wholesale quantity.'),
+                    )
+                if wholesale_min_quantity < 2:
+                    return render(
+                        request,
+                        'products/add_product.html',
+                        _build_add_product_context('Minimum wholesale quantity must be at least 2.'),
+                    )
+
+            if stock_quantity_value < wholesale_min_quantity:
                 return render(
                     request,
                     'products/add_product.html',
-                    _build_add_product_context('At least 20 items in stock are required to set a wholesale price.'),
+                    _build_add_product_context(f'At least {wholesale_min_quantity} items in stock are required to set a wholesale price.'),
                 )
 
         valid_expiry_types = {choice[0] for choice in Inventory.ExpiryType.choices}
@@ -219,22 +239,6 @@ def add_product(request):
         producer = request.user.producer_profile
         farm_origin = producer.farm_name.strip() if producer.farm_name else "Local Farm"
 
-        # new_product = Product.objects.create(
-        #     producer=producer,
-        #     category=category_obj,
-        #     name=name,
-        #     price=price,
-        #     availability_status=availability_status,
-        #     harvest_date=harvest_date,
-        #     expiry_date=expiry_date,
-        #     unit=unit_code,
-        #     stock_quantity=stock_quantity,
-        #     description=description,
-        #     image=uploaded_image,
-        #     farm_origin="Local Farm",
-        #     surplus_discount_percentage=0.00,
-        # )
-
         new_product = Product.objects.create(
             producer=producer,
             category=category_obj,
@@ -246,6 +250,7 @@ def add_product(request):
             description=description,
             image=uploaded_image,
             farm_origin=farm_origin,
+            status=Product.Status.PENDING,
         )
 
         if not uploaded_image:
@@ -266,7 +271,7 @@ def add_product(request):
         if wholesale_price is not None:
             WholesalePrice.objects.create(
                 product=new_product,
-                min_quantity=20,
+                min_quantity=wholesale_min_quantity,
                 unit_price=wholesale_price,
             )
 
@@ -278,7 +283,7 @@ def add_product(request):
                 allergen=allergen_obj
             )
 
-        return redirect('product_view', category_id=0)
+        return redirect('producer_products')
 
     return render(request, 'products/add_product.html', _build_add_product_context())
 
@@ -297,13 +302,26 @@ def producer_products(request):
             'product_allergen__allergen',
             Prefetch(
                 'product_wholesale',
-                queryset=WholesalePrice.objects.filter(min_quantity=20).order_by('-id'),
-                to_attr='product_wholesale_20',
+                queryset=WholesalePrice.objects.order_by('-id'),
+                to_attr='product_wholesale_first',
             ),
         )
         .annotate(total_stock=Sum('inventory_batches__remaining_quantity'))
         .order_by("-created_at")
     )
+
+    #Attach latest rejection log manually
+    for p in products:
+        p.latest_rejection = (
+            ModerationLog.objects
+            .filter(
+                content=p.id,
+                content_type=ModerationLog.ContentType.PRODUCT,
+                action=ModerationLog.Action.REJECTED
+            )
+            .order_by('-created_at')
+            .first()
+        )
 
     categories = Category.objects.all()
 
@@ -312,6 +330,8 @@ def producer_products(request):
         "categories": categories,
         "units": Product.Unit.choices,
     })
+
+
 
 
 @producer_required
@@ -359,7 +379,9 @@ def edit_producer_product(request, pk):
             category = product.category
 
         wholesale_price_raw = str(data.get('wholesale_price', '') or '').strip()
+        wholesale_min_qty_raw = str(data.get('wholesale_min_quantity', '') or '').strip()
         wholesale_price = None
+        wholesale_min_quantity = 20
         if wholesale_price_raw:
             try:
                 wholesale_price = Decimal(wholesale_price_raw)
@@ -372,11 +394,19 @@ def edit_producer_product(request, pk):
             if wholesale_price > base_price_value:
                 return JsonResponse({'success': False, 'error': 'Wholesale price cannot be higher than the base price.'})
 
+            if wholesale_min_qty_raw:
+                try:
+                    wholesale_min_quantity = int(wholesale_min_qty_raw)
+                except (TypeError, ValueError):
+                    return JsonResponse({'success': False, 'error': 'Please enter a valid minimum wholesale quantity.'})
+                if wholesale_min_quantity < 2:
+                    return JsonResponse({'success': False, 'error': 'Minimum wholesale quantity must be at least 2.'})
+
             stock_total = product.inventory_batches.aggregate(total=Sum('remaining_quantity')).get('total') or 0
-            if stock_total < 20:
+            if stock_total < wholesale_min_quantity:
                 return JsonResponse({
                     'success': False,
-                    'error': 'At least 20 items in stock are required to set a wholesale price.',
+                    'error': f'At least {wholesale_min_quantity} items in stock are required to set a wholesale price.',
                 })
 
         product.name = name
@@ -389,13 +419,14 @@ def edit_producer_product(request, pk):
         product.save()
 
         if wholesale_price is not None:
-            WholesalePrice.objects.update_or_create(
+            product.product_wholesale.all().delete()
+            WholesalePrice.objects.create(
                 product=product,
-                min_quantity=20,
-                defaults={'unit_price': wholesale_price},
+                min_quantity=wholesale_min_quantity,
+                unit_price=wholesale_price,
             )
         else:
-            product.product_wholesale.filter(min_quantity=20).delete()
+            product.product_wholesale.all().delete()
 
         return JsonResponse({
             'success': True,
@@ -410,6 +441,7 @@ def edit_producer_product(request, pk):
             'organic_certification_status': product.organic_certification_status,
             'description': product.description or '',
             'wholesale_price': str(wholesale_price) if wholesale_price is not None else '',
+            'wholesale_min_quantity': wholesale_min_quantity if wholesale_price is not None else '',
         })
 
     except json.JSONDecodeError:

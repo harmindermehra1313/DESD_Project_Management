@@ -1,22 +1,4 @@
 /* ============================
-   BRAND VARIABLES
-   ============================ */
-:root {
-    --brand: var(--ink-black);              /* Main text + headings */
-    --accent: var(--headback);           /* Buttons + highlights */
-    --muted: var(--lavender-grey);               /* Subtle text + borders */
-    --bg: #ffffff;
-
-    --radius: 8px;
-    --gap: 12px;
-
-    /* RGB versions for transparency */
-    --brand-rgb: 13, 27, 42;                 /* dark-green */
-    --muted-rgb: 119, 141, 169;               /* blue-grey */
-    --accent-rgb: 57, 163, 150;              /* bright-green */
-}
-
-/* ============================
    LAYOUT
    ============================ */
 .checkout-container {
@@ -33,7 +15,6 @@
 /* ============================
    HEADINGS
    ============================ */
-.checkout-container h1,
 .checkout-container h2,
 .checkout-container h3 {
     color: var(--brand);
@@ -65,6 +46,7 @@
     padding: 0.9rem;
     border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
 }
+
 
 /* ============================
    PRICE STYLING
@@ -202,7 +184,7 @@ hr {
 /* ============================
    BUTTONS
    ============================ */
-.btn-primary {
+/* .btn-primary {
     background-color: var(--accent);
     border-color: var(--accent);
     color: var(--text-light);
@@ -215,6 +197,7 @@ hr {
     border-color: var(--brand);
     color: var(--text-light);
 }
+*/
 
 .checkout-btn {
     margin-top: 2rem;

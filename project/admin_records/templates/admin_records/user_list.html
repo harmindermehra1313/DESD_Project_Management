@@ -3,44 +3,114 @@
 
 {% block title %}User List | Admin{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user_list.css' %}">
+{% endblock %}
+
 {% block content %}
 
-<div class="container mt-4">
-    <h2 class="mb-3">All Users</h2>
+<div class="container mt-4 user-list-container">
 
-    <table class="table table-striped table-sm align-middle">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Role</th>
-                <th>Created</th>
-                <th>Active</th>
-            </tr>
-        </thead>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">All Users</h2>
+    </div>
 
-        <tbody>
-            {% for u in users %}
-            <tr>
-                <td>{{ u.id }}</td>
-                <td>{{ u.name }}</td>
-                <td>{{ u.email }}</td>
-                <td>{{ u.phone }}</td>
-                <td>{{ u.get_role_display }}</td>
-                <td>{{ u.created_at|date:"Y-m-d" }}</td>
-                <td>{{ u.is_active }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7" class="text-center text-muted py-3">
-                    No users found.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table table-striped table-sm align-middle user-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Created</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td data-label="ID">{{ u.id }}</td>
+                    <td data-label="Name">{{ u.name }}</td>
+                    <td data-label="Email">{{ u.email }}</td>
+                    <td data-label="Phone">{{ u.phone }}</td>
+                    <td data-label="Role">{{ u.get_role_display }}</td>
+                    <td data-label="Created">{{ u.created_at|date:"Y-m-d" }}</td>
+
+                    <td data-label="Active">
+                        {% if u.is_active %}
+                            <span class="badge bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge bg-danger">No</span>
+                        {% endif %}
+                    </td>
+
+                    <td data-label="Actions">
+                        {% if u.is_active %}
+                            <button 
+                                class="btn btn-outline-danger btn-sm delete-user-btn"
+                                data-user-id="{{ u.id }}"
+                                data-user-name="{{ u.name }}"
+                            >
+                                Deactivate
+                            </button>
+                        {% else %}
+                            <button 
+                                class="btn btn-outline-success btn-sm reactivate-user-btn"
+                                data-user-id="{{ u.id }}"
+                                data-user-name="{{ u.name }}"
+                            >
+                                Reactivate
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-3">
+                        No users found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
 </div>
 
+<!-- Deactivate User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Deactivate User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <p id="deleteUserText"></p>
+
+        <label class="form-label">Reason for deactivation</label>
+        <textarea id="deleteReason" class="form-control" rows="3" required></textarea>
+
+        <input type="hidden" id="deleteUserId">
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn">Deactivate</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% csrf_token %}
+
+{% block extra_js %}
+<script src="{% static 'user_list.js' %}"></script>
+{% endblock %}
 {% endblock %}

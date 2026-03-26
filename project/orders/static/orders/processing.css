@@ -1,21 +1,4 @@
 /* ============================
-   BRAND VARIABLES
-   ============================ */
-:root {
-    --brand: var(--ink-black);
-    --accent: var(--headback);
-    --muted: var(--lavender-grey);
-    --bg: #ffffff;
-
-    --radius: 8px;
-    --gap: 12px;
-
-    --brand-rgb: 13, 27, 42;
-    --muted-rgb: 119, 141, 169;
-    --accent-rgb: 57, 163, 150;
-}
-
-/* ============================
    FULL‑PAGE CENTERING
    ============================ */
 .processing-wrapper {

@@ -1,0 +1,89 @@
+/* ============================================================
+   USER LIST PAGE — BRFN ADMIN
+   ============================================================ */
+
+.user-list-container {
+    background: var(--background-grey);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+/* Page title */
+.user-list-container h2 {
+    color: var(--prussian-blue);
+    font-weight: 700;
+    font-family: var(--font-brand);
+}
+
+/* Table styling */
+.user-table {
+    border: 1px solid var(--alabaster-grey);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.user-table thead th {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px;
+    font-weight: 600;
+}
+
+.user-table tbody td {
+    font-size: 0.85rem;
+    padding: 10px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.user-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.user-table tbody tr:hover {
+    background: var(--background-header-row2);
+}
+
+/* Modal */
+.modal-content {
+    border-radius: 10px;
+}
+
+#deleteReason {
+    resize: vertical;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+
+    .user-table thead {
+        display: none;
+    }
+
+    .user-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--alabaster-grey);
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+
+    .user-table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.9rem;
+    }
+
+    .user-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dusk-blue);
+        margin-right: 10px;
+    }
+}

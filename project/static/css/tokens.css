@@ -16,7 +16,13 @@
     /* Text Colors */
     --text-dark: #333;
     --text-light: #fff;
-    
+
+    /* Below used for old css */
+    --brand: var(--ink-black);
+    --accent: var(--headback);
+    --muted: var(--lavender-grey);
+    --radius: 8px;
+    --gap: 12px;
 
     /* Fonts */
     --font-main: system-ui, Arial, sans-serif;
@@ -56,7 +62,7 @@ a {
 }
 
 .btn-primary:disabled {
-    opacity: 0.5rem;
+    opacity: 0.5;
 }
 
 /* Secondary buttons */
@@ -69,6 +75,7 @@ a {
     border-color:var(--ink-black);
     color: #fff;
 }
+
 
 /* Cards */
 .card {
@@ -92,6 +99,13 @@ a {
     font-weight: 600;
     border-bottom: none;
 }
+
+.table.main-table {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--alabaster-grey);
+}
+
 .order-row {
     cursor: pointer;
     transition: background-color 0.2s ease;
@@ -103,7 +117,7 @@ a {
 
 .order-row.selected {
     background-color: #e9ecef;
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--dusk-blue);
 }
 
 /* Bootstrap for cancellation buttons and badges! */

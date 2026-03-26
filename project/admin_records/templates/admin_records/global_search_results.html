@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-4">Search Results for "{{ query }}"</h2>
+
+    {% if not producers and not users and not orders and not products %}
+        <p class="text-muted">No results found.</p>
+    {% endif %}
+
+    {% if producers %}
+        <h4>Producers</h4>
+        <ul>
+            {% for p in producers %}
+                <li>
+                    <a href="#" onclick="showProducerDetails('{{ p.id }}')">
+                        {{ p.farm_name }} — {{ p.user.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if users %}
+        <h4>Users</h4>
+        <ul>
+            {% for u in users %}
+                <li>{{ u.name }} — {{ u.email }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if orders %}
+        <h4>Orders</h4>
+        <ul>
+            {% for o in orders %}
+                <li>Order {{ o.unique_reference }} — {{ o.user.name }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if products %}
+        <h4>Products</h4>
+        <ul>
+            {% for pr in products %}
+                <li>{{ pr.name }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+</div>
+{% endblock %}

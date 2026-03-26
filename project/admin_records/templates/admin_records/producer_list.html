@@ -3,44 +3,238 @@
 
 {% block title %}Producer List | Admin{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'producer_list.css' %}">
+{% endblock %}
+
 {% block content %}
 
-<div class="container mt-4">
-    <h2 class="mb-3">All Producers</h2>
+<div class="container mt-4 producer-list-container">
 
-    <table class="table table-striped table-sm align-middle">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Farm Name</th>
-                <th>Producer Name</th>
-                <th>Contact Email</th>
-                <th>Contact Phone</th>
-                <th>Approved</th>
-                <th>Payout Method</th>
-            </tr>
-        </thead>
+    <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">All Producers</h2>
 
-        <tbody>
-            {% for p in producers %}
-            <tr>
-                <td>{{ p.id }}</td>
-                <td>{{ p.farm_name }}</td>
-                <td>{{ p.user.name }}</td>
-                <td>{{ p.contact_email }}</td>
-                <td>{{ p.contact_phone }}</td>
-                <td>{{ p.is_approved }}</td>
-                <td>{{ p.get_payout_method_display }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7" class="text-center text-muted py-3">
-                    No producers found.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive shadow-sm" style="border-radius: var(--radius); overflow: hidden;">
+        <table class="table table-hover table-sm align-middle producer-table text-center">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Farm Name</th>
+                    <th>Producer Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Approved</th>
+                    <th>Payout Method</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for p in producers %}
+                <tr class="producer-row"
+                    onclick="showProducerDetails('{{ p.id }}')"
+                    style="cursor: pointer;"
+                    id="producer-{{ p.id }}">
+
+                    <td data-label="ID">{{ p.id }}</td>
+
+                    <td data-label="Farm Name">{{ p.farm_name }}</td>
+
+                    <td data-label="Producer Name">{{ p.user.name }}</td>
+
+                    <td data-label="Email">{{ p.contact_email }}</td>
+
+                    <td data-label="Phone">{{ p.contact_phone }}</td>
+
+                    <td data-label="Approval Status">
+                        {% if p.is_approved %}
+                            <span class="badge bg-success">Approved</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </td>
+
+                    <td data-label="Payout Method">{{ p.get_payout_method_display }}</td>
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-3">
+                        No producers found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
 </div>
+
+<!-- ===========================
+     PRODUCER DETAILS MODAL
+=========================== -->
+<div class="modal fade" id="producerDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow-lg">
+
+            <div class="modal-header" style="background: var(--brand); color: white;">
+                <h5 class="modal-title fw-bold">Producer Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body" id="producerDetailsContent">
+                <!-- JS will inject content -->
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ===========================
+     HIDDEN TEMPLATES
+=========================== -->
+<div id="producer-templates" style="display: none;">
+    {% for p in producers %}
+    <template id="producer-template-{{ p.id }}">
+        <div class="row">
+
+            <!-- LEFT COLUMN -->
+            <div class="col-md-6 mb-4">
+
+                <strong class="text-brand">Producer Information</strong><br>
+                {{ p.user.name }}<br>
+                <a href="mailto:{{ p.contact_email }}">{{ p.contact_email }}</a><br>
+                {{ p.contact_phone }}<br><br>
+
+                <strong class="text-brand">Farm Name:</strong><br>
+                {{ p.farm_name }}<br><br>
+
+                {% if p.farm_description %}
+                    <strong class="text-brand">Farm Description:</strong><br>
+                    <span class="text-muted">{{ p.farm_description }}</span><br><br>
+                {% endif %}
+
+                {% if p.organic_certification_number %}
+                    <strong class="text-brand">Organic Certification:</strong><br>
+                    {{ p.organic_certification_number }}<br><br>
+                {% endif %}
+
+                <strong class="text-brand">Farm Postcode:</strong><br>
+                {{ p.farm_postcode }}<br><br>
+
+                <strong class="text-brand">Approval Status:</strong><br>
+                {% if p.is_approved %}
+                    <span class="badge bg-success">Approved</span><br>
+                    <small class="text-muted">Approved at: {{ p.approved_at }}</small><br>
+                {% else %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                {% endif %}
+
+                {% if p.approved_by_admin_id %}
+                    <br><small class="text-muted">Approved by Admin ID: {{ p.approved_by_admin_id }}</small>
+                {% endif %}
+
+                <br><br>
+
+                <!-- PRODUCER ACCOUNT STATUS -->
+                <strong class="text-brand">Producer Account Status:</strong><br>
+                {% if p.user.is_active %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-danger">Deactivated</span><br>
+
+                    {% if p.user.deactivation_reason %}
+                        <strong>Reason:</strong> {{ p.user.deactivation_reason }}<br>
+                    {% endif %}
+
+                    {% if p.user.deactivated_at %}
+                        <strong>Deactivated At:</strong> {{ p.user.deactivated_at }}<br>
+                    {% endif %}
+
+                    {% if p.user.deactivated_by %}
+                        <strong>Deactivated By:</strong> {{ p.user.deactivated_by.name }}<br>
+                    {% endif %}
+                {% endif %}
+
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="col-md-6 mb-4">
+
+                <strong class="text-brand">Payout Method</strong><br>
+                {{ p.get_payout_method_display }}<br><br>
+
+                {% if p.payout_method == "BANK_TRANSFER" %}
+                    <strong>Account Holder:</strong> {{ p.bank_account_name }}<br>
+                    <strong>Account Number:</strong> {{ p.bank_account_number }}<br>
+                    <strong>Sort Code:</strong> {{ p.bank_sort_code }}<br>
+
+                    {% if p.payout_notes %}
+                        <br><strong>Payout Notes:</strong><br>
+                        <span class="text-muted">{{ p.payout_notes }}</span>
+                    {% endif %}
+
+                {% elif p.payout_method == "PAYPAL" %}
+                    <strong>PayPal Email:</strong> {{ p.paypal_email }}<br>
+
+                    {% if p.payout_notes %}
+                        <br><strong>Payout Notes:</strong><br>
+                        <span class="text-muted">{{ p.payout_notes }}</span>
+                    {% endif %}
+
+                {% elif p.payout_method == "CHEQUE" %}
+                    <strong>Cheque Payee:</strong> {{ p.cheque_payee_name }}<br>
+                    <strong>Postal Address:</strong><br>
+                    <span class="text-muted">{{ p.cheque_postal_address }}</span><br>
+
+                    {% if p.payout_notes %}
+                        <br><strong>Payout Notes:</strong><br>
+                        <span class="text-muted">{{ p.payout_notes }}</span>
+                    {% endif %}
+
+                {% elif p.payout_method == "STRIPE" %}
+                    <strong>Stripe Account ID:</strong> {{ p.stripe_account_id }}<br>
+
+                    {% if p.payout_notes %}
+                        <br><strong>Payout Notes:</strong><br>
+                        <span class="text-muted">{{ p.payout_notes }}</span>
+                    {% endif %}
+
+                {% else %}
+                    <span class="text-muted">No payment details provided.</span>
+                {% endif %}
+
+            </div>
+
+            <!-- FULL-WIDTH SECTION -->
+            <div class="col-12 mt-3 pt-3 border-top">
+
+                <strong class="text-brand">System Flags</strong><br>
+                <strong>Low Stock Notifications:</strong>
+                {% if p.email_low_stock_notifications %}
+                    Enabled
+                {% else %}
+                    Disabled
+                {% endif %}
+                <br><br>
+
+                <strong class="text-brand">Linked User Account</strong><br>
+                User ID: {{ p.user.id }}<br>
+                Name: {{ p.user.name }}<br>
+                Email: {{ p.user.email }}<br>
+                Phone: {{ p.user.phone }}<br>
+                Status:
+                {% if p.user.is_active %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-danger">Deactivated</span>
+                {% endif %}
+            </div>
+
+        </div>
+    </template>
+    {% endfor %}
+</div>
+
+{% csrf_token %}
+<script src="{% static 'producer_list.js' %}"></script>
 
 {% endblock %}

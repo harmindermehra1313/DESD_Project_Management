@@ -12,8 +12,9 @@ from orders.models import ProducerOrderSummary, OrderItem, RecurringOrder, Produ
 from django.db.models import Prefetch
 from django.contrib.auth import logout
 from rest_framework_simplejwt.tokens import RefreshToken
+from accounts.models import User
 import datetime
-
+from django.utils import timezone
 from accounts.serializers.registration_customer import CustomerRegistrationSerializer
 from accounts.serializers.registration_producer import ProducerRegistrationSerializer
 
@@ -25,12 +26,83 @@ def logout_view(request):
     return redirect("home:index")
 
 # New Login function to generate jwt tokens
+# def login_view(request):
+#     if request.method == "POST":
+#         email = request.POST.get("email", "").strip().lower()
+#         password = request.POST.get("password")
+#         remember = request.POST.get("remember")
+
+#         user = authenticate(request, username=email, password=password)
+
+#         if user is not None:
+#             login(request, user)
+
+#             # Session expiry
+#             if not remember:
+#                 request.session.set_expiry(0)
+#             else:
+#                 request.session.set_expiry(60 * 60 * 24 * 1)
+
+#             # Generate JWT tokens
+#             refresh = RefreshToken.for_user(user)
+#             access_token = str(refresh.access_token)
+
+#             # Store tokens in session (optional)
+#             request.session["jwt_access"] = access_token
+#             request.session["jwt_refresh"] = str(refresh)
+            
+#             from django.utils import timezone
+
+#             # Record login time (timezone-aware)
+#             login_time = timezone.now()
+#             request.session["login_time"] = login_time.isoformat()
+
+#             # Get session expiry (already timezone-aware)
+#             expiry_timestamp = request.session.get_expiry_date()
+#             request.session["expiry_time"] = expiry_timestamp.isoformat()
+
+#             print("LOGIN TIME:", login_time)
+#             print("SESSION EXPIRES AT:", expiry_timestamp)
+
+#             # Calculate remaining time safely
+#             remaining = expiry_timestamp - login_time
+#             print("TIME UNTIL LOGOUT:", remaining)
+
+#             # Debug print (optional)
+#             print("JWT ACCESS:", access_token)
+#             print("USER:", request.user)
+#             print("ROLE:", request.user.role)
+#             print("AUTH:", request.user.is_authenticated)
+
+#             # Redirect based on role
+#             if user.role == "ADMIN":
+#                 return redirect("home:dashboard")
+#             elif user.role =='PRODUCER':
+#                 return redirect("home:producer")
+#             else:
+#                 return redirect("home:index")
+
+#         else:
+#             messages.error(request, "Invalid email or password.")
+
+#     return render(request, "accounts/login.html")
+
 def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email", "").strip().lower()
         password = request.POST.get("password")
         remember = request.POST.get("remember")
 
+        # STEP 1 — Check if user exists BEFORE authenticate()
+        try:
+            user_obj = User.objects.get(email=email)
+            if not user_obj.is_active:
+                messages.error(request, "Your account has been deactivated. Please contact support.")
+                return render(request, "accounts/login.html")
+        except User.DoesNotExist:
+            user_obj = None
+
+        # STEP 2 — Authenticate normally
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
@@ -46,37 +118,21 @@ def login_view(request):
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
 
-            # Store tokens in session (optional)
+
             request.session["jwt_access"] = access_token
             request.session["jwt_refresh"] = str(refresh)
-            
-            from django.utils import timezone
 
-            # Record login time (timezone-aware)
             login_time = timezone.now()
             request.session["login_time"] = login_time.isoformat()
 
-            # Get session expiry (already timezone-aware)
             expiry_timestamp = request.session.get_expiry_date()
+            
             request.session["expiry_time"] = expiry_timestamp.isoformat()
-
-            print("LOGIN TIME:", login_time)
-            print("SESSION EXPIRES AT:", expiry_timestamp)
-
-            # Calculate remaining time safely
-            remaining = expiry_timestamp - login_time
-            print("TIME UNTIL LOGOUT:", remaining)
-
-            # Debug print (optional)
-            print("JWT ACCESS:", access_token)
-            print("USER:", request.user)
-            print("ROLE:", request.user.role)
-            print("AUTH:", request.user.is_authenticated)
 
             # Redirect based on role
             if user.role == "ADMIN":
                 return redirect("home:dashboard")
-            elif user.role =='PRODUCER':
+            elif user.role == "PRODUCER":
                 return redirect("home:producer")
             else:
                 return redirect("home:index")
@@ -85,6 +141,7 @@ def login_view(request):
             messages.error(request, "Invalid email or password.")
 
     return render(request, "accounts/login.html")
+
 
 @login_required
 def profile(request):

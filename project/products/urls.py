@@ -8,7 +8,6 @@ from .views import reductions, api_reductions
 urlpatterns = [
     # path('', views.product_list, name='products_list'),
     path('add/', add_product, name='add_product'),
-    # path('cart/add/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
     path("<int:product_id>/", product_detail_page, name="product-detail"),  # /products/<pk>/
    
     # Harminder Edits
