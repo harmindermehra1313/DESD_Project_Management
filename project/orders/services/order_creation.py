@@ -14,7 +14,7 @@ from notifications.models import TraceabilityRecord
 import logging
 logger = logging.getLogger(__name__)
 
-WHOLESALE_ROLES = {"COMMUNITY_GROUP", "RESTAURANT"}
+WHOLESALE_ROLES = {"COMMUNITY_GROUP", "BUSINESS"}
 
 def create_order_from_session(request, validated_data, payment_method, payment_intent_id=None):
     """

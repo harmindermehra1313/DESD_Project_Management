@@ -81,7 +81,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         CUSTOMER = "CUSTOMER", "Customer"
         PRODUCER = "PRODUCER", "Producer"
         COMMUNITY_GROUP = "COMMUNITY_GROUP", "Community Group"
-        RESTAURANT = "RESTAURANT", "Restaurant"
+        BUSINESS = "BUSINESS", "Business"
         ADMIN = "ADMIN", "Admin"
 
     name = models.CharField(max_length=100)

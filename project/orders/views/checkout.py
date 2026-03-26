@@ -26,7 +26,7 @@ Address = apps.get_model('accounts', 'Address')
 stripe = get_stripe()
 logger = logging.getLogger(__name__)
 
-WHOLESALE_ROLES = {"COMMUNITY_GROUP", "RESTAURANT"}
+WHOLESALE_ROLES = {"COMMUNITY_GROUP", "BUSINESS"}
 
 @require_POST
 def checkout_save(request):
