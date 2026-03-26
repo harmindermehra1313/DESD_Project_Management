@@ -120,7 +120,7 @@ def producer_dashboard(request):
     # 2. Fetch Active Recurring Templates to give producers advance notice
     recurring_qs = RecurringOrder.objects.filter(
         items__product__producer=producer,
-        status='ACT'
+        status='ACTIVE'
     ).distinct().select_related('user', 'delivery_address')
 
     active_subscriptions = []
@@ -135,6 +135,7 @@ def producer_dashboard(request):
                 'customer_phone': ro.user.phone if ro.user else "",
                 'delivery_address': ro.delivery_address,
                 'special_instructions': ro.special_instructions,
+                'recurrence_pattern': ro.get_recurrence_pattern_display() if ro.recurrence_pattern else "Weekly",
                 'recurrence_day': ro.get_recurrence_day_display() if ro.recurrence_day else "Not Set",
                 'delivery_day': ro.get_delivery_day_display() if ro.delivery_day else "Not Set",
                 'items': ro_items,

@@ -22,9 +22,31 @@ Design notes:
 
 from __future__ import annotations
 
+import datetime
+
 from rest_framework import serializers
 
 from orders.models import Order, OrderItem, ProducerOrderSummary
+
+DAY_CODE_TO_WEEKDAY = {
+    "MON": 0, "TUE": 1, "WED": 2, "THU": 3,
+    "FRI": 4, "SAT": 5, "SUN": 6,
+}
+
+
+def _next_delivery_date(recurrence_day_code: str, pattern: str) -> str | None:
+    """Return the next upcoming recurring delivery date as an ISO string.
+
+    Uses recurrence_day (the day the order repeats on) to calculate.
+    """
+    target_wd = DAY_CODE_TO_WEEKDAY.get(recurrence_day_code)
+    if target_wd is None:
+        return None
+    today = datetime.date.today()
+    days_ahead = (target_wd - today.weekday()) % 7
+    if days_ahead == 0:
+        days_ahead = 7  # always return a future date
+    return (today + datetime.timedelta(days=days_ahead)).isoformat()
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
@@ -44,6 +66,8 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         read_only=True,
     )
     producer_names = serializers.SerializerMethodField()
+    is_recurring = serializers.SerializerMethodField()
+    recurrence_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -54,6 +78,8 @@ class OrderHistorySerializer(serializers.ModelSerializer):
             "total",
             "order_status",
             "producer_names",
+            "is_recurring",
+            "recurrence_info",
         ]
 
     def get_producer_names(self, obj: Order) -> list[str]:
@@ -71,6 +97,21 @@ class OrderHistorySerializer(serializers.ModelSerializer):
                 names.append(producer_name)
 
         return names
+
+    def get_is_recurring(self, obj: Order) -> bool:
+        return obj.recurring_order_id is not None
+
+    def get_recurrence_info(self, obj: Order) -> dict | None:
+        ro = obj.recurring_order
+        if not ro:
+            return None
+        return {
+            "pattern": ro.get_recurrence_pattern_display(),
+            "recurrence_day": ro.get_recurrence_day_display(),
+            "delivery_day": ro.get_delivery_day_display(),
+            "status": ro.get_status_display(),
+            "next_delivery": _next_delivery_date(ro.recurrence_day, ro.recurrence_pattern),
+        }
 
 
 class OrderItemDetailSerializer(serializers.ModelSerializer):
@@ -295,6 +336,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True,
     )
+    is_recurring = serializers.SerializerMethodField()
+    recurrence_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -307,7 +350,24 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "producer_breakdown",
             "payment_method_display",
             "total_price",
+            "is_recurring",
+            "recurrence_info",
         ]
+
+    def get_is_recurring(self, obj: Order) -> bool:
+        return obj.recurring_order_id is not None
+
+    def get_recurrence_info(self, obj: Order) -> dict | None:
+        ro = obj.recurring_order
+        if not ro:
+            return None
+        return {
+            "pattern": ro.get_recurrence_pattern_display(),
+            "recurrence_day": ro.get_recurrence_day_display(),
+            "delivery_day": ro.get_delivery_day_display(),
+            "status": ro.get_status_display(),
+            "next_delivery": _next_delivery_date(ro.recurrence_day, ro.recurrence_pattern),
+        }
 
     def get_payment_method_display(self, obj: Order) -> str | None:
         """

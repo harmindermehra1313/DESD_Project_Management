@@ -410,6 +410,73 @@ label.required::after {
 }
 
 /* ============================
+   RECURRING ORDER SECTION
+   ============================ */
+.recurring-order-section {
+    margin-top: 0.5rem;
+}
+
+.recurring-order-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 0.5rem;
+}
+
+.recurring-select {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--lavender-grey);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: var(--brand);
+    background: #fff;
+    margin-bottom: 0.75rem;
+}
+
+.recurring-select:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
+.recurring-options {
+    padding: 1rem;
+    background: rgba(var(--accent-rgb), 0.06);
+    border: 1px solid rgba(var(--muted-rgb), 0.3);
+    border-radius: var(--radius);
+    margin-top: 0.25rem;
+}
+
+.recurring-options label {
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 0.3rem;
+}
+
+.recurring-options select {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--lavender-grey);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: var(--brand);
+    background: #fff;
+    margin-bottom: 0.75rem;
+}
+
+.recurring-options select:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
+.recurring-summary {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ============================
    ERROR MESSAGES FOR ADDRESS FORMS
    ============================ */
 

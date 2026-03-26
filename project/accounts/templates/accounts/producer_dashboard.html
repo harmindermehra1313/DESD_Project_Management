@@ -192,8 +192,9 @@
                             <tr>
                                 <th>Sub ID</th>
                                 <th>Restaurant / Customer</th>
-                                <th>Generates On</th>
-                                <th>Delivery Day</th>
+                                <th>Frequency</th>
+                                <th>Repeats On</th>
+                                <th>Initial Delivery Day</th>
                                 <th>Items Reserved</th>
                                 <th>Started</th>
                             </tr>
@@ -205,8 +206,9 @@
                                     style="cursor: pointer">
                                     <td class="fw-bold text-muted">#SUB-{{ sub.id }}</td>
                                     <td>{{ sub.customer_name }}</td>
+                                    <td>{{ sub.recurrence_pattern }}</td>
                                     <td>Every {{ sub.recurrence_day }}</td>
-                                    <td>Every {{ sub.delivery_day }}</td>
+                                    <td>{{ sub.delivery_day }}</td>
                                     <td>{{ sub.items|length }} items</td>
                                     <td class="text-muted">{{ sub.created_at|date:"d/m/Y" }}</td>
                                 </tr>
@@ -273,6 +275,12 @@
                         <strong>Special Instructions:</strong>
                         <br>
                         <span class="fst-italic">{{ summary.special_instructions|default:"None provided." }}</span>
+                        {% if summary.order.recurring_order %}
+                            <br><br>
+                            <strong>Recurring Order:</strong>
+                            <br>
+                            🔁 {{ summary.order.recurring_order.get_recurrence_pattern_display }} &ndash; Every {{ summary.order.recurring_order.get_recurrence_day_display }}
+                        {% endif %}
                     </div>
                 </div>
             </template>

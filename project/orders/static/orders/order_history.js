@@ -504,7 +504,10 @@ function renderOrdersTable(orders) {
 
   tbody.innerHTML = orders.map((order) => `
     <tr>
-      <td><strong>${escapeHtml(order.order_number)}</strong></td>
+      <td>
+        <strong>${escapeHtml(order.order_number)}</strong>
+        ${order.is_recurring ? '<span class="recurring-icon" title="Recurring order">&#x1F501;</span>' : ''}
+      </td>
       <td>${formatDate(order.order_date)}</td>
       <td>
         ${(order.producer_names || []).map((name) => `
@@ -582,6 +585,17 @@ function renderOrderSummary(order) {
           <div class="fw-semibold">${escapeHtml(order.payment_method_display || "Not available")}</div>
         </div>
       </div>
+      ${order.is_recurring && order.recurrence_info ? `
+      <div class="col-md-3">
+        <div class="border rounded p-3 h-100">
+          <div class="small text-muted">Recurring</div>
+          <div class="fw-semibold">
+            &#x1F501; ${escapeHtml(order.recurrence_info.pattern)} &ndash; Every ${escapeHtml(order.recurrence_info.recurrence_day)}
+          </div>
+          ${order.recurrence_info.next_delivery ? `<div class="small text-muted mt-1">Next: ${formatDate(order.recurrence_info.next_delivery)}</div>` : ''}
+        </div>
+      </div>
+      ` : ''}
     </div>
   `;
 }

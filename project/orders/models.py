@@ -312,8 +312,8 @@ class ProducerOrderStatusHistory(models.Model):
 
 class RecurringOrder(models.Model):
     class RecurrencePattern(models.TextChoices):
-        WEEKLY = "WK", "Weekly"
-        FORTNIGHTLY = "FN", "Fortnightly"
+        WEEKLY = "WEEKLY", "Weekly"
+        FORTNIGHTLY = "FORTNIGHTLY", "Fortnightly"
 
     class Day(models.TextChoices):
         MON = "MON", "Monday"
@@ -325,9 +325,9 @@ class RecurringOrder(models.Model):
         SUN = "SUN", "Sunday"
 
     class Status(models.TextChoices):
-        ACTIVE = "ACT", "Active"
-        PAUSED = "PS", "Paused"
-        CANCELLED = "CAN", "Cancelled"
+        ACTIVE = "ACTIVE", "Active"
+        PAUSED = "PAUSED", "Paused"
+        CANCELLED = "CANCELLED", "Cancelled"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -349,13 +349,14 @@ class RecurringOrder(models.Model):
     recurrence_day = models.CharField(
         max_length = 3,
         choices = Day.choices,
-        null = True,
-        blank = True,
+        default = "MON",
+        help_text = "The day of the week the recurring order repeats on.",
     )
 
     delivery_day = models.CharField(
         max_length = 3, 
-        choices = Day.choices
+        choices = Day.choices,
+        help_text = "The day of the week the initial order is delivered on.",
     )
 
     special_instructions = models.TextField(
