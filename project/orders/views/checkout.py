@@ -146,8 +146,11 @@ def checkout(request):
         owner = CartOwner(session_key=request.session.session_key)
     
     # Wholesale pricing check
-    user_role = request.user.role if request.user.is_authenticated else None
-    wholesale_allowed = user_role in WHOLESALE_ROLES
+    wholesale_allowed = False
+    if request.user.is_authenticated and request.user.role == "CUSTOMER":
+        customer = getattr(request.user, "customer_profile", None)
+        if customer and customer.organisation_type:
+            wholesale_allowed = customer.organisation_type in WHOLESALE_ROLES
 
     cart = cart_get_or_create_active(owner=owner)
     # items = cart.items.select_related("product", "product__producer")

@@ -80,8 +80,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Role_choices(models.TextChoices):
         CUSTOMER = "CUSTOMER", "Customer"
         PRODUCER = "PRODUCER", "Producer"
-        COMMUNITY_GROUP = "COMMUNITY_GROUP", "Community Group"
-        BUSINESS = "BUSINESS", "Business"
         ADMIN = "ADMIN", "Admin"
 
     name = models.CharField(max_length=100)

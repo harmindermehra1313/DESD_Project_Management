@@ -45,8 +45,11 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
 
             owner = CartOwner(session_key=request.session.session_key)
 
-        user_role = user.role if user else None
-        wholesale_allowed = user_role in WHOLESALE_ROLES
+        wholesale_allowed = False
+        if request.user.is_authenticated and request.user.role == "CUSTOMER":
+            customer = getattr(request.user, "customer_profile", None)
+            if customer and customer.organisation_type:
+                wholesale_allowed = customer.organisation_type in WHOLESALE_ROLES
 
         # -----------------------------
         # Load cart
