@@ -71,6 +71,7 @@ class Product(models.Model):
         HIDDEN = 'HID', 'Hidden'
         FLAGGED = 'FLG', 'Flagged'
         REMOVED = 'RMV', 'Removed'
+        PENDING = 'PND', 'Pending Approval'
 
 
     producer = models.ForeignKey(
@@ -160,7 +161,7 @@ class Product(models.Model):
     status = models.CharField(
         max_length = 10,
         choices = Status.choices,
-        default = Status.PUBLISHED
+        default = Status.PENDING
     )
 
     moderated_at = models.DateTimeField(

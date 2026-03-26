@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-
+from admin_records import views as admin_views
 
 handler400 = "BRFN.view.custom_400"
 handler403 = "BRFN.view.custom_403"
@@ -40,4 +40,5 @@ urlpatterns = [
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # Cart Endpoint
     path("cart/", include(("carts.urls", "carts"), namespace="carts")),
+    path("search/", admin_views.global_search, name="global_search"),
 ]

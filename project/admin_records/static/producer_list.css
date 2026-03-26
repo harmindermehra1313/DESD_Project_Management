@@ -1,0 +1,80 @@
+/* ============================================================
+   PRODUCER LIST PAGE — BRFN ADMIN
+   ============================================================ */
+
+.producer-list-container {
+    background: var(--background-grey);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+/* Page title */
+.producer-list-container h2 {
+    color: var(--prussian-blue);
+    font-weight: 700;
+    font-family: var(--font-brand);
+}
+
+/* Table styling */
+.producer-table {
+    border: 1px solid var(--alabaster-grey);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.producer-table thead th {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px;
+    font-weight: 600;
+}
+
+.producer-table tbody td {
+    font-size: 0.85rem;
+    padding: 10px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.producer-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.producer-table tbody tr:hover {
+    background: var(--background-header-row2);
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+
+    .producer-table thead {
+        display: none;
+    }
+
+    .producer-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--alabaster-grey);
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+
+    .producer-table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.9rem;
+    }
+
+    .producer-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dusk-blue);
+        margin-right: 10px;
+    }
+}
