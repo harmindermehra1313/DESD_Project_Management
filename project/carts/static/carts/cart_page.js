@@ -126,6 +126,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const itemId = item.id;
     // const productId = product.id;
     const inventoryId = Number(item.inventory_id ?? 0);
+    const productId = Number(product.id ?? item.product_id ?? 0);
+    const productUrl = productId ? `/products/${productId}/` : "#";
 
     const name = product.name ?? "Product";
     const producer = product.producer_name ?? "";
@@ -208,44 +210,46 @@ document.addEventListener("DOMContentLoaded", () => {
     const meta = document.createElement("div");
     meta.className = "cart-meta";
     meta.innerHTML = `
-  <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
-    <span>${name}</span>
-    ${isExpired ? `<span class="badge text-bg-danger">Expired</span>` : ""}
-    ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-    ${isWholesale ? `<span class="badge text-bg-warning">Wholesale</span>` : ""}
-    ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
-  </div>
-  ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
-  ${
-    product.expiry_date
-      ? `<div class="small mt-1 ${isExpired ? "text-danger fw-semibold" : "text-muted"}">
-           ${product.expiry_type_label || "Expiry"}: ${formatDate(product.expiry_date)}
-         </div>`
-      : ``
-  }
-  ${
-    isBlocked
-      ? `<div class="small text-danger mt-1">${getBlockedMessage(product)}</div>`
-      : ``
-  }
-  ${
-    isWholesale
-      ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
-      : ``
-  }
-  ${
-    isSurplus
-      ? `<div class="small text-danger mt-1">
-           Surplus reduction: you save ${money(surplusSavingsTotal)}
-         </div>
-         ${
-           hasMeaningfulNote(surplusNote)
-             ? `<div class="text-muted small">${surplusNote}</div>`
-             : ``
-         }`
-      : ``
-  }
-`;
+    <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
+      <a href="${productUrl}" class="cart-product-link text-decoration-none">
+        ${name}
+      </a>
+      ${isExpired ? `<span class="badge text-bg-danger">Expired</span>` : ""}
+      ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
+      ${isWholesale ? `<span class="badge text-bg-warning">Wholesale</span>` : ""}
+      ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
+    </div>
+    ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+    ${
+      product.expiry_date
+        ? `<div class="small mt-1 ${isExpired ? "text-danger fw-semibold" : "text-muted"}">
+             ${product.expiry_type_label || "Expiry"}: ${formatDate(product.expiry_date)}
+           </div>`
+        : ``
+    }
+    ${
+      isBlocked
+        ? `<div class="small text-danger mt-1">${getBlockedMessage(product)}</div>`
+        : ``
+    }
+    ${
+      isWholesale
+        ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
+        : ``
+    }
+    ${
+      isSurplus
+        ? `<div class="small text-danger mt-1">
+             Surplus reduction: you save ${money(surplusSavingsTotal)}
+           </div>
+           ${
+             hasMeaningfulNote(surplusNote)
+               ? `<div class="text-muted small">${surplusNote}</div>`
+               : ``
+           }`
+        : ``
+    }
+  `;
 
     // qty
     const qtyWrap = document.createElement("div");
