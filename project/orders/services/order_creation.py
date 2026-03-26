@@ -11,9 +11,10 @@ from carts.services import (
     CartOwner, cart_get_or_create_active, cart_mark_checked_out, _get_effective_unit_price
 )
 from notifications.models import TraceabilityRecord
-
 import logging
 logger = logging.getLogger(__name__)
+
+WHOLESALE_ROLES = {"COMMUNITY_GROUP", "BUSINESS"}
 
 def create_order_from_session(request, validated_data, payment_method, payment_intent_id=None):
     """
@@ -43,6 +44,12 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 request.session.create()
 
             owner = CartOwner(session_key=request.session.session_key)
+
+        wholesale_allowed = False
+        if request.user.is_authenticated and request.user.role == "CUSTOMER":
+            customer = getattr(request.user, "customer_profile", None)
+            if customer and customer.organisation_type:
+                wholesale_allowed = customer.organisation_type in WHOLESALE_ROLES
 
         # -----------------------------
         # Load cart
@@ -144,10 +151,24 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 producer = product.producer
 
                 # _get_effective_unit_price returns cheapest price if both wholesale & discount are active
-                unit_price = _get_effective_unit_price(
+                # unit_price = _get_effective_unit_price(
+                #     inventory_id=inventory.id,
+                #     qty=quantity,
+                # )
+                # Base discounted price (retail discounts only)
+                discounted_price = _get_effective_unit_price(
                     inventory_id=inventory.id,
-                    qty=quantity,
+                    qty=1,
                 )
+
+                # Wholesale tier (if any)
+                wholesale_tier = product.get_wholesale_price(quantity)
+
+                # Determine final unit price
+                if wholesale_allowed and wholesale_tier:
+                    unit_price = wholesale_tier
+                else:
+                    unit_price = discounted_price
 
                 original_unit_price = product.price
                 original_line_total = original_unit_price * quantity

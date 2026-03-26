@@ -76,6 +76,29 @@
     border-color: var(--ink-black);
 }
 
+#batchProductBtn {
+    transition: all 0.2s ease-in-out;
+}
+
+#batchProductBtn:disabled {
+    background-color: var(--text-light);
+    color: var(--lavender-grey);
+    border-color: var(--lavender-grey);
+    border: 1px solid var(--lavender-grey);
+    opacity: 1;
+}
+
+#batchProductBtn:not(:disabled) {
+    background-color: var(--prussian-blue);
+    color: var(--text-light);
+    border-color: var(--prussian-blue);
+}
+
+#batchProductBtn:not(:disabled):hover {
+    background-color: var(--ink-black);
+    border-color: var(--ink-black);
+}
+
 #cancelProductBtn:disabled {
     opacity: 0.5;
 }
