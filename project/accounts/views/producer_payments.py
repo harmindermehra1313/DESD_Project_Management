@@ -90,20 +90,20 @@ def producer_payments_view(request):
 
     # Completed week totals by payment method
     card_total = completed_summaries.filter(
-        order__payment__payment_method="CRD"
+        order__payments__payment_method="CRD"
     ).aggregate(total=Sum("payout_amount"))["total"] or 0
 
     cash_total = completed_summaries.filter(
-        order__payment__payment_method="COD"
+        order__payments__payment_method="COD"
     ).aggregate(total=Sum("payout_amount"))["total"] or 0
 
     # Pending week totals by payment method
     pending_card_total = pending_summaries.filter(
-        order__payment__payment_method="CRD"
+        order__payments__payment_method="CRD"
     ).aggregate(total=Sum("payout_amount"))["total"] or 0
 
     pending_cash_total = pending_summaries.filter(
-        order__payment__payment_method="COD"
+        order__payments__payment_method="COD"
     ).aggregate(total=Sum("payout_amount"))["total"] or 0
 
     # -----------------------------
@@ -241,16 +241,16 @@ def download_payment_report_view(request, week_id):
     upcoming_total = upcoming_summaries.aggregate(total=Sum("payout_amount"))["total"] or 0
 
     # Card vs Cash totals
-    card_total = completed_summaries.filter(order__payment__payment_method="CRD") \
+    card_total = completed_summaries.filter(order__payments__payment_method="CRD") \
         .aggregate(total=Sum("payout_amount"))["total"] or 0
 
-    cash_total = completed_summaries.filter(order__payment__payment_method="COD") \
+    cash_total = completed_summaries.filter(order__payments__payment_method="COD") \
         .aggregate(total=Sum("payout_amount"))["total"] or 0
 
-    upcoming_card_total = upcoming_summaries.filter(order__payment__payment_method="CRD") \
+    upcoming_card_total = upcoming_summaries.filter(order__payments__payment_method="CRD") \
         .aggregate(total=Sum("payout_amount"))["total"] or 0
 
-    upcoming_cash_total = upcoming_summaries.filter(order__payment__payment_method="COD") \
+    upcoming_cash_total = upcoming_summaries.filter(order__payments__payment_method="COD") \
         .aggregate(total=Sum("payout_amount"))["total"] or 0
 
     # Payment status logic
@@ -490,10 +490,10 @@ def download_tax_year_pdf_view(request):
     total_commission = summaries.aggregate(total=Sum("commission_total"))["total"] or 0
     total_payout = summaries.aggregate(total=Sum("payout_amount"))["total"] or 0
 
-    card_total = summaries.filter(order__payment__payment_method="CRD") \
+    card_total = summaries.filter(order__payments__payment_method="CRD") \
         .aggregate(total=Sum("payout_amount"))["total"] or 0
 
-    cash_total = summaries.filter(order__payment__payment_method="COD") \
+    cash_total = summaries.filter(order__payments__payment_method="COD") \
         .aggregate(total=Sum("payout_amount"))["total"] or 0
 
     # PDF response

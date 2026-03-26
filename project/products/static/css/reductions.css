@@ -21,10 +21,10 @@
     padding: 1.5rem;
 }
 
-.surplus-card:hover {
+/* .surplus-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 22px rgba(0,0,0,0.10);
-}
+} */
 
 /* Section titles */
 .section-title {
@@ -38,11 +38,10 @@
 ============================ */
 
 .surplus-tabs {
-    background: rgba(var(--accent-rgb), 0.08); /* soft green tint */
-    padding: 12px 16px;
-    border-radius: var(--radius);
-    border: 1px solid rgba(var(--accent-rgb), 0.25);
-    margin-bottom: 24px;
+    background: var(--background-header-row2);
+    padding: 14px 20px;
+    border-radius: 50px; /* makes the whole bar oval */
+    border: none;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -51,9 +50,9 @@
 /* Base tab appearance */
 .surplus-tabs .nav-link {
     color: var(--brand);
-    background: #ffffff;
-    border: 1px solid rgba(var(--muted-rgb), 0.4);
-    border-radius: 30px;
+    background: var(--background-header-row2);
+    border: none;
+    border-radius: var(--radius);
     padding: 10px 22px;
     font-weight: 600;
     transition: all 0.25s ease;
@@ -61,26 +60,23 @@
 
 /* Hover state */
 .surplus-tabs .nav-link:hover {
-    background: rgba(var(--accent-rgb), 0.15);
-    border-color: rgba(var(--accent-rgb), 0.4);
-    color: var(--brand);
+    background: var(--prussian-blue);
+    color: var(--text-light);
     transform: translateY(-1px);
 }
 
 /* Active tab*/
 .surplus-tabs .nav-link.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #ffffff;
+    background: var(--prussian-blue);
+    color: var(--text-light);
     font-weight: 700;
-    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
     transform: translateY(-1px);
 }
 
 /* Focus state for accessibility */
 .surplus-tabs .nav-link:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.35);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.15);
 }
 
 /* ============================
