@@ -14,6 +14,7 @@ from accounts.models import Producer
 from api.serializers.accounts import ProducerSerializer, AdminSerializer
 
 
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -193,18 +194,23 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_active_inventory_id(self, obj):
         active_inventory = self._get_active_inventory(obj)
         return active_inventory.id if active_inventory else None
+    def _get_inventory_for_display(self, obj):
+        active_inventory = self._get_active_inventory(obj)
+        if active_inventory:
+            return active_inventory
+        return self._get_next_inventory_batch(obj)
     
     def get_expiry_date(self, obj):
-        active_inventory = self._get_active_inventory(obj)
-        return active_inventory.expiry_date if active_inventory else None
+        inventory = self._get_inventory_for_display(obj)
+        return inventory.expiry_date if inventory else None
 
     def get_expiry_type(self, obj):
-        active_inventory = self._get_active_inventory(obj)
-        return active_inventory.expiry_type if active_inventory else None
+        inventory = self._get_inventory_for_display(obj)
+        return inventory.expiry_type if inventory else None
 
     def get_expiry_type_label(self, obj):
-        active_inventory = self._get_active_inventory(obj)
-        return active_inventory.get_expiry_type_display() if active_inventory else None
+        inventory = self._get_inventory_for_display(obj)
+        return inventory.get_expiry_type_display() if inventory else None
 
     def get_is_expired(self, obj):
         return self._has_only_expired_stock(obj)
