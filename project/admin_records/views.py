@@ -250,20 +250,19 @@ def financial_reports_csv(request):
 
 
 # @admin_required
+from django.utils.timezone import now
+
 @admin_required
 def financial_reports_pdf(request):
-    # Reuse your existing filtering logic
     context = _build_financial_context(request)
+    context["generated_at"] = now()  # Add timestamp
 
-    # Load PDF template
     template = get_template("admin_records/financial_report_pdf.html")
     html = template.render(context)
 
-    # Prepare PDF response
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="financial_report.pdf"'
 
-    # Generate PDF
     pisa_status = pisa.CreatePDF(html, dest=response)
 
     if pisa_status.err:
