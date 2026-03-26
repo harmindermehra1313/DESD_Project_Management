@@ -171,6 +171,7 @@ function openEditModal() {
     document.getElementById('editOrganic').value     = row.getAttribute('data-edit-organic') || 'NOT_CERTIFIED';
     document.getElementById('editDescription').value = row.getAttribute('data-edit-description') || '';
     document.getElementById('editWholesalePrice').value = row.getAttribute('data-edit-wholesale-price') || '';
+    document.getElementById('editWholesaleMinQty').value = row.getAttribute('data-edit-wholesale-min-qty') || '';
 
     // Clear any previous alert
     const alert = document.getElementById('editFormAlert');
@@ -198,7 +199,7 @@ function updateDetailsTemplateAfterEdit(productId, data) {
 
     const priceText = `£${parseFloat(data.price).toFixed(2)} per ${data.unit_display}`;
     const wholesaleText = data.wholesale_price
-        ? `£${parseFloat(data.wholesale_price).toFixed(2)} per ${data.unit_display}`
+        ? `£${parseFloat(data.wholesale_price).toFixed(2)} per ${data.unit_display} (min ${data.wholesale_min_quantity} units)`
         : 'Not set';
     const descriptionText = data.description && data.description.trim()
         ? data.description
@@ -229,6 +230,7 @@ async function submitEditForm() {
         organic_certification_status: document.getElementById('editOrganic').value,
         description:                 document.getElementById('editDescription').value,
         wholesale_price:             document.getElementById('editWholesalePrice').value.trim(),
+        wholesale_min_quantity:      document.getElementById('editWholesaleMinQty').value.trim(),
     };
 
     if (!payload.name) {
@@ -251,7 +253,7 @@ async function submitEditForm() {
     document.getElementById('saveEditBtn').disabled = true;
 
     try {
-        const response = await fetch(`/producer/products/${selectedProductId}/edit/`, {
+        const response = await fetch(`/products/producer/products/${selectedProductId}/edit/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': csrfToken,
@@ -274,6 +276,7 @@ async function submitEditForm() {
             row.setAttribute('data-edit-organic',       data.organic_certification_status);
             row.setAttribute('data-edit-description',   data.description);
             row.setAttribute('data-edit-wholesale-price', data.wholesale_price || '');
+            row.setAttribute('data-edit-wholesale-min-qty', data.wholesale_min_quantity || '');
             row.setAttribute('data-product-name',       data.name.toLowerCase());
             row.setAttribute('data-category',           data.category.toLowerCase());
             row.setAttribute('data-availability',       data.availability_status);
@@ -336,7 +339,7 @@ async function confirmCancelProduct() {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     try {
-        const response = await fetch(`/producer/products/${selectedProductId}/cancel/`, {
+        const response = await fetch(`/products/producer/products/${selectedProductId}/cancel/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': csrfToken,
