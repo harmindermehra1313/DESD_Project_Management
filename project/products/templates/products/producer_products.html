@@ -58,6 +58,11 @@
                             <input class="form-check-input status-filter" type="checkbox" value="RMV" id="filterRMV">
                             <label class="form-check-label" for="filterRMV">Removed</label>
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PND" id="filterPND" checked>
+                            <label class="form-check-label" for="filterPND">Pending Approval</label>
+                        </div>
+
                     </div>
 
                     <div class="mb-3">
@@ -198,6 +203,15 @@
 
                 <strong>Description:</strong><br>
                 <span class="fst-italic js-detail-description">{{ product.description|default:"No description provided." }}</span>
+                {% if product.latest_rejection %}
+                <br><br>
+                <div class="p-2 border border-danger rounded bg-light">
+                    <strong class="text-danger">Rejection Reason:</strong><br>
+                    <span class="text-muted small">
+                        {{ product.latest_rejection.reason }}
+                    </span>
+                </div>
+                {% endif %}
             </div>
             <div class="col-md-6 mb-3">
                 <strong>Allergens:</strong><br>

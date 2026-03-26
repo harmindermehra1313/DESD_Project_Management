@@ -28,7 +28,7 @@
 }
 
 .hero-title {
-    font-family: 'Montserrat', system-ui, sans-serif;
+    font-family: var(--font-brand);
     font-weight: 900;
     font-size: 2.5rem;
     margin-bottom: 1.5rem;
@@ -55,7 +55,7 @@
 
 /* --- SECTION HEADINGS --- */
 .section-title {
-    font-family: 'Montserrat', system-ui, sans-serif;
+    font-family: var(--font-brand);
     font-weight: 900;
     font-size: 2rem;
     margin-bottom: 2rem;
@@ -64,8 +64,8 @@
 
 /* --- GREY BACKGROUND WRAPPER --- */
 .how-it-works-section {
-    background-color: #f8f9fa; 
-    border-bottom: 1px solid #eeeeee; 
+    background-color: var(--lavender-grey); 
+    border-bottom: 1px solid var(--alabaster-grey); 
 }
 
 /* --- HOW IT WORKS --- */
@@ -76,7 +76,7 @@
 
 .how-it-works-box {
     background-color: #fff;
-    border: 1px solid #dee2e6; 
+    border: 1px solid var(--alabaster-grey); 
     border-radius: 8px;
     height: 100%;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -84,10 +84,10 @@
 
 .how-it-works-col h4 {
     font-size: 1.25rem;
-    font-family: 'Montserrat', system-ui, sans-serif;
+    font-family: var(--font-brand);
     font-weight: 800;
     margin-bottom: 1.25rem;
-    color: #627C85;
+    color: var(--dusk-blue);
 }
 
 .how-it-works-col p {

@@ -23,11 +23,60 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
+# # ============================================================
+# # USER MODEL
+# # ============================================================
+# class User(AbstractBaseUser, PermissionsMixin):
+    
+#     class Role_choices(models.TextChoices):
+#         CUSTOMER = "CUSTOMER", "Customer"
+#         PRODUCER = "PRODUCER", "Producer"
+#         COMMUNITY_GROUP = "COMMUNITY_GROUP", "Community Group"
+#         RESTAURANT = "RESTAURANT", "Restaurant"
+#         ADMIN = "ADMIN", "Admin"
+
+#     name = models.CharField(
+#         max_length=100
+#     )
+
+#     email = models.EmailField(
+#         unique=True
+#     )
+
+#     phone = models.CharField(
+#         max_length=20
+#     )
+
+#     role = models.CharField(
+#         max_length=20, 
+#         choices=Role_choices
+#     )
+
+#     created_at = models.DateTimeField(
+#         auto_now_add=True
+#     )
+#     # Django-required fields
+#     is_active = models.BooleanField(
+#         default=True
+#     )
+
+#     is_staff = models.BooleanField(
+#         default=False
+#     )
+
+#     objects = UserManager()
+
+#     USERNAME_FIELD = "email"
+#     REQUIRED_FIELDS = ["name"]
+
+#     def __str__(self):
+#         return f"{self.name} ({self.role})"
+
 # ============================================================
 # USER MODEL
 # ============================================================
 class User(AbstractBaseUser, PermissionsMixin):
-    
+
     class Role_choices(models.TextChoices):
         CUSTOMER = "CUSTOMER", "Customer"
         PRODUCER = "PRODUCER", "Producer"
@@ -35,33 +84,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         RESTAURANT = "RESTAURANT", "Restaurant"
         ADMIN = "ADMIN", "Admin"
 
-    name = models.CharField(
-        max_length=100
-    )
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=20)
+    role = models.CharField(max_length=20, choices=Role_choices)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    email = models.EmailField(
-        unique=True
-    )
-
-    phone = models.CharField(
-        max_length=20
-    )
-
-    role = models.CharField(
-        max_length=20, 
-        choices=Role_choices
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
     # Django-required fields
-    is_active = models.BooleanField(
-        default=True
-    )
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
 
-    is_staff = models.BooleanField(
-        default=False
+    # NEW FIELDS FOR SOFT DELETE
+    deactivation_reason = models.TextField(null=True, blank=True)
+    deactivated_at = models.DateTimeField(null=True, blank=True)
+    deactivated_by = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="deactivated_users"
     )
 
     objects = UserManager()
@@ -71,7 +112,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.name} ({self.role})"
-
 
 # ============================================================
 # ADDRESS MODEL

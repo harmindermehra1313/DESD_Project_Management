@@ -84,10 +84,12 @@ class Product(models.Model):
         SURPLUS_EXPIRED = "SE", "Surplus Expired"
 
     class Status(models.TextChoices):
-        PUBLISHED = "PUB", "Published"
-        HIDDEN = "HID", "Hidden"
-        FLAGGED = "FLG", "Flagged"
-        REMOVED = "RMV", "Removed"
+        PUBLISHED = 'PUB', 'Published'
+        HIDDEN = 'HID', 'Hidden'
+        FLAGGED = 'FLG', 'Flagged'
+        REMOVED = 'RMV', 'Removed'
+        PENDING = 'PND', 'Pending Approval'
+
 
     producer = models.ForeignKey(
         "accounts.Producer", on_delete=models.CASCADE, related_name="producer_products"
@@ -147,7 +149,9 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True)
 
     status = models.CharField(
-        max_length=10, choices=Status.choices, default=Status.PUBLISHED
+        max_length = 10,
+        choices = Status.choices,
+        default = Status.PENDING
     )
 
     moderated_at = models.DateTimeField(auto_now_add=True, null=True)

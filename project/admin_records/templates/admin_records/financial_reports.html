@@ -4,7 +4,7 @@
 {% block title %}Financial Reports | BRFN Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'financial_reports.css' %}">
+<link rel="stylesheet" href="{% static 'financial_report.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -12,16 +12,22 @@
 <div class="container my-4 admin-report-container">
 
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Network Commission & Financial Reports</h2>
+
+  <h2 class="mb-0">Network Commission & Financial Reports</h2>
+
+  <div class="d-flex gap-2">
     <a href="{% url 'admin_records:financial_reports_csv' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
-       class="btn btn-outline-secondary btn-sm">
+       class="btn btn-primary btn-sm">
       Download CSV
     </a>
+
     <a href="{% url 'admin_records:financial_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
-   class="btn btn-outline-secondary btn-sm">
-  Download PDF
-</a>
+       class="btn btn-primary btn-sm">
+      Download PDF
+    </a>
   </div>
+
+</div>
 
   <!-- Filters -->
   <form method="get" class="row g-3 mb-4 align-items-end" id="filtersForm">
@@ -66,13 +72,13 @@
       <button type="submit" class="btn btn-brand w-100">Filter</button>
     </div>
     <div class="col-12 d-flex gap-2 mt-2">
-      <button type="button" class="btn btn-outline-secondary btn-sm quick-range" data-range="14">
+      <button type="button" class="btn btn-primary btn-sm quick-range" data-range="14">
         Last 2 weeks
       </button>
-      <button type="button" class="btn btn-outline-secondary btn-sm quick-range" data-range="30">
+      <button type="button" class="btn btn-primary btn-sm quick-range" data-range="30">
         Last 30 days
       </button>
-      <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
+      <button type="button" class="btn btn-primary btn-sm" id="clearFilters">
         Clear filters
       </button>
     </div>
@@ -138,40 +144,61 @@
           <th>Producers breakdown</th>
         </tr>
       </thead>
+
       <tbody>
         {% for row in order_rows %}
-          <tr>
-            <td>{{ row.order.id }}</td>
-            <td>{{ row.order.unique_reference }}</td>
-            <td>{{ row.order.order_date|date:"Y-m-d H:i" }}</td>
-            <td>{{ row.order.get_status_display }}</td>
-            <td class="text-end">£{{ row.order_total|floatformat:2 }}</td>
-            <td class="text-end text-primary">£{{ row.commission_calc|floatformat:2 }}</td>
-            <td class="text-end text-warning">£{{ row.commission_recorded|floatformat:2 }}</td>
-            <td class="text-end text-success">£{{ row.producer_payout_total|floatformat:2 }}</td>
-            <td>
-              {% if row.producer_breakdown %}
-                <ul class="mb-0 small">
-                  {% for pb in row.producer_breakdown %}
-                    <li>
-                      {{ pb.producer_name }}:
-                      £{{ pb.subtotal|floatformat:2 }}
-                      → payout £{{ pb.payout_amount|floatformat:2 }}
-                      (commission £{{ pb.commission_total|floatformat:2 }})
-                    </li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                <span class="text-muted small">No producer breakdown</span>
-              {% endif %}
-            </td>
-          </tr>
+        <tr>
+          <td data-label="Order ID">{{ row.order.id }}</td>
+
+          <td data-label="Reference">{{ row.order.unique_reference }}</td>
+
+          <td data-label="Date">
+            {{ row.order.order_date|date:"Y-m-d H:i" }}
+          </td>
+
+          <td data-label="Status">
+            {{ row.order.get_status_display }}
+          </td>
+
+          <td data-label="Order total" class="text-end">
+            £{{ row.order_total|floatformat:2 }}
+          </td>
+
+          <td data-label="Commission (5% calc)" class="text-end text-primary">
+            £{{ row.commission_calc|floatformat:2 }}
+          </td>
+
+          <td data-label="Commission (recorded)" class="text-end text-warning">
+            £{{ row.commission_recorded|floatformat:2 }}
+          </td>
+
+          <td data-label="Producer payout (95%)" class="text-end text-success">
+            £{{ row.producer_payout_total|floatformat:2 }}
+          </td>
+
+          <td data-label="Producers breakdown">
+            {% if row.producer_breakdown %}
+            <ul class="mb-0 small">
+              {% for pb in row.producer_breakdown %}
+              <li>
+                {{ pb.producer_name }}:
+                £{{ pb.subtotal|floatformat:2 }}
+                → payout £{{ pb.payout_amount|floatformat:2 }}
+                (commission £{{ pb.commission_total|floatformat:2 }})
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <span class="text-muted small">No producer breakdown</span>
+            {% endif %}
+          </td>
+        </tr>
         {% empty %}
-          <tr>
-            <td colspan="9" class="text-center text-muted py-4">
-              No orders found for this filter.
-            </td>
-          </tr>
+        <tr>
+          <td colspan="9" class="text-center text-muted py-4">
+            No orders found for this filter.
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

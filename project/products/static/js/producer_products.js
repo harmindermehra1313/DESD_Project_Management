@@ -117,6 +117,7 @@ function clearFilters() {
     document.getElementById('filterHID').checked = true;
     document.getElementById('filterFLG').checked = false;
     document.getElementById('filterRMV').checked = false;
+    document.getElementById('filterPND').checked = true;
 
     applyAllFilters(true);
 }

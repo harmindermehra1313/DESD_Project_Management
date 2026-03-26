@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/approval_requests.css' %}">
+{% endblock %}
+{% block content %}
+<div class="container approval-container">
+
+    <h2>Pending Product Approval Requests</h2>
+
+    {% if pending_products %}
+        <div class="table-responsive">
+            <table class="approval-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Producer</th>
+                        <th>Category</th>
+                        <th>Submitted At</th>
+                        <th style="width: 180px;">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for product in pending_products %}
+                    <tr class="approval-row"
+                        onclick="showProductDetails('{{ product.id }}')"
+                        style="cursor: pointer;"
+                        id="product-{{ product.id }}">
+
+                        <td data-label="Product">
+                            <strong>{{ product.name }}</strong><br>
+                            <small class="text-muted">{{ product.description|truncatewords:12 }}</small>
+                        </td>
+
+                        <td data-label="Producer">
+                            {{ product.producer.user.name }}<br>
+                            <small class="text-muted">{{ product.producer.farm_name }}</small>
+                        </td>
+
+                        <td data-label="Category">{{ product.category.name }}</td>
+
+                        <td data-label="Submitted">
+                            {{ product.submitted_at|date:"d M Y, H:i" }}
+                        </td>
+
+                        <!-- <td data-label="Actions" onclick="event.stopPropagation();">
+                            <div class="approval-actions">
+                                <a href="{% url 'admin_records:approve_product' product.id %}"
+                                   class="approval-btn approval-btn-approve">
+                                    Approve
+                                </a>
+
+                                <a href="{% url 'admin_records:reject_product' product.id %}"
+                                   class="approval-btn approval-btn-reject">
+                                    Reject
+                                </a>
+                            </div>
+                        </td> -->
+                        <td data-label="Actions" onclick="event.stopPropagation();">
+                            <a href="{% url 'admin_records:approve_product' product.id %}"
+                            class="btn btn-success btn-sm">
+                                Approve
+                            </a>
+
+                            <button class="btn btn-danger btn-sm"
+                                    onclick="console.log('Reject clicked for:', '{{ product.id }}'); openRejectModal('{{ product.id }}'); event.stopPropagation();">
+                                Reject
+                            </button>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    {% else %}
+        <div class="approval-empty">
+            No pending product approval requests.
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- ===========================
+     PRODUCT DETAILS MODAL
+=========================== -->
+<div class="modal fade" id="productDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow-lg">
+
+            <div class="modal-header" style="background: var(--brand); color: white;">
+                <h5 class="modal-title fw-bold">Product Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body" id="productDetailsContent">
+                <!-- JS injects content -->
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ===========================
+     HIDDEN TEMPLATES
+=========================== -->
+<div id="product-templates" style="display: none;">
+    {% for p in pending_products %}
+    <template id="product-template-{{ p.id }}">
+        <div class="p-2">
+
+            {% if p.image %}
+            <div class="text-center mb-3">
+                <img src="{{ p.image.url }}" alt="{{ p.name }}"
+                     style="max-width: 200px; border-radius: 8px;">
+            </div>
+            {% endif %}
+
+            <strong class="text-brand">Product Name</strong><br>
+            {{ p.name }}<br><br>
+
+            <strong class="text-brand">Description</strong><br>
+            <span class="text-muted">{{ p.description }}</span><br><br>
+
+            <strong class="text-brand">Producer</strong><br>
+            {{ p.producer.user.name }}<br><br>
+
+            <strong class="text-brand">Category</strong><br>
+            {{ p.category.name }}<br><br>
+
+            <strong class="text-brand">Price</strong><br>
+            £{{ p.price }} per {{ p.get_unit_display }}<br><br>
+
+            <strong class="text-brand">Organic Status</strong><br>
+            {{ p.get_organic_certification_status_display }}<br><br>
+
+            <strong class="text-brand">Availability</strong><br>
+            {{ p.get_availability_status_display }}<br><br>
+
+            <strong class="text-brand">Farm Origin</strong><br>
+            {{ p.farm_origin }}<br><br>
+
+            <strong class="text-brand">Submitted At</strong><br>
+            {{ p.submitted_at|date:"d M Y, H:i" }}<br><br>
+
+        </div>
+    </template>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="rejectReasonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">Reject Listing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p class="mb-2">Please provide a reason for rejecting this product listing.</p>
+
+                <textarea id="rejectReasonInput"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Explain why this listing is being rejected..."></textarea>
+
+                <input type="hidden" id="rejectProductId">
+
+                <div id="rejectError" class="text-danger small mt-2 d-none"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="button"
+                        class="btn btn-danger"
+                        onclick="submitRejectReason()">
+                    Confirm Reject
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+{% block extra_js %}
+<script src="{% static 'js/approval_requests.js' %}"></script>
+
+{% endblock %}
+
+{% endblock %}
