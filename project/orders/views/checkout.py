@@ -33,6 +33,7 @@ def checkout_save(request):
 
         request.session["checkout_data"] = data
         request.session.modified = True
+        request.session.save()
 
         return JsonResponse({"ok": True})
     except Exception as e:
@@ -139,6 +140,7 @@ def checkout(request):
     else:
         if not request.session.session_key:
             request.session.create()
+            request.session.save()
         owner = CartOwner(session_key=request.session.session_key)
     
     cart = cart_get_or_create_active(owner=owner)

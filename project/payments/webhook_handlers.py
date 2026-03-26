@@ -7,6 +7,7 @@ from orders.services.session_loader import load_checkout_data_from_session
 from orders.services.order_validation import validate_checkout_session
 import logging
 from .stripe_client import get_stripe
+from django.contrib.auth.models import AnonymousUser
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -19,7 +20,7 @@ class FakeRequest:
     """
     def __init__(self, session_key, user):
         self.session = SessionStore(session_key=session_key)
-        self.user = user
+        self.user = user or AnonymousUser()
 
 def build_request_from_session(session_key: str, user_id: str | None):
     """
