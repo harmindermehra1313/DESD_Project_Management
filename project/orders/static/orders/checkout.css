@@ -78,7 +78,7 @@
 .checkout-total {
     margin-top: 2rem;
     padding: 1.5rem;
-    border-top: 2px solid rgba(var(--muted-rgb), 0.4);
+    border-top: 2px solid rgba(var(--background-grey), 0.4);
     background: rgba(var(--accent-rgb), 0.08);
     border-radius: var(--radius);
 }
@@ -157,7 +157,7 @@ input[type="radio"] {
 /* HR */
 hr {
     border: none;
-    border-top: 1px solid rgba(var(--muted-rgb), 0.4);
+    border-top: 1px solid rgba(var(--background-grey), 0.4);
     margin: 1.5rem 0;
 }
 
@@ -167,18 +167,18 @@ hr {
 #selected-delivery-address,
 #selected-billing-address {
     padding: 1rem;
-    border: 1px solid rgba(var(--muted-rgb), 0.3);
+    border: none;
     border-radius: var(--radius);
-    background: #fbfbfb;
+    background: var(--background-grey);
     margin-bottom: 1rem;
 }
 
 #new-delivery-address-form,
 #new-billing-address-form {
     padding: 1rem;
-    border: 1px solid rgba(var(--muted-rgb), 0.3);
+    border: none;
     border-radius: var(--radius);
-    background: #fbfbfb;
+    background: var(--background-grey);
 }
 
 /* ============================
@@ -236,7 +236,7 @@ hr {
 
 /* Left column: product list */
 .producer-products {
-    border-right: 1px solid rgba(var(--muted-rgb), 0.3);
+    border-right: 1px solid rgba(var(--background-grey), 0.3);
     padding-right: 1.5rem;
 }
 
@@ -272,19 +272,19 @@ hr {
 .checkout-table th,
 .checkout-table td {
     padding: 0.6rem 0.4rem;
-    border-bottom: 1px solid rgba(var(--muted-rgb), 0.25);
+    border-bottom: 1px solid rgba(var(--background-grey), 0.25);
     text-align: left;
 }
 
 .checkout-table th {
     font-weight: 600;
-    background: rgba(var(--muted-rgb), 0.1);
+    background: rgba(var(--background-grey), 0.1);
 }
 
 .producer-subtotal {
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(var(--muted-rgb), 0.3);
+    border-top: 1px solid rgba(var(--background-grey), 0.3);
     font-size: 0.95rem;
     line-height: 1.5;
 }
