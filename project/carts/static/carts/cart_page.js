@@ -172,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
     <span>${name}</span>
     ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-    ${isWholesale ? `<span class="badge text-bg-success">Wholesale</span>` : ""}
+    ${isWholesale ? `<span class="badge text-bg-warning">Wholesale</span>` : ""}
     ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
   </div>
   ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
@@ -248,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // remove
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
-    removeBtn.className = "btn btn-outline-danger btn-sm cart-remove-btn";
+    removeBtn.className = "btn btn-danger btn-sm cart-remove-btn";
     removeBtn.textContent = "Remove";
 
     function setDisabled(disabled) {

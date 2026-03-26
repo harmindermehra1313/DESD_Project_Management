@@ -168,7 +168,7 @@
   -moz-appearance: textfield;
 }
 
-@media (max-width: 767.98px) {
+@media (max-width: 1440px) {
   .cart-row {
     grid-template-columns: 76px minmax(0, 1fr);
     grid-template-areas:
@@ -193,7 +193,7 @@
   }
 }
 
-@media (max-width: 575.98px) {
+@media (max-width: 720px) {
   .cart-shell .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;

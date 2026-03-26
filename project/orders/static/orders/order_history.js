@@ -118,7 +118,9 @@ function bindEvents() {
       return;
     }
 
-    const reorderBtn = event.target.closest("[data-action='open-reorder-preview']");
+    const reorderBtn = event.target.closest(
+      "[data-action='open-reorder-preview']",
+    );
     if (reorderBtn) {
       const orderId = reorderBtn.dataset.orderId;
       if (orderId) {
@@ -133,7 +135,9 @@ function bindEvents() {
       return;
     }
 
-    const qtyMinusBtn = event.target.closest("[data-action='reorder-qty-minus']");
+    const qtyMinusBtn = event.target.closest(
+      "[data-action='reorder-qty-minus']",
+    );
     if (qtyMinusBtn) {
       const groupId = qtyMinusBtn.dataset.groupId;
       changeGroupQuantity(groupId, -1);
@@ -176,13 +180,20 @@ function readFiltersFromForm() {
     status: document.getElementById("status")?.value || "",
     start_date: document.getElementById("start_date")?.value || "",
     end_date: document.getElementById("end_date")?.value || "",
-    delivery_or_collection: document.getElementById("delivery_or_collection")?.value || "",
+    delivery_or_collection:
+      document.getElementById("delivery_or_collection")?.value || "",
     recurring_only: document.getElementById("recurring_only")?.value || "",
   };
 }
 
 function writeFiltersToForm(filters) {
-  const fields = ["status", "start_date", "end_date", "delivery_or_collection", "recurring_only"];
+  const fields = [
+    "status",
+    "start_date",
+    "end_date",
+    "delivery_or_collection",
+    "recurring_only",
+  ];
   fields.forEach((field) => {
     const el = document.getElementById(field);
     if (el) {
@@ -297,7 +308,9 @@ function validateDateFilters() {
   }
 
   if (startDate && startDate > today) {
-    showDateValidationError("Start date cannot be in the future.", [startDateEl]);
+    showDateValidationError("Start date cannot be in the future.", [
+      startDateEl,
+    ]);
     return false;
   }
 
@@ -443,7 +456,8 @@ function setEmptyState() {
   const nextBtn = document.getElementById("nextPageBtn");
 
   if (paginationInfo) {
-    paginationInfo.textContent = totalCount === 0 ? "0 orders" : `Page ${currentPage}`;
+    paginationInfo.textContent =
+      totalCount === 0 ? "0 orders" : `Page ${currentPage}`;
   }
 
   if (prevBtn) prevBtn.disabled = true;
@@ -487,10 +501,13 @@ async function loadOrders() {
   setLoadingState();
 
   try {
-    const response = await fetch(`${ORDER_HISTORY_API_URL}?${buildQueryString()}`, {
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      credentials: "same-origin",
-    });
+    const response = await fetch(
+      `${ORDER_HISTORY_API_URL}?${buildQueryString()}`,
+      {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
+      },
+    );
 
     if (!response.ok) {
       const message = await parseErrorMessage(
@@ -528,16 +545,22 @@ function renderOrdersTable(orders) {
 
   if (!wrapper || !tbody) return;
 
-  tbody.innerHTML = orders.map((order) => `
+  tbody.innerHTML = orders
+    .map(
+      (order) => `
     <tr>
       <td><strong>${escapeHtml(order.order_number)}</strong></td>
       <td>${formatDate(order.order_date)}</td>
       <td>
-        ${(order.producer_names || []).map((name) => `
+        ${(order.producer_names || [])
+          .map(
+            (name) => `
           <span class="badge rounded-pill text-bg-light border me-1 mb-1">
             ${escapeHtml(name)}
           </span>
-        `).join("")}
+        `,
+          )
+          .join("")}
       </td>
       <td>${formatMoney(order.total)}</td>
       <td>
@@ -557,7 +580,9 @@ function renderOrdersTable(orders) {
         ${getReorderButtonHtml(order.id, order.order_status, "btn-sm btn-primary")}
       </td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 
   document.getElementById("orderListLoading")?.classList.add("d-none");
   wrapper.classList.remove("d-none");
@@ -627,14 +652,18 @@ function renderItemsSection(items) {
             </tr>
           </thead>
           <tbody>
-            ${(items || []).map((item) => `
+            ${(items || [])
+              .map(
+                (item) => `
               <tr>
                 <td>${escapeHtml(item.product_name)}</td>
                 <td>${escapeHtml(item.producer)}</td>
                 <td>${escapeHtml(item.quantity)}</td>
                 <td>${formatMoney(item.paid_unit_price)}</td>
               </tr>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -658,14 +687,25 @@ function renderFulfilmentSection(producerBreakdown) {
     <div class="mb-4">
       <h6 class="mb-3">Delivery / Collection Details</h6>
       <div class="row g-3">
-        ${(producerBreakdown || []).map((summary) => {
-          const isCollection = (summary.delivery_or_collection || "").toLowerCase().includes("collection");
-          const date = isCollection ? summary.collection_date : summary.delivery_date;
-          const timeSlot = isCollection ? summary.collection_time_slot : summary.delivery_time_slot;
-          const address = isCollection ? summary.collection_address : summary.delivery_address;
-          const addressLabel = isCollection ? "Collection address" : "Delivery address";
+        ${(producerBreakdown || [])
+          .map((summary) => {
+            const isCollection = (summary.delivery_or_collection || "")
+              .toLowerCase()
+              .includes("collection");
+            const date = isCollection
+              ? summary.collection_date
+              : summary.delivery_date;
+            const timeSlot = isCollection
+              ? summary.collection_time_slot
+              : summary.delivery_time_slot;
+            const address = isCollection
+              ? summary.collection_address
+              : summary.delivery_address;
+            const addressLabel = isCollection
+              ? "Collection address"
+              : "Delivery address";
 
-          return `
+            return `
             <div class="col-12">
               <div class="border rounded p-3">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -693,7 +733,8 @@ function renderFulfilmentSection(producerBreakdown) {
               </div>
             </div>
           `;
-        }).join("")}
+          })
+          .join("")}
       </div>
     </div>
   `;
@@ -712,7 +753,9 @@ function renderProducerSection(producerBreakdown) {
   return `
     <div class="mb-4">
       <h6 class="mb-3">Producer Details</h6>
-      ${(producerBreakdown || []).map((summary) => `
+      ${(producerBreakdown || [])
+        .map(
+          (summary) => `
         <div class="card mb-3">
           <div class="card-body">
             <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
@@ -742,7 +785,9 @@ function renderProducerSection(producerBreakdown) {
             </div>
           </div>
         </div>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
   `;
 }
@@ -788,7 +833,10 @@ async function openOrderDetails(orderId) {
 
     if (!response.ok) {
       throw new Error(
-        await parseErrorMessage(response, `Failed to load order details (${response.status})`),
+        await parseErrorMessage(
+          response,
+          `Failed to load order details (${response.status})`,
+        ),
       );
     }
 
@@ -839,7 +887,11 @@ function makeDomSafeId(value) {
 function clampQuantity(quantity, maxAvailable) {
   const parsed = Math.max(1, parseInt(quantity, 10) || 1);
 
-  if (maxAvailable === null || maxAvailable === undefined || maxAvailable === "") {
+  if (
+    maxAvailable === null ||
+    maxAvailable === undefined ||
+    maxAvailable === ""
+  ) {
     return parsed;
   }
 
@@ -851,7 +903,11 @@ function buildLookupByOrderItemId(items) {
   const lookup = new Map();
 
   ensureArray(items).forEach((item) => {
-    if (item && item.order_item_id !== null && item.order_item_id !== undefined) {
+    if (
+      item &&
+      item.order_item_id !== null &&
+      item.order_item_id !== undefined
+    ) {
       lookup.set(String(item.order_item_id), item);
     }
   });
@@ -868,7 +924,11 @@ function createOptionFromAddableItem(item) {
     producer_id: item.producer_id,
     producer_name: item.producer_name,
     inventory_id: item.inventory_id ?? null,
-    available_quantity: item.available_quantity ?? item.added_quantity ?? item.requested_quantity ?? null,
+    available_quantity:
+      item.available_quantity ??
+      item.added_quantity ??
+      item.requested_quantity ??
+      null,
     current_price: item.current_price,
     pricing: item.pricing || null,
     match_basis: item.match_basis || "same_product",
@@ -911,9 +971,15 @@ function createSkipOption(groupId) {
 }
 
 function buildReorderPlannerState(orderId, preview) {
-  const quantityAdjustedLookup = buildLookupByOrderItemId(preview.quantity_adjusted_items);
-  const priceChangedLookup = buildLookupByOrderItemId(preview.price_changed_items);
-  const producerChangedLookup = buildLookupByOrderItemId(preview.producer_changed_items);
+  const quantityAdjustedLookup = buildLookupByOrderItemId(
+    preview.quantity_adjusted_items,
+  );
+  const priceChangedLookup = buildLookupByOrderItemId(
+    preview.price_changed_items,
+  );
+  const producerChangedLookup = buildLookupByOrderItemId(
+    preview.producer_changed_items,
+  );
 
   const groups = [];
 
@@ -925,7 +991,9 @@ function buildReorderPlannerState(orderId, preview) {
     );
 
     const originalOption = createOptionFromAddableItem(item);
-    const suggestedOptions = ensureArray(item.suggested_items).map(createOptionFromSuggestedItem);
+    const suggestedOptions = ensureArray(item.suggested_items).map(
+      createOptionFromSuggestedItem,
+    );
 
     groups.push({
       groupId,
@@ -942,7 +1010,7 @@ function buildReorderPlannerState(orderId, preview) {
         originalRequestedQuantity,
         originalOption.available_quantity,
       ),
-      options: [originalOption, ...suggestedOptions],
+      options: [originalOption, ...suggestedOptions, createSkipOption(groupId)],
       signals: {
         quantityAdjusted: quantityAdjustedLookup.get(groupId) || null,
         priceChanged: priceChangedLookup.get(groupId) || null,
@@ -954,9 +1022,13 @@ function buildReorderPlannerState(orderId, preview) {
   ensureArray(preview.unavailable_items).forEach((item, index) => {
     const groupId = String(item.order_item_id ?? `unavailable-${index}`);
     const originalRequestedQuantity = toNumber(item.requested_quantity, 1);
-    const suggestedOptions = ensureArray(item.suggested_items).map(createOptionFromSuggestedItem);
+    const suggestedOptions = ensureArray(item.suggested_items).map(
+      createOptionFromSuggestedItem,
+    );
     const hasSuggestions = suggestedOptions.length > 0;
-    const selectedOption = hasSuggestions ? suggestedOptions[0] : createSkipOption(groupId);
+    const selectedOption = hasSuggestions
+      ? suggestedOptions[0]
+      : createSkipOption(groupId);
 
     groups.push({
       groupId,
@@ -970,7 +1042,10 @@ function buildReorderPlannerState(orderId, preview) {
       },
       selectedOptionKey: selectedOption.key,
       quantity: hasSuggestions
-        ? clampQuantity(originalRequestedQuantity, selectedOption.available_quantity)
+        ? clampQuantity(
+            originalRequestedQuantity,
+            selectedOption.available_quantity,
+          )
         : 0,
       options: hasSuggestions
         ? [...suggestedOptions, createSkipOption(groupId)]
@@ -992,48 +1067,207 @@ function buildReorderPlannerState(orderId, preview) {
 
 function getGroupById(groupId) {
   if (!reorderPlannerState) return null;
-  return reorderPlannerState.groups.find((group) => String(group.groupId) === String(groupId)) || null;
+  return (
+    reorderPlannerState.groups.find(
+      (group) => String(group.groupId) === String(groupId),
+    ) || null
+  );
 }
 
 function getSelectedOption(group) {
   if (!group) return null;
-  return group.options.find((option) => option.key === group.selectedOptionKey) || null;
+  return (
+    group.options.find((option) => option.key === group.selectedOptionKey) ||
+    null
+  );
 }
 
+function getTierMinQuantity(tier) {
+  return toNumber(tier?.min_quantity, 0);
+}
+
+function getTierUnitPrice(tier, fallback = 0) {
+  return toNumber(tier?.unit_price, fallback);
+}
+
+function getApplicableKnownWholesaleTier(option, quantity) {
+  const wholesale = option.pricing?.wholesale || null;
+  const matchedTier = wholesale?.matched_tier || null;
+  const nextTier = wholesale?.next_tier || null;
+
+  if (nextTier && quantity >= getTierMinQuantity(nextTier)) {
+    return nextTier;
+  }
+
+  if (matchedTier && quantity >= getTierMinQuantity(matchedTier)) {
+    return matchedTier;
+  }
+
+  return null;
+}
+
+function getPricingState(option, quantity) {
+  const pricing = option.pricing || {};
+  const surplus = pricing.surplus || {};
+  const wholesale = pricing.wholesale || {};
+
+  const baseUnitPrice = toNumber(
+    pricing.base_unit_price ?? option.current_price,
+    0,
+  );
+  const effectiveUnitPrice = toNumber(
+    pricing.effective_unit_price ?? option.current_price,
+    baseUnitPrice,
+  );
+
+  const applicableTier = getApplicableKnownWholesaleTier(option, quantity);
+  const tierUnitPrice = applicableTier
+    ? getTierUnitPrice(applicableTier, effectiveUnitPrice)
+    : effectiveUnitPrice;
+
+  const appliedUnitPrice = Math.min(effectiveUnitPrice, tierUnitPrice);
+  const wholesaleActive =
+    Boolean(applicableTier) && tierUnitPrice < effectiveUnitPrice;
+  const surplusActive = Boolean(surplus.is_active);
+
+  let compareUnitPrice = null;
+  if (wholesaleActive) {
+    compareUnitPrice = effectiveUnitPrice;
+  } else if (surplusActive && baseUnitPrice > effectiveUnitPrice) {
+    compareUnitPrice = baseUnitPrice;
+  }
+
+  const savingsPerUnit =
+    compareUnitPrice !== null
+      ? Math.max(0, compareUnitPrice - appliedUnitPrice)
+      : 0;
+
+  const upcomingTier =
+    wholesale?.next_tier && quantity < getTierMinQuantity(wholesale.next_tier)
+      ? wholesale.next_tier
+      : null;
+
+  return {
+    baseUnitPrice,
+    effectiveUnitPrice,
+    appliedUnitPrice,
+    compareUnitPrice,
+    savingsPerUnit,
+    surplusActive,
+    surplusDiscountPercentage: surplus.discount_percentage,
+    wholesale,
+    wholesaleActive,
+    applicableTier,
+    upcomingTier,
+  };
+}
+
+function renderPriceCutBadge(pricingState) {
+  if (pricingState.wholesaleActive) {
+    return `
+      <span class="badge rounded-pill bg-warning text-dark">
+        Wholesale price
+      </span>
+    `;
+  }
+
+  if (pricingState.surplusActive) {
+    if (pricingState.surplusDiscountPercentage) {
+      return `
+        <span class="badge rounded-pill bg-danger">
+          ${escapeHtml(pricingState.surplusDiscountPercentage)}% off
+        </span>
+      `;
+    }
+
+    return `
+      <span class="badge rounded-pill bg-danger">
+        Surplus price
+      </span>
+    `;
+  }
+
+  if (pricingState.savingsPerUnit > 0) {
+    return `
+      <span class="badge rounded-pill bg-danger">
+        Save ${escapeHtml(formatMoney(pricingState.savingsPerUnit))}
+      </span>
+    `;
+  }
+
+  return "";
+}
+
+function renderPriceStack(option, quantity, extraClass = "") {
+  const pricingState = getPricingState(option, quantity);
+
+  return `
+    <div class="${escapeHtml(extraClass)}">
+      <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+        <div class="fw-semibold">${formatMoney(pricingState.appliedUnitPrice)}</div>
+
+        ${
+          pricingState.compareUnitPrice !== null
+            ? `
+              <div class="small text-muted text-decoration-line-through">
+                ${formatMoney(pricingState.compareUnitPrice)}
+              </div>
+            `
+            : ""
+        }
+
+        ${renderPriceCutBadge(pricingState)}
+      </div>
+    </div>
+  `;
+}
 function getPlannerStats() {
   if (!reorderPlannerState) {
     return {
       selectedCount: 0,
       skippedCount: 0,
       estimatedSubtotal: 0,
+      estimatedCompareSubtotal: 0,
+      estimatedSavings: 0,
       actionableCount: 0,
     };
   }
 
-  return reorderPlannerState.groups.reduce((stats, group) => {
-    const selectedOption = getSelectedOption(group);
+  return reorderPlannerState.groups.reduce(
+    (stats, group) => {
+      const selectedOption = getSelectedOption(group);
 
-    if (!selectedOption || selectedOption.action === "skip") {
-      stats.skippedCount += 1;
+      if (!selectedOption || selectedOption.action === "skip") {
+        stats.skippedCount += 1;
+        return stats;
+      }
+
+      const quantity = clampQuantity(
+        group.quantity,
+        selectedOption.available_quantity,
+      );
+      const pricingState = getPricingState(selectedOption, quantity);
+
+      stats.selectedCount += 1;
+      stats.actionableCount += 1;
+      stats.estimatedSubtotal += quantity * pricingState.appliedUnitPrice;
+      stats.estimatedCompareSubtotal +=
+        quantity *
+        (pricingState.compareUnitPrice !== null
+          ? pricingState.compareUnitPrice
+          : pricingState.appliedUnitPrice);
+      stats.estimatedSavings += quantity * pricingState.savingsPerUnit;
       return stats;
-    }
-
-    const quantity = clampQuantity(group.quantity, selectedOption.available_quantity);
-    const unitPrice = toNumber(
-      selectedOption.pricing?.effective_unit_price ?? selectedOption.current_price,
-      0,
-    );
-
-    stats.selectedCount += 1;
-    stats.actionableCount += 1;
-    stats.estimatedSubtotal += quantity * unitPrice;
-    return stats;
-  }, {
-    selectedCount: 0,
-    skippedCount: 0,
-    estimatedSubtotal: 0,
-    actionableCount: 0,
-  });
+    },
+    {
+      selectedCount: 0,
+      skippedCount: 0,
+      estimatedSubtotal: 0,
+      estimatedCompareSubtotal: 0,
+      estimatedSavings: 0,
+      actionableCount: 0,
+    },
+  );
 }
 
 function serializeSelectionsFromState() {
@@ -1043,7 +1277,11 @@ function serializeSelectionsFromState() {
     .map((group) => {
       const selectedOption = getSelectedOption(group);
 
-      if (!selectedOption || group.orderItemId === null || group.orderItemId === undefined) {
+      if (
+        !selectedOption ||
+        group.orderItemId === null ||
+        group.orderItemId === undefined
+      ) {
         return null;
       }
 
@@ -1059,7 +1297,10 @@ function serializeSelectionsFromState() {
         action: selectedOption.action,
         selected_product_id: selectedOption.product_id,
         inventory_id: selectedOption.inventory_id,
-        quantity: clampQuantity(group.quantity, selectedOption.available_quantity),
+        quantity: clampQuantity(
+          group.quantity,
+          selectedOption.available_quantity,
+        ),
       };
     })
     .filter(Boolean);
@@ -1077,8 +1318,12 @@ function updateGroupSelectedOption(groupId, optionKey) {
   if (selectedOption.action === "skip") {
     group.quantity = 0;
   } else {
-    const fallbackQuantity = group.quantity || group.original.requested_quantity || 1;
-    group.quantity = clampQuantity(fallbackQuantity, selectedOption.available_quantity);
+    const fallbackQuantity =
+      group.quantity || group.original.requested_quantity || 1;
+    group.quantity = clampQuantity(
+      fallbackQuantity,
+      selectedOption.available_quantity,
+    );
   }
 
   updateReorderPlannerUI();
@@ -1102,8 +1347,14 @@ function changeGroupQuantity(groupId, delta) {
   const selectedOption = getSelectedOption(group);
   if (!selectedOption || selectedOption.action === "skip") return;
 
-  const current = clampQuantity(group.quantity, selectedOption.available_quantity);
-  group.quantity = clampQuantity(current + delta, selectedOption.available_quantity);
+  const current = clampQuantity(
+    group.quantity,
+    selectedOption.available_quantity,
+  );
+  group.quantity = clampQuantity(
+    current + delta,
+    selectedOption.available_quantity,
+  );
   updateReorderPlannerUI();
 }
 
@@ -1118,26 +1369,111 @@ function renderSimpleMessageCard(title, body, className = "alert-info") {
 
 function renderPlannerSummaryCard() {
   const stats = getPlannerStats();
-  const previewMessage = reorderPlannerState?.preview?.message || "Review your selections before adding items to cart.";
+
+  const groups = reorderPlannerState?.groups || [];
+  const needsReviewCount = groups.filter(
+    (group) => group.kind === "needs-choice",
+  ).length;
+  const unavailableCount = groups.filter(
+    (group) => group.kind === "unavailable",
+  ).length;
+  const alternativeCount = groups.reduce((count, group) => {
+    return (
+      count +
+      group.options.filter((option) => option.action === "replace").length
+    );
+  }, 0);
+
+  const helperNotes = [];
+
+  if (needsReviewCount > 0) {
+    helperNotes.push(
+      `${needsReviewCount} item${needsReviewCount === 1 ? "" : "s"} need review`,
+    );
+  }
+
+  if (alternativeCount > 0) {
+    helperNotes.push(
+      `${alternativeCount} alternative option${alternativeCount === 1 ? "" : "s"} available`,
+    );
+  }
+
+  if (unavailableCount > 0) {
+    helperNotes.push(
+      `${unavailableCount} item${unavailableCount === 1 ? "" : "s"} currently unavailable`,
+    );
+  }
+
+  const helperSummary = helperNotes.length
+    ? helperNotes.join(" • ")
+    : "All available items have been selected for you.";
 
   return `
     <div class="border rounded p-3 mb-4 bg-light">
-      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-        <div>
-          <div class="fw-semibold mb-1">Review Reorder</div>
+      <div class="row g-3 align-items-start">
+        <div class="col-md-7">
+          <div class="fw-semibold mb-1">Please review your items</div>
+
           <div class="small text-muted">
-            ${escapeHtml(previewMessage)}
+            Before adding items to the cart, check the products below. You can
+            change quantities, choose alternative items where available, or skip
+            anything you do not want.
+          </div>
+
+          <div class="small text-muted mt-2">
+            ${escapeHtml(helperSummary)}
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <span class="badge text-bg-light border">
+              ${escapeHtml(stats.selectedCount)} selected
+            </span>
+
+            <span class="badge text-bg-light border">
+              ${escapeHtml(stats.skippedCount)} skipped
+            </span>
+
+            ${
+              needsReviewCount > 0
+                ? `
+                  <span class="badge text-bg-light border">
+                    ${escapeHtml(needsReviewCount)} need review
+                  </span>
+                `
+                : ""
+            }
           </div>
         </div>
-        <div class="text-md-end">
-          <div class="small text-muted">Estimated subtotal</div>
-          <div class="fs-5 fw-bold">${formatMoney(stats.estimatedSubtotal)}</div>
-        </div>
-      </div>
 
-      <div class="d-flex flex-wrap gap-2 mt-3">
-        <span class="badge text-bg-light border">Selected items: ${escapeHtml(stats.selectedCount)}</span>
-        <span class="badge text-bg-light border">Skipped items: ${escapeHtml(stats.skippedCount)}</span>
+        <div class="col-md-5 text-md-end">
+          <div class="small text-muted">Estimated total</div>
+          <div class="fs-4 fw-bold">${formatMoney(stats.estimatedSubtotal)}</div>
+
+          ${
+            stats.estimatedSavings > 0
+              ? `
+                <div class="mt-2">
+                  <span class="badge rounded-pill bg-danger">
+                    You save ${escapeHtml(formatMoney(stats.estimatedSavings))}
+                  </span>
+                </div>
+              `
+              : ""
+          }
+
+          ${
+            stats.estimatedCompareSubtotal > stats.estimatedSubtotal
+              ? `
+                <div class="small text-muted mt-2">
+                  Regular total
+                  <span class="text-decoration-line-through">
+                    ${formatMoney(stats.estimatedCompareSubtotal)}
+                  </span>
+                </div>
+              `
+              : ""
+          }
+        </div>
       </div>
     </div>
   `;
@@ -1160,7 +1496,9 @@ function renderPlannerSection(title, subtitle, groups) {
 }
 
 function renderMatchBasisLabel(matchBasis) {
-  const value = String(matchBasis || "").replaceAll("_", " ").trim();
+  const value = String(matchBasis || "")
+    .replaceAll("_", " ")
+    .trim();
   if (!value) return "";
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -1169,14 +1507,22 @@ function renderOptionBadges(group, option) {
   const badges = [];
 
   if (group.kind === "available" && option.action === "keep") {
-    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">Original product</span>`);
+    badges.push(`
+      <span class="badge rounded-pill text-bg-light border me-1 mb-1">
+        Original
+      </span>
+    `);
   }
 
   if (option.action === "replace") {
-    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">Alternative producer</span>`);
+    badges.push(`
+      <span class="badge rounded-pill text-bg-light border me-1 mb-1">
+        Alternative producer
+      </span>
+    `);
   }
 
-  if (option.match_basis && option.match_basis !== "same_product") {
+  if (option.action === "replace" && option.match_basis) {
     badges.push(`
       <span class="badge rounded-pill text-bg-light border me-1 mb-1">
         ${escapeHtml(renderMatchBasisLabel(option.match_basis))} match
@@ -1185,19 +1531,23 @@ function renderOptionBadges(group, option) {
   }
 
   if (option.pricing?.surplus?.is_active) {
-    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">Surplus</span>`);
+    badges.push(`
+      <span class="badge rounded-pill bg-danger me-1 mb-1">
+        Surplus
+      </span>
+    `);
   }
 
   if (option.pricing?.wholesale?.has_wholesale_tiers) {
-    const label = option.pricing?.wholesale?.active_for_quantity
-      ? "Wholesale active"
-      : "Wholesale available";
-    badges.push(`<span class="badge rounded-pill text-bg-light border me-1 mb-1">${escapeHtml(label)}</span>`);
+    badges.push(`
+      <span class="badge rounded-pill bg-warning text-dark me-1 mb-1">
+        Wholesale
+      </span>
+    `);
   }
 
   return badges.join("");
 }
-
 function renderQuantityAdjustmentNotice(signal) {
   if (!signal) return "";
 
@@ -1229,72 +1579,122 @@ function renderProducerChangeNotice(signal) {
   `;
 }
 
-function renderPricingHelper(option, quantity) {
-  const pricing = option.pricing || {};
-  const wholesale = pricing.wholesale || null;
+function renderWholesaleNotice(option, quantity) {
+  const pricingState = getPricingState(option, quantity);
+  const wholesale = option.pricing?.wholesale || null;
 
-  if (wholesale?.active_for_quantity) {
-    return `<div class="small text-success mt-1">Wholesale active at this quantity.</div>`;
+  if (!wholesale?.has_wholesale_tiers) {
+    return "";
   }
 
-  if (wholesale?.has_wholesale_tiers && wholesale?.next_tier?.min_quantity) {
-    const nextTierQuantity = toNumber(wholesale.next_tier.min_quantity, 0);
-    if (nextTierQuantity > quantity) {
-      const difference = nextTierQuantity - quantity;
+  if (pricingState.wholesaleActive) {
+    if (pricingState.upcomingTier) {
       return `
-        <div class="small text-muted mt-1">
-          Add ${escapeHtml(difference)} more to unlock ${formatMoney(wholesale.next_tier.unit_price)} per unit.
+        <div class="small text-muted mt-2">
+          <span class="fw-semibold text-dark">Wholesale active.</span>
+          Next tier: buy ${escapeHtml(pricingState.upcomingTier.min_quantity)}+ for
+          ${formatMoney(pricingState.upcomingTier.unit_price)} each.
         </div>
       `;
     }
+
+    return `
+      <div class="small text-muted mt-2">
+        <span class="fw-semibold text-dark">Wholesale active.</span>
+        Current quantity qualifies for wholesale pricing.
+      </div>
+    `;
   }
 
-  if (pricing?.surplus?.is_active) {
-    return `<div class="small text-success mt-1">Surplus discount is active for this option.</div>`;
+  if (pricingState.upcomingTier) {
+    const difference = getTierMinQuantity(pricingState.upcomingTier) - quantity;
+
+    return `
+      <div class="small text-muted mt-2">
+        Buy ${escapeHtml(pricingState.upcomingTier.min_quantity)}+ for
+        ${formatMoney(pricingState.upcomingTier.unit_price)} each.
+        Add ${escapeHtml(difference)} more to unlock it.
+      </div>
+    `;
   }
 
   return "";
 }
 
+function renderSurplusNotice(option, quantity) {
+  const pricingState = getPricingState(option, quantity);
+
+  if (!pricingState.surplusActive) {
+    return "";
+  }
+
+  if (pricingState.wholesaleActive) {
+    return `
+      <div class="small text-muted mt-2">
+        Surplus stock exists, but wholesale pricing is currently the better price.
+      </div>
+    `;
+  }
+
+  return `
+    <div class="small text-muted mt-2">
+      Surplus discount is applied to this item.
+    </div>
+  `;
+}
+
 function renderQuantityControls(group, option) {
   const quantity = clampQuantity(group.quantity, option.available_quantity);
   const minusDisabled = quantity <= 1 ? "disabled" : "";
-  const plusDisabled = option.available_quantity !== null && option.available_quantity !== undefined
-    ? quantity >= toNumber(option.available_quantity, quantity)
-      ? "disabled"
-      : ""
-    : "";
+  const plusDisabled =
+    option.available_quantity !== null &&
+    option.available_quantity !== undefined
+      ? quantity >= toNumber(option.available_quantity, quantity)
+        ? "disabled"
+        : ""
+      : "";
 
-  const stockNote = option.available_quantity !== null && option.available_quantity !== undefined
-    ? `<div class="small text-muted mt-1">Available now: ${escapeHtml(option.available_quantity)}</div>`
-    : "";
+  const pricingState = getPricingState(option, quantity);
+  const lineAppliedTotal = pricingState.appliedUnitPrice * quantity;
+  const lineCompareTotal =
+    pricingState.compareUnitPrice !== null
+      ? pricingState.compareUnitPrice * quantity
+      : null;
 
   return `
     <div class="mt-3 pt-3 border-top">
-      <div class="row g-3 align-items-end">
+      <div class="row g-3">
         <div class="col-md-4">
           <label class="form-label small text-muted mb-1">Quantity</label>
+
           <div class="input-group">
             <button
               type="button"
-              class="btn btn-outline-secondary"
+              class="btn btn-primary"
               data-action="reorder-qty-minus"
               data-group-id="${escapeHtml(group.groupId)}"
               ${minusDisabled}
             >
               −
             </button>
+
             <input
               type="number"
               min="1"
-              ${option.available_quantity !== null && option.available_quantity !== undefined ? `max="${escapeHtml(option.available_quantity)}"` : ""}
+              ${
+                option.available_quantity !== null &&
+                option.available_quantity !== undefined
+                  ? `max="${escapeHtml(option.available_quantity)}"`
+                  : ""
+              }
               class="form-control text-center js-reorder-qty-input"
               data-group-id="${escapeHtml(group.groupId)}"
               value="${escapeHtml(quantity)}"
             >
+
             <button
               type="button"
-              class="btn btn-outline-secondary"
+              class="btn btn-primary"
               data-action="reorder-qty-plus"
               data-group-id="${escapeHtml(group.groupId)}"
               ${plusDisabled}
@@ -1302,18 +1702,70 @@ function renderQuantityControls(group, option) {
               +
             </button>
           </div>
-          ${stockNote}
+
+          <div class="small text-muted mt-2">
+            Available now: ${escapeHtml(option.available_quantity ?? "Not specified")}
+          </div>
         </div>
 
         <div class="col-md-8">
-          <div class="small text-muted">Pricing</div>
-          <div class="fw-semibold">
-            ${formatMoney(option.pricing?.effective_unit_price ?? option.current_price)} each
+          <div class="border rounded p-3 bg-light">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+              <div>
+                <div class="small text-muted">Current unit price</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                  <div class="fs-4 fw-bold">${formatMoney(pricingState.appliedUnitPrice)}</div>
+
+                  ${
+                    pricingState.compareUnitPrice !== null
+                      ? `
+                        <div class="small text-muted text-decoration-line-through">
+                          ${formatMoney(pricingState.compareUnitPrice)}
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${renderPriceCutBadge(pricingState)}
+                </div>
+
+                <div class="small text-muted mt-1">
+                  Base price: ${formatMoney(pricingState.baseUnitPrice)} each
+                </div>
+
+                ${renderWholesaleNotice(option, quantity)}
+                ${renderSurplusNotice(option, quantity)}
+              </div>
+
+              <div class="text-md-end">
+                <div class="small text-muted">Line total</div>
+                <div class="fw-semibold fs-5">${formatMoney(lineAppliedTotal)}</div>
+
+                ${
+                  lineCompareTotal !== null
+                    ? `
+                      <div class="small text-muted">
+                        Was
+                        <span class="text-decoration-line-through">
+                          ${formatMoney(lineCompareTotal)}
+                        </span>
+                      </div>
+                    `
+                    : ""
+                }
+
+                ${
+                  pricingState.savingsPerUnit > 0
+                    ? `
+                      <div class="small text-success mt-1">
+                        You save ${formatMoney(pricingState.savingsPerUnit * quantity)}
+                      </div>
+                    `
+                    : ""
+                }
+              </div>
+            </div>
           </div>
-          <div class="small text-muted">
-            Base: ${formatMoney(option.pricing?.base_unit_price ?? option.current_price)} each
-          </div>
-          ${renderPricingHelper(option, quantity)}
         </div>
       </div>
     </div>
@@ -1323,9 +1775,10 @@ function renderQuantityControls(group, option) {
 function renderOptionCard(group, option) {
   const selected = option.key === group.selectedOptionKey;
   const inputId = `reorder-option-${makeDomSafeId(group.groupId)}-${makeDomSafeId(option.key)}`;
-  const cardClass = selected
-    ? "border-primary shadow-sm"
-    : "border";
+  const cardClass = selected ? "border-primary shadow-sm" : "border";
+  const previewQty = selected
+    ? group.quantity
+    : group.original.requested_quantity;
 
   if (group.kind === "unavailable" && option.action === "skip") {
     return `
@@ -1350,37 +1803,49 @@ function renderOptionCard(group, option) {
           data-option-key="${escapeHtml(option.key)}"
           ${selected ? "checked" : ""}
         >
+
         <label class="form-check-label d-block" for="${escapeHtml(inputId)}">
           <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
               <div class="fw-semibold">${escapeHtml(option.product_name)}</div>
               <div class="small text-muted">
-                ${option.producer_name ? `${escapeHtml(option.producer_name)} · ` : ""}${escapeHtml(option.source_label)}
+                ${
+                  option.producer_name
+                    ? `${escapeHtml(option.producer_name)}`
+                    : ""
+                }
               </div>
+
+              <div class="mt-2">
+                ${renderOptionBadges(group, option)}
+              </div>
+
+              ${
+                option.action !== "skip"
+                  ? `
+                    <div class="small text-muted mt-2">
+                      Available: ${escapeHtml(option.available_quantity ?? "Not specified")}
+                    </div>
+                  `
+                  : `
+                    <div class="small text-muted mt-2">
+                      This item will not be added to the cart.
+                    </div>
+                  `
+              }
             </div>
+
             <div class="text-md-end">
-              <div class="fw-semibold">
-                ${option.action === "skip" ? "Skip" : formatMoney(option.pricing?.effective_unit_price ?? option.current_price)}
-              </div>
-              ${option.action !== "skip" ? `<div class="small text-muted">per unit</div>` : ""}
+              ${
+                option.action === "skip"
+                  ? `<div class="fw-semibold">Skip</div>`
+                  : `
+                    ${renderPriceStack(option, previewQty)}
+                    <div class="small text-muted">per unit</div>
+                  `
+              }
             </div>
           </div>
-
-          <div class="mt-2">
-            ${renderOptionBadges(group, option)}
-          </div>
-
-          ${option.action !== "skip" ? `
-            <div class="small text-muted mt-2">
-              ${option.available_quantity !== null && option.available_quantity !== undefined
-                ? `Available: ${escapeHtml(option.available_quantity)}`
-                : "Availability not specified"}
-            </div>
-          ` : `
-            <div class="small text-muted mt-2">
-              This item will not be added to the cart.
-            </div>
-          `}
         </label>
       </div>
 
@@ -1391,52 +1856,112 @@ function renderOptionCard(group, option) {
 
 function renderPlannerGroup(group) {
   const selectedOption = getSelectedOption(group);
-  const alternativeCount = Math.max(0, group.options.filter((option) => option.action === "replace").length);
+  const alternativeCount = Math.max(
+    0,
+    group.options.filter((option) => option.action === "replace").length,
+  );
 
-  let groupTitle = "Ready to add";
-  let groupSubtitle = "Original product is available.";
+  let groupTitle = "Available to add";
+  let groupSubtitle =
+    "This original item is still available and selected for you.";
 
   if (group.kind === "needs-choice") {
-    groupTitle = "Choose a replacement";
-    groupSubtitle = "Original product is unavailable. Pick an alternative or skip this item.";
+    groupTitle = "Please choose an alternative";
+    groupSubtitle =
+      "This original item is unavailable. Choose an alternative item or skip it.";
   } else if (group.kind === "unavailable") {
-    groupTitle = "Not currently available";
-    groupSubtitle = "No alternative product was found.";
+    groupTitle = "Currently unavailable";
+    groupSubtitle = "No alternative item is available right now.";
   } else if (alternativeCount > 0) {
-    groupSubtitle = "Original product is available. Alternative producer options are also shown.";
+    groupSubtitle =
+      "This original item is available. Alternative items are also available if you prefer.";
   }
+
+  const selectedQuantity =
+    selectedOption && selectedOption.action !== "skip"
+      ? clampQuantity(group.quantity, selectedOption.available_quantity)
+      : 0;
+
+  const selectedPricingState =
+    selectedOption && selectedOption.action !== "skip"
+      ? getPricingState(selectedOption, selectedQuantity)
+      : null;
+
+  const selectedLineTotal = selectedPricingState
+    ? selectedPricingState.appliedUnitPrice * selectedQuantity
+    : 0;
 
   return `
     <div class="card mb-3">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
-          <div>
+        <div class="row g-3 align-items-start mb-3">
+          <div class="col-md-7">
             <div class="small text-muted">${escapeHtml(groupTitle)}</div>
             <h6 class="mb-1">${escapeHtml(group.original.product_name)}</h6>
+
             <div class="small text-muted">
-              ${group.original.producer_name ? `${escapeHtml(group.original.producer_name)} · ` : ""}Requested quantity: ${escapeHtml(group.original.requested_quantity)}
+              ${
+                group.original.producer_name
+                  ? `${escapeHtml(group.original.producer_name)} · `
+                  : ""
+              }
+              Originally ordered: ${escapeHtml(group.original.requested_quantity)}
             </div>
+
             <div class="small text-muted mt-1">${escapeHtml(groupSubtitle)}</div>
-            ${group.original.reason ? `<div class="small text-danger mt-1">Reason: ${escapeHtml(group.original.reason)}</div>` : ""}
+
+            ${
+              group.original.reason
+                ? `<div class="small text-danger mt-1">Reason: ${escapeHtml(group.original.reason)}</div>`
+                : ""
+            }
+
+            ${renderQuantityAdjustmentNotice(group.signals.quantityAdjusted)}
+            ${renderPriceChangeNotice(group.signals.priceChanged)}
+            ${renderProducerChangeNotice(group.signals.producerChanged)}
           </div>
 
-          <div class="text-md-end">
-            ${selectedOption && selectedOption.action !== "skip"
-              ? `
-                <div class="small text-muted">Selected</div>
-                <div class="fw-semibold">${escapeHtml(selectedOption.product_name)}</div>
-                <div class="small text-muted">${escapeHtml(selectedOption.producer_name || "")}</div>
-              `
-              : `
-                <div class="small text-muted">Selected</div>
-                <div class="fw-semibold">Skip this item</div>
-              `}
+          <div class="col-md-5">
+            <div class="border rounded p-3 bg-light">
+              <div class="small text-muted">Selected now</div>
+
+              ${
+                selectedOption && selectedOption.action !== "skip"
+                  ? `
+                    <div class="fw-semibold">${escapeHtml(selectedOption.product_name)}</div>
+                    <div class="small text-muted">${escapeHtml(selectedOption.producer_name || "")}</div>
+
+                    <div class="d-flex justify-content-between mt-3 small text-muted">
+                      <span>Quantity</span>
+                      <span>${escapeHtml(selectedQuantity)}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-1">
+                      <span class="small text-muted">Total</span>
+                      <span class="fw-semibold">${formatMoney(selectedLineTotal)}</span>
+                    </div>
+
+                    ${
+                      selectedPricingState &&
+                      selectedPricingState.savingsPerUnit > 0
+                        ? `
+                          <div class="mt-2">
+                            <span class="badge rounded-pill bg-danger">
+                              Save ${escapeHtml(formatMoney(selectedPricingState.savingsPerUnit * selectedQuantity))}
+                            </span>
+                          </div>
+                        `
+                        : ""
+                    }
+                  `
+                  : `
+                    <div class="fw-semibold">Skip this item</div>
+                    <div class="small text-muted mt-1">This product will not be added.</div>
+                  `
+              }
+            </div>
           </div>
         </div>
-
-        ${renderQuantityAdjustmentNotice(group.signals.quantityAdjusted)}
-        ${renderPriceChangeNotice(group.signals.priceChanged)}
-        ${renderProducerChangeNotice(group.signals.producerChanged)}
 
         <div class="mt-3">
           ${group.options.map((option) => renderOptionCard(group, option)).join("")}
@@ -1457,37 +1982,46 @@ function renderReorderPlanner() {
     `;
   }
 
-  const availableGroups = reorderPlannerState.groups.filter((group) => group.kind === "available");
-  const needsChoiceGroups = reorderPlannerState.groups.filter((group) => group.kind === "needs-choice");
-  const unavailableGroups = reorderPlannerState.groups.filter((group) => group.kind === "unavailable");
+  const availableGroups = reorderPlannerState.groups.filter(
+    (group) => group.kind === "available",
+  );
+  const needsChoiceGroups = reorderPlannerState.groups.filter(
+    (group) => group.kind === "needs-choice",
+  );
+  const unavailableGroups = reorderPlannerState.groups.filter(
+    (group) => group.kind === "unavailable",
+  );
 
   return `
     ${renderPlannerSummaryCard()}
 
     ${renderPlannerSection(
-      "Ready to add",
-      "These products are still available and are selected by default.",
+      "Available items",
+      "These items are available now and are already selected for you.",
       availableGroups,
     )}
 
     ${renderPlannerSection(
-      "Choose replacements",
-      "These original products are unavailable, so choose an alternative producer/product or skip them.",
+      "Choose alternative items",
+      "Some original items are unavailable. Choose an alternative item or skip them.",
       needsChoiceGroups,
     )}
 
     ${renderPlannerSection(
-      "Not available",
-      "These products currently have no replacement options.",
+      "Currently unavailable",
+      "These items do not have any alternatives right now.",
       unavailableGroups,
     )}
   `;
 }
-
 function getReorderPlannerFooterHtml() {
   const stats = getPlannerStats();
 
-  if (!reorderPlannerState || !reorderPlannerState.groups.length || stats.actionableCount === 0) {
+  if (
+    !reorderPlannerState ||
+    !reorderPlannerState.groups.length ||
+    stats.actionableCount === 0
+  ) {
     return `
       <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
         Close
@@ -1496,7 +2030,7 @@ function getReorderPlannerFooterHtml() {
   }
 
   return `
-    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
       Cancel
     </button>
     <button type="button" class="btn btn-primary" id="confirmReorderBtn">
@@ -1510,7 +2044,7 @@ function updateReorderPlannerUI() {
   const content = document.getElementById("reorderModalContent");
   const footer = document.getElementById("reorderModalFooter");
 
-  if (title) title.textContent = "Review Reorder";
+  if (title) title.textContent = "Review your items";
   if (content) content.innerHTML = renderReorderPlanner();
   if (footer) footer.innerHTML = getReorderPlannerFooterHtml();
 }
@@ -1526,7 +2060,7 @@ function resetReorderModal() {
 
   reorderPlannerState = null;
 
-  if (title) title.textContent = "Confirm Reorder";
+  if (title) title.textContent = "Review your items";
   if (content) content.innerHTML = "";
   if (footer) {
     footer.innerHTML = `
@@ -1534,7 +2068,7 @@ function resetReorderModal() {
         Cancel
       </button>
       <button type="button" class="btn btn-primary" id="confirmReorderBtn" disabled>
-        Confirm Reorder
+        Add Selected Items to Cart
       </button>
     `;
   }
@@ -1547,8 +2081,14 @@ function setReorderModalLoading() {
 
   reorderPlannerState = null;
 
-  if (title) title.textContent = "Review Reorder";
-  if (content) content.innerHTML = `<div class="text-muted">Loading reorder preview...</div>`;
+  if (title) title.textContent = "Review your items";
+  if (content) {
+    content.innerHTML = `
+      <div class="text-muted">
+        Checking item availability and finding alternatives...
+      </div>
+    `;
+  }
   if (footer) {
     footer.innerHTML = `
       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
@@ -1583,8 +2123,11 @@ function renderReorderResult(result) {
 
     <div class="mb-4">
       <h6>Added to Cart</h6>
-      ${(result.added_items || []).length
-        ? result.added_items.map((item) => `
+      ${
+        (result.added_items || []).length
+          ? result.added_items
+              .map(
+                (item) => `
             <div class="border rounded p-3 mb-2">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
               <div class="small text-muted">
@@ -1593,14 +2136,20 @@ function renderReorderResult(result) {
                 Added: ${escapeHtml(item.added_quantity)}
               </div>
             </div>
-          `).join("")
-        : `<div class="text-muted">No items added.</div>`}
+          `,
+              )
+              .join("")
+          : `<div class="text-muted">No items added.</div>`
+      }
     </div>
 
     <div class="mb-4">
       <h6>Unavailable Items</h6>
-      ${(result.unavailable_items || []).length
-        ? result.unavailable_items.map((item) => `
+      ${
+        (result.unavailable_items || []).length
+          ? result.unavailable_items
+              .map(
+                (item) => `
             <div class="border border-danger rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
               <div class="small text-danger">
@@ -1609,14 +2158,20 @@ function renderReorderResult(result) {
                 Reason: ${escapeHtml(item.reason)}
               </div>
             </div>
-          `).join("")
-        : `<div class="text-muted">No unavailable items.</div>`}
+          `,
+              )
+              .join("")
+          : `<div class="text-muted">No unavailable items.</div>`
+      }
     </div>
 
     <div class="mb-4">
       <h6>Quantity Adjustments</h6>
-      ${(result.quantity_adjusted_items || []).length
-        ? result.quantity_adjusted_items.map((item) => `
+      ${
+        (result.quantity_adjusted_items || []).length
+          ? result.quantity_adjusted_items
+              .map(
+                (item) => `
             <div class="border border-warning rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
               <div class="small">
@@ -1625,14 +2180,20 @@ function renderReorderResult(result) {
                 Reason: ${escapeHtml(item.reason)}
               </div>
             </div>
-          `).join("")
-        : `<div class="text-muted">No quantity adjustments.</div>`}
+          `,
+              )
+              .join("")
+          : `<div class="text-muted">No quantity adjustments.</div>`
+      }
     </div>
 
     <div class="mb-0">
       <h6>Price Changes</h6>
-      ${(result.price_changed_items || []).length
-        ? result.price_changed_items.map((item) => `
+      ${
+        (result.price_changed_items || []).length
+          ? result.price_changed_items
+              .map(
+                (item) => `
             <div class="border border-primary rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
               <div class="small text-primary">
@@ -1640,8 +2201,11 @@ function renderReorderResult(result) {
                 Current: ${formatMoney(item.current_price)}
               </div>
             </div>
-          `).join("")
-        : `<div class="text-muted">No price changes.</div>`}
+          `,
+              )
+              .join("")
+          : `<div class="text-muted">No price changes.</div>`
+      }
     </div>
   `;
 }
@@ -1672,7 +2236,10 @@ async function openReorderPreview(orderId) {
 
     if (!response.ok) {
       throw new Error(
-        await parseErrorMessage(response, `Failed to load reorder preview (${response.status})`),
+        await parseErrorMessage(
+          response,
+          `Failed to load reorder preview (${response.status})`,
+        ),
       );
     }
 
@@ -1686,7 +2253,7 @@ async function openReorderPreview(orderId) {
 
     reorderPlannerState = null;
 
-    if (title) title.textContent = "Review Reorder";
+    if (title) title.textContent = "Review your items";
     if (content) {
       content.innerHTML = `
         <div class="alert alert-danger mb-0">
@@ -1729,7 +2296,10 @@ async function confirmReorder(orderId) {
 
     if (!response.ok) {
       throw new Error(
-        await parseErrorMessage(response, `Reorder failed (${response.status})`),
+        await parseErrorMessage(
+          response,
+          `Reorder failed (${response.status})`,
+        ),
       );
     }
 
@@ -1745,7 +2315,9 @@ async function confirmReorder(orderId) {
     if (content) content.innerHTML = renderReorderResult(result);
     if (footer) footer.innerHTML = REORDER_RESULT_FOOTER;
 
-    document.dispatchEvent(new CustomEvent("cart:updated", { detail: { action: "reorder" } }));
+    document.dispatchEvent(
+      new CustomEvent("cart:updated", { detail: { action: "reorder" } }),
+    );
 
     try {
       await window.CartAPI?.getCartBadgeCount?.();

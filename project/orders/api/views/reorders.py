@@ -33,7 +33,6 @@ from orders.api.serializers.reorders import (
 )
 from orders.selectors import get_order_detail_for_user, get_order_history_for_user
 from orders.services.reorder_service import reorder_order
-from orders.throttles import ReorderThrottle
 
 
 class OrderHistoryPagination(PageNumberPagination):
@@ -153,7 +152,6 @@ class BaseReorderApiView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [ReorderThrottle]
     commit = False
     request_serializer_class = ReorderSelectionRequestSerializer
 
