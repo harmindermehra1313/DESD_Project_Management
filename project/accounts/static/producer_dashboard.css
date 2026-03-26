@@ -1,10 +1,5 @@
 :root {
-  --brand: #35524A;
-  --accent: #32DE8A;
-  --muted: #627C85;
-  --bg: #ffffff;
   --radius: 8px;
-  --gap: 12px;
 }
 
 /* Dashboard Container */
@@ -15,7 +10,7 @@
 
 /* Table Styling */
 .order-table th {
-    background-color: #3a4b53; 
+    background-color: var(--prussian-blue); 
     color: #ffffff;
     font-weight: 600;
     border-bottom: none;
@@ -26,13 +21,13 @@
     transition: background-color 0.2s ease;
 }
 
-.order-row:hover, .sub-row:hover {
-    background-color: #f8f9fa;
+.sub-row:hover {
+    background-color: var(--background-grey);
 }
 
-.order-row.selected, .sub-row.selected {
-    background-color: #e9ecef;
-    border-left: 4px solid var(--accent);
+.sub-row.selected {
+    background-color: var(--alabaster-grey);
+    border-left: 4px solid var(--dark-green);
 }
 
 /* Status Badges */
@@ -47,18 +42,6 @@
 .status-packaged { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 .status-shipped { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
 
-/* Buttons */
-.btn-primary {
-    background-color: var(--brand);
-    border-color: var(--brand);
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: var(--accent);
-    border-color: var(--accent);
-    color: var(--brand);
-}
 
 /* Custom "Change Status" Button Styling */
 #updateStatusBtn {
@@ -68,40 +51,45 @@
 /* Disabled State */
 #updateStatusBtn:disabled {
     background-color: #fff;
-    color: #6c757d;
-    border-color: #6c757d;
+    color: var(--lavender-grey);
+    border-color: var(--lavender-grey);
     opacity: 1; /* Override default bootstrap opacity */
 }
 
 /* Enabled State */
 #updateStatusBtn:not(:disabled) {
-    background-color: #3a4b53;
+    background-color: var(--prussian-blue);
     color: #fff;
-    border-color: #3a4b53;
+    border-color: var(--prussian-blue);
 }
 
 #updateStatusBtn:not(:disabled):hover {
-    background-color: #343a40; /* Slightly lighter grey on hover */
-    border-color: #343a40;
+    background-color: var(--ink-black); /* Slightly lighter grey on hover */
+    border-color: var(--ink-black);
 }
 
 
 /* Details Section */
 .details-card {
     border-radius: var(--radius);
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--alabaster-grey);
     box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
 .details-header {
-    background-color: #fbfbfb;
-    border-bottom: 1px solid #e9ecef;
+    background-color: var(--background-grey);
+    border-bottom: 1px solid var(--alabaster-grey);
     padding: 1rem 1.5rem;
     font-weight: bold;
-    color: var(--brand);
+    color: var(--prussian-blue);
 }
 
 .details-body {
     padding: 1.5rem;
     min-height: 150px;
+}
+
+/* Modal header colour */
+.modal-header {
+    border-bottom: 1px solid var(--alabaster-grey);
 }
