@@ -178,12 +178,55 @@
              class="d-flex justify-content-center mb-5"
              aria-label="Order pagination">
         </nav>
-        {% if active_subscriptions %}
+        {% if all_subscriptions %}
             <div class="mt-5 mb-5">
-                <h5 style="color: var(--brand); font-weight: bold;">Active Recurring Subscriptions</h5>
-                <p class="text-muted small mb-3">
-                    These are ongoing weekly requests from customers. The system will automatically generate physical orders for these prior to delivery.
-                </p>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="mb-0" style="color: var(--brand); font-weight: bold;">Recurring Subscriptions</h5>
+                        <p class="text-muted small mb-0 mt-1">
+                            These are ongoing requests from customers. The system will automatically generate physical orders for active subscriptions prior to delivery.
+                        </p>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle"
+                                type="button"
+                                id="subFilterDropdown"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                                data-bs-auto-close="outside">Filter</button>
+                        <div class="dropdown-menu dropdown-menu-end p-3 shadow-sm"
+                             aria-labelledby="subFilterDropdown"
+                             style="width: 260px; z-index: 1050">
+                            <label class="form-label small fw-bold text-muted mb-1">Status</label>
+                            <div class="form-check">
+                                <input class="form-check-input sub-status-filter"
+                                       type="checkbox"
+                                       value="ACTIVE"
+                                       id="subFilterActive"
+                                       checked>
+                                <label class="form-check-label" for="subFilterActive">Active</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input sub-status-filter"
+                                       type="checkbox"
+                                       value="PAUSED"
+                                       id="subFilterPaused"
+                                       checked>
+                                <label class="form-check-label" for="subFilterPaused">Paused</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input sub-status-filter"
+                                       type="checkbox"
+                                       value="CANCELLED"
+                                       id="subFilterCancelled">
+                                <label class="form-check-label" for="subFilterCancelled">Cancelled</label>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary w-100 mt-2"
+                                    type="button"
+                                    onclick="clearSubFilters()">Clear Filters</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive shadow-sm"
                      style="border-radius: var(--radius);
                             overflow: hidden">
@@ -197,11 +240,14 @@
                                 <th>Initial Delivery Day</th>
                                 <th>Items Reserved</th>
                                 <th>Started</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody style="background-color: #fff;">
-                            {% for sub in active_subscriptions %}
+                            {% for sub in all_subscriptions %}
                                 <tr class="sub-row"
+                                    id="sub-row-{{ sub.id }}"
+                                    data-sub-status="{{ sub.status }}"
                                     onclick="showSubscriptionDetails('{{ sub.id }}', this)"
                                     style="cursor: pointer">
                                     <td class="fw-bold text-muted">#SUB-{{ sub.id }}</td>
@@ -211,11 +257,23 @@
                                     <td>{{ sub.delivery_day }}</td>
                                     <td>{{ sub.items|length }} items</td>
                                     <td class="text-muted">{{ sub.created_at|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <span class="status-badge sub-status-badge
+                                            {% if sub.status == 'ACTIVE' %}status-packaged
+                                            {% elif sub.status == 'PAUSED' %}status-pending
+                                            {% else %}status-cancelled{% endif %}">
+                                            {{ sub.status_display }}
+                                        </span>
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                <nav id="subPaginationContainer"
+                     class="d-flex justify-content-center mt-3"
+                     aria-label="Subscription pagination">
+                </nav>
             </div>
         {% endif %}
         <div class="details-card bg-white mb-5">
@@ -285,7 +343,7 @@
                 </div>
             </template>
         {% endfor %}
-        {% for sub in active_subscriptions %}
+        {% for sub in all_subscriptions %}
             <template id="sub-details-template-{{ sub.id }}">
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -332,15 +390,27 @@
                         <br>
                         <span class="fst-italic">{{ sub.special_instructions|default:"None provided." }}</span>
                     </div>
-                    <div class="col-12 mt-3 pt-3 border-top text-end">
-                        <button type="button"
-                                class="btn btn-danger btn-sm fw-bold"
-                                onclick="cancelSubscription('{{ sub.id }}')">Cancel Subscription</button>
-                    </div>
+                    {% if sub.status != 'CANCELLED' %}
+                        <div class="col-12 mt-3 pt-3 border-top text-end">
+                            {% if sub.status == 'ACTIVE' %}
+                                <button type="button"
+                                        class="btn btn-sm fw-bold me-2"
+                                        style="background-color: var(--dusk-blue); color: #fff; border-color: var(--dusk-blue);"
+                                        onclick="toggleSubscription('{{ sub.id }}')">Pause Subscription</button>
+                            {% elif sub.status == 'PAUSED' %}
+                                <button type="button"
+                                        class="btn btn-success btn-sm fw-bold me-2"
+                                        onclick="toggleSubscription('{{ sub.id }}')">Resume Subscription</button>
+                            {% endif %}
+                            <button type="button"
+                                    class="btn btn-danger btn-sm fw-bold"
+                                    onclick="cancelSubscription('{{ sub.id }}')">Cancel Subscription</button>
+                        </div>
+                    {% endif %}
                 </div>
             </template>
         {% endfor %}
     </div>
     {% csrf_token %}
-    <script src="{% static 'producer_dashboard.js' %}?v=2.0"></script>
+    <script src="{% static 'producer_dashboard.js' %}?v=4.0"></script>
 {% endblock %}

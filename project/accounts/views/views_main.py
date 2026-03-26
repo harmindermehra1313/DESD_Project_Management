@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse                   
-from orders.models import ProducerOrderSummary, OrderItem, RecurringOrder, ProducerOrderStatusHistory
+from orders.models import Order, ProducerOrderSummary, OrderItem, RecurringOrder, ProducerOrderStatusHistory
 from django.db.models import Prefetch
 from django.contrib.auth import logout
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -174,19 +174,20 @@ def producer_dashboard(request):
     for summary in summaries:
         summary.payout_amount = float(summary.subtotal) * 0.95
 
-    # 2. Fetch Active Recurring Templates to give producers advance notice
+    # 2. Fetch Recurring Templates (all statuses, so the front-end filter works)
     recurring_qs = RecurringOrder.objects.filter(
         items__product__producer=producer,
-        status='ACTIVE'
     ).distinct().select_related('user', 'delivery_address')
 
-    active_subscriptions = []
+    all_subscriptions = []
     for ro in recurring_qs:
         # Get only the items relevant to THIS producer
         ro_items = ro.items.filter(product__producer=producer).select_related('product')
         if ro_items.exists():
-            active_subscriptions.append({
+            all_subscriptions.append({
                 'id': ro.id,
+                'status': ro.status,
+                'status_display': ro.get_status_display(),
                 'customer_name': ro.user.name if ro.user else "Unknown",
                 'customer_email': ro.user.email if ro.user else "",
                 'customer_phone': ro.user.phone if ro.user else "",
@@ -201,10 +202,79 @@ def producer_dashboard(request):
 
     context = {
         'summaries': summaries,
-        'active_subscriptions': active_subscriptions,
+        'all_subscriptions': all_subscriptions,
     }
     
     return render(request, "accounts/producer_dashboard.html", context)
+
+
+def _sync_order_status(order):
+    """
+    Derive the parent Order.status from the statuses of all its
+    ProducerOrderSummary rows.
+
+    Mapping (ProducerOrderSummary → Order):
+        PEN  (Pending)   → PEN  (Pending)
+        PRE  (Preparing) → IP   (In Progress)
+        PAC  (Packaged)  → OFD  (Packaged)
+        SHP  (Shipped)   → CMP  (Completed)
+        COM  (Completed) → CMP  (Completed)
+        CAN  (Cancelled) → CAN  (Cancelled)
+
+    For multi-producer orders the "least progressed" summary wins,
+    except: if every summary is cancelled the order is cancelled,
+    and the order is only completed when every summary is completed
+    (or cancelled).
+    """
+    summaries = order.producer_summaries.all()
+    statuses = set(summaries.values_list('status', flat=True))
+
+    if not statuses:
+        return
+
+    # All cancelled → order cancelled
+    if statuses == {'CAN'}:
+        order.status = Order.Status.CANCELLED
+        order.save(update_fields=['status'])
+        return
+
+    # Ignore cancelled summaries for progression logic
+    active = statuses - {'CAN'}
+
+    # All remaining are completed → order completed
+    if active == {'COM'}:
+        order.status = Order.Status.COMPLETED
+        order.save(update_fields=['status'])
+        return
+
+    # Priority order (least progressed first)
+    PROGRESSION = ['PEN', 'PRE', 'PAC', 'SHP', 'COM']
+
+    # Find the least-progressed active summary
+    least = None
+    for code in PROGRESSION:
+        if code in active:
+            least = code
+            break
+
+    # Map producer summary status → Order status
+    if least == 'PEN':
+        new_order_status = Order.Status.PENDING
+    elif least == 'PRE':
+        new_order_status = Order.Status.IN_PROGRESS
+    elif least == 'PAC':
+        new_order_status = Order.Status.PACKAGED
+    elif least == 'SHP':
+        new_order_status = Order.Status.COMPLETED
+    elif least == 'COM':
+        new_order_status = Order.Status.COMPLETED
+    else:
+        return  # unknown, don't touch
+
+    if order.status != new_order_status:
+        order.status = new_order_status
+        order.save(update_fields=['status'])
+
 
 @login_required
 @require_POST
@@ -216,7 +286,7 @@ def update_order_status(request, summary_id):
         data = json.loads(request.body)
         new_status = data.get('status')
         
-        valid_statuses = ['PEN', 'PRE', 'PAC', 'SHP', 'CAN']
+        valid_statuses = ['PEN', 'PRE', 'PAC', 'SHP', 'CAN', 'COM']
         if new_status not in valid_statuses:
             return JsonResponse({'error': 'Invalid status'}, status=400)
 
@@ -242,6 +312,20 @@ def update_order_status(request, summary_id):
                 updated_by=request.user,
                 note=f"Status updated via Producer Dashboard"
             )
+
+            # 4. Directly update the parent Order status
+            SUMMARY_TO_ORDER = {
+                'PEN': Order.Status.PENDING,        # PEN → PEN
+                'PRE': Order.Status.IN_PROGRESS,    # PRE → IP
+                'PAC': Order.Status.PACKAGED,       # PAC → OFD
+                'SHP': Order.Status.COMPLETED,      # SHP → CMP
+                'COM': Order.Status.COMPLETED,      # COM → CMP
+                'CAN': Order.Status.CANCELLED,      # CAN → CAN
+            }
+            mapped_status = SUMMARY_TO_ORDER.get(new_status)
+            if mapped_status and summary.order.status != mapped_status:
+                summary.order.status = mapped_status
+                summary.order.save(update_fields=['status'])
 
         return JsonResponse({'success': True})
         
@@ -297,12 +381,47 @@ def cancel_subscription(request, sub_id):
                         note="Automatically cancelled because the parent subscription was cancelled."
                     )
                     
-                    # Also update the main parent order status
-                    order = summary.order
-                    order.status = 'CAN'
-                    order.save(update_fields=['status'])
+                    # Sync the parent order status from all its summaries
+                    _sync_order_status(summary.order)
 
         return JsonResponse({'success': True})
+
+    except RecurringOrder.DoesNotExist:
+        return JsonResponse({'error': 'Subscription not found'}, status=404)
+
+
+@login_required
+@require_POST
+def toggle_subscription(request, sub_id):
+    """
+    Toggles a recurring subscription between ACTIVE and PAUSED.
+    """
+    if request.user.role != 'PRODUCER':
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+    try:
+        producer = request.user.producer_profile
+        sub = RecurringOrder.objects.get(id=sub_id)
+
+        # Security: Ensure this producer owns items in this subscription
+        if not sub.items.filter(product__producer=producer).exists():
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+        if sub.status == RecurringOrder.Status.CANCELLED:
+            return JsonResponse({'error': 'Cannot toggle a cancelled subscription'}, status=400)
+
+        if sub.status == RecurringOrder.Status.ACTIVE:
+            sub.status = RecurringOrder.Status.PAUSED
+        else:
+            sub.status = RecurringOrder.Status.ACTIVE
+
+        sub.save(update_fields=['status'])
+
+        return JsonResponse({
+            'success': True,
+            'new_status': sub.status,
+            'new_status_display': sub.get_status_display(),
+        })
 
     except RecurringOrder.DoesNotExist:
         return JsonResponse({'error': 'Subscription not found'}, status=404)

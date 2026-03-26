@@ -93,7 +93,7 @@ class Command(BaseCommand):
             # Check if initial order is completed/shipped
             initial_delivered = initial_order.status in (
                 Order.Status.COMPLETED,
-                Order.Status.OUT_FOR_DELIVERY,
+                Order.Status.PACKAGED,
             )
             if not initial_delivered:
                 # Also check producer summaries for shipped status

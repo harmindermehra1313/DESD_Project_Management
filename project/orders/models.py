@@ -13,7 +13,7 @@ class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = "PEN", "Pending"
         IN_PROGRESS = "IP", "In progress"
-        OUT_FOR_DELIVERY = "OFD", "Out for delivery"
+        PACKAGED = "OFD", "Packaged"
         READY_FOR_COLLECTION = "RFC", "Ready for collection"
         COMPLETED = "CMP", "Completed"
         CANCELLED = "CAN", "Cancelled"
@@ -339,6 +339,8 @@ class RecurringOrder(models.Model):
         "accounts.Address",          
         on_delete = models.CASCADE,
         related_name = "delivery_orders",
+        null = True,
+        blank = True,
     )
 
     recurrence_pattern = models.CharField(
