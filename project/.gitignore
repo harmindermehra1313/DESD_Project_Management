@@ -7,3 +7,5 @@ db.sqlite3
 .docker_data/
 
 firebase-key.json
+
+accounts/static/config/firebase_auth.json

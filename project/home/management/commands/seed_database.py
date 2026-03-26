@@ -721,7 +721,7 @@ class Command(BaseCommand):
             name="Spinach",
             description="Fresh seasonal spinach leaves.",
             price=Decimal("1.60"),
-            unit="BG",
+            unit="BX",
             image="products/img/DEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg",
             farm_origin="Brookfield Vegetables",
             organic_certification_status="NOT_CERTIFIED",

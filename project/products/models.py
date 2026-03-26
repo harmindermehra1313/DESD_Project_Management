@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
+from django.utils import timezone
 
 
 class Category(models.Model):
@@ -245,6 +246,8 @@ class Inventory(models.Model):
             return base_price * discount_factor
         else:
             return base_price
+    def is_expired(self) -> bool:
+        return self.expiry_date < timezone.localdate()
 
     def __str__(self):
         return f"{self.product.name} batch ({self.harvest_date})"

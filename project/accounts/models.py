@@ -23,55 +23,6 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-# # ============================================================
-# # USER MODEL
-# # ============================================================
-# class User(AbstractBaseUser, PermissionsMixin):
-    
-#     class Role_choices(models.TextChoices):
-#         CUSTOMER = "CUSTOMER", "Customer"
-#         PRODUCER = "PRODUCER", "Producer"
-#         COMMUNITY_GROUP = "COMMUNITY_GROUP", "Community Group"
-#         RESTAURANT = "RESTAURANT", "Restaurant"
-#         ADMIN = "ADMIN", "Admin"
-
-#     name = models.CharField(
-#         max_length=100
-#     )
-
-#     email = models.EmailField(
-#         unique=True
-#     )
-
-#     phone = models.CharField(
-#         max_length=20
-#     )
-
-#     role = models.CharField(
-#         max_length=20, 
-#         choices=Role_choices
-#     )
-
-#     created_at = models.DateTimeField(
-#         auto_now_add=True
-#     )
-#     # Django-required fields
-#     is_active = models.BooleanField(
-#         default=True
-#     )
-
-#     is_staff = models.BooleanField(
-#         default=False
-#     )
-
-#     objects = UserManager()
-
-#     USERNAME_FIELD = "email"
-#     REQUIRED_FIELDS = ["name"]
-
-#     def __str__(self):
-#         return f"{self.name} ({self.role})"
-
 # ============================================================
 # USER MODEL
 # ============================================================
@@ -80,6 +31,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Role_choices(models.TextChoices):
         CUSTOMER = "CUSTOMER", "Customer"
         PRODUCER = "PRODUCER", "Producer"
+        COMMUNITY_GROUP = "COMMUNITY_GROUP", "Community Group"
+        BUSINESS = "BUSINESS", "Business"
         ADMIN = "ADMIN", "Admin"
 
     name = models.CharField(max_length=100)

@@ -4,7 +4,7 @@
 {% block title %}Financial Reports | BRFN Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'financial_report.css' %}">
+<link rel="stylesheet" href="{% static 'css/financial_report.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -13,7 +13,7 @@
 
   <div class="d-flex justify-content-between align-items-center mb-3">
 
-  <h2 class="mb-0">Network Commission & Financial Reports</h2>
+  <h2 class="mb-0 title">Network Commission & Financial Reports</h2>
 
   <div class="d-flex gap-2">
     <a href="{% url 'admin_records:financial_reports_csv' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
@@ -122,7 +122,7 @@
     </div>
     <div class="col-md-3">
       <div class="summary-card">
-        <div class="summary-label">YTD commission (5% calc)</div>
+        <div class="summary-label">YTD commission (5% calculated)</div>
         <div class="summary-value text-muted">£{{ ytd_commission_calc }}</div>
       </div>
     </div>
@@ -207,7 +207,7 @@
 </div>
 
 {% block extra_js %}
-<script src="{% static 'financial_reports.js' %}"></script>
+<script src="{% static 'js/financial_reports.js' %}"></script>
 {% endblock %}
 
 {% endblock %}
