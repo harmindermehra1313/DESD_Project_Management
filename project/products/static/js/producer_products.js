@@ -135,11 +135,16 @@ function showProductDetails(productId, rowElement) {
 
     const template = document.getElementById(`details-template-${productId}`);
     if (template) {
-        document.getElementById('detailsContent').innerHTML = template.innerHTML;
+        //document.getElementById('detailsContent').innerHTML = template.innerHTML;
+        const clone = template.content.cloneNode(true);
+        document.getElementById('detailsContent').innerHTML = "";
+        document.getElementById('detailsContent').appendChild(clone);
     }
 
     document.getElementById('editProductBtn').disabled = false;
     document.getElementById('cancelProductBtn').disabled = false;
+    document.getElementById('batchProductBtn').disabled = false;
+    setTimeout(() => toggleBatchVisibility(), 0);
 }
 
 // ─── 6. Reset Selection UI ────────────────────────────────────────────────────
@@ -153,6 +158,7 @@ function resetSelectionUI() {
         '<p class="text-muted mb-0">Click on a product row above to view its full details including description, allergens, and inventory batches.</p>';
 
     document.getElementById('editProductBtn').disabled = true;
+    document.getElementById('batchProductBtn').disabled = true;
     document.getElementById('cancelProductBtn').disabled = true;
 }
 
@@ -302,6 +308,7 @@ async function submitEditForm() {
 
             bootstrap.Modal.getInstance(document.getElementById('editProductModal')).hide();
             applyAllFilters(false);
+            showGlobalSuccess("Product updated successfully!");
 
             if (row.style.display !== 'none') {
                 showProductDetails(editedProductId, row);
@@ -318,6 +325,191 @@ async function submitEditForm() {
         document.getElementById('saveEditBtn').disabled = false;
     }
 }
+
+// ─── Open New Batch Modal ─────────────────────────────────────────────────────
+
+function openBatchModal() {
+    if (!selectedProductId) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    const lastMonth = new Date();
+    lastMonth.setDate(lastMonth.getDate() - 30);
+    const lastMonthStr = lastMonth.toISOString().split("T")[0];
+
+    const harvestInput = document.getElementById('batchHarvest');
+    harvestInput.max = today;
+    harvestInput.min = lastMonthStr;
+
+    const expiryInput = document.getElementById('batchExpiry');
+    expiryInput.min = today;
+    expiryInput.max = "";
+
+    // Reset form
+    const form = document.getElementById('batchProductForm');
+    form.reset();
+
+    // Clear validation states
+    form.querySelectorAll('.form-control').forEach(el => {
+        el.classList.remove('is-invalid', 'is-valid');
+    });
+
+    // Clear alert
+    const alert = document.getElementById('batchFormAlert');
+    alert.className = 'alert mt-3 d-none';
+    alert.textContent = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('batchProductModal'));
+    modal.show();
+}
+
+function clearBatchAlert() {
+    const alert = document.getElementById('batchFormAlert');
+    alert.className = 'alert mt-3 d-none';
+    alert.textContent = '';
+}
+
+// ─── Submit New Batch ────────────────────────────────────────────────────
+
+function validateBatchForm() {
+    let valid = true;
+
+    const qty = document.getElementById('batchQuantity');
+    const harvest = document.getElementById('batchHarvest');
+    const expiry = document.getElementById('batchExpiry');
+
+    const qtyVal = parseInt(qty.value);
+    const harvestVal = harvest.value;
+    const expiryVal = expiry.value;
+
+    const today = new Date().toISOString().split("T")[0];
+    const lastMonth = new Date();
+    lastMonth.setDate(lastMonth.getDate() - 30);
+    const lastMonthStr = lastMonth.toISOString().split("T")[0];
+
+    // Quantity
+    if (!qtyVal || qtyVal < 1 || qtyVal > 9999) {
+        qty.classList.add("is-invalid");
+        qty.classList.remove("is-valid");
+        valid = false;
+    } else {
+        qty.classList.remove("is-invalid");
+        qty.classList.add("is-valid");
+    }
+
+    // Harvest date
+    if (!harvestVal || harvestVal > today || harvestVal < lastMonthStr) {
+        harvest.classList.add("is-invalid");
+        harvest.classList.remove("is-valid");
+        valid = false;
+    } else {
+        harvest.classList.remove("is-invalid");
+        harvest.classList.add("is-valid");
+    }
+
+    // Expiry date
+    if (!expiryVal || expiryVal < today || expiryVal < harvestVal) {
+        expiry.classList.add("is-invalid");
+        expiry.classList.remove("is-valid");
+        valid = false;
+    } else {
+        expiry.classList.remove("is-invalid");
+        expiry.classList.add("is-valid");
+    }
+
+    return valid;
+}
+
+async function submitBatchForm() {
+    if (!selectedProductId) return;
+
+    if (!validateBatchForm()) {
+        return; // stop submission
+    }
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const alertEl   = document.getElementById('batchFormAlert');
+
+    const payload = {
+        original_quantity: document.getElementById('batchQuantity').value,
+        harvest_date:      document.getElementById('batchHarvest').value,
+        expiry_date:       document.getElementById('batchExpiry').value,
+        expiry_type:       document.querySelector('input[name="expiry_type"]:checked').value,
+    };
+
+    document.getElementById('saveBatchBtn').disabled = true;
+
+    try {
+        const response = await fetch(`/products/producer/products/${selectedProductId}/add-batch/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('batchProductModal')).hide();
+
+            // Refresh details panel (inventory list)
+            const template = document.getElementById(`details-template-${selectedProductId}`);
+            if (data.batch) {
+                updateDetailsTemplateAfterBatch(selectedProductId, data.batch);
+                showProductDetails(selectedProductId, document.getElementById(`row-${selectedProductId}`));
+            }
+
+            showGlobalSuccess("New batch added successfully!");
+            
+            // Update stock cell in main table
+            const row2 = document.getElementById(`row-${selectedProductId}`);
+            if (row2 && data.total_stock !== undefined) {
+                row2.cells[5].textContent = data.total_stock; // column 5 = stock
+            }
+
+            // Reapply filters and keep selection
+            applyAllFilters(false);
+
+        } else {
+            alertEl.className = 'alert alert-danger mt-3';
+            alertEl.textContent = data.error || 'An error occurred. Please try again.';
+        }
+
+    } catch (err) {
+        console.error('Batch error:', err);
+        alertEl.className = 'alert alert-danger mt-3';
+        alertEl.textContent = 'Network error. Please try again.';
+    } finally {
+        document.getElementById('saveBatchBtn').disabled = false;
+    }
+}
+
+function updateDetailsTemplateAfterBatch(productId, batch) {
+    const template = document.getElementById(`details-template-${productId}`);
+    if (!template) return;
+
+    const content = template.content;
+
+    // Find the inventory list container inside the template
+    const list = content.querySelector('.js-inventory-list');
+    if (!list) return;
+
+    // Format date as dd/mm/yyyy
+    const dateObj = new Date(batch.expiry_date);
+    const formattedExpiry = dateObj.toLocaleDateString("en-GB");
+
+    // Create new batch <li>
+    const li = document.createElement('li');
+    li.innerHTML = `
+        <span class="text-muted small">Stock:</span> ${batch.remaining_quantity} / ${batch.remaining_quantity} &mdash;
+        <span class="text-muted small">${batch.expiry_type === "BB" ? "Best Before" : "Use By"}:</span> ${formattedExpiry}
+    `;
+
+    list.appendChild(li);
+}
+
 
 // ─── 9. Open Cancel Modal ─────────────────────────────────────────────────────
 
@@ -374,6 +566,136 @@ async function confirmCancelProduct() {
     }
 }
 
+// ─── Reduce and delete batches ──────────────────────────────────────────────────────────
+
+let selectedBatchId = null;
+
+function openReduceBatchModal(batchId) {
+    selectedBatchId = batchId;
+    document.getElementById('reduceAmount').value = "";
+    new bootstrap.Modal(document.getElementById('reduceBatchModal')).show();
+}
+
+function openDeleteBatchModal(batchId) {
+    selectedBatchId = batchId;
+    new bootstrap.Modal(document.getElementById('deleteBatchModal')).show();
+}
+
+async function submitReduceBatch() {
+    const amountInput = document.getElementById('reduceAmount');
+    const alertEl = document.getElementById('reduceBatchAlert');
+    const amount = parseInt(amountInput.value);
+
+    alertEl.classList.add("d-none");
+
+    if (!amount || amount < 1) {
+        alertEl.textContent = "Enter a valid reduction amount.";
+        alertEl.classList.remove("d-none");
+        amountInput.classList.add("is-invalid");
+        return;
+    }
+
+    amountInput.classList.remove("is-invalid");
+
+    const response = await fetch(`/products/producer/products/${selectedProductId}/reduce-batch/`, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ batch_id: selectedBatchId, amount })
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+        alertEl.textContent = data.error;
+        alertEl.classList.remove("d-none");
+        amountInput.classList.add("is-invalid");
+        return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('reduceBatchModal')).hide();
+    showGlobalSuccess("Batch reduced successfully.");
+    updateBatchUI(data);
+}
+
+async function submitDeleteBatch() {
+    const response = await fetch(`/products/producer/products/${selectedProductId}/delete-batch/`, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ batch_id: selectedBatchId })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        updateBatchUI(data);
+        bootstrap.Modal.getInstance(document.getElementById('deleteBatchModal')).hide();
+        showGlobalSuccess("Batch deleted.");
+    }
+}
+
+function updateBatchUI(data) {
+    // Update stock in main table
+    const row = document.getElementById(`row-${selectedProductId}`);
+    if (row) row.cells[5].textContent = data.total_stock;
+
+    // Update hidden template
+    const template = document.getElementById(`details-template-${selectedProductId}`);
+    const hiddenList = template.content.querySelector('.js-inventory-list');
+    hiddenList.innerHTML = data.updated_batches_html;
+
+    // Update visible details panel
+    const visibleList = document.querySelector('#detailsContent .js-inventory-list');
+    if (visibleList) {
+        visibleList.innerHTML = data.updated_batches_html;
+    }
+}
+
+function toggleBatchVisibility() {
+    const showExpired = document.getElementById("toggleExpired").checked;
+    const showDeleted = document.getElementById("toggleDeleted").checked;
+
+    const expiredItems = document.querySelectorAll('#detailsContent .batch-item[data-batch-status="expired"]');
+    const deletedItems = document.querySelectorAll('#detailsContent .batch-item[data-batch-status="deleted"]');
+
+    // Toggle expired visibility
+    expiredItems.forEach(item => {
+        item.style.display = showExpired ? "" : "none";
+    });
+
+    // Toggle deleted visibility
+    deletedItems.forEach(item => {
+        item.style.display = showDeleted ? "" : "none";
+    });
+
+    // Count visible expired items
+    const visibleExpired = Array.from(expiredItems).filter(
+        item => item.style.display !== "none"
+    ).length;
+
+    // Count visible deleted items
+    const visibleDeleted = Array.from(deletedItems).filter(
+        item => item.style.display !== "none"
+    ).length;
+
+    // Show/hide small-print messages
+    // Only show if checkbox is ON AND no visible items
+    document.getElementById("noExpiredMsg").classList.toggle(
+        "d-none",
+        !showExpired || visibleExpired !== 0
+    );
+
+    document.getElementById("noDeletedMsg").classList.toggle(
+        "d-none",
+        !showDeleted || visibleDeleted !== 0
+    );
+}
+
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -384,6 +706,45 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('filterProductName').addEventListener('input', () => applyAllFilters(true));
     document.getElementById('filterCategory').addEventListener('change', () => applyAllFilters(true));
 
+    document.getElementById('batchHarvest').addEventListener('change', () => {
+        const harvest = document.getElementById('batchHarvest').value;
+        const expiry = document.getElementById('batchExpiry');
+        const today = new Date().toISOString().split("T")[0];
+
+        // expiry must be >= both today and harvest
+        expiry.min = harvest > today ? harvest : today;
+
+        validateBatchForm();
+        clearBatchAlert();
+    });
+
+    document.getElementById('batchExpiry').addEventListener('change', () => {
+        validateBatchForm();
+        clearBatchAlert();
+    });
+
+    document.getElementById('batchQuantity').addEventListener('input', () => {
+        validateBatchForm();
+        clearBatchAlert();
+    });
+
+    document.addEventListener("change", (e) => {
+        if (e.target.id === "toggleExpired" || e.target.id === "toggleDeleted") {
+            toggleBatchVisibility();
+        }
+    });
+
     // Run initial filter to apply defaults (hides DIS/FLG/RMV on load)
     applyAllFilters(true);
 });
+
+function showGlobalSuccess(message) {
+    const alert = document.getElementById('globalSuccessAlert');
+    alert.textContent = message;
+    alert.classList.remove('d-none');
+
+    // Auto-hide after 30 seconds
+    setTimeout(() => {
+        alert.classList.add('d-none');
+    }, 30000);
+}

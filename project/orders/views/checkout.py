@@ -26,6 +26,8 @@ Address = apps.get_model('accounts', 'Address')
 stripe = get_stripe()
 logger = logging.getLogger(__name__)
 
+WHOLESALE_ROLES = {"COMMUNITY_GROUP", "RESTAURANT"}
+
 @require_POST
 def checkout_save(request):
     try:
@@ -143,6 +145,10 @@ def checkout(request):
             request.session.save()
         owner = CartOwner(session_key=request.session.session_key)
     
+    # Wholesale pricing check
+    user_role = request.user.role if request.user.is_authenticated else None
+    wholesale_allowed = user_role in WHOLESALE_ROLES
+
     cart = cart_get_or_create_active(owner=owner)
     # items = cart.items.select_related("product", "product__producer")
     items = cart.items.select_related(
@@ -168,16 +174,36 @@ def checkout(request):
         
         # Price
         #discounted_price = inventory.get_discounted_price() # Normal price if no discount
+        # discounted_price = _get_effective_unit_price(
+        #     inventory_id=inventory.id,
+        #     qty=1,   # discounted price per unit
+        # )
+        # wholesale_tier = product.get_wholesale_price(quantity) # None if no wholesale
+        # # unit_price = wholesale_tier or discounted_price
+        # unit_price = _get_effective_unit_price(
+        #     inventory_id=inventory.id,
+        #     qty=quantity,
+        # )
+
+        # Base discounted price (retail discounts only)
         discounted_price = _get_effective_unit_price(
             inventory_id=inventory.id,
-            qty=1,   # discounted price per unit
+            qty=1,
         )
-        wholesale_tier = product.get_wholesale_price(quantity) # None if no wholesale
-        # unit_price = wholesale_tier or discounted_price
-        unit_price = _get_effective_unit_price(
-            inventory_id=inventory.id,
-            qty=quantity,
-        )
+
+        # Wholesale tier (if any)
+        wholesale_tier = product.get_wholesale_price(quantity)
+
+        # Determine final unit price
+        if wholesale_allowed and wholesale_tier:
+            # Wholesale applies
+            unit_price = wholesale_tier
+            is_wholesale = True
+        else:
+            # Retail only (even if wholesale tier exists)
+            unit_price = discounted_price
+            is_wholesale = False
+
         
         # VAT
         vat_rate = product.category.vat
@@ -206,7 +232,7 @@ def checkout(request):
             "vat_total": vat_total,
             "vat_rate": vat_rate,
             "is_discounted": discounted_price != product.price,
-            "is_wholesale": wholesale_tier is not None,
+            "is_wholesale": is_wholesale,
             "original_price": product.price,
             "discounted_price": discounted_price,
             "savings_per_unit": savings_per_unit,

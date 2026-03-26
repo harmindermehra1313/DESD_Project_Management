@@ -1,0 +1,29 @@
+<ul class="list-unstyled js-inventory-list">
+    {% for batch in product.inventory_batches.all %}
+        {% if batch.status != "DEL" %}
+        <li class="d-flex justify-content-between align-items-center mb-1" data-batch-id="{{ batch.id }}">
+            <div>
+                <span class="text-muted small">Stock:</span>
+                {{ batch.remaining_quantity }} / {{ batch.original_quantity }} -
+                <span class="text-muted small">{{ batch.get_expiry_type_display }}:</span>
+                {{ batch.expiry_date|date:"d/m/Y" }}
+            </div>
+
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary"
+                        onclick="openReduceBatchModal({{ batch.id }})"
+                        {% if batch.remaining_quantity == 0 %}disabled{% endif %}>
+                    Reduce Stock
+                </button>
+
+                <button class="btn btn-outline-danger"
+                        onclick="openDeleteBatchModal({{ batch.id }})">
+                    Delete Batch
+                </button>
+            </div>
+        </li>
+        {% endif %}
+    {% empty %}
+    <li class="text-muted">No inventory batches recorded.</li>
+    {% endfor %}
+</ul>
