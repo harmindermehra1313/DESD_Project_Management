@@ -107,7 +107,12 @@
                         <span class="input-group-text">£</span>
                         <input type="number" class="form-control" name="wholesale_price" id="id_wholesale_price" step="0.01" min="0" placeholder="2.50">
                     </div>
-                    <small class="text-muted">If set, this wholesale unit price applies to orders of 20+ units.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_wholesale_min_quantity" class="form-label custom-form-label">Minimum Wholesale Quantity</label>
+                    <input type="number" class="form-control" name="wholesale_min_quantity" id="id_wholesale_min_quantity" min="2" placeholder="20">
+                    <small class="text-muted">Minimum number of units a buyer must order to get the wholesale price.</small>
                 </div>
 
                 <div class="mb-3">

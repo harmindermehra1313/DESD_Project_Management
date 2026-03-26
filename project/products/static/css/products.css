@@ -1,10 +1,10 @@
 .shop-title, .page-title {
-    color: var(--dark-green);
+    color: var(--prussian-blue);
     font-weight: bold;
 }
 
 .product-card {
-    border-color: var(--soft-blue);
+    border-color: var(--alabaster-grey);
     transition: transform 0.2s ease-in-out;
 }
 .product-card:hover {
@@ -13,11 +13,11 @@
 }
 .product-img-wrapper {
     height: 120px; 
-    background-color: #f8f9fa;
+    background-color: var(--background-grey);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-bottom: 1px solid var(--soft-blue);
+    border-bottom: 1px solid var(--alabaster-grey);
 }
 .product-img-wrapper img {
     max-height: 100%;
@@ -33,35 +33,35 @@
     color: var(--text-light);
 }
 .btn-brand-solid, .btn-submit {
-    background-color: var(--bright-green);
-    color: var(--text-dark);
+    background-color: var(--dark-green);
+    color: var(--text-light);
     font-weight: bold;
-    border: 1px solid #000;
+    border: 1px solid var(--ink-black);
 }
 .btn-brand-solid:hover {
-    background-color: var(--dark-green);
+    background-color: var(--ink-black);
     color: var(--text-light);
 }
 
 .btn-submit:hover {
-    background-color: var(--bright-green);
-    color: var(--text-dark);
-    border: 1px solid #000;
+    background-color: var(--ink-black);
+    color: var(--text-light);
+    border: 1px solid var(--ink-black);
     opacity: 1;
 }
 
 .custom-form-label {
     font-weight: 600;
-    color: var(--blue-grey);
+    color: var(--lavender-grey);
 }
 .image-upload-box {
-    border: 2px dashed var(--soft-blue);
+    border: 2px dashed var(--alabaster-grey);
     border-radius: 8px;
     height: 150px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f8f9fa;
+    background-color: var(--background-grey);
 }
 
 .product-card {
@@ -82,7 +82,7 @@
 }
 /* --- FILTER BAR --- */
 .filter-bar {
-    background: #f6f7f9;
+    background: var(--background-grey);
     padding: 18px 20px;
     border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,0.06);
@@ -99,13 +99,13 @@
 .filter-bar .form-select {
     border-radius: 10px;
     padding: 10px 12px;
-    border: 1px solid #dcdcdc;
+    border: 1px solid var(--alabaster-grey);
     transition: border-color .2s ease, box-shadow .2s ease;
 }
 
 .filter-bar .form-control:focus,
 .filter-bar .form-select:focus {
-    border-color: #4CAF50;
+    border-color: var(--dark-green);
     box-shadow: 0 0 0 3px rgba(76,175,80,0.25);
 }
 
@@ -114,7 +114,7 @@
     border-radius: 14px;
     overflow: hidden;
     transition: transform .2s ease, box-shadow .2s ease;
-    background: #ffffff;
+    background: var(--text-light);
 }
 
 .product-card:hover {
@@ -125,35 +125,35 @@
 .product-card img {
     height: 140px;
     object-fit: cover;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--alabaster-grey);
 }
 
 /* Card header */
 .product-card .card-header {
     font-size: 1rem;
     padding: 12px;
-    background: #fafafa;
-    border-bottom: 1px solid #eee;
+    background: var(--background-grey);
+    border-bottom: 1px solid var(--alabaster-grey);
 }
 
 /* Price styling */
 .product-card h5 {
-    color: #2e7d32 !important;
+    color: var(--dark-green) !important;
     font-weight: 700;
 }
 
 /* Buttons */
 .btn-brand-outline {
-    border: 2px solid #4CAF50;
-    color: #4CAF50;
+    border: 2px solid var(--dark-green);
+    color: var(--dark-green);
     font-weight: 600;
     border-radius: 10px;
     transition: all .2s ease;
 }
 
 .btn-brand-outline:hover {
-    background: #4CAF50;
-    color: #fff;
+    background: var(--dark-green);
+    color: var(--text-light);
 }
 .row-cols-lg-6>* {
     flex: 0 0 auto;

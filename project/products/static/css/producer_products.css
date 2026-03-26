@@ -1,8 +1,4 @@
 :root {
-    --brand: #35524A;
-    --accent: #32DE8A;
-    --muted: #627C85;
-    --bg: #ffffff;
     --radius: 8px;
     --gap: 12px;
 }
@@ -15,8 +11,8 @@
 
 /* Table Styling */
 .order-table th {
-    background-color: #3a4b53;
-    color: #ffffff;
+    background-color: var(--prussian-blue);
+    color: var(--text-light);
     font-weight: 600;
     border-bottom: none;
 }
@@ -27,12 +23,12 @@
 }
 
 .order-row:hover {
-    background-color: #f8f9fa;
+    background-color: var(--background-grey);
 }
 
 .order-row.selected {
-    background-color: #e9ecef;
-    border-left: 4px solid var(--accent);
+    background-color: var(--alabaster-grey);
+    border-left: 4px solid var(--dark-green);
 }
 
 /* Status Badges */
@@ -62,22 +58,22 @@
 }
 
 #editProductBtn:disabled {
-    background-color: #fff;
-    color: #6c757d;
-    border-color: #6c757d;
-    border: 1px solid #6c757d;
+    background-color: var(--text-light);
+    color: var(--lavender-grey);
+    border-color: var(--lavender-grey);
+    border: 1px solid var(--lavender-grey);
     opacity: 1;
 }
 
 #editProductBtn:not(:disabled) {
-    background-color: #3a4b53;
-    color: #fff;
-    border-color: #3a4b53;
+    background-color: var(--prussian-blue);
+    color: var(--text-light);
+    border-color: var(--prussian-blue);
 }
 
 #editProductBtn:not(:disabled):hover {
-    background-color: #2e3d43;
-    border-color: #2e3d43;
+    background-color: var(--ink-black);
+    border-color: var(--ink-black);
 }
 
 #cancelProductBtn:disabled {
@@ -86,30 +82,30 @@
 
 /* Save button in edit modal */
 .save-btn {
-    background-color: var(--brand);
-    border-color: var(--brand);
-    color: #fff;
+    background-color: var(--prussian-blue);
+    border-color: var(--prussian-blue);
+    color: var(--text-light);
 }
 
 .save-btn:hover {
-    background-color: var(--accent);
-    border-color: var(--accent);
-    color: var(--brand);
+    background-color: var(--dark-green);
+    border-color: var(--dark-green);
+    color: var(--text-light);
 }
 
 /* Details Card */
 .details-card {
     border-radius: var(--radius);
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--alabaster-grey);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 .details-header {
-    background-color: #fbfbfb;
-    border-bottom: 1px solid #e9ecef;
+    background-color: var(--background-grey);
+    border-bottom: 1px solid var(--alabaster-grey);
     padding: 1rem 1.5rem;
     font-weight: bold;
-    color: var(--brand);
+    color: var(--prussian-blue);
 }
 
 .details-body {
@@ -119,5 +115,5 @@
 
 /* Modal header colour */
 .modal-header {
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--alabaster-grey);
 }
