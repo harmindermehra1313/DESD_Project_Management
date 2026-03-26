@@ -2,7 +2,8 @@
 orders/api/serializers/reorders.py
 
 Purpose:
-Define API serializers for order history, order detail, and reorder responses.
+Define API serializers for order history, order detail, reorder responses,
+and reorder request payloads.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ class OrderHistorySerializer(serializers.ModelSerializer):
 
 class OrderItemDetailSerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
-    paid_unit_price  = serializers.DecimalField(
+    paid_unit_price = serializers.DecimalField(
         source="final_unit_price",
         max_digits=10,
         decimal_places=2,
@@ -217,16 +218,72 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         return payment.get_payment_method_display()
 
 
+class ReorderWholesaleTierSerializer(serializers.Serializer):
+    min_quantity = serializers.IntegerField()
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class ReorderPricingSurplusSerializer(serializers.Serializer):
+    is_active = serializers.BooleanField()
+    discount_percentage = serializers.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+    )
+    discounted_unit_price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+    )
+
+
+class ReorderPricingWholesaleSerializer(serializers.Serializer):
+    has_wholesale_tiers = serializers.BooleanField()
+    active_for_quantity = serializers.BooleanField()
+    evaluated_quantity = serializers.IntegerField()
+    matched_tier = ReorderWholesaleTierSerializer(required=False, allow_null=True)
+    next_tier = ReorderWholesaleTierSerializer(required=False, allow_null=True)
+
+
+class ReorderPricingSerializer(serializers.Serializer):
+    base_unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    effective_unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    pricing_source = serializers.CharField()
+    surplus = ReorderPricingSurplusSerializer()
+    wholesale = ReorderPricingWholesaleSerializer()
+
+
+class ReorderSuggestedItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    product_name = serializers.CharField()
+    producer_id = serializers.IntegerField()
+    producer_name = serializers.CharField()
+    inventory_id = serializers.IntegerField()
+    available_quantity = serializers.IntegerField()
+    current_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    pricing = ReorderPricingSerializer()
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField()
+    product_type_id = serializers.IntegerField(required=False, allow_null=True)
+    product_type_name = serializers.CharField(required=False, allow_null=True)
+    match_basis = serializers.CharField()
+
+
 class ReorderUnavailableItemSerializer(serializers.Serializer):
+    order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     requested_quantity = serializers.IntegerField()
     reason = serializers.CharField()
     producer_id = serializers.IntegerField(required=False)
     producer_name = serializers.CharField(required=False)
+    suggested_items = ReorderSuggestedItemSerializer(many=True, required=False)
 
 
 class ReorderQuantityAdjustedItemSerializer(serializers.Serializer):
+    order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     requested_quantity = serializers.IntegerField()
@@ -235,13 +292,18 @@ class ReorderQuantityAdjustedItemSerializer(serializers.Serializer):
 
 
 class ReorderPriceChangedItemSerializer(serializers.Serializer):
+    order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     original_price = serializers.DecimalField(max_digits=10, decimal_places=2)
     current_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    pricing_source = serializers.CharField(required=False)
+    surplus_active = serializers.BooleanField(required=False)
+    wholesale_active_for_quantity = serializers.BooleanField(required=False)
 
 
 class ReorderAddedItemSerializer(serializers.Serializer):
+    order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     producer_id = serializers.IntegerField()
@@ -252,22 +314,64 @@ class ReorderAddedItemSerializer(serializers.Serializer):
 
 
 class ReorderAddableItemSerializer(serializers.Serializer):
+    order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()
     product_name = serializers.CharField()
     producer_id = serializers.IntegerField()
     producer_name = serializers.CharField()
     requested_quantity = serializers.IntegerField()
     added_quantity = serializers.IntegerField()
+    inventory_id = serializers.IntegerField(required=False)
+    available_quantity = serializers.IntegerField(required=False)
     current_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    pricing = ReorderPricingSerializer()
+    match_basis = serializers.CharField(required=False)
+    suggested_items = ReorderSuggestedItemSerializer(many=True, required=False)
 
 
 class ReorderProducerChangedItemSerializer(serializers.Serializer):
-    product_id = serializers.IntegerField()
-    product_name = serializers.CharField()
+    order_item_id = serializers.IntegerField(required=False)
+    product_id = serializers.IntegerField(required=False)
+    product_name = serializers.CharField(required=False)
     original_producer_id = serializers.IntegerField()
     original_producer_name = serializers.CharField()
     current_producer_id = serializers.IntegerField()
     current_producer_name = serializers.CharField()
+
+
+class ReorderSelectionSerializer(serializers.Serializer):
+    order_item_id = serializers.IntegerField()
+    action = serializers.ChoiceField(choices=["keep", "replace", "skip"])
+    selected_product_id = serializers.IntegerField(required=False, allow_null=True)
+    inventory_id = serializers.IntegerField(required=False, allow_null=True)
+    quantity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+
+    def validate(self, attrs):
+        action = attrs["action"]
+
+        if action == "skip":
+            return attrs
+
+        if attrs.get("quantity") in (None, ""):
+            raise serializers.ValidationError(
+                {"quantity": "Quantity is required for keep and replace actions."}
+            )
+
+        if attrs.get("inventory_id") in (None, ""):
+            raise serializers.ValidationError(
+                {"inventory_id": "Inventory is required for keep and replace actions."}
+            )
+
+        if attrs.get("selected_product_id") in (None, ""):
+            raise serializers.ValidationError(
+                {"selected_product_id": "Selected product is required for keep and replace actions."}
+            )
+
+        return attrs
+
+
+class ReorderSelectionRequestSerializer(serializers.Serializer):
+    selections = ReorderSelectionSerializer(many=True, required=False)
 
 
 class ReorderResponseSerializer(serializers.Serializer):

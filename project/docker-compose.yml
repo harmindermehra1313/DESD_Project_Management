@@ -31,6 +31,13 @@ services:
       db:
         condition: service_healthy
 
+  camunda:
+    image: camunda/camunda-bpm-platform:run-latest
+    container_name: camunda
+    environment:
+      - TZ=Europe/London
+    ports:
+      - "8100:8080" # Must be port 8080 do not change
 
   adminer:
     image: adminer:latest

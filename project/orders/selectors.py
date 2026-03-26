@@ -37,6 +37,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Prefetch, QuerySet
 
 from orders.models import Order, OrderItem, ProducerOrderSummary, ProducerOrderStatusHistory
+from products.models import Inventory, Product
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -313,3 +315,64 @@ def get_recent_orders_for_user(*, user: User, limit: int = 5) -> QuerySet[Order]
             Slice of the newest orders for the user.
     """
     return get_order_history_for_user(user=user)[:limit]
+def get_reorder_suggestion_inventories(
+    *,
+    source_product: Product,
+    original_producer_id: int,
+    limit: int = 3,
+) -> list[Inventory]:
+    """
+    Return alternative inventory batches for reorder suggestions.
+
+    Matching rules:
+    - prefer the same product type when the source product has one
+    - otherwise fall back to the broader category
+    - only include products from a different producer
+    - only include published, available products with live stock
+    - only include non-expired inventory batches
+    - exclude the original product itself
+
+    The function returns inventory batches rather than product rows so the
+    caller can price the suggestion using the live inventory context.
+    """
+    today = timezone.localdate()
+
+    queryset = (
+        Inventory.objects.select_related(
+            "product",
+            "product__producer",
+            "product__category",
+            "product__product_type",
+        )
+        .filter(
+            remaining_quantity__gt=0,
+            expiry_date__gte=today,
+            product__status=Product.Status.PUBLISHED,
+            product__availability_status=Product.Availability_status.AVAILABLE,
+        )
+        .exclude(product_id=source_product.pk)
+        .exclude(product__producer_id=original_producer_id)
+        .order_by("expiry_date", "product__name", "pk")
+    )
+
+    if getattr(source_product, "product_type_id", None):
+        queryset = queryset.filter(product__product_type_id=source_product.product_type_id)
+    elif getattr(source_product, "category_id", None):
+        queryset = queryset.filter(product__category_id=source_product.category_id)
+    else:
+        return []
+
+    suggestions: list[Inventory] = []
+    seen_product_ids: set[int] = set()
+
+    for inventory in queryset:
+        if inventory.product_id in seen_product_ids:
+            continue
+
+        suggestions.append(inventory)
+        seen_product_ids.add(inventory.product_id)
+
+        if len(suggestions) >= limit:
+            break
+
+    return suggestions

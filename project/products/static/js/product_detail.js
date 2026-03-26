@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const root = document.getElementById("productDetailPage");
-  const productId = Number(root?.dataset.productId ?? "0");
+  if (!root) return;
+
+  const productId = Number(root.dataset.productId ?? "0");
 
   const loadingEl = document.getElementById("productDetailLoading");
   const contentEl = document.getElementById("productDetailContent");
@@ -46,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setMsg(text, variant = "danger") {
     if (!msg) return;
-    msg.innerHTML = `<div class="alert alert-${variant} py-2 mb-0" role="alert">${text}</div>`;
+    msg.innerHTML = `<div class="pd-message pd-message--${variant}" role="alert">${text}</div>`;
   }
 
   function clearMsg() {
@@ -58,9 +60,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!el) return;
     el.style.display = visible ? "" : "none";
   }
+
   function getTypedQty() {
     const raw = String(qtyInput?.value ?? "").trim();
-
     if (raw === "") return null;
 
     const n = Number(raw);
@@ -112,10 +114,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const savingPerUnit = effectiveBasePrice - currentTier.price;
 
       wholesaleNoticeEl.innerHTML = `
-      <div class="alert alert-success py-2 mb-0" role="status">
+      <div class="alert alert-warning py-2 mb-0 text-dark" role="status">
         <div class="fw-semibold">Wholesale price active</div>
-        <div class="small">
-          You’re paying <span class="fw-semibold">${moneyGBP(currentTier.price)}</span> per unit.
+        <div>
+          You’re paying <strong>${moneyGBP(currentTier.price)}</strong> per unit.
           ${savingPerUnit > 0 ? `<span class="ms-1">Save ${moneyGBP(savingPerUnit)} per unit.</span>` : ""}
         </div>
         ${
@@ -133,16 +135,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     wholesaleNoticeEl.innerHTML = reachable
       ? `
-      <div class="alert alert-warning py-2 mb-0" role="status">
+      <div class="alert alert-warning py-2 mb-0 text-dark" role="status">
         <div class="fw-semibold">Wholesale pricing available</div>
-        <div class="small">
-          Buy ${firstTier.min}+ to pay ${moneyGBP(firstTier.price)} per unit.
-        </div>
+        <div>Buy ${firstTier.min}+ to pay ${moneyGBP(firstTier.price)} per unit.</div>
         <div class="small mt-1">Increase quantity to unlock this price.</div>
       </div>
     `
       : `
-      <div class="alert alert-secondary py-2 mb-0" role="status">
+      <div class="alert alert-warning py-2 mb-0 text-dark" role="status">
         <div class="fw-semibold">Wholesale tier: ${firstTier.min}+ units at ${moneyGBP(firstTier.price)}</div>
         <div class="small mt-1">Not currently reachable with available stock.</div>
       </div>
@@ -160,26 +160,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (wholesaleActive) {
       surplusNoticeEl.innerHTML = `
-        <div class="alert alert-info py-2 mb-0" role="status">
-          <div class="fw-semibold">Surplus reduction</div>
-          <div class="small">This item has a surplus reduction, but wholesale pricing is currently applied.</div>
-        </div>
-      `;
+      <div class="alert alert-danger py-2 mb-0" role="status">
+        <div class="fw-semibold">Surplus reduction</div>
+        <div class="small">This item has a surplus reduction, but wholesale pricing is currently applied.</div>
+      </div>
+    `;
       return;
     }
 
     surplusNoticeEl.innerHTML = `
-      <div class="alert alert-danger py-2 mb-0" role="status">
-        <div class="fw-semibold">Surplus reduction</div>
-        <div class="small">Discount applied to help clear excess stock.</div>
-      </div>
-    `;
+    <div class="alert alert-danger py-2 mb-0" role="status">
+      <div class="fw-semibold">Surplus reduction</div>
+      <div class="small">Discount applied to help clear excess stock.</div>
+    </div>
+  `;
   }
 
-  function renderPrice() {
+  function renderPrice(qtyOverride = null) {
     if (!productData) return;
 
-    const qty = normalizeQtyInput();
+    const qty =
+      Number.isFinite(qtyOverride) && qtyOverride >= 1
+        ? Math.floor(qtyOverride)
+        : normalizeQtyInput();
+
     const effectivePrice = Number(productData.effective_price);
     const basePrice = Number(productData.price);
     const tierPrice = getCurrentTierPrice(qty);
@@ -193,14 +197,23 @@ document.addEventListener("DOMContentLoaded", () => {
       setElVisible(compareAtEl, true);
 
       const saving = effectivePrice - appliedPrice;
-      surplusPercentPillEl.textContent =
-        saving > 0 ? `Save ${moneyGBP(saving)}` : "Wholesale";
+
+      if (saving > 0) {
+        surplusPercentPillEl.className = "badge rounded-pill bg-danger";
+        surplusPercentPillEl.textContent = `Save ${moneyGBP(saving)}`;
+      } else {
+        surplusPercentPillEl.className =
+          "badge rounded-pill bg-warning text-dark";
+        surplusPercentPillEl.textContent = "Wholesale";
+      }
+
       setElVisible(surplusPercentPillEl, true);
     } else if (productData.surplus_active && basePrice > effectivePrice) {
       compareAtEl.textContent = moneyGBP(basePrice);
       setElVisible(compareAtEl, true);
 
       if (productData.surplus_discount_percentage) {
+        surplusPercentPillEl.className = "badge rounded-pill bg-danger";
         surplusPercentPillEl.textContent = `${productData.surplus_discount_percentage}% off`;
         setElVisible(surplusPercentPillEl, true);
       } else {
@@ -219,24 +232,27 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!productData) return;
 
     const purchasable = Boolean(productData.is_purchasable);
-    const badgeClass =
-      productData.availability_badge_class || "text-bg-secondary";
     const badgeLabel = productData.availability_label || "Unknown";
     const buttonLabel =
       productData.add_to_cart_button_label ||
       (purchasable ? "Add to cart" : "Unavailable");
     const stock = Number(productData.remaining_quantity ?? 0);
 
-    availabilityBadge.className = `badge ${badgeClass}`;
+    availabilityBadge.className =
+      purchasable && stock > 0
+        ? "badge rounded-pill text-bg-success"
+        : "badge rounded-pill text-bg-secondary";
+
     availabilityBadge.textContent = badgeLabel;
 
-    stockText.className = "small";
+    stockText.className = "product-stock-text small";
 
     if (purchasable && stock > 0) {
-      stockText.classList.add(stock <= 5 ? "text-warning" : "text-muted");
+      if (stock <= 5) {
+        stockText.classList.add("is-low");
+      }
       stockText.textContent = `${stock} left`;
     } else {
-      stockText.classList.add("text-muted");
       stockText.textContent = "Currently unavailable";
     }
 
@@ -245,8 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     minus.disabled = !purchasable;
     plus.disabled = !purchasable;
 
-    btn.classList.remove("btn-primary", "btn-secondary");
-    btn.classList.add(purchasable ? "btn-primary" : "btn-secondary");
+    btn.classList.add("btn-primary");
     btn.innerHTML = purchasable
       ? `<i class="bi bi-cart-plus me-1"></i>${buttonLabel}`
       : buttonLabel;
@@ -258,16 +273,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (Array.isArray(allergens) && allergens.length) {
       for (const item of allergens) {
         const span = document.createElement("span");
-        span.className = "badge bg-warning text-dark";
+        span.className = "badge rounded-pill bg-warning text-dark";
         span.textContent = item.allergen?.name || "Unknown";
         allergensWrap.appendChild(span);
       }
       return;
     }
 
-    allergensWrap.innerHTML = `<div class="text-muted small">No known allergens.</div>`;
+    allergensWrap.innerHTML = `<div class="product-meta-value small">No known allergens.</div>`;
   }
-
   function renderProduct(data) {
     productData = data;
     wholesaleTiers = (data.wholesale_prices || [])
@@ -281,9 +295,15 @@ document.addEventListener("DOMContentLoaded", () => {
       .sort((a, b) => a.min - b.min);
 
     productName.textContent = data.name || "";
+
+    productUnit.className = "badge rounded-pill text-bg-primary";
     productUnit.textContent = data.unit || "";
+
     unitLabel.textContent = data.unit || "";
+
+    productCategory.className = "badge rounded-pill text-bg-secondary";
     productCategory.textContent = data.category?.name || "Uncategorized";
+
     productProducer.textContent =
       data.producer?.farm_name ||
       data.producer?.business_name ||
@@ -293,13 +313,13 @@ document.addEventListener("DOMContentLoaded", () => {
       data.description || "No description available.";
     storageGuidance.textContent = data.storage_guidance || "—";
     farmOrigin.textContent = data.farm_origin || "—";
-    const organicStatus = data.organic_certification_status;
 
+    const organicStatus = data.organic_certification_status;
     if (organicStatus === "CERTIFIED") {
       organicCertification.innerHTML =
-        '<span class="badge text-bg-success">Certified organic</span>';
+        '<span class="badge rounded-pill bg-success">Certified organic</span>';
     } else if (organicStatus) {
-      organicCertification.innerHTML = `<span class="badge text-bg-secondary">${organicStatus.replaceAll("_", " ")}</span>`;
+      organicCertification.innerHTML = `<span class="badge rounded-pill text-bg-secondary">${organicStatus.replaceAll("_", " ")}</span>`;
     } else {
       organicCertification.textContent = "—";
     }
@@ -360,9 +380,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   qtyInput?.addEventListener("input", () => {
     const typedQty = getTypedQty();
-
     if (typedQty !== null && typedQty >= 1) {
-      renderPrice();
+      renderPrice(typedQty);
     }
   });
 
@@ -409,7 +428,17 @@ document.addEventListener("DOMContentLoaded", () => {
         setMsg("Added to cart.", "success");
       }
     } catch (err) {
-      setMsg(`Add to cart failed: ${err?.message || String(err)}`, "danger");
+      const errorText = `Add to cart failed: ${err?.message || String(err)}`;
+
+      if (typeof window.CartAPI?.showToast === "function") {
+        window.CartAPI.showToast(errorText, {
+          title: "Cart",
+          variant: "danger",
+          delay: 2500,
+        });
+      } else {
+        setMsg(errorText, "danger");
+      }
     }
   });
 
