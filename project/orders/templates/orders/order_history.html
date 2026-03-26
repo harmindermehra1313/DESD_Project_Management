@@ -6,15 +6,6 @@
     <link rel="stylesheet" href="{% static 'orders/order_history.css' %}">
 {% endblock %}
 {% block content %}
-    <style>
-        .recurring-icon {
-            display: inline-block;
-            margin-left: 0.35rem;
-            font-size: 0.85em;
-            vertical-align: middle;
-            cursor: default;
-        }
-    </style>
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -96,108 +87,7 @@
                 </div>
             </div>
         </div>
-
-        <!-- Recurring Orders Section -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <strong>Active Recurring Orders</strong>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                            id="recurringFilterBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside">
-                        Filter Status
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="recurringFilterBtn">
-                        <li>
-                            <label class="dropdown-item">
-                                <input type="checkbox" class="recurring-status-filter form-check-input me-1"
-                                       value="ACTIVE" checked> Active
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item">
-                                <input type="checkbox" class="recurring-status-filter form-check-input me-1"
-                                       value="PAUSED" checked> Paused
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item">
-                                <input type="checkbox" class="recurring-status-filter form-check-input me-1"
-                                       value="CANCELLED"> Cancelled
-                            </label>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <button class="dropdown-item text-primary" type="button" onclick="clearRecurringFilters()">
-                                Reset Filters
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="card-body">
-                {% if customer_subscriptions %}
-                    <div class="table-responsive" id="recurringTableWrapper">
-                        <table class="table align-middle main-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Frequency</th>
-                                    <th>Day</th>
-                                    <th>Items</th>
-                                    <th>Producers</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="recurringTableBody">
-                                {% for sub in customer_subscriptions %}
-                                <tr class="recurring-row" data-recurring-status="{{ sub.status }}">
-                                    <td><strong>#{{ sub.id }}</strong></td>
-                                    <td>{{ sub.recurrence_pattern }}</td>
-                                    <td>{{ sub.recurrence_day }}</td>
-                                    <td>{{ sub.items|length }} item{{ sub.items|length|pluralize }}</td>
-                                    <td>
-                                        {% for p in sub.producers %}
-                                            <span class="badge rounded-pill text-bg-light border me-1 mb-1">{{ p }}</span>
-                                        {% endfor %}
-                                    </td>
-                                    <td>
-                                        <span class="badge
-                                            {% if sub.status == 'ACTIVE' %}bg-success
-                                            {% elif sub.status == 'PAUSED' %}bg-warning text-dark
-                                            {% else %}bg-danger{% endif %}">
-                                            {{ sub.status_display }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary"
-                                                onclick="openRecurringDetails({{ sub.id }})">
-                                            View Details
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <small id="recurringPaginationInfo" class="text-muted"></small>
-                        <div class="d-flex gap-2">
-                            <button id="recurringPrevBtn" class="btn btn-primary" onclick="goToRecurringPage(-1)">Previous</button>
-                            <button id="recurringNextBtn" class="btn btn-primary" onclick="goToRecurringPage(1)">Next</button>
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="alert alert-light mb-0">No recurring orders found.</div>
-                {% endif %}
-            </div>
-        </div>
     </div>
-
-    <!-- Subscription data for JS -->
-    {{ customer_subscriptions|json_script:"subscriptionData" }}
-
     <!-- Order detail modal -->
     <div class="modal fade"
          id="orderDetailModal"
@@ -216,27 +106,6 @@
                     <div id="orderDetailLoading" class="text-muted">Loading order details...</div>
                     <div id="orderDetailError" class="alert alert-danger d-none"></div>
                     <div id="orderDetailContent" class="d-none"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recurring order detail modal -->
-    <div class="modal fade"
-         id="recurringDetailModal"
-         tabindex="-1"
-         aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Subscription Details</h5>
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="recurringDetailContent"></div>
                 </div>
             </div>
         </div>
@@ -267,5 +136,5 @@
 {% endblock %}
 {% block scripts %}
     {{ block.super }}
-    <script src="{% static 'orders/order_history.js' %}?v=3.0"></script>
+    <script src="{% static 'orders/order_history.js' %}"></script>
 {% endblock %}
