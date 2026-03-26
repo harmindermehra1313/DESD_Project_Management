@@ -88,6 +88,7 @@ def list_recurring_page(request):
             'status': ro.status,
             'status_display': ro.get_status_display(),
             'recurrence_pattern': ro.get_recurrence_pattern_display(),
+            'recurrence_pattern_code': ro.recurrence_pattern,
             'recurrence_day': ro.get_recurrence_day_display(),
             'recurrence_day_code': ro.recurrence_day,
             'delivery_day': ro.get_delivery_day_display() if ro.delivery_day else 'Not Set',
@@ -105,6 +106,9 @@ def list_recurring_page(request):
         "orders/list_recurring.html",
         {
             "customer_subscriptions": customer_subscriptions,
+            "status_choices": RecurringOrder.Status.choices,
+            "frequency_choices": RecurringOrder.RecurrencePattern.choices,
+            "day_choices": RecurringOrder.Day.choices,
         },
     )
 

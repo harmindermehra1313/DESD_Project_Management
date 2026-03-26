@@ -62,6 +62,14 @@ let recurringCurrentPage = 1;
 let recurringDetailModal = null;
 let subscriptionData = [];
 
+const DEFAULT_RECURRING_FILTERS = {
+  status: "",
+  frequency: "",
+  day: "",
+};
+
+let appliedRecurringFilters = { ...DEFAULT_RECURRING_FILTERS };
+
 document.addEventListener("DOMContentLoaded", () => {
   // Parse subscription data from JSON script tag
   const dataEl = document.getElementById("subscriptionData");
@@ -75,28 +83,64 @@ document.addEventListener("DOMContentLoaded", () => {
     recurringDetailModal = new bootstrap.Modal(recurringModalEl);
   }
 
-  // Bind recurring status filter checkboxes
-  document.querySelectorAll(".recurring-status-filter").forEach((cb) => {
-    cb.addEventListener("change", () => {
-      recurringCurrentPage = 1;
-      applyRecurringFilters();
-    });
-  });
-
+  bindRecurringFilterEvents();
   applyRecurringFilters();
 });
 
-function applyRecurringFilters() {
-  const checked = Array.from(document.querySelectorAll(".recurring-status-filter:checked"))
-    .map((cb) => cb.value);
+function bindRecurringFilterEvents() {
+  const filtersForm = document.getElementById("recurringFiltersForm");
+  const resetBtn = document.getElementById("resetFiltersBtn");
 
+  if (filtersForm) {
+    filtersForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      appliedRecurringFilters = readRecurringFiltersFromForm();
+      recurringCurrentPage = 1;
+      applyRecurringFilters();
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      appliedRecurringFilters = { ...DEFAULT_RECURRING_FILTERS };
+      writeRecurringFiltersToForm(appliedRecurringFilters);
+      recurringCurrentPage = 1;
+      applyRecurringFilters();
+    });
+  }
+}
+
+function readRecurringFiltersFromForm() {
+  return {
+    status: document.getElementById("recurring_status")?.value || "",
+    frequency: document.getElementById("recurring_frequency")?.value || "",
+    day: document.getElementById("recurring_day")?.value || "",
+  };
+}
+
+function writeRecurringFiltersToForm(filters) {
+  const fields = { recurring_status: "status", recurring_frequency: "frequency", recurring_day: "day" };
+  Object.entries(fields).forEach(([elId, filterKey]) => {
+    const el = document.getElementById(elId);
+    if (el) el.value = filters[filterKey] || "";
+  });
+}
+
+function applyRecurringFilters() {
   const rows = document.querySelectorAll(".recurring-row");
 
   // Filter
   const visible = [];
   rows.forEach((row) => {
     const status = row.getAttribute("data-recurring-status");
-    if (checked.includes(status)) {
+    const frequency = row.getAttribute("data-recurring-frequency");
+    const day = row.getAttribute("data-recurring-day");
+
+    const matchesStatus = !appliedRecurringFilters.status || status === appliedRecurringFilters.status;
+    const matchesFrequency = !appliedRecurringFilters.frequency || frequency === appliedRecurringFilters.frequency;
+    const matchesDay = !appliedRecurringFilters.day || day === appliedRecurringFilters.day;
+
+    if (matchesStatus && matchesFrequency && matchesDay) {
       visible.push(row);
     } else {
       row.classList.add("d-none");
@@ -134,14 +178,6 @@ function applyRecurringFilters() {
 
 function goToRecurringPage(delta) {
   recurringCurrentPage += delta;
-  applyRecurringFilters();
-}
-
-function clearRecurringFilters() {
-  document.querySelectorAll(".recurring-status-filter").forEach((cb) => {
-    cb.checked = cb.value === "ACTIVE" || cb.value === "PAUSED";
-  });
-  recurringCurrentPage = 1;
   applyRecurringFilters();
 }
 

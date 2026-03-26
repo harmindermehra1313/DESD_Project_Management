@@ -23,42 +23,49 @@
             </div>
         </div>
 
-        <!-- Recurring Orders Section -->
+        <!-- Filters -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form id="recurringFiltersForm" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="recurring_status" class="form-label">Status</label>
+                        <select id="recurring_status" class="form-select">
+                            <option value="">All</option>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="recurring_frequency" class="form-label">Frequency</label>
+                        <select id="recurring_frequency" class="form-select">
+                            <option value="">All</option>
+                            {% for value, label in frequency_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="recurring_day" class="form-label">Day</label>
+                        <select id="recurring_day" class="form-select">
+                            <option value="">All</option>
+                            {% for value, label in day_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Apply filters</button>
+                        <button type="button" id="resetFiltersBtn" class="btn btn-primary">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recurring Orders Table -->
         <div class="card shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white">
                 <strong>Active Recurring Orders</strong>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                            id="recurringFilterBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside">
-                        Filter Status
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="recurringFilterBtn">
-                        <li>
-                            <label class="dropdown-item">
-                                <input type="checkbox" class="recurring-status-filter form-check-input me-1"
-                                       value="ACTIVE" checked> Active
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item">
-                                <input type="checkbox" class="recurring-status-filter form-check-input me-1"
-                                       value="PAUSED" checked> Paused
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item">
-                                <input type="checkbox" class="recurring-status-filter form-check-input me-1"
-                                       value="CANCELLED"> Cancelled
-                            </label>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <button class="dropdown-item text-primary" type="button" onclick="clearRecurringFilters()">
-                                Reset Filters
-                            </button>
-                        </li>
-                    </ul>
-                </div>
             </div>
             <div class="card-body">
                 {% if customer_subscriptions %}
@@ -77,7 +84,10 @@
                             </thead>
                             <tbody id="recurringTableBody">
                                 {% for sub in customer_subscriptions %}
-                                <tr class="recurring-row" data-recurring-status="{{ sub.status }}">
+                                <tr class="recurring-row"
+                                    data-recurring-status="{{ sub.status }}"
+                                    data-recurring-frequency="{{ sub.recurrence_pattern_code }}"
+                                    data-recurring-day="{{ sub.recurrence_day_code }}">
                                     <td><strong>#{{ sub.id }}</strong></td>
                                     <td>{{ sub.recurrence_pattern }}</td>
                                     <td>{{ sub.recurrence_day }}</td>
