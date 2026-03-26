@@ -19,6 +19,8 @@ from .models import Cart, CartItem, CartStatus
 Product = apps.get_model("products", "Product")
 Inventory = apps.get_model("products", "Inventory")
 WholesalePrice = apps.get_model("products", "WholesalePrice")
+User = apps.get_model("accounts", "User")
+Customer = apps.get_model("accounts", "Customer")
 
 
 class CartError(Exception):
@@ -92,34 +94,47 @@ def _get_inventory_data(*, inventory_id: int) -> tuple[Decimal, Decimal]:
     price, remaining = row
     return Decimal(str(price)), Decimal(str(remaining))
 
+def _is_wholesale_customer_by_user_id(user_id: Optional[int]) -> bool:
+    if not user_id:
+        return False
 
-def _get_effective_unit_price(*, inventory_id: int, qty: Decimal) -> Decimal:
+    customer = Customer.objects.filter(user_id=user_id).only("organisation_type").first()
+    if not customer:
+        return False
+
+    return customer.organisation_type in {"BUSINESS", "COMMUNITY_GROUP"}
+def _cart_allows_wholesale(cart: Cart) -> bool:
+    return _is_wholesale_customer_by_user_id(cart.user_id)
+
+
+def _get_effective_unit_price(
+    *,
+    inventory_id: int,
+    qty: Decimal,
+    wholesale_allowed: bool = False,
+) -> Decimal:
     """
     Final pricing logic:
     1. Start from base price
     2. Apply surplus discount if active
-    3. Apply wholesale tier if available
+    3. Apply wholesale tier only if eligible
     """
 
-    # product = Product.objects.get(pk=product_id)
     inventory = Inventory.objects.select_related("product").get(pk=inventory_id)
     product = inventory.product
 
     base_price = Decimal(str(product.price))
 
-    # Apply surplus discount if active
-    # if product.surplus_status == Product.Surplus_status.SURPLUS_ACTIVE:
-    #     discount_factor = (
-    #         Decimal("100") - Decimal(str(product.surplus_discount_percentage))
-    #     ) / Decimal("100")
-    #     base_price = base_price * discount_factor
-    
     # Surplus discount (batch-level)
     if inventory.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
-        discount_factor = (Decimal("100") - inventory.surplus_discount_percentage) / Decimal("100")
+        discount_factor = (
+            Decimal("100") - inventory.surplus_discount_percentage
+        ) / Decimal("100")
         base_price = base_price * discount_factor
 
-    # Apply wholesale tier (if eligible)
+    if not wholesale_allowed:
+        return base_price
+
     qty_int = int(qty)
 
     tier_price = (
@@ -134,7 +149,6 @@ def _get_effective_unit_price(*, inventory_id: int, qty: Decimal) -> Decimal:
 
     if tier_price is not None:
         tier_price = Decimal(str(tier_price))
-        # choose the LOWER of surplus price vs wholesale
         return min(base_price, tier_price)
 
     return base_price
@@ -277,8 +291,12 @@ def cart_add_item(
     validate_stock(inventory_id=inventory_id, requested_quantity=new_qty)
 
     # Compute correct unit price for the resulting qty (server-side truth)
-    # unit_price = _get_effective_unit_price(product_id=product_id, qty=new_qty)
-    unit_price = _get_effective_unit_price(inventory_id=inventory_id, qty=new_qty)
+    wholesale_allowed = _cart_allows_wholesale(cart)
+    unit_price = _get_effective_unit_price(
+        inventory_id=inventory_id,
+        qty=new_qty,
+        wholesale_allowed=wholesale_allowed,
+    )
 
     if item:
         # Update both quantity and unit_price (tier-aware)
@@ -310,7 +328,12 @@ def cart_add_item(
         # validate_stock(product_id=product_id, requested_quantity=new_qty)
         validate_stock(inventory_id=inventory_id, requested_quantity=new_qty)
         # unit_price = _get_effective_unit_price(product_id=product_id, qty=new_qty)
-        unit_price = _get_effective_unit_price(inventory_id=inventory_id, qty=new_qty)
+        wholesale_allowed = _cart_allows_wholesale(cart)
+        unit_price = _get_effective_unit_price(
+            inventory_id=inventory_id,
+            qty=new_qty,
+            wholesale_allowed=wholesale_allowed,
+        )
 
         CartItem.objects.filter(pk=item.pk).update(
             quantity=new_qty,
@@ -351,11 +374,14 @@ def cart_set_item_quantity(
             raise CartItemNotFound("Item not in cart.")
         return None
 
-    # validate_stock(product_id=product_id, requested_quantity=qty)
     validate_stock(inventory_id=inventory_id, requested_quantity=qty)
 
-    # unit_price = _get_effective_unit_price(product_id=product_id, qty=qty)
-    unit_price = _get_effective_unit_price(inventory_id=inventory_id, qty=qty)
+    wholesale_allowed = _cart_allows_wholesale(cart)
+    unit_price = _get_effective_unit_price(
+        inventory_id=inventory_id,
+        qty=qty,
+        wholesale_allowed=wholesale_allowed,
+    )
 
     item = (
         CartItem.objects.select_for_update()
@@ -516,10 +542,11 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
 
     for line in user_lines:
         final_qty = line.quantity or Decimal("0")
+        wholesale_allowed = _cart_allows_wholesale(user_cart)
         correct_unit_price = _get_effective_unit_price(
-            # product_id=line.product_id,
             inventory_id=line.inventory_id,
             qty=final_qty,
+            wholesale_allowed=wholesale_allowed,
         )
         if line.unit_price != correct_unit_price:
             CartItem.objects.filter(pk=line.pk).update(
