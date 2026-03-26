@@ -80,7 +80,13 @@
 
             <!-- Approval Request of Products -->
             <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/admin/admin_records/">Approval Request</a>
+              <a class="nav-link custom-nav-link" href="{% url 'admin_records:approval_request' %}">
+                Approval Request
+                {% if pending_count > 0 %}
+                    <span class="badge bg-danger">{{ pending_count }}</span>
+                {% endif %}
+
+              </a>
             </li>
 
             <!-- More Dropdown -->
@@ -100,7 +106,7 @@
 
         <!-- RIGHT COLUMN: SEARCH -->
         <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
-          <form class="d-flex custom-search w-100" action="/admin/search/">
+          <form class="d-flex custom-search w-100" action="{% url 'global_search' %}">
             <input class="form-control custom-search-input" name="q" placeholder="Search admin data...">
             <button class="btn custom-search-btn">Search</button>
           </form>
