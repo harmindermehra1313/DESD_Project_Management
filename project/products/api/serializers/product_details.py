@@ -64,11 +64,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     moderated_by_admin = AdminSerializer(read_only=True)
 
-    wholesale_prices = WholesalePriceInlineSerializer(
-        source="product_wholesale",
-        many=True,
-        read_only=True,
-    )
+    wholesale_prices = serializers.SerializerMethodField()
     allergens = ProductAllergenInlineSerializer(
         source="product_allergen",
         many=True,
@@ -166,6 +162,27 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_active_inventory_id(self, obj):
         active_inventory = self._get_active_inventory(obj)
         return active_inventory.id if active_inventory else None
+    
+    def _is_wholesale_customer(self):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+
+        customer = getattr(request.user, "customer_profile", None)
+        if not customer:
+            return False
+
+        return customer.organisation_type  in {"BUSINESS", "COMMUNITY_GROUP"}
+    
+    def get_wholesale_prices(self, obj):
+        if not self._is_wholesale_customer():
+            return []
+
+        return WholesalePriceInlineSerializer(
+            obj.product_wholesale.all(),
+            many=True,
+            context=self.context,
+        ).data
 
     def get_surplus_active(self, obj):
         active_inventory = self._get_active_inventory(obj)
