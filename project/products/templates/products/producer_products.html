@@ -234,10 +234,11 @@
                 <strong>Inventory Batches:</strong><br>
 
                 <ul class="list-unstyled js-inventory-list">
+                    <div id="batchItemsContainer">
 
                     <!-- Active batches -->
                     {% for batch in product.active_batches %}
-                    <li class="d-flex justify-content-between align-items-center mb-1" data-batch-id="{{ batch.id }}">
+                    <li class="d-flex justify-content-between align-items-center mb-1 batch-item" data-batch-id="{{ batch.id }}" data-remaining="{{ batch.remaining_quantity }}" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
                         <div>
                             <span class="text-muted small">Stock:</span>
                             {{ batch.remaining_quantity }} / {{ batch.original_quantity }} -
@@ -261,6 +262,7 @@
                     {% empty %}
                     <li class="text-muted">No inventory batches recorded.</li>
                     {% endfor %}
+                    </div>
 
                     <div class="mb-2">
                         <label><input type="checkbox" id="toggleExpired"> Show expired</label>
@@ -277,7 +279,7 @@
                     <!-- Expired batches -->
                     {% for batch in product.expired_batches %}
                         <li class="batch-item expired-batch text-warning fst-italic mb-1"
-                            data-batch-status="expired">
+                            data-batch-status="expired" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
                             <div>
                                 <strong>Expired:</strong>
                                 {{ batch.remaining_quantity }} / {{ batch.original_quantity }} -
@@ -287,9 +289,10 @@
                     {% endfor %}
 
                     <!-- Deleted batches -->
+                    <div id="deletedItemsContainer">
                     {% for batch in product.deleted_batches %}
                         <li class="batch-item deleted-batch text-muted fst-italic mb-1"
-                            data-batch-status="deleted">
+                            data-batch-status="deleted" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
                             <div>
                                 <strong>Deleted batch:</strong>
                                 {{ batch.original_quantity }} units
@@ -297,6 +300,7 @@
                             </div>
                         </li>
                     {% endfor %}
+                    </div>
                 </ul>
             </div>
         </div>
@@ -462,6 +466,7 @@
       <div class="modal-body">
         <label class="form-label small fw-bold text-muted">Amount to reduce</label>
         <input type="number" id="reduceAmount" class="form-control" min="1">
+        <small id="reduceBatchRange" class="text-muted"></small>
 
         <div id="reduceBatchAlert" class="alert alert-danger mt-3 d-none"></div>
       </div>

@@ -457,8 +457,11 @@ async function submitBatchForm() {
             // Refresh details panel (inventory list)
             const template = document.getElementById(`details-template-${selectedProductId}`);
             if (data.batch) {
-                updateDetailsTemplateAfterBatch(selectedProductId, data.batch);
-                showProductDetails(selectedProductId, document.getElementById(`row-${selectedProductId}`));
+                insertNewBatchIntoUI(data.batch);
+                sortBatchItems();
+                sortHiddenTemplateBatches();
+                toggleBatchVisibility();
+                //showProductDetails(selectedProductId, document.getElementById(`row-${selectedProductId}`));
             }
 
             showGlobalSuccess("New batch added successfully!");
@@ -486,30 +489,77 @@ async function submitBatchForm() {
     }
 }
 
-function updateDetailsTemplateAfterBatch(productId, batch) {
-    const template = document.getElementById(`details-template-${productId}`);
-    if (!template) return;
+function sortHiddenTemplateBatches() {
+    const hiddenTemplate = document.querySelector(`#details-template-${selectedProductId}`);
+    if (!hiddenTemplate) return;
 
-    const content = template.content;
+    const container = hiddenTemplate.content.querySelector('#batchItemsContainer');
+    if (!container) return;
 
-    // Find the inventory list container inside the template
-    const list = content.querySelector('.js-inventory-list');
-    if (!list) return;
+    const items = Array.from(container.querySelectorAll('.batch-item'));
 
-    // Format date as dd/mm/yyyy
-    const dateObj = new Date(batch.expiry_date);
-    const formattedExpiry = dateObj.toLocaleDateString("en-GB");
+    items.sort((a, b) => {
+        const dateA = new Date(a.getAttribute('data-expiry'));
+        const dateB = new Date(b.getAttribute('data-expiry'));
+        return dateA - dateB;
+    });
 
-    // Create new batch <li>
-    const li = document.createElement('li');
-    li.innerHTML = `
-        <span class="text-muted small">Stock:</span> ${batch.remaining_quantity} / ${batch.remaining_quantity} &mdash;
-        <span class="text-muted small">${batch.expiry_type === "BB" ? "Best Before" : "Use By"}:</span> ${formattedExpiry}
-    `;
-
-    list.appendChild(li);
+    container.innerHTML = "";
+    items.forEach(item => container.appendChild(item));
 }
 
+function insertNewBatchIntoUI(batch) {
+    const container = document.querySelector('#detailsContent #batchItemsContainer');
+    if (!container) return;
+
+    // Always convert to ISO for sorting
+    const isoExpiry = new Date(batch.expiry_date).toISOString().split("T")[0];
+    const formattedExpiry = new Date(batch.expiry_date).toLocaleDateString("en-GB");
+
+    const li = document.createElement('li');
+    li.className = "d-flex justify-content-between align-items-center mb-1 batch-item";
+    li.setAttribute("data-batch-id", batch.id);
+    li.setAttribute("data-remaining", batch.remaining_quantity);
+    li.setAttribute("data-expiry", isoExpiry);
+    li.setAttribute("data-batch-status", "active");
+
+    li.innerHTML = `
+        <div>
+            <span class="text-muted small">Stock:</span>
+            ${batch.remaining_quantity} / ${batch.remaining_quantity} -
+            <span class="text-muted small">${batch.expiry_type === "BB" ? "Best Before" : "Use By"}:</span>
+            ${formattedExpiry}
+        </div>
+
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary"
+                    onclick="openReduceBatchModal(${batch.id})"
+                    ${batch.remaining_quantity == 0 ? "disabled" : ""}>
+                Reduce Stock
+            </button>
+
+            <button class="btn btn-outline-danger"
+                    onclick="openDeleteBatchModal(${batch.id})">
+                Delete Batch
+            </button>
+        </div>
+    `;
+
+    // Insert into visible container
+    container.appendChild(li);
+
+    // Insert into hidden template BEFORE sorting
+    const hiddenTemplate = document.querySelector(`#details-template-${selectedProductId}`);
+    if (hiddenTemplate) {
+        const hiddenContainer = hiddenTemplate.content.querySelector('#batchItemsContainer');
+        if (hiddenContainer) {
+            hiddenContainer.appendChild(li.cloneNode(true));
+        }
+    }
+
+    // Sort after both containers are updated
+    sortBatchItems();
+}
 
 // ─── 9. Open Cancel Modal ─────────────────────────────────────────────────────
 
@@ -572,9 +622,21 @@ let selectedBatchId = null;
 
 function openReduceBatchModal(batchId) {
     selectedBatchId = batchId;
-    document.getElementById('reduceAmount').value = "";
+
+    const batchEl = document.querySelector(`[data-batch-id="${batchId}"]`);
+    const remaining = parseInt(batchEl.getAttribute("data-remaining"));
+
+    document.getElementById("reduceAmount").setAttribute("max", remaining);
+    document.getElementById("reduceAmount").setAttribute("min", 1);
+
+    document.getElementById("reduceAmount").value = "";
+
+    document.getElementById("reduceBatchRange").textContent =
+        `Enter a number between 1 and ${remaining}`;
+
     new bootstrap.Modal(document.getElementById('reduceBatchModal')).show();
 }
+
 
 function openDeleteBatchModal(batchId) {
     selectedBatchId = batchId;
@@ -587,9 +649,10 @@ async function submitReduceBatch() {
     const amount = parseInt(amountInput.value);
 
     alertEl.classList.add("d-none");
+    const max = parseInt(amountInput.getAttribute("max"));
 
-    if (!amount || amount < 1) {
-        alertEl.textContent = "Enter a valid reduction amount.";
+    if (!amount || amount < 1 || amount > max) {
+        alertEl.textContent = `Enter a number between 1 and ${max}.`;
         alertEl.classList.remove("d-none");
         amountInput.classList.add("is-invalid");
         return;
@@ -618,6 +681,7 @@ async function submitReduceBatch() {
     bootstrap.Modal.getInstance(document.getElementById('reduceBatchModal')).hide();
     showGlobalSuccess("Batch reduced successfully.");
     updateBatchUI(data);
+    sortBatchItems();
 }
 
 async function submitDeleteBatch() {
@@ -636,7 +700,24 @@ async function submitDeleteBatch() {
         updateBatchUI(data);
         bootstrap.Modal.getInstance(document.getElementById('deleteBatchModal')).hide();
         showGlobalSuccess("Batch deleted.");
+        sortBatchItems();
     }
+}
+
+function sortBatchItems() {
+    const container = document.querySelector('#detailsContent #batchItemsContainer');
+    if (!container) return;
+
+    const items = Array.from(container.querySelectorAll('.batch-item'));
+
+    items.sort((a, b) => {
+        const dateA = new Date(a.getAttribute('data-expiry'));
+        const dateB = new Date(b.getAttribute('data-expiry'));
+        return dateA - dateB;
+    });
+
+    container.innerHTML = "";
+    items.forEach(item => container.appendChild(item));
 }
 
 function updateBatchUI(data) {
@@ -646,14 +727,24 @@ function updateBatchUI(data) {
 
     // Update hidden template
     const template = document.getElementById(`details-template-${selectedProductId}`);
-    const hiddenList = template.content.querySelector('.js-inventory-list');
-    hiddenList.innerHTML = data.updated_batches_html;
+    const hiddenContainer = template.content.querySelector('#batchItemsContainer');
+    hiddenContainer.innerHTML = data.updated_batches_html;
 
     // Update visible details panel
-    const visibleList = document.querySelector('#detailsContent .js-inventory-list');
-    if (visibleList) {
-        visibleList.innerHTML = data.updated_batches_html;
+    const visibleContainer = document.querySelector('#detailsContent #batchItemsContainer');
+    if (visibleContainer) {
+        visibleContainer.innerHTML = data.updated_batches_html;
     }
+
+    // Extract deleted batches
+    // const newDeleted = temp.querySelector("#deletedItemsContainer");
+    // const deletedContainer = document.querySelector("#detailsContent #deletedItemsContainer");
+    // if (newDeleted && deletedContainer) {
+    //     deletedContainer.innerHTML = newDeleted.innerHTML;
+    // }
+
+    // Re-run visibility logic
+    toggleBatchVisibility();
 }
 
 function toggleBatchVisibility() {

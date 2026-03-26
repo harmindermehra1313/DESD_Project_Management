@@ -1,7 +1,7 @@
 <ul class="list-unstyled js-inventory-list">
     {% for batch in product.inventory_batches.all %}
         {% if batch.status != "DEL" %}
-        <li class="d-flex justify-content-between align-items-center mb-1" data-batch-id="{{ batch.id }}">
+        <li class="d-flex justify-content-between align-items-center mb-1 batch-item" data-batch-id="{{ batch.id }}" data-remaining="{{ batch.remaining_quantity }}" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
             <div>
                 <span class="text-muted small">Stock:</span>
                 {{ batch.remaining_quantity }} / {{ batch.original_quantity }} -

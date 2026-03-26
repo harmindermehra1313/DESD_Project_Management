@@ -86,7 +86,7 @@ def add_batch(request, pk):
         "batch": {
             "id": batch.id,
             "harvest_date": str(batch.harvest_date),
-            "expiry_date": str(batch.expiry_date),
+            "expiry_date": batch.expiry_date.isoformat(),
             "expiry_type": batch.expiry_type,
             "remaining_quantity": batch.remaining_quantity,
         },
