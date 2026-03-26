@@ -33,10 +33,10 @@
     color: var(--text-light);
 }
 .btn-brand-solid, .btn-submit {
-    background-color: var(--dark-green);
+    background-color: var(--headback);
     color: var(--text-light);
     font-weight: bold;
-    border: 1px solid var(--ink-black);
+    border: 1px solid var(--headback);
 }
 .btn-brand-solid:hover {
     background-color: var(--ink-black);
@@ -144,15 +144,15 @@
 
 /* Buttons */
 .btn-brand-outline {
-    border: 2px solid var(--dark-green);
-    color: var(--dark-green);
+    border: 2px solid var(--headback);
+    color: var(--headback);
     font-weight: 600;
     border-radius: 10px;
     transition: all .2s ease;
 }
 
 .btn-brand-outline:hover {
-    background: var(--dark-green);
+    background: var(--headback);
     color: var(--text-light);
 }
 .row-cols-lg-6>* {
