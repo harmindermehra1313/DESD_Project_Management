@@ -1,0 +1,281 @@
+/* ============================================================
+   APPROVAL REQUESTS PAGE — BRFN ADMIN
+   ============================================================ */
+
+.approval-container {
+    background: var(--background-grey);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    margin-top: 30px;
+}
+
+/* Page title */
+.approval-container h2 {
+    color: var(--prussian-blue);
+    font-weight: 700;
+    font-family: var(--font-brand);
+    margin-bottom: 1rem;
+}
+
+/* Table styling */
+.approval-table {
+    width: 100%;
+    border: 1px solid var(--alabaster-grey);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.approval-table thead th {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px;
+    font-weight: 600;
+}
+
+.approval-table tbody td {
+    font-size: 0.85rem;
+    padding: 12px 10px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.approval-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.approval-table tbody tr:hover {
+    background: var(--background-header-row2);
+}
+
+/* Action buttons */
+.approval-btn {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.approval-btn-approve {
+    background: #28a745;
+}
+
+.approval-btn-approve:hover {
+    background: #218838;
+}
+
+.approval-btn-reject {
+    background: #dc3545;
+}
+
+.approval-btn-reject:hover {
+    background: #c82333;
+}
+
+/* Empty state */
+.approval-empty {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e9f5ff;
+    border-left: 4px solid #0d6efd;
+    border-radius: 6px;
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+
+    .approval-table thead {
+        display: none;
+    }
+
+    .approval-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--alabaster-grey);
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+
+    .approval-table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.9rem;
+    }
+
+    .approval-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dusk-blue);
+        margin-right: 10px;
+    }
+    
+    .approval-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .approval-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .approval-btn {
+        width: 200px;
+        font-size: 0.95rem;
+        padding: 10px 14px;
+        margin: 10px;
+    }
+
+}
+
+/* ============================================================
+   APPROVAL REQUESTS PAGE — BRFN ADMIN
+   ============================================================ */
+
+.approval-container {
+    background: var(--background-grey);
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.approval-container h2 {
+    color: var(--prussian-blue);
+    font-weight: 700;
+    font-family: var(--font-brand);
+    margin-bottom: 1.5rem;
+}
+
+/* Table */
+.approval-table {
+    width: 100%;
+    border: 1px solid var(--alabaster-grey);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.approval-table thead th {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px;
+    font-weight: 600;
+}
+
+.approval-table tbody td {
+    font-size: 0.85rem;
+    padding: 12px 10px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.approval-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.approval-table tbody tr:hover {
+    background: var(--background-header-row2);
+}
+
+/* Buttons */
+.approval-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.approval-btn {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    transition: 0.2s ease;
+    margin-bottom: 10px;
+}
+
+.approval-btn-approve {
+    background: #28a745;
+}
+
+.approval-btn-approve:hover {
+    background: #218838;
+}
+
+.approval-btn-reject {
+    background: #dc3545;
+}
+
+.approval-btn-reject:hover {
+    background: #c82333;
+}
+
+/* Empty state */
+.approval-empty {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e9f5ff;
+    border-left: 4px solid #0d6efd;
+    border-radius: 6px;
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+
+    .approval-table thead {
+        display: none;
+    }
+
+    .approval-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--alabaster-grey);
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+
+    .approval-table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.9rem;
+    }
+
+    .approval-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dusk-blue);
+        margin-right: 10px;
+    }
+
+    .approval-actions {
+        flex-direction: column;
+    }
+
+    .approval-btn {
+        width: 200px;
+        font-size: 0.95rem;
+        padding: 10px 14px;
+        margin: 10px;
+    }
+}

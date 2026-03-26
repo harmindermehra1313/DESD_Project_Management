@@ -5,11 +5,22 @@ app_name = "admin_records"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    # Financial report
     path("financial-reports/", views.financial_reports, name="financial_reports"),
     path("financial-reports/csv/", views.financial_reports_csv, name="financial_reports_csv"),
+    path("financial-reports/pdf/", views.financial_reports_pdf, name="financial_report_pdf"),
+    # User and Producer list
     path("users/", views.user_list, name="user_list"),
     path("producers/", views.producer_list, name="producer_list"),
-    path("financial-reports/pdf/", views.financial_reports_pdf, name="financial_report_pdf"),
+    path("users/<int:user_id>/deactivate/", views.deactivate_user, name="deactivate_user"),
+    path("users/<int:user_id>/reactivate/", views.reactivate_user, name="reactivate_user"),
+    # Search bar
+    path("search/", views.global_search, name="global_search"),
+    # Approval page
+    path("approval-requests/", views.approval_requests, name="approval_request"),
+    path("products/<int:product_id>/approve/", views.approve_product, name="approve_product"),
+    path("products/<int:product_id>/reject/", views.reject_product, name="reject_product"),
+    path("api/product/<int:product_id>/", views.product_details, name="product_details"),
 
 ]
 
