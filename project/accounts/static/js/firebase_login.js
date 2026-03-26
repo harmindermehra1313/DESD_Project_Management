@@ -11,20 +11,20 @@ import {
 // -------------------------------
 // Firebase Config
 // -------------------------------
-const firebaseConfig = {
-    apiKey: "AIzaSyDe0SqR2q1rpqNJSW11o5xRrtJQZtd4U8Y",
-    authDomain: "desd-6af1a.firebaseapp.com",
-    projectId: "desd-6af1a",
-    storageBucket: "desd-6af1a.firebasestorage.app",
-    messagingSenderId: "147922368452",
-    appId: "1:147922368452:web:9ef0f976627443812e1691",
-    measurementId: "G-9WTLM2DBYQ"
-};
+// -------------------------------
+// Firebase Config (Loaded Safely)
+// -------------------------------
+let auth;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-
+fetch("/static/config/firebase_auth.json")
+    .then(res => res.json())
+    .then(firebaseConfig => {
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+    })
+    .catch(err => {
+        console.error("Failed to load Firebase config:", err);
+    });
 // -------------------------------
 // Friendly Error Messages
 // -------------------------------
