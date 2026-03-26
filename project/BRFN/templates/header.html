@@ -129,12 +129,13 @@
         </div>
         <!-- RIGHT COLUMN: SEARCH BAR -->
         <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
-          <form class="d-flex custom-search w-100" action="/search/">
-            <input class="form-control custom-search-input"
-                   name="q"
-                   placeholder="Search...">
-            <button class="btn custom-search-btn">Search</button>
-          </form>
+          <form class="d-flex custom-search w-100" onsubmit="return false;">
+            <input id="globalSearchInput"
+                  class="form-control custom-search-input"
+                  placeholder="Search..."
+                  autocomplete="off">
+            <button class="btn custom-search-btn" type="button">Search</button>
+        </form>
         </div>
       </div>
     </div>

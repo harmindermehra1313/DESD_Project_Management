@@ -15,6 +15,8 @@ from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
 
+from admin_records.models import ModerationLog
+from django.db.models import Prefetch
 
 def _get_category_default_image(category_obj):
     image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
@@ -237,22 +239,6 @@ def add_product(request):
         producer = request.user.producer_profile
         farm_origin = producer.farm_name.strip() if producer.farm_name else "Local Farm"
 
-        # new_product = Product.objects.create(
-        #     producer=producer,
-        #     category=category_obj,
-        #     name=name,
-        #     price=price,
-        #     availability_status=availability_status,
-        #     harvest_date=harvest_date,
-        #     expiry_date=expiry_date,
-        #     unit=unit_code,
-        #     stock_quantity=stock_quantity,
-        #     description=description,
-        #     image=uploaded_image,
-        #     farm_origin="Local Farm",
-        #     surplus_discount_percentage=0.00,
-        # )
-
         new_product = Product.objects.create(
             producer=producer,
             category=category_obj,
@@ -264,6 +250,7 @@ def add_product(request):
             description=description,
             image=uploaded_image,
             farm_origin=farm_origin,
+            status=Product.Status.PENDING,
         )
 
         if not uploaded_image:
@@ -296,7 +283,7 @@ def add_product(request):
                 allergen=allergen_obj
             )
 
-        return redirect('product_view', category_id=0)
+        return redirect('producer_products')
 
     return render(request, 'products/add_product.html', _build_add_product_context())
 
@@ -323,6 +310,19 @@ def producer_products(request):
         .order_by("-created_at")
     )
 
+    #Attach latest rejection log manually
+    for p in products:
+        p.latest_rejection = (
+            ModerationLog.objects
+            .filter(
+                content=p.id,
+                content_type=ModerationLog.ContentType.PRODUCT,
+                action=ModerationLog.Action.REJECTED
+            )
+            .order_by('-created_at')
+            .first()
+        )
+
     categories = Category.objects.all()
 
     return render(request, "products/producer_products.html", {
@@ -330,6 +330,8 @@ def producer_products(request):
         "categories": categories,
         "units": Product.Unit.choices,
     })
+
+
 
 
 @producer_required
