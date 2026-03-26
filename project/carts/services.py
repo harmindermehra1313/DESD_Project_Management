@@ -83,15 +83,48 @@ def _assert_owner(owner: CartOwner) -> None:
 #     price, stock = row
 #     return Decimal(str(price)), Decimal(str(stock))
 
-def _get_inventory_data(*, inventory_id: int) -> tuple[Decimal, Decimal]:
-    row = (
-        Inventory.objects.filter(pk=inventory_id)
-        .values_list("product__price", "remaining_quantity")
+def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
+    """
+    Returns inventory only if the batch is still sellable.
+
+    Sellable means:
+    - inventory exists
+    - product is published
+    - product availability is AVAILABLE
+    - batch has stock remaining
+    - batch is not expired
+    """
+    today = timezone.localdate()
+
+    inventory = (
+        Inventory.objects.select_related("product")
+        .filter(pk=inventory_id)
         .first()
     )
-    if row is None:
-        raise ValueError("Invalid inventory_id")
-    price, remaining = row
+
+    if inventory is None:
+        raise ValidationError("Invalid inventory_id.")
+
+    product = inventory.product
+
+    if product.status != Product.Status.PUBLISHED:
+        raise ValidationError("This product is not available for purchase.")
+
+    if product.availability_status != Product.Availability_status.AVAILABLE:
+        raise ValidationError("This product is not available for purchase.")
+
+    if inventory.is_expired():
+        raise ValidationError("This batch has expired.")
+
+    if inventory.remaining_quantity <= 0:
+        raise ValidationError("This batch is out of stock.")
+
+    return inventory
+
+def _get_inventory_data(*, inventory_id: int) -> tuple[Decimal, Decimal]:
+    inventory = _get_sellable_inventory(inventory_id=inventory_id)
+    price = inventory.product.price
+    remaining = inventory.remaining_quantity
     return Decimal(str(price)), Decimal(str(remaining))
 
 def _is_wholesale_customer_by_user_id(user_id: Optional[int]) -> bool:
@@ -120,7 +153,7 @@ def _get_effective_unit_price(
     3. Apply wholesale tier only if eligible
     """
 
-    inventory = Inventory.objects.select_related("product").get(pk=inventory_id)
+    inventory = _get_sellable_inventory(inventory_id=inventory_id)
     product = inventory.product
 
     base_price = Decimal(str(product.price))
@@ -164,14 +197,7 @@ def cart_touch(cart: Cart, *, at=None) -> None:
     Cart.objects.filter(pk=cart.pk).update(last_seen_at=at, updated_at=at)
 
 
-# def validate_stock(*, product_id: int, requested_quantity: Decimal) -> None:
-#     _, stock = _get_product_data(product_id=product_id)
 
-#     if stock <= 0:
-#         raise ValidationError("This product is out of stock.")
-
-#     if stock < requested_quantity:
-#         raise ValidationError(f"Only {stock} left in stock.")
 
 def validate_stock(*, inventory_id: int, requested_quantity: Decimal) -> None:
     _, remaining = _get_inventory_data(inventory_id=inventory_id)
@@ -554,7 +580,7 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
                 updated_at=_now(),
             )
 
-    # 3) OPTIONAL CLEANUP: delete guest cart items now that they’re merged
+    # 3) delete guest cart items now that they’re merged
     CartItem.objects.filter(cart_id=guest_cart.pk).delete()
 
     # 4) Mark guest cart merged

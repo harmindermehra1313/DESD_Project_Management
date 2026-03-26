@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.utils import timezone
 
 from rest_framework import serializers
 from products.models import (
@@ -76,6 +77,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     surplus_active = serializers.SerializerMethodField()
     surplus_discount_percentage = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
+    
+    expiry_date = serializers.SerializerMethodField()
+    expiry_type = serializers.SerializerMethodField()
+    expiry_type_label = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
 
     availability_label = serializers.SerializerMethodField()
     availability_badge_class = serializers.SerializerMethodField()
@@ -98,6 +104,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "surplus_active",
             "surplus_discount_percentage",
             "remaining_quantity",
+            "expiry_date",
+            "expiry_type",
+            "expiry_type_label",
+            "is_expired",
             "availability_label",
             "availability_badge_class",
             "stock_message",
@@ -121,12 +131,33 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         )
 
     def _get_active_inventory(self, obj):
+        today = timezone.localdate()
+        return (
+            obj.inventory_batches
+            .filter(
+                remaining_quantity__gt=0,
+                expiry_date__gte=today,
+            )
+            .order_by("expiry_date", "created_at")
+            .first()
+        )
+    def _get_next_inventory_batch(self, obj):
+        """
+        Earliest stock batch regardless of expiry.
+        Useful for determining whether remaining stock exists
+        but is already expired.
+        """
         return (
             obj.inventory_batches
             .filter(remaining_quantity__gt=0)
             .order_by("expiry_date", "created_at")
             .first()
         )
+    def _has_only_expired_stock(self, obj):
+        next_batch = self._get_next_inventory_batch(obj)
+        if not next_batch:
+            return False
+        return next_batch.is_expired() and self._get_active_inventory(obj) is None
 
     def _get_remaining_quantity_value(self, obj):
         active_inventory = self._get_active_inventory(obj)
@@ -162,6 +193,21 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_active_inventory_id(self, obj):
         active_inventory = self._get_active_inventory(obj)
         return active_inventory.id if active_inventory else None
+    
+    def get_expiry_date(self, obj):
+        active_inventory = self._get_active_inventory(obj)
+        return active_inventory.expiry_date if active_inventory else None
+
+    def get_expiry_type(self, obj):
+        active_inventory = self._get_active_inventory(obj)
+        return active_inventory.expiry_type if active_inventory else None
+
+    def get_expiry_type_label(self, obj):
+        active_inventory = self._get_active_inventory(obj)
+        return active_inventory.get_expiry_type_display() if active_inventory else None
+
+    def get_is_expired(self, obj):
+        return self._has_only_expired_stock(obj)
     
     def _is_wholesale_customer(self):
         request = self.context.get("request")
@@ -201,20 +247,30 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return self._get_remaining_quantity_value(obj)
 
     def get_availability_label(self, obj):
+        if self.get_is_expired(obj):
+            return "Expired"
+        if obj.availability_status == Product.Availability_status.DISCONTINUED:
+            return "Discontinued"
+        if obj.availability_status != Product.Availability_status.AVAILABLE:
+            return "Unavailable"
         if self._is_out_of_stock(obj):
             return "Out of stock"
-        if obj.availability_status == "UNAV":
-            return "Unavailable"
         return "Available"
 
     def get_availability_badge_class(self, obj):
+        if self.get_is_expired(obj):
+            return "text-bg-danger"
+        if obj.availability_status == Product.Availability_status.DISCONTINUED:
+            return "text-bg-secondary"
+        if obj.availability_status != Product.Availability_status.AVAILABLE:
+            return "text-bg-secondary"
         if self._is_out_of_stock(obj):
             return "text-bg-danger"
-        if obj.availability_status == "UNAV":
-            return "text-bg-secondary"
         return "text-bg-success"
 
     def get_stock_message(self, obj):
+        if self.get_is_expired(obj):
+            return "Expired"
         stock = self._get_remaining_quantity_value(obj)
 
         if stock <= 0:
@@ -224,12 +280,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return "In stock"
 
     def get_is_purchasable(self, obj):
-        return bool(self.get_active_inventory_id(obj)) and not self._is_out_of_stock(obj)
+        return (
+            obj.status == Product.Status.PUBLISHED
+            and obj.availability_status == Product.Availability_status.AVAILABLE
+            and bool(self.get_active_inventory_id(obj))
+            and not self._is_out_of_stock(obj)
+            and not self.get_is_expired(obj)
+        )
 
     def get_add_to_cart_button_label(self, obj):
+        if self.get_is_expired(obj):
+            return "Expired"
         if self.get_is_purchasable(obj):
             return "Add to cart"
-        return "Out of stock"
+        return "Unavailable"
 
 
 # Following serializers are being used by others
