@@ -7,7 +7,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from accounts.models import User, Producer
-
+from firebase_admin import auth as firebase_auth
 
 class ProducerRegistrationSerializer(serializers.Serializer):
     # User fields
@@ -61,6 +61,10 @@ class ProducerRegistrationSerializer(serializers.Serializer):
             name=validated_data["name"],
             phone=validated_data["phone"],
             role="PRODUCER",
+        )
+        firebase_auth.create_user(
+            email=validated_data["email"],
+            password=validated_data["password"]
         )
 
         return Producer.objects.create(

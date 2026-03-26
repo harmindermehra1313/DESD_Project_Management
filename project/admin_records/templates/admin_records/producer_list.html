@@ -4,14 +4,14 @@
 {% block title %}Producer List | Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'producer_list.css' %}">
+<link rel="stylesheet" href="{% static 'css/producer_list.css' %}">
 {% endblock %}
 
 {% block content %}
 
 <div class="container mt-4 producer-list-container">
 
-    <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">All Producers</h2>
+    <h2 class="mb-4 title">All Producers</h2>
 
     <div class="table-responsive shadow-sm" style="border-radius: var(--radius); overflow: hidden;">
         <table class="table table-hover table-sm align-middle producer-table text-center">
@@ -235,6 +235,6 @@
 </div>
 
 {% csrf_token %}
-<script src="{% static 'producer_list.js' %}"></script>
+<script src="{% static 'js/producer_list.js' %}"></script>
 
 {% endblock %}

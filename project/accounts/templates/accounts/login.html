@@ -3,7 +3,7 @@
 {% block title %}Sign In{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'login.css' %}">
+<link rel="stylesheet" href="{% static 'css/login.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -28,7 +28,7 @@
                 Your account has been created successfully. Please sign in.
             </div>
             {% endif %}
-            <form method="POST" novalidate>
+            <form onsubmit="event.preventDefault(); firebaseLogin();" novalidate>
                 {% csrf_token %}
 
                 <!-- Email -->
@@ -78,5 +78,12 @@
     </div>
 
 </div>
-<script src="{% static 'register.js' %}"></script>
+<div id="toast" class="toast"></div>
+<script>
+    window.CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+
+<script type="module" src="{% static 'js/firebase_login.js' %}"></script>
+<script src="{% static 'js/register.js' %}"></script>
+
 {% endblock %}
