@@ -62,7 +62,7 @@ a {
 }
 
 .btn-primary:disabled {
-    opacity: 0.5rem;
+    opacity: 0.5;
 }
 
 /* Secondary buttons */
@@ -75,6 +75,7 @@ a {
     border-color:var(--ink-black);
     color: #fff;
 }
+
 
 /* Cards */
 .card {
@@ -116,7 +117,7 @@ a {
 
 .order-row.selected {
     background-color: #e9ecef;
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--dusk-blue);
 }
 
 /* Bootstrap for cancellation buttons and badges! */

@@ -5,8 +5,7 @@ from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from ..models import Product, Category, Allergen, ProductAllergen, WholesalePrice
-from datetime import date, timedelta
+from .models import Product, Category, Allergen, ProductAllergen, WholesalePrice
 from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
@@ -15,8 +14,6 @@ from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
 
-from admin_records.models import ModerationLog
-from django.db.models import Prefetch
 
 def _get_category_default_image(category_obj):
     image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
@@ -239,6 +236,22 @@ def add_product(request):
         producer = request.user.producer_profile
         farm_origin = producer.farm_name.strip() if producer.farm_name else "Local Farm"
 
+        # new_product = Product.objects.create(
+        #     producer=producer,
+        #     category=category_obj,
+        #     name=name,
+        #     price=price,
+        #     availability_status=availability_status,
+        #     harvest_date=harvest_date,
+        #     expiry_date=expiry_date,
+        #     unit=unit_code,
+        #     stock_quantity=stock_quantity,
+        #     description=description,
+        #     image=uploaded_image,
+        #     farm_origin="Local Farm",
+        #     surplus_discount_percentage=0.00,
+        # )
+
         new_product = Product.objects.create(
             producer=producer,
             category=category_obj,
@@ -250,7 +263,6 @@ def add_product(request):
             description=description,
             image=uploaded_image,
             farm_origin=farm_origin,
-            status=Product.Status.PENDING,
         )
 
         if not uploaded_image:
@@ -283,7 +295,7 @@ def add_product(request):
                 allergen=allergen_obj
             )
 
-        return redirect('producer_products')
+        return redirect('product_view', category_id=0)
 
     return render(request, 'products/add_product.html', _build_add_product_context())
 
@@ -310,19 +322,6 @@ def producer_products(request):
         .order_by("-created_at")
     )
 
-    #Attach latest rejection log manually
-    for p in products:
-        p.latest_rejection = (
-            ModerationLog.objects
-            .filter(
-                content=p.id,
-                content_type=ModerationLog.ContentType.PRODUCT,
-                action=ModerationLog.Action.REJECTED
-            )
-            .order_by('-created_at')
-            .first()
-        )
-
     categories = Category.objects.all()
 
     return render(request, "products/producer_products.html", {
@@ -330,8 +329,6 @@ def producer_products(request):
         "categories": categories,
         "units": Product.Unit.choices,
     })
-
-
 
 
 @producer_required
@@ -526,168 +523,66 @@ class ProductDetailView(DetailView):
     # return redirect('products_list')
 
 # Harminder Edits
-# def product_view(request, category_id):
-#     # All categories except organic
-#     categories = Category.objects.exclude(name__icontains="organic")
-#     certified_organic = Category.objects.filter(name__icontains="organic")
-    
-#     # ALL PRODUCTS PAGE
-#     if category_id == 0:
-#         selected_category = None
-#         products = Product.objects.filter(status="PUB")
-#         show_filters = True   # show category + producer filters
-
-#     # CATEGORY PAGE
-#     else:
-#         selected_category = get_object_or_404(Category, id=category_id)
-#         products = Product.objects.filter(status="PUB", category=selected_category)
-#         show_filters = False  # hide category + producer filters
-
-#     # Producer list for dropdown (only used when show_filters=True)
-#     producers = products.values_list("producer__farm_name", flat=True).distinct()
-
-#     # Helper: get earliest-expiring batch
-#     def get_active_batch(product):
-#         return product.inventory_batches.order_by("expiry_date").first()
-    
-#     product_json = []
-#     for p in products:
-#         batch = get_active_batch(p)
-
-#         product_json.append({
-#             "id": p.id,
-#             "name": p.name,
-#             "description": p.description,
-#             "price": float(p.price),
-#             "image": p.image.url if p.image else "",
-#             "producer": p.producer.farm_name,
-#             "category": p.category.name,
-#             "stock": batch.remaining_quantity if batch else 0,
-#             "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
-#         })
-#     # Convert queryset → JSON for inline JS
-#     # product_json = [
-#     #     {
-#     #         "id": p.id,
-#     #         "name": p.name,
-#     #         "description": p.description,
-#     #         "price": float(p.price),
-#     #         "image": p.image.url if p.image else "",
-#     #         "producer": p.producer.farm_name,
-#     #         "category": p.category.name,  # required for filtering
-#     #         "stock": p.stock_quantity,
-#     #         "expiry": p.expiry_date.strftime("%Y-%m-%d"),
-#     #     }
-#     #     for p in products
-#     # ]
-
-#     return render(request, "products/product_view.html", {
-#         "categories": categories,
-#         "producers": producers,
-#         "products_json": json.dumps(product_json),  # safe JSON for inline JS
-#         "selected_category": selected_category,
-#         "show_filters": show_filters,
-#         'organic': certified_organic,
-#     })
-
-
 def product_view(request, category_id):
     # All categories except organic
     categories = Category.objects.exclude(name__icontains="organic")
     certified_organic = Category.objects.filter(name__icontains="organic")
-
+    
     # ALL PRODUCTS PAGE
     if category_id == 0:
         selected_category = None
         products = Product.objects.filter(status="PUB")
-        show_filters = True
+        show_filters = True   # show category + producer filters
 
     # CATEGORY PAGE
     else:
         selected_category = get_object_or_404(Category, id=category_id)
         products = Product.objects.filter(status="PUB", category=selected_category)
-        show_filters = False
+        show_filters = False  # hide category + producer filters
 
-    # Producer list for dropdown
+    # Producer list for dropdown (only used when show_filters=True)
     producers = products.values_list("producer__farm_name", flat=True).distinct()
 
-    # Helper: earliest-expiring batch
+    # Helper: get earliest-expiring batch
     def get_active_batch(product):
         return product.inventory_batches.order_by("expiry_date").first()
-
+    
     product_json = []
-
     for p in products:
         batch = get_active_batch(p)
 
-        # -----------------------------
-        # DISCOUNT LOGIC (Surplus)
-        # -----------------------------
-        original_price = float(p.price)
-
-        if batch and batch.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
-            discount_percent = float(batch.surplus_discount_percentage)
-            discounted_price = float(original_price * (100 - discount_percent) / 100)
-            has_discount = True
-        else:
-            discounted_price = original_price
-            discount_percent = 0
-            has_discount = False
-
-        # -----------------------------
-        # BADGES
-        # -----------------------------
-
-        # Organic badge
-        organic = (p.organic_certification_status == Product.OrganicStatus.CERTIFIED)
-
-        # Local badge (farm origin matches producer name)
-        local = (p.farm_origin.lower() == p.producer.farm_name.lower())
-
-        # Fresh Today badge (48-hour freshness window)
-        if batch:
-            days_old = (date.today() - batch.harvest_date).days
-            fresh_today = days_old <= 1
-        else:
-            fresh_today = False
-
-        # Low stock badge
-        low_stock = (batch.remaining_quantity <= p.low_stock_threshold) if batch else False
-
-        # -----------------------------
-        # BUILD JSON ENTRY
-        # -----------------------------
         product_json.append({
             "id": p.id,
             "name": p.name,
-            "description": p.description or "",
-            "price": discounted_price,
-            "original_price": original_price,
-            "has_discount": has_discount,
-            "discount_percent": discount_percent,
-
-            "organic": organic,
-            "local": local,
-            "fresh_today": fresh_today,
-            "low_stock": low_stock,
-
+            "description": p.description,
+            "price": float(p.price),
             "image": p.image.url if p.image else "",
             "producer": p.producer.farm_name,
             "category": p.category.name,
-
             "stock": batch.remaining_quantity if batch else 0,
             "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
         })
+    # Convert queryset → JSON for inline JS
+    # product_json = [
+    #     {
+    #         "id": p.id,
+    #         "name": p.name,
+    #         "description": p.description,
+    #         "price": float(p.price),
+    #         "image": p.image.url if p.image else "",
+    #         "producer": p.producer.farm_name,
+    #         "category": p.category.name,  # required for filtering
+    #         "stock": p.stock_quantity,
+    #         "expiry": p.expiry_date.strftime("%Y-%m-%d"),
+    #     }
+    #     for p in products
+    # ]
 
     return render(request, "products/product_view.html", {
         "categories": categories,
         "producers": producers,
-        "products_json": json.dumps(product_json),
+        "products_json": json.dumps(product_json),  # safe JSON for inline JS
         "selected_category": selected_category,
         "show_filters": show_filters,
-        "organic": certified_organic,
+        'organic': certified_organic,
     })
-
-# Pippal
-def product_detail_page(request, product_id):
-    return render(request, "products/product_detail.html", {"product_id": product_id})
