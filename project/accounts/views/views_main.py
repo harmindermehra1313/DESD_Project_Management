@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.utils import Order, timezone
+from django.utils import timezone
 from django.db.models import Prefetch
 
 # ---------------------------------------
@@ -21,6 +21,7 @@ from django.db.models import Prefetch
 # ---------------------------------------
 from accounts.models import User
 from orders.models import (
+    Order,
     ProducerOrderSummary,
     OrderItem,
     RecurringOrder,
