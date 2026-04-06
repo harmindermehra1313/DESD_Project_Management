@@ -117,96 +117,84 @@ document.addEventListener("DOMContentLoaded", () => {
     return window.CartAPI.getCart();
   }
 
-  // ---- REQUIRED: each row has name, producer, qty input, unit label, unit_price, line_total, remove btn
   function buildItemRow(item) {
-    const product = item.product || {};
-    const itemId = item.id;
-    // const productId = product.id;
-    const inventoryId = Number(item.inventory_id ?? 0);
-    const productId = Number(product.id ?? item.product_id ?? 0);
-    const productUrl = productId ? `/products/${productId}/` : "#";
+  const product = item.product || {};
+  const itemId = item.id;
+  const inventoryId = Number(item.inventory_id ?? 0);
+  const productId = Number(product.id ?? item.product_id ?? 0);
+  const productUrl = productId ? `/products/${productId}/` : "#";
 
-    const name = product.name ?? M.productFallback;
-    const producer = product.producer_name ?? "";
-    const unitLabelText = product.unit ?? "";
+  const name = product.name ?? M.productFallback;
+  const producer = product.producer_name ?? "";
+  const unitLabelText = product.unit ?? "";
 
-    const qty = toNum(item.quantity ?? 1, 1);
-    const unitPrice = toNum(item.unit_price ?? 0, 0);
-    const lineTotal = toNum(
-      item.line_total ?? qty * unitPrice,
-      qty * unitPrice,
-    );
+  const qty = toNum(item.quantity ?? 1, 1);
+  const unitPrice = toNum(item.unit_price ?? 0, 0);
+  const lineTotal = toNum(
+    item.line_total ?? qty * unitPrice,
+    qty * unitPrice,
+  );
 
-    const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
+  const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
 
-    // Surplus fields (from product snapshot, if backend provides them)
-    const surplusStatus = String(product.surplus_status ?? "");
-    const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
-    const surplusNote = String(product.surplus_note ?? "");
+  const surplusStatus = String(product.surplus_status ?? "");
+  const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
+  const surplusNote = String(product.surplus_note ?? "");
 
-    // Compute expected surplus unit price (so we can distinguish surplus from wholesale)
-    const expectedSurplusUnit = computeSurplusUnitPrice(
-      baseUnitPrice,
-      surplusPercent,
-    );
+  const expectedSurplusUnit = computeSurplusUnitPrice(
+    baseUnitPrice,
+    surplusPercent,
+  );
 
-    const unitIsDiscounted =
-      baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
+  const unitIsDiscounted =
+    baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
 
-    // Surplus applies if:
-    // - product says surplus is active, AND
-    // - unit price matches the expected surplus price (derived from base + %)
-    const isSurplus =
-      surplusStatus === "SA" &&
-      expectedSurplusUnit !== null &&
-      approxEqual(unitPrice, expectedSurplusUnit);
+  const isSurplus =
+    surplusStatus === "SA" &&
+    expectedSurplusUnit !== null &&
+    approxEqual(unitPrice, expectedSurplusUnit);
 
-    // Wholesale applies if:
-    // - it’s discounted vs base, AND it is NOT the surplus discount
-    const isWholesale = unitIsDiscounted && !isSurplus;
+  const isWholesale = unitIsDiscounted && !isSurplus;
 
-    const wholesaleSavingsTotal = isWholesale
-      ? (baseUnitPrice - unitPrice) * qty
-      : 0;
-    const surplusSavingsTotal = isSurplus
-      ? (baseUnitPrice - unitPrice) * qty
-      : 0;
+  const wholesaleSavingsTotal = isWholesale
+    ? (baseUnitPrice - unitPrice) * qty
+    : 0;
+  const surplusSavingsTotal = isSurplus
+    ? (baseUnitPrice - unitPrice) * qty
+    : 0;
 
-    const { isExpired, isOutOfStock, isPurchasable, isBlocked } =
-      getItemStatus(product);
+  const { isExpired, isOutOfStock, isPurchasable, isBlocked, stockQty } =
+    getItemStatus(product);
 
-    const row = document.createElement("div");
-    row.className = "cart-row mb-3";
-    row.dataset.itemId = String(itemId ?? "");
-    row.dataset.inventoryId = String(item.inventory_id ?? "");
+  const row = document.createElement("div");
+  row.className = "cart-row mb-3";
+  row.dataset.itemId = String(itemId ?? "");
+  row.dataset.inventoryId = String(item.inventory_id ?? "");
 
-    // image
-    const placeholder =
-      cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
+  const placeholder =
+    cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
 
-    let imgSrc = String(product.image ?? "").trim();
-    if (!imgSrc) imgSrc = placeholder;
-    else if (!imgSrc.startsWith("/") && !/^https?:\/\//i.test(imgSrc)) {
-      imgSrc = `/media/${imgSrc}`;
-    }
+  let imgSrc = String(product.image ?? "").trim();
+  if (!imgSrc) imgSrc = placeholder;
+  else if (!imgSrc.startsWith("/") && !/^https?:\/\//i.test(imgSrc)) {
+    imgSrc = `/media/${imgSrc}`;
+  }
 
-    const imgWrap = document.createElement("div");
-    imgWrap.className = "cart-thumb-wrap";
+  const imgWrap = document.createElement("div");
+  imgWrap.className = "cart-thumb-wrap";
+  imgWrap.innerHTML = `
+    <img
+      class="cart-thumb"
+      src="${imgSrc}"
+      alt="${name}"
+      loading="lazy"
+      onerror="this.onerror=null;this.src='${placeholder}';"
+    >
+  `;
 
-    imgWrap.innerHTML = `
-  <img
-    class="cart-thumb"
-    src="${imgSrc}"
-    alt="${name}"
-    loading="lazy"
-    onerror="this.onerror=null;this.src='${placeholder}';"
-  >
-`;
-
-    // meta
-    const meta = document.createElement("div");
-    meta.className = "cart-meta";
-    meta.innerHTML = `
+  const meta = document.createElement("div");
+  meta.className = "cart-meta";
+  meta.innerHTML = `
     <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
       <a href="${productUrl}" class="cart-product-link text-decoration-none">
         ${name}
@@ -248,132 +236,167 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   `;
 
-    // qty
-    const qtyWrap = document.createElement("div");
-    qtyWrap.className = "cart-qty";
+  const rowMsg = document.createElement("div");
+  rowMsg.className = "cart-row-msg mt-2";
+  rowMsg.setAttribute("aria-live", "polite");
+  meta.appendChild(rowMsg);
 
-    const minus = document.createElement("button");
-    minus.type = "button";
-    minus.className = "qty-btn";
-    minus.textContent = "−";
+  function flashRow(text, variant = "warning") {
+    rowMsg.innerHTML = `
+      <div class="alert alert-${variant} py-2 px-3 mb-0" role="alert">
+        ${text}
+      </div>
+    `;
+  }
 
-    const qtyInput = document.createElement("input");
-    qtyInput.type = "text";
-    qtyInput.className = "qty-input";
-    qtyInput.value = String(qty);
-    qtyInput.inputMode = "numeric";
-    qtyInput.autocomplete = "off";
+  function clearRowFlash() {
+    rowMsg.innerHTML = "";
+  }
 
-    const plus = document.createElement("button");
-    plus.type = "button";
-    plus.className = "qty-btn";
-    plus.textContent = "+";
+  const qtyWrap = document.createElement("div");
+  qtyWrap.className = "cart-qty";
 
-    const unitLabel = document.createElement("span");
-    unitLabel.className = "cart-unit";
-    unitLabel.textContent = unitLabelText;
+  const minus = document.createElement("button");
+  minus.type = "button";
+  minus.className = "qty-btn";
+  minus.textContent = "−";
 
-    qtyWrap.append(minus, qtyInput, plus, unitLabel);
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "text";
+  qtyInput.className = "qty-input";
+  qtyInput.value = String(qty);
+  qtyInput.inputMode = "numeric";
+  qtyInput.autocomplete = "off";
 
-    // prices
-    const prices = document.createElement("div");
-    prices.className = "cart-prices";
-    const showWasNow =
-      (isWholesale || isSurplus) &&
-      baseUnitPrice > 0 &&
-      unitPrice > 0 &&
-      unitPrice < baseUnitPrice;
+  const plus = document.createElement("button");
+  plus.type = "button";
+  plus.className = "qty-btn";
+  plus.textContent = "+";
 
-    prices.innerHTML = showWasNow
-      ? `
-    <div class="small text-muted">
-      ${M.unitLabelPrefix}:
-      <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
-      <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
-    </div>
-    <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
-  `
-      : `
-    <div class="small text-muted">${M.unitLabel(money(unitPrice))}</div>
-    <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
-  `;
+  const unitLabel = document.createElement("span");
+  unitLabel.className = "cart-unit";
+  unitLabel.textContent = unitLabelText;
 
-    // remove
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "btn btn-danger btn-sm cart-remove-btn";
-    removeBtn.textContent = M.removeButton;
+  qtyWrap.append(minus, qtyInput, plus, unitLabel);
 
-    function setDisabled(disabled) {
-      minus.disabled = disabled;
-      plus.disabled = disabled;
-      qtyInput.disabled = disabled;
-      removeBtn.disabled = disabled;
-    }
+  const prices = document.createElement("div");
+  prices.className = "cart-prices";
+  const showWasNow =
+    (isWholesale || isSurplus) &&
+    baseUnitPrice > 0 &&
+    unitPrice > 0 &&
+    unitPrice < baseUnitPrice;
+
+  prices.innerHTML = showWasNow
+    ? `
+      <div class="small text-muted">
+        ${M.unitLabelPrefix}:
+        <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
+        <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
+      </div>
+      <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
+    `
+    : `
+      <div class="small text-muted">${M.unitLabel(money(unitPrice))}</div>
+      <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
+    `;
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn btn-danger btn-sm cart-remove-btn";
+  removeBtn.textContent = M.removeButton;
+
+  function setDisabled(disabled) {
+    minus.disabled = disabled;
+    plus.disabled = disabled;
+    qtyInput.disabled = disabled;
+    removeBtn.disabled = disabled;
+  }
+
+  if (isBlocked) {
+    row.classList.add("is-oos");
+    minus.disabled = true;
+    plus.disabled = true;
+    qtyInput.disabled = true;
+    removeBtn.disabled = false;
+  }
+
+  async function commitQty(newQty) {
+    clearRowFlash();
 
     if (isBlocked) {
-      row.classList.add("is-oos");
-      minus.disabled = true;
-      plus.disabled = true;
-      qtyInput.disabled = true;
-      removeBtn.disabled = false;
+      flashRow(getBlockedMessage(product), "warning");
+      return;
     }
 
-    async function commitQty(newQty) {
-      if (isBlocked) {
-        flash(getBlockedMessage(product), "warning", { persist: true });
-        return;
-      }
-      const q = clampQty(newQty);
-      setDisabled(true);
-      try {
-        await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
-        window.CartAPI.showToast?.(M.updatedQuantity(q), {
-          title: M.cartTitle,
-          variant: "success",
-          delay: 1800,
-        });
-        await refresh();
-      } catch (e) {
-        flash(M.getUpdateError(e, product), "danger", { persist: true });
-      } finally {
-        setDisabled(false);
-      }
+    const q = clampQty(newQty);
+
+    if (q > stockQty) {
+      flashRow(M.inventoryLimitMessage(name, stockQty), "warning");
+      return;
     }
 
-    minus.addEventListener("click", () =>
-      commitQty(clampQty(qtyInput.value) - 1),
-    );
-    plus.addEventListener("click", () =>
-      commitQty(clampQty(qtyInput.value) + 1),
-    );
-    qtyInput.addEventListener("change", () =>
-      commitQty(clampQty(qtyInput.value)),
-    );
+    setDisabled(true);
+    try {
+      await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
 
-    removeBtn.addEventListener("click", async () => {
-      const ok = window.confirm(M.removeConfirm(name));
-      if (!ok) return;
+      window.CartAPI.showToast?.(M.updatedQuantity(q), {
+        title: M.cartTitle,
+        variant: "success",
+        delay: 1800,
+      });
 
-      setDisabled(true);
-      try {
-        await window.CartAPI.removeItem({ inventoryId });
-        window.CartAPI.showToast?.(M.removedItem(name), {
-          title: M.cartTitle,
-          variant: "success",
-          delay: 1800,
-        });
-        await refresh();
-      } catch (e) {
-        flash(M.getRemoveError(e), "danger", { persist: true });
-      } finally {
-        setDisabled(false);
-      }
-    });
+      await refresh();
+    } catch (e) {
+      const message = M.getRowUpdateError(e, product, q);
+      const variant =
+        M.isInventoryLimitError(e) || /expired|unavailable/i.test(message)
+          ? "warning"
+          : "danger";
 
-    row.append(imgWrap, meta, qtyWrap, prices, removeBtn);
-    return row;
+      flashRow(message, variant);
+    } finally {
+      setDisabled(false);
+    }
   }
+
+  minus.addEventListener("click", () =>
+    commitQty(clampQty(qtyInput.value) - 1),
+  );
+
+  plus.addEventListener("click", () =>
+    commitQty(clampQty(qtyInput.value) + 1),
+  );
+
+  qtyInput.addEventListener("input", clearRowFlash);
+
+  qtyInput.addEventListener("change", () =>
+    commitQty(clampQty(qtyInput.value)),
+  );
+
+  removeBtn.addEventListener("click", async () => {
+    const ok = window.confirm(M.removeConfirm(name));
+    if (!ok) return;
+
+    setDisabled(true);
+    try {
+      await window.CartAPI.removeItem({ inventoryId });
+      window.CartAPI.showToast?.(M.removedItem(name), {
+        title: M.cartTitle,
+        variant: "success",
+        delay: 1800,
+      });
+      await refresh();
+    } catch (e) {
+      flash(M.getRemoveError(e), "danger", { persist: true });
+    } finally {
+      setDisabled(false);
+    }
+  });
+
+  row.append(imgWrap, meta, qtyWrap, prices, removeBtn);
+  return row;
+}
 
   function render(cart) {
     const items = cart?.items ?? [];
