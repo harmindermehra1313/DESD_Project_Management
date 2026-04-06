@@ -45,7 +45,7 @@ class ProductMiniSerializer(serializers.Serializer):
 
     def get_producer_name(self, obj):
         producer = obj.product.producer
-        return getattr(producer, "business_name", None) or getattr(
+        return getattr(producer, "farm_name", None) or getattr(
             producer, "name", None
         )
 

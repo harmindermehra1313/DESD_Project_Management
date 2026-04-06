@@ -110,79 +110,77 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchCart() {
     if (!window.CartAPI?.getCart) {
-      throw new Error(
-        M.cartApiMissing,
-      );
+      throw new Error(M.cartApiMissing);
     }
     return window.CartAPI.getCart();
   }
 
   function buildItemRow(item) {
-  const product = item.product || {};
-  const itemId = item.id;
-  const inventoryId = Number(item.inventory_id ?? 0);
-  const productId = Number(product.id ?? item.product_id ?? 0);
-  const productUrl = productId ? `/products/${productId}/` : "#";
+    const product = item.product || {};
+    const itemId = item.id;
+    const inventoryId = Number(item.inventory_id ?? 0);
+    const productId = Number(product.id ?? item.product_id ?? 0);
+    const productUrl = productId ? `/products/${productId}/` : "#";
 
-  const name = product.name ?? M.productFallback;
-  const producer = product.producer_name ?? "";
-  const unitLabelText = product.unit ?? "";
+    const name = product.name ?? M.productFallback;
+    const producer = product.producer_name ?? "";
+    const unitLabelText = product.unit ?? "";
 
-  const qty = toNum(item.quantity ?? 1, 1);
-  const unitPrice = toNum(item.unit_price ?? 0, 0);
-  const lineTotal = toNum(
-    item.line_total ?? qty * unitPrice,
-    qty * unitPrice,
-  );
+    const qty = toNum(item.quantity ?? 1, 1);
+    const unitPrice = toNum(item.unit_price ?? 0, 0);
+    const lineTotal = toNum(
+      item.line_total ?? qty * unitPrice,
+      qty * unitPrice,
+    );
 
-  const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
+    const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
 
-  const surplusStatus = String(product.surplus_status ?? "");
-  const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
-  const surplusNote = String(product.surplus_note ?? "");
+    const surplusStatus = String(product.surplus_status ?? "");
+    const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
+    const surplusNote = String(product.surplus_note ?? "");
 
-  const expectedSurplusUnit = computeSurplusUnitPrice(
-    baseUnitPrice,
-    surplusPercent,
-  );
+    const expectedSurplusUnit = computeSurplusUnitPrice(
+      baseUnitPrice,
+      surplusPercent,
+    );
 
-  const unitIsDiscounted =
-    baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
+    const unitIsDiscounted =
+      baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
 
-  const isSurplus =
-    surplusStatus === "SA" &&
-    expectedSurplusUnit !== null &&
-    approxEqual(unitPrice, expectedSurplusUnit);
+    const isSurplus =
+      surplusStatus === "SA" &&
+      expectedSurplusUnit !== null &&
+      approxEqual(unitPrice, expectedSurplusUnit);
 
-  const isWholesale = unitIsDiscounted && !isSurplus;
+    const isWholesale = unitIsDiscounted && !isSurplus;
 
-  const wholesaleSavingsTotal = isWholesale
-    ? (baseUnitPrice - unitPrice) * qty
-    : 0;
-  const surplusSavingsTotal = isSurplus
-    ? (baseUnitPrice - unitPrice) * qty
-    : 0;
+    const wholesaleSavingsTotal = isWholesale
+      ? (baseUnitPrice - unitPrice) * qty
+      : 0;
+    const surplusSavingsTotal = isSurplus
+      ? (baseUnitPrice - unitPrice) * qty
+      : 0;
 
-  const { isExpired, isOutOfStock, isPurchasable, isBlocked, stockQty } =
-    getItemStatus(product);
+    const { isExpired, isOutOfStock, isPurchasable, isBlocked, stockQty } =
+      getItemStatus(product);
 
-  const row = document.createElement("div");
-  row.className = "cart-row mb-3";
-  row.dataset.itemId = String(itemId ?? "");
-  row.dataset.inventoryId = String(item.inventory_id ?? "");
+    const row = document.createElement("div");
+    row.className = "cart-row mb-3";
+    row.dataset.itemId = String(itemId ?? "");
+    row.dataset.inventoryId = String(item.inventory_id ?? "");
 
-  const placeholder =
-    cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
+    const placeholder =
+      cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
 
-  let imgSrc = String(product.image ?? "").trim();
-  if (!imgSrc) imgSrc = placeholder;
-  else if (!imgSrc.startsWith("/") && !/^https?:\/\//i.test(imgSrc)) {
-    imgSrc = `/media/${imgSrc}`;
-  }
+    let imgSrc = String(product.image ?? "").trim();
+    if (!imgSrc) imgSrc = placeholder;
+    else if (!imgSrc.startsWith("/") && !/^https?:\/\//i.test(imgSrc)) {
+      imgSrc = `/media/${imgSrc}`;
+    }
 
-  const imgWrap = document.createElement("div");
-  imgWrap.className = "cart-thumb-wrap";
-  imgWrap.innerHTML = `
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "cart-thumb-wrap";
+    imgWrap.innerHTML = `
     <img
       class="cart-thumb"
       src="${imgSrc}"
@@ -192,9 +190,9 @@ document.addEventListener("DOMContentLoaded", () => {
     >
   `;
 
-  const meta = document.createElement("div");
-  meta.className = "cart-meta";
-  meta.innerHTML = `
+    const meta = document.createElement("div");
+    meta.className = "cart-meta";
+    meta.innerHTML = `
     <div class="cart-name-row fw-semibold d-flex flex-wrap align-items-center gap-2">
       <a href="${productUrl}" class="cart-product-link text-decoration-none">
         ${name}
@@ -236,59 +234,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   `;
 
-  const rowMsg = document.createElement("div");
-  rowMsg.className = "cart-row-msg mt-2";
-  rowMsg.setAttribute("aria-live", "polite");
-  meta.appendChild(rowMsg);
+    const rowMsg = document.createElement("div");
+    rowMsg.className = "cart-row-msg mt-2";
+    rowMsg.setAttribute("aria-live", "polite");
+    meta.appendChild(rowMsg);
 
-  function flashRow(text, variant = "warning") {
-    rowMsg.innerHTML = `
+    function flashRow(text, variant = "warning") {
+      rowMsg.innerHTML = `
       <div class="alert alert-${variant} py-2 px-3 mb-0" role="alert">
         ${text}
       </div>
     `;
-  }
+    }
 
-  function clearRowFlash() {
-    rowMsg.innerHTML = "";
-  }
+    function clearRowFlash() {
+      rowMsg.innerHTML = "";
+    }
 
-  const qtyWrap = document.createElement("div");
-  qtyWrap.className = "cart-qty";
+    const qtyWrap = document.createElement("div");
+    qtyWrap.className = "cart-qty";
 
-  const minus = document.createElement("button");
-  minus.type = "button";
-  minus.className = "qty-btn";
-  minus.textContent = "−";
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.className = "qty-btn";
+    minus.textContent = "−";
 
-  const qtyInput = document.createElement("input");
-  qtyInput.type = "text";
-  qtyInput.className = "qty-input";
-  qtyInput.value = String(qty);
-  qtyInput.inputMode = "numeric";
-  qtyInput.autocomplete = "off";
+    const qtyInput = document.createElement("input");
+    qtyInput.type = "text";
+    qtyInput.className = "qty-input";
+    qtyInput.value = String(qty);
+    qtyInput.inputMode = "numeric";
+    qtyInput.autocomplete = "off";
 
-  const plus = document.createElement("button");
-  plus.type = "button";
-  plus.className = "qty-btn";
-  plus.textContent = "+";
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "qty-btn";
+    plus.textContent = "+";
 
-  const unitLabel = document.createElement("span");
-  unitLabel.className = "cart-unit";
-  unitLabel.textContent = unitLabelText;
+    const unitLabel = document.createElement("span");
+    unitLabel.className = "cart-unit";
+    unitLabel.textContent = unitLabelText;
 
-  qtyWrap.append(minus, qtyInput, plus, unitLabel);
+    qtyWrap.append(minus, qtyInput, plus, unitLabel);
 
-  const prices = document.createElement("div");
-  prices.className = "cart-prices";
-  const showWasNow =
-    (isWholesale || isSurplus) &&
-    baseUnitPrice > 0 &&
-    unitPrice > 0 &&
-    unitPrice < baseUnitPrice;
+    const prices = document.createElement("div");
+    prices.className = "cart-prices";
+    const showWasNow =
+      (isWholesale || isSurplus) &&
+      baseUnitPrice > 0 &&
+      unitPrice > 0 &&
+      unitPrice < baseUnitPrice;
 
-  prices.innerHTML = showWasNow
-    ? `
+    prices.innerHTML = showWasNow
+      ? `
       <div class="small text-muted">
         ${M.unitLabelPrefix}:
         <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
@@ -296,107 +294,107 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
       <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
     `
-    : `
+      : `
       <div class="small text-muted">${M.unitLabel(money(unitPrice))}</div>
       <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
     `;
 
-  const removeBtn = document.createElement("button");
-  removeBtn.type = "button";
-  removeBtn.className = "btn btn-danger btn-sm cart-remove-btn";
-  removeBtn.textContent = M.removeButton;
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn-danger btn-sm cart-remove-btn";
+    removeBtn.textContent = M.removeButton;
 
-  function setDisabled(disabled) {
-    minus.disabled = disabled;
-    plus.disabled = disabled;
-    qtyInput.disabled = disabled;
-    removeBtn.disabled = disabled;
-  }
-
-  if (isBlocked) {
-    row.classList.add("is-oos");
-    minus.disabled = true;
-    plus.disabled = true;
-    qtyInput.disabled = true;
-    removeBtn.disabled = false;
-  }
-
-  async function commitQty(newQty) {
-    clearRowFlash();
+    function setDisabled(disabled) {
+      minus.disabled = disabled;
+      plus.disabled = disabled;
+      qtyInput.disabled = disabled;
+      removeBtn.disabled = disabled;
+    }
 
     if (isBlocked) {
-      flashRow(getBlockedMessage(product), "warning");
-      return;
+      row.classList.add("is-oos");
+      minus.disabled = true;
+      plus.disabled = true;
+      qtyInput.disabled = true;
+      removeBtn.disabled = false;
     }
 
-    const q = clampQty(newQty);
+    async function commitQty(newQty) {
+      clearRowFlash();
 
-    if (q > stockQty) {
-      flashRow(M.inventoryLimitMessage(name, stockQty), "warning");
-      return;
+      if (isBlocked) {
+        flashRow(getBlockedMessage(product), "warning");
+        return;
+      }
+
+      const q = clampQty(newQty);
+
+      if (q > stockQty) {
+        flashRow(M.inventoryLimitMessage(name, stockQty), "warning");
+        return;
+      }
+
+      setDisabled(true);
+      try {
+        await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
+
+        window.CartAPI.showToast?.(M.updatedQuantity(q), {
+          title: M.cartTitle,
+          variant: "success",
+          delay: 1800,
+        });
+
+        await refresh();
+      } catch (e) {
+        const message = M.getRowUpdateError(e, product, q);
+        const variant =
+          M.isInventoryLimitError(e) || /expired|unavailable/i.test(message)
+            ? "warning"
+            : "danger";
+
+        flashRow(message, variant);
+      } finally {
+        setDisabled(false);
+      }
     }
 
-    setDisabled(true);
-    try {
-      await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
+    minus.addEventListener("click", () =>
+      commitQty(clampQty(qtyInput.value) - 1),
+    );
 
-      window.CartAPI.showToast?.(M.updatedQuantity(q), {
-        title: M.cartTitle,
-        variant: "success",
-        delay: 1800,
-      });
+    plus.addEventListener("click", () =>
+      commitQty(clampQty(qtyInput.value) + 1),
+    );
 
-      await refresh();
-    } catch (e) {
-      const message = M.getRowUpdateError(e, product, q);
-      const variant =
-        M.isInventoryLimitError(e) || /expired|unavailable/i.test(message)
-          ? "warning"
-          : "danger";
+    qtyInput.addEventListener("input", clearRowFlash);
 
-      flashRow(message, variant);
-    } finally {
-      setDisabled(false);
-    }
+    qtyInput.addEventListener("change", () =>
+      commitQty(clampQty(qtyInput.value)),
+    );
+
+    removeBtn.addEventListener("click", async () => {
+      const ok = window.confirm(M.removeConfirm(name));
+      if (!ok) return;
+
+      setDisabled(true);
+      try {
+        await window.CartAPI.removeItem({ inventoryId });
+        window.CartAPI.showToast?.(M.removedItem(name), {
+          title: M.cartTitle,
+          variant: "success",
+          delay: 1800,
+        });
+        await refresh();
+      } catch (e) {
+        flash(M.getRemoveError(e), "danger", { persist: true });
+      } finally {
+        setDisabled(false);
+      }
+    });
+
+    row.append(imgWrap, meta, qtyWrap, prices, removeBtn);
+    return row;
   }
-
-  minus.addEventListener("click", () =>
-    commitQty(clampQty(qtyInput.value) - 1),
-  );
-
-  plus.addEventListener("click", () =>
-    commitQty(clampQty(qtyInput.value) + 1),
-  );
-
-  qtyInput.addEventListener("input", clearRowFlash);
-
-  qtyInput.addEventListener("change", () =>
-    commitQty(clampQty(qtyInput.value)),
-  );
-
-  removeBtn.addEventListener("click", async () => {
-    const ok = window.confirm(M.removeConfirm(name));
-    if (!ok) return;
-
-    setDisabled(true);
-    try {
-      await window.CartAPI.removeItem({ inventoryId });
-      window.CartAPI.showToast?.(M.removedItem(name), {
-        title: M.cartTitle,
-        variant: "success",
-        delay: 1800,
-      });
-      await refresh();
-    } catch (e) {
-      flash(M.getRemoveError(e), "danger", { persist: true });
-    } finally {
-      setDisabled(false);
-    }
-  });
-
-  row.append(imgWrap, meta, qtyWrap, prices, removeBtn);
-  return row;
-}
 
   function render(cart) {
     const items = cart?.items ?? [];
