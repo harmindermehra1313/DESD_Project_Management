@@ -64,8 +64,8 @@
 
 /* --- GREY BACKGROUND WRAPPER --- */
 .how-it-works-section {
-    background-color: var(--lavender-grey); 
-    border-bottom: 1px solid var(--alabaster-grey); 
+    background-color: var(--background-grey); 
+    border-bottom: 1px solid var(--background-grey); 
 }
 
 /* --- HOW IT WORKS --- */
@@ -87,7 +87,6 @@
     font-family: var(--font-brand);
     font-weight: 800;
     margin-bottom: 1.25rem;
-    color: var(--dusk-blue);
 }
 
 .how-it-works-col p {
