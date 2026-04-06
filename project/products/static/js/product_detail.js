@@ -1,3 +1,4 @@
+const M = window.ProductDetailMessages;
 document.addEventListener("DOMContentLoaded", () => {
   const root = document.getElementById("productDetailPage");
   if (!root) return;
@@ -34,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const expiryInfoRow = document.getElementById("expiryInfoRow");
   const expiryTypeLabel = document.getElementById("expiryTypeLabel");
   const expiryValue = document.getElementById("expiryValue");
-  
 
   let productData = null;
   let wholesaleTiers = [];
@@ -73,26 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function buildUnavailableMessage() {
-    if (!productData) {
-      return "This product is not currently available.";
-    }
-
-    if (productData.is_expired) {
-      const label = productData.expiry_type_label || "Expiry date";
-      const dateText = productData.expiry_date
-        ? formatDate(productData.expiry_date)
-        : null;
-
-      return dateText
-        ? `This item has expired. ${label} was ${dateText}.`
-        : "This item has expired and cannot be added to cart.";
-    }
-
-    return (
-      productData.stock_message ||
-      productData.add_to_cart_button_label ||
-      "This product is not currently available."
-    );
+    return M.getUnavailableMessage(productData, formatDate);
   }
 
   function renderExpiry() {
@@ -409,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loadingEl) {
         loadingEl.classList.add("d-none");
       }
-      setMsg("Invalid product id.");
+      setMsg(M.invalidProductId);
       return;
     }
 
@@ -420,7 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to load product (${response.status})`);
+        throw new Error(M.loadFailed);
       }
 
       const data = await response.json();
@@ -430,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loadingEl) {
         loadingEl.classList.add("d-none");
       }
-      setMsg(err?.message || "Failed to load product.");
+      setMsg(M.getLoadError(err));
     }
   }
 
@@ -465,12 +446,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!productData?.active_inventory_id) {
-      setMsg("This product cannot be added to cart right now.", "warning");
+      setMsg(M.missingInventory, "warning");
       return;
     }
 
     if (!window.CartAPI?.addToCart) {
-      setMsg("CartAPI not found.", "danger");
+      setMsg(M.cartUnavailable, "danger");
       return;
     }
 
@@ -483,28 +464,25 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       if (typeof window.CartAPI?.showToast === "function") {
-        window.CartAPI.showToast("Added to cart.", {
+        window.CartAPI.showToast(M.addedToCart, {
           title: "Cart",
           variant: "success",
           delay: 1500,
         });
       } else {
-        setMsg("Added to cart.", "success");
+        setMsg(M.addedToCart, "success");
       }
     } catch (err) {
-      const rawMessage = err?.message || String(err);
-      const friendlyMessage = /expired/i.test(rawMessage)
-        ? buildUnavailableMessage()
-        : rawMessage;
+      const friendlyMessage = M.getAddError(err, productData, formatDate);
 
       if (typeof window.CartAPI?.showToast === "function") {
-        window.CartAPI.showToast(`Add to cart failed: ${friendlyMessage}`, {
+        window.CartAPI.showToast(friendlyMessage, {
           title: "Cart",
           variant: "danger",
           delay: 2500,
         });
       } else {
-        setMsg(`Add to cart failed: ${friendlyMessage}`, "danger");
+        setMsg(friendlyMessage, "danger");
       }
     }
   });

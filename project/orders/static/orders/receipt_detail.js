@@ -1,3 +1,4 @@
+const M = window.ReceiptDetailMessages;
 const orderId = window.RECEIPT_ORDER_ID;
 const RECEIPT_DETAIL_API_URL = `/api/orders/${orderId}/receipt/`;
 const RECEIPT_DOWNLOAD_API_URL = `/api/orders/${orderId}/receipt/download/`;
@@ -31,12 +32,7 @@ async function loadReceipt() {
     });
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(
-          response,
-          `Failed to load receipt (${response.status})`,
-        ),
-      );
+      throw new Error(await parseErrorMessage(response, M.loadFailed));
     }
 
     const receipt = await response.json();
@@ -57,7 +53,7 @@ async function loadReceipt() {
     if (contentEl) contentEl.classList.add("d-none");
 
     if (errorEl) {
-      errorEl.textContent = error.message || "Failed to load receipt.";
+      errorEl.textContent = M.getLoadError(error);
       errorEl.classList.remove("d-none");
     }
   }
@@ -70,12 +66,7 @@ function showReceiptLoading() {
 }
 
 async function parseErrorMessage(response, fallbackMessage) {
-  try {
-    const data = await response.json();
-    return data.detail || data.message || data.error || JSON.stringify(data);
-  } catch (_) {
-    return fallbackMessage;
-  }
+  return window.AppApiErrors.fromResponse(response, fallbackMessage);
 }
 
 function escapeHtml(value) {

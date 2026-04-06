@@ -3,6 +3,7 @@ const ORDER_DETAIL_API_BASE = "/api/orders/";
 const ORDER_REORDER_PREVIEW_API_SUFFIX = "/reorder-preview/";
 const ORDER_REORDER_API_SUFFIX = "/reorder/";
 const RECEIPT_URL_BASE = "/orders/receipt/";
+const M = window.OrderHistoryMessages;
 
 const DEFAULT_FILTERS = {
   status: "",
@@ -470,7 +471,7 @@ function setErrorState(message) {
 
   const errorBox = document.getElementById("orderListError");
   if (errorBox) {
-    errorBox.textContent = message || "Failed to load orders.";
+    errorBox.textContent = message || M.loadFailed;
     errorBox.classList.remove("d-none");
   }
 }
@@ -489,12 +490,7 @@ function setPaginationState(totalPages) {
 }
 
 async function parseErrorMessage(response, fallbackMessage) {
-  try {
-    const data = await response.json();
-    return data.detail || data.message || data.error || JSON.stringify(data);
-  } catch (_) {
-    return fallbackMessage;
-  }
+  return window.AppApiErrors.fromResponse(response, fallbackMessage);
 }
 
 async function loadOrders() {
@@ -510,11 +506,7 @@ async function loadOrders() {
     );
 
     if (!response.ok) {
-      const message = await parseErrorMessage(
-        response,
-        `Failed to load order history (${response.status})`,
-      );
-      throw new Error(message);
+      throw new Error(await parseErrorMessage(response, M.loadFailed));
     }
 
     const data = await response.json();
@@ -535,7 +527,7 @@ async function loadOrders() {
     renderOrdersTable(orders);
     setPaginationState(totalPages);
   } catch (error) {
-    setErrorState(error.message || "Failed to load orders.");
+    setErrorState(M.getLoadError(error));
   }
 }
 
@@ -2366,12 +2358,7 @@ async function openReorderPreview(orderId) {
     );
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(
-          response,
-          `Failed to load reorder preview (${response.status})`,
-        ),
-      );
+      throw new Error(await parseErrorMessage(response, M.previewFailed));
     }
 
     const preview = await response.json();
@@ -2384,21 +2371,21 @@ async function openReorderPreview(orderId) {
 
     reorderPlannerState = null;
 
-    if (title) title.textContent = "Review your items";
+    if (title) title.textContent = M.previewTitle;
     if (content) {
       content.innerHTML = `
-        <div class="alert alert-danger mb-0">
-          ${escapeHtml(error.message || "Failed to load reorder preview.")}
-        </div>
-      `;
+    <div class="alert alert-danger mb-0">
+      ${escapeHtml(M.getPreviewError(error))}
+    </div>
+  `;
     }
 
     if (footer) {
       footer.innerHTML = `
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-          Close
-        </button>
-      `;
+    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+      Close
+    </button>
+  `;
     }
   }
 }
@@ -2426,12 +2413,7 @@ async function confirmReorder(orderId) {
     );
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(
-          response,
-          `Reorder failed (${response.status})`,
-        ),
-      );
+      throw new Error(await parseErrorMessage(response, M.reorderFailed));
     }
 
     const result = await response.json();
@@ -2442,7 +2424,7 @@ async function confirmReorder(orderId) {
 
     reorderPlannerState = null;
 
-    if (title) title.textContent = "Added to cart";
+    if (title) title.textContent = M.successTitle;
     if (content) content.innerHTML = renderReorderResult(result);
     if (footer) footer.innerHTML = REORDER_RESULT_FOOTER;
 
@@ -2474,7 +2456,7 @@ async function confirmReorder(orderId) {
 
     if (confirmBtn) {
       confirmBtn.disabled = false;
-      confirmBtn.textContent = "Add Selected Items to Cart";
+      confirmBtn.textContent = M.confirmButton;
     }
   }
 }

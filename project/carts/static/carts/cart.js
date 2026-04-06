@@ -3,6 +3,7 @@
 // No cart-page rendering and no legacy add-to-cart handlers.
 
 const API_ROOT = "/api";
+const M = window.CartApiMessages;
 
 function apiUrl(path) {
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -39,8 +40,9 @@ async function request(method, path, { body } = {}) {
   const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method);
   if (isMutating) {
     const csrf = getCsrfToken();
-    if (!csrf)
-      throw new Error("CSRF token not found (csrftoken cookie missing)");
+    if (!csrf) {
+      throw new Error(M.csrfMissing);
+    }
     headers["X-CSRFToken"] = csrf;
   }
 
@@ -55,37 +57,9 @@ async function request(method, path, { body } = {}) {
 
   const data = await parseJsonSafe(res);
 
-
-  function extractErrorMessage(data, fallback) {
-    if (!data) return fallback;
-
-    // DRF detail/error
-    if (typeof data.detail === "string") return data.detail;
-    if (typeof data.error === "string") return data.error;
-
-    // DRF field errors: {field: ["msg1", "msg2"]} or {field: "msg"}
-    if (typeof data === "object") {
-      const parts = [];
-      for (const [key, val] of Object.entries(data)) {
-        if (Array.isArray(val)) {
-          for (const msg of val) {
-            parts.push(
-              key === "non_field_errors" ? String(msg) : `${key}: ${msg}`,
-            );
-          }
-        } else if (typeof val === "string") {
-          parts.push(key === "non_field_errors" ? val : `${key}: ${val}`);
-        }
-      }
-      if (parts.length) return parts.join(" | ");
-    }
-
-    return fallback;
-  }
-
   if (!res.ok) {
-    const fallback = `Request failed (HTTP ${res.status})`;
-    const msg = extractErrorMessage(data, fallback);
+    const fallback = M.requestFailed(res.status);
+    const msg = window.AppApiErrors.fromPayload(data, fallback);
     const err = new Error(msg);
     err.status = res.status;
     err.payload = data;
@@ -101,38 +75,21 @@ export async function getCart() {
   return data;
 }
 
-/** POST /api/cart/items/ */
-// export async function addToCart({ productId, quantity = 1 } = {}) {
-//   if (!Number.isInteger(productId) || productId <= 0) {
-//     throw new Error("addToCart: productId must be a positive integer");
-//   }
-//   const q = Number(quantity);
-//   if (!Number.isFinite(q) || q < 1) {
-//     throw new Error("addToCart: quantity must be >= 1");
-//   }
-
-//   const { data } = await request("POST", "/cart/items/", {
-//     body: { product_id: productId, quantity: q },
-//   });
-
-//   document.dispatchEvent(
-//     new CustomEvent("cart:updated", { detail: { action: "add" } }),
-//   );
-//   await getCartBadgeCount().catch(() => {});
-//   return data;
-// }
 export async function addToCart({ inventoryId, quantity = 1 } = {}) {
   console.log("DEBUG addToCart called with:", { inventoryId, quantity });
+
   if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
-    throw new Error("addToCart: inventoryId must be a positive integer");
+    throw new Error(M.invalidInventoryId);
   }
 
   const q = Number(quantity);
   if (!Number.isFinite(q) || q < 1) {
-    throw new Error("addToCart: quantity must be >= 1");
+    throw new Error(M.invalidQuantity);
   }
+
   const payload = { inventory_id: inventoryId, quantity: q };
   console.log("DEBUG addToCart payload:", payload);
+
   const { data } = await request("POST", "/cart/items/", {
     body: payload,
   });
@@ -144,35 +101,14 @@ export async function addToCart({ inventoryId, quantity = 1 } = {}) {
   return data;
 }
 
-/** PATCH /api/cart/items/<product_id>/ */
-// export async function setItemQuantity({ productId, quantity } = {}) {
-//   if (!Number.isInteger(productId) || productId <= 0) {
-//     throw new Error("setItemQuantity: productId must be a positive integer");
-//   }
-//   const q = Number(quantity);
-//   if (!Number.isFinite(q) || q < 0) {
-//     throw new Error("setItemQuantity: quantity must be >= 0");
-//   }
-
-//   const { res, data } = await request("PATCH", `/cart/items/${productId}/`, {
-//     body: { quantity: q },
-//   });
-
-//   document.dispatchEvent(
-//     new CustomEvent("cart:updated", { detail: { action: "set_qty" } }),
-//   );
-//   await getCartBadgeCount().catch(() => {});
-//   if (res.status === 204) return null;
-//   return data;
-// }
 export async function setItemQuantity({ inventoryId, quantity } = {}) {
   if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
-    throw new Error("setItemQuantity: inventoryId must be a positive integer");
+    throw new Error(M.invalidInventoryId);
   }
 
   const q = Number(quantity);
   if (!Number.isFinite(q) || q < 0) {
-    throw new Error("setItemQuantity: quantity must be >= 0");
+    throw new Error(M.invalidQuantity);
   }
 
   const { res, data } = await request("PATCH", `/cart/items/${inventoryId}/`, {
@@ -186,22 +122,9 @@ export async function setItemQuantity({ inventoryId, quantity } = {}) {
   return res.status === 204 ? null : data;
 }
 
-/** DELETE /api/cart/items/<product_id>/ */
-// export async function removeItem({ productId } = {}) {
-//   if (!Number.isInteger(productId) || productId <= 0) {
-//     throw new Error("removeItem: productId must be a positive integer");
-//   }
-
-//   await request("DELETE", `/cart/items/${productId}/`);
-//   document.dispatchEvent(
-//     new CustomEvent("cart:updated", { detail: { action: "remove" } }),
-//   );
-//   await getCartBadgeCount().catch(() => {});
-//   return { ok: true };
-// }
 export async function removeItem({ inventoryId } = {}) {
   if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
-    throw new Error("removeItem: inventoryId must be a positive integer");
+    throw new Error(M.invalidInventoryId);
   }
 
   await request("DELETE", `/cart/items/${inventoryId}/`);

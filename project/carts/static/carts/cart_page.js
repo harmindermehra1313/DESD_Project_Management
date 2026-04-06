@@ -1,4 +1,6 @@
 // carts/static/carts/cart_page.js
+const M = window.CartPageMessages;
+
 document.addEventListener("DOMContentLoaded", () => {
   const cartMsg = document.getElementById("cartMsg");
   const cartItemsEl = document.getElementById("cartItems");
@@ -48,12 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getBlockedMessage(product) {
-  if (product?.is_expired) {
-    return "This product has expired. Please remove the item.";
+    return M.getBlockedMessage(product);
   }
-
-  return product?.stock_message || "This item is currently unavailable.";
-}
 
   function money(v) {
     const n = Number(v);
@@ -113,9 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchCart() {
     if (!window.CartAPI?.getCart) {
-      throw new Error(
-        "CartAPI not found. Ensure carts/cart.js is loaded in base.html",
-      );
+      throw new Error(M.cartApiMissing);
     }
     return window.CartAPI.getCart();
   }
@@ -331,16 +327,14 @@ document.addEventListener("DOMContentLoaded", () => {
       setDisabled(true);
       try {
         await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
-        window.CartAPI.showToast?.(`Updated quantity to ${q}`, {
+        window.CartAPI.showToast?.(M.updatedQuantity(q), {
           title: "Cart",
           variant: "success",
           delay: 1800,
         });
         await refresh();
       } catch (e) {
-        const raw = e?.message ? e.message : String(e);
-        const message = /expired/i.test(raw) ? getBlockedMessage(product) : raw;
-        flash(`Update failed: ${message}`, "danger", { persist: true });
+        flash(M.getUpdateError(e, product), "danger", { persist: true });
       } finally {
         setDisabled(false);
       }
@@ -363,15 +357,14 @@ document.addEventListener("DOMContentLoaded", () => {
       setDisabled(true);
       try {
         await window.CartAPI.removeItem({ inventoryId });
-        window.CartAPI.showToast?.(`Removed “${name}”`, {
+        window.CartAPI.showToast?.(M.removedItem(name), {
           title: "Cart",
           variant: "success",
           delay: 1800,
         });
         await refresh();
       } catch (e) {
-        const m = e?.message ? e.message : String(e);
-        flash(`Remove failed: ${m}`, "danger", { persist: true });
+        flash(M.getRemoveError(e), "danger", { persist: true });
       } finally {
         setDisabled(false);
       }
@@ -404,11 +397,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (hasBlockedItems) {
-      flash(
-        "Some items are expired or unavailable. Remove them to proceed to checkout.",
-        "warning",
-        { persist: true },
-      );
+      flash(M.blockedCheckout, "warning", { persist: true });
     } else if (cartMsg) {
       cartMsg.innerHTML = "";
     }
@@ -531,9 +520,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   refresh().catch((e) => {
-    const m = e?.message ? e.message : String(e);
-    flash(`Failed to load cart: ${m}`, "danger", { persist: true });
-    setEmpty(true);
+    flash(M.getLoadError(error), "danger", { persist: true });
   });
 
   document.addEventListener("cart:updated", () => {
