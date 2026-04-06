@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const expiryInfoRow = document.getElementById("expiryInfoRow");
   const expiryTypeLabel = document.getElementById("expiryTypeLabel");
   const expiryValue = document.getElementById("expiryValue");
+  
 
   let productData = null;
   let wholesaleTiers = [];
@@ -73,7 +74,26 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function buildUnavailableMessage() {
-    return M.getUnavailableMessage(productData, formatDate);
+    if (!productData) {
+      return M.unavailable;
+    }
+
+    if (productData.is_expired) {
+      const label = M.getExpiryLabel(productData);
+      const dateText = productData.expiry_date
+        ? formatDate(productData.expiry_date)
+        : null;
+
+      return dateText
+        ? `This item has expired. ${label} was ${dateText}.`
+        : "This item has expired and cannot be added to your cart.";
+    }
+
+    return (
+      productData.stock_message ||
+      productData.add_to_cart_button_label ||
+      M.unavailable
+    );
   }
 
   function renderExpiry() {
@@ -87,16 +107,16 @@ document.addEventListener("DOMContentLoaded", () => {
     setElVisible(expiryInfoRow, hasExpiry);
 
     if (!hasExpiry) {
-      expiryTypeLabel.textContent = "Expiry";
-      expiryValue.textContent = "—";
+      expiryTypeLabel.textContent = M.expiryLabel;
+      expiryValue.textContent = M.dash;
       expiryValue.className = "product-meta-value";
       return;
     }
 
-    expiryTypeLabel.textContent = productData.expiry_type_label || "Expiry";
+    expiryTypeLabel.textContent = M.getExpiryLabel(productData);
     expiryValue.textContent = productData.expiry_date
       ? formatDate(productData.expiry_date)
-      : "—";
+      : M.dash;
 
     expiryValue.className = productData.is_expired
       ? "product-meta-value text-danger fw-semibold"
@@ -162,15 +182,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       wholesaleNoticeEl.innerHTML = `
       <div class="alert alert-warning py-2 mb-0 text-dark" role="status">
-        <div class="fw-semibold">Wholesale price active</div>
+        <div class="fw-semibold">${M.wholesalePriceActiveTitle}</div>
         <div>
-          You’re paying <strong>${moneyGBP(currentTier.price)}</strong> per unit.
-          ${savingPerUnit > 0 ? `<span class="ms-1">Save ${moneyGBP(savingPerUnit)} per unit.</span>` : ""}
+          <strong>${M.payingPerUnit(moneyGBP(currentTier.price))}</strong>
+          ${savingPerUnit > 0 ? `<span class="ms-1">${M.savePerUnit(moneyGBP(savingPerUnit))}</span>` : ""}
         </div>
         ${
           nextTier
-            ? `<div class="small mt-1">Next tier at ${nextTier.min}+ units: ${moneyGBP(nextTier.price)} per unit.</div>`
-            : `<div class="small mt-1">Best available tier unlocked.</div>`
+            ? `<div class="small mt-1">${M.nextTier(nextTier.min, moneyGBP(nextTier.price))}</div>`
+            : `<div class="small mt-1">${M.bestAvailableTierUnlocked}</div>`
         }
       </div>
     `;
@@ -183,15 +203,15 @@ document.addEventListener("DOMContentLoaded", () => {
     wholesaleNoticeEl.innerHTML = reachable
       ? `
       <div class="alert alert-warning py-2 mb-0 text-dark" role="status">
-        <div class="fw-semibold">Wholesale pricing available</div>
-        <div>Buy ${firstTier.min}+ to pay ${moneyGBP(firstTier.price)} per unit.</div>
-        <div class="small mt-1">Increase quantity to unlock this price.</div>
+        <div class="fw-semibold">${M.wholesalePricingAvailableTitle}</div>
+        <div>${M.wholesaleUnlock(firstTier.min, moneyGBP(firstTier.price))}</div>
+        <div class="small mt-1">${M.increaseQuantityHint}</div>
       </div>
     `
       : `
       <div class="alert alert-warning py-2 mb-0 text-dark" role="status">
-        <div class="fw-semibold">Wholesale tier: ${firstTier.min}+ units at ${moneyGBP(firstTier.price)}</div>
-        <div class="small mt-1">Not currently reachable with available stock.</div>
+        <div class="fw-semibold">${M.wholesaleTier(firstTier.min, moneyGBP(firstTier.price))}</div>
+        <div class="small mt-1">${M.notCurrentlyReachable}</div>
       </div>
     `;
   }
@@ -208,8 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (wholesaleActive) {
       surplusNoticeEl.innerHTML = `
       <div class="alert alert-danger py-2 mb-0" role="status">
-        <div class="fw-semibold">Surplus reduction</div>
-        <div class="small">This item has a surplus reduction, but wholesale pricing is currently applied.</div>
+        <div class="fw-semibold">${M.surplusReductionTitle}</div>
+        <div class="small">${M.surplusWholesaleAppliedNote}</div>
       </div>
     `;
       return;
@@ -217,8 +237,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     surplusNoticeEl.innerHTML = `
     <div class="alert alert-danger py-2 mb-0" role="status">
-      <div class="fw-semibold">Surplus reduction</div>
-      <div class="small">Discount applied to help clear excess stock.</div>
+      <div class="fw-semibold">${M.surplusReductionTitle}</div>
+      <div class="small">${M.surplusDiscountAppliedNote}</div>
     </div>
   `;
   }
@@ -247,11 +267,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (saving > 0) {
         surplusPercentPillEl.className = "badge rounded-pill bg-danger";
-        surplusPercentPillEl.textContent = `Save ${moneyGBP(saving)}`;
+        surplusPercentPillEl.textContent = M.saveAmount(moneyGBP(saving));
       } else {
         surplusPercentPillEl.className =
           "badge rounded-pill bg-warning text-dark";
-        surplusPercentPillEl.textContent = "Wholesale";
+        surplusPercentPillEl.textContent = M.wholesaleLabel;
       }
 
       setElVisible(surplusPercentPillEl, true);
@@ -261,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (productData.surplus_discount_percentage) {
         surplusPercentPillEl.className = "badge rounded-pill bg-danger";
-        surplusPercentPillEl.textContent = `${productData.surplus_discount_percentage}% off`;
+        surplusPercentPillEl.textContent = M.percentOff(productData.surplus_discount_percentage);
         setElVisible(surplusPercentPillEl, true);
       } else {
         setElVisible(surplusPercentPillEl, false);
@@ -279,13 +299,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!productData) return;
 
     const purchasable = Boolean(productData.is_purchasable);
-    const badgeLabel = productData.availability_label || "Unknown";
+    const badgeLabel = M.getBadgeLabel(productData, purchasable);
     const badgeClass =
       productData.availability_badge_class ||
       (purchasable ? "text-bg-success" : "text-bg-secondary");
-    const buttonLabel =
-      productData.add_to_cart_button_label ||
-      (purchasable ? "Add to cart" : "Unavailable");
+    const buttonLabel = M.getButtonLabel(productData, purchasable);
 
     availabilityBadge.className = `badge rounded-pill ${badgeClass}`;
     availabilityBadge.textContent = badgeLabel;
@@ -296,7 +314,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (purchasable) {
       const stock = Number(productData.remaining_quantity ?? 0);
       if (stock > 0) {
-        stockText.textContent = productData.stock_message || `${stock} left`;
+        stockText.textContent = M.getStockText(productData, stock);
 
         if (stock <= 5) {
           stockText.classList.add("is-low");
@@ -322,13 +340,13 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const item of allergens) {
         const span = document.createElement("span");
         span.className = "badge rounded-pill bg-warning text-dark";
-        span.textContent = item.allergen?.name || "Unknown";
+        span.textContent = item.allergen?.name || M.unknownLabel;
         allergensWrap.appendChild(span);
       }
       return;
     }
 
-    allergensWrap.innerHTML = `<div class="product-meta-value small">No known allergens.</div>`;
+    allergensWrap.innerHTML = `<div class="product-meta-value small">${M.noKnownAllergens}</div>`;
   }
   function renderProduct(data) {
     productData = data;
@@ -350,31 +368,30 @@ document.addEventListener("DOMContentLoaded", () => {
     unitLabel.textContent = data.unit || "";
 
     productCategory.className = "badge rounded-pill text-bg-secondary";
-    productCategory.textContent = data.category?.name || "Uncategorized";
+    productCategory.textContent = data.category?.name || M.uncategorized;
 
     productProducer.textContent =
       data.producer?.farm_name ||
       data.producer?.business_name ||
       data.producer?.name ||
-      "Unknown producer";
+      M.unknownProducer;
     productDescription.textContent =
-      data.description || "No description available.";
-    storageGuidance.textContent = data.storage_guidance || "—";
-    farmOrigin.textContent = data.farm_origin || "—";
+      data.description || M.noDescription;
+    storageGuidance.textContent = data.storage_guidance || M.dash;
+    farmOrigin.textContent = data.farm_origin || M.dash;
 
     const organicStatus = data.organic_certification_status;
     if (organicStatus === "CERTIFIED") {
-      organicCertification.innerHTML =
-        '<span class="badge rounded-pill bg-success">Certified organic</span>';
+      organicCertification.innerHTML = M.getOrganicStatusMarkup(organicStatus);
     } else if (organicStatus) {
-      organicCertification.innerHTML = `<span class="badge rounded-pill text-bg-secondary">${organicStatus.replaceAll("_", " ")}</span>`;
+      organicCertification.innerHTML = M.getOrganicStatusMarkup(organicStatus);
     } else {
-      organicCertification.textContent = "—";
+      organicCertification.textContent = M.dash;
     }
 
     const imageUrl = data.image || productImage.src;
     productImage.src = imageUrl;
-    productImage.alt = data.name || "Product image";
+    productImage.alt = M.getImageAlt(data.name);
 
     renderAllergens(data.allergens);
     renderExpiry();
@@ -465,7 +482,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast(M.addedToCart, {
-          title: "Cart",
+          title: window.CartApiMessages?.cartTitle || "Cart",
           variant: "success",
           delay: 1500,
         });
@@ -477,7 +494,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast(friendlyMessage, {
-          title: "Cart",
+          title: window.CartApiMessages?.cartTitle || "Cart",
           variant: "danger",
           delay: 2500,
         });

@@ -1,6 +1,5 @@
 // carts/static/carts/cart.js
-// Clean module: API client + badge sync + CartAPI bridge.
-// No cart-page rendering and no legacy add-to-cart handlers.
+
 
 const API_ROOT = "/api";
 const M = window.CartApiMessages;
@@ -69,7 +68,6 @@ async function request(method, path, { body } = {}) {
   return { res, data };
 }
 
-/** GET /api/cart/ */
 export async function getCart() {
   const { data } = await request("GET", "/cart/");
   return data;
@@ -135,37 +133,34 @@ export async function removeItem({ inventoryId } = {}) {
   return { ok: true };
 }
 
-/** Badge sync against #cartCount */
 export async function getCartBadgeCount() {
   const badge = document.getElementById("cartCount");
   if (!badge) return 0;
 
   badge.textContent = "0";
-  badge.classList.remove("is-hidden"); // always visible
+  badge.classList.remove("is-hidden");
 
   const cart = await getCart();
   const count = Number(cart?.total_quantity ?? 0);
 
   badge.textContent = String(count);
-  // Do NOT hide when 0
   badge.classList.remove("is-hidden");
 
   return count;
 }
 
-// Init badge on every page load + keep in sync
 document.addEventListener("DOMContentLoaded", () => {
   getCartBadgeCount().catch(() => {});
 });
 document.addEventListener("cart:updated", () => {
   getCartBadgeCount().catch(() => {});
 });
+
 function ensureToastContainer() {
   const el = document.getElementById("toast-container");
-  if (!el)
-    throw new Error(
-      "toast-container not found (components/toast.html missing)",
-    );
+  if (!el) {
+    throw new Error(M.toastContainerMissing);
+  }
   return el;
 }
 
@@ -190,7 +185,7 @@ function showToast(
       <button type="button"
               class="btn-close btn-close-white me-2 m-auto"
               data-bs-dismiss="toast"
-              aria-label="Close"></button>
+              aria-label="${M.toastCloseLabel}"></button>
     </div>
   `;
 
@@ -205,7 +200,6 @@ function showToast(
   toast.show();
 }
 
-// Global bridge for classic scripts
 window.CartAPI = window.CartAPI || {};
 window.CartAPI.getCart = getCart;
 window.CartAPI.addToCart = addToCart;

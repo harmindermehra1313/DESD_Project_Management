@@ -32,7 +32,9 @@ async function loadReceipt() {
     });
 
     if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, M.loadFailed));
+      throw new Error(
+        await parseErrorMessage(response, M.loadFailed),
+      );
     }
 
     const receipt = await response.json();
@@ -117,7 +119,7 @@ function formatDateTime(value) {
 
 function formatAddress(address) {
   if (!address) {
-    return `<div class="text-muted">Address not available</div>`;
+    return `<div class="text-muted">${M.addressUnavailable}</div>`;
   }
 
   const lines = [
@@ -127,7 +129,7 @@ function formatAddress(address) {
   ].filter(Boolean);
 
   if (!lines.length) {
-    return `<div class="text-muted">Address not available</div>`;
+    return `<div class="text-muted">${M.addressUnavailable}</div>`;
   }
 
   return lines.map((line) => `<div>${escapeHtml(line)}</div>`).join("");
@@ -141,36 +143,36 @@ function renderReceiptSummary(receipt) {
     <div class="row g-3">
       <div class="col-md-3">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Order Number</div>
+          <div class="small text-muted">${M.orderNumberLabel}</div>
           <div class="fw-semibold">${escapeHtml(receipt.order_number || "-")}</div>
         </div>
       </div>
 
       <div class="col-md-3">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Order Date</div>
+          <div class="small text-muted">${M.orderDateLabel}</div>
           <div class="fw-semibold">${formatDateTime(receipt.order_date)}</div>
         </div>
       </div>
 
       <div class="col-md-2">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Status</div>
+          <div class="small text-muted">${M.statusLabel}</div>
           <div class="fw-semibold">${escapeHtml(receipt.status || "-")}</div>
         </div>
       </div>
 
       <div class="col-md-2">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Customer</div>
+          <div class="small text-muted">${M.customerLabel}</div>
           <div class="fw-semibold">${escapeHtml(receipt.customer_name || "-")}</div>
         </div>
       </div>
 
       <div class="col-md-2">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Payment</div>
-          <div class="fw-semibold">${escapeHtml(receipt.payment_method_display || "Not available")}</div>
+          <div class="small text-muted">${M.paymentLabel}</div>
+          <div class="fw-semibold">${escapeHtml(receipt.payment_method_display || M.paymentUnavailable)}</div>
         </div>
       </div>
     </div>
@@ -182,7 +184,7 @@ function renderReceiptItems(items) {
   if (!el) return;
 
   if (!items.length) {
-    el.innerHTML = `<div class="text-muted">No receipt items available.</div>`;
+    el.innerHTML = `<div class="text-muted">${M.noItems}</div>`;
     return;
   }
 
@@ -191,14 +193,14 @@ function renderReceiptItems(items) {
       <table class="table align-middle table-bordered">
         <thead class="table-light">
             <tr>
-    <th>Product</th>
-    <th>Producer</th>
-    <th>Quantity</th>
-    <th>Original Unit Price</th>
-    <th>Per Unit Discount</th>
-    <th>VAT</th>
-    <th>Paid Unit Price</th>
-    <th>Line Total</th>
+    <th>${M.productLabel}</th>
+    <th>${M.producerLabel}</th>
+    <th>${M.quantityLabel}</th>
+    <th>${M.originalUnitPriceLabel}</th>
+    <th>${M.perUnitDiscountLabel}</th>
+    <th>${M.vatLabel}</th>
+    <th>${M.paidUnitPriceLabel}</th>
+    <th>${M.lineTotalLabel}</th>
   </tr>
         </thead>
         <tbody>
@@ -211,9 +213,9 @@ function renderReceiptItems(items) {
               <td>${escapeHtml(item.quantity)}</td>
               <td>${formatMoney(item.unit_price)}</td>
               <td>
-  ${formatMoney(item.discount_amount)} each
+  ${formatMoney(item.discount_amount)} ${M.eachSuffix}
   <div class="small text-muted">
-    Total saved: ${formatMoney(item.line_discount)}
+    ${M.totalSaved(formatMoney(item.line_discount))}
   </div>
 </td>
               <td>${formatMoney(item.line_vat)}</td>
@@ -234,7 +236,7 @@ function renderReceiptFulfilment(producerBreakdown) {
   if (!el) return;
 
   if (!producerBreakdown.length) {
-    el.innerHTML = `<div class="text-muted">Fulfilment details are not available.</div>`;
+    el.innerHTML = `<div class="text-muted">${M.fulfilmentUnavailable}</div>`;
     return;
   }
 
@@ -254,16 +256,14 @@ function renderReceiptFulfilment(producerBreakdown) {
           const address = isCollection
             ? summary.collection_address
             : summary.delivery_address;
-          const addressLabel = isCollection
-            ? "Collection address"
-            : "Delivery address";
+          const addressLabel = M.getAddressLabel(isCollection);
 
           return `
           <div class="col-12">
             <div class="border rounded p-3">
               <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                 <div>
-                  <div class="fw-semibold">${escapeHtml(summary.producer_name || "Unknown producer")}</div>
+                  <div class="fw-semibold">${escapeHtml(summary.producer_name || M.unknownProducer)}</div>
                   <div class="small text-muted">${escapeHtml(summary.delivery_or_collection || "-")}</div>
                 </div>
                 <span class="badge text-bg-light border">${escapeHtml(summary.status || "-")}</span>
@@ -271,12 +271,12 @@ function renderReceiptFulfilment(producerBreakdown) {
 
               <div class="row g-3">
                 <div class="col-md-3">
-                  <div class="small text-muted">Date</div>
+                  <div class="small text-muted">${M.dateLabel}</div>
                   <div class="fw-semibold">${formatDate(date)}</div>
                 </div>
 
                 <div class="col-md-3">
-                  <div class="small text-muted">Time Slot</div>
+                  <div class="small text-muted">${M.timeSlotLabel}</div>
                   <div class="fw-semibold">${escapeHtml(timeSlot || "-")}</div>
                 </div>
 
@@ -286,7 +286,7 @@ function renderReceiptFulfilment(producerBreakdown) {
                 </div>
 
                 <div class="col-12">
-                  <div class="small text-muted">Special Instructions</div>
+                  <div class="small text-muted">${M.specialInstructionsLabel}</div>
                   <div>${escapeHtml(summary.special_instructions || "-")}</div>
                 </div>
               </div>
@@ -308,20 +308,20 @@ function renderReceiptTotals(totals) {
       <div class="col-md-5 col-lg-4">
         <div class="border rounded p-3">
           <div class="d-flex justify-content-between mb-2">
-            <span class="text-muted">Subtotal</span>
+            <span class="text-muted">${M.subtotalLabel}</span>
             <span>${formatMoney(totals.subtotal)}</span>
           </div>
           <div class="d-flex justify-content-between mb-2">
-            <span class="text-muted">Discount</span>
+            <span class="text-muted">${M.discountLabel}</span>
             <span>${formatMoney(totals.discount)}</span>
           </div>
           <div class="d-flex justify-content-between mb-2">
-            <span class="text-muted">VAT</span>
+            <span class="text-muted">${M.vatLabel}</span>
             <span>${formatMoney(totals.vat)}</span>
           </div>
           <hr>
           <div class="d-flex justify-content-between fs-5 fw-bold">
-            <span>Final Total</span>
+            <span>${M.finalTotalLabel}</span>
             <span>${formatMoney(totals.final_total)}</span>
           </div>
         </div>
