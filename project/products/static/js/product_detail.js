@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const expiryInfoRow = document.getElementById("expiryInfoRow");
   const expiryTypeLabel = document.getElementById("expiryTypeLabel");
   const expiryValue = document.getElementById("expiryValue");
-  
 
   let productData = null;
   let wholesaleTiers = [];
@@ -85,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
         : null;
 
       return dateText
-        ? `This item has expired. ${label} was ${dateText}.`
+        ? `This item has expired.`
         : "This item has expired and cannot be added to your cart.";
     }
 
@@ -281,7 +280,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (productData.surplus_discount_percentage) {
         surplusPercentPillEl.className = "badge rounded-pill bg-danger";
-        surplusPercentPillEl.textContent = M.percentOff(productData.surplus_discount_percentage);
+        surplusPercentPillEl.textContent = M.percentOff(
+          productData.surplus_discount_percentage,
+        );
         setElVisible(surplusPercentPillEl, true);
       } else {
         setElVisible(surplusPercentPillEl, false);
@@ -299,11 +300,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!productData) return;
 
     const purchasable = Boolean(productData.is_purchasable);
-    const badgeLabel = M.getBadgeLabel(productData, purchasable);
+    const badgeLabel =
+      productData.availability_label ||
+      M.getBadgeLabel(productData, purchasable);
+
     const badgeClass =
       productData.availability_badge_class ||
       (purchasable ? "text-bg-success" : "text-bg-secondary");
-    const buttonLabel = M.getButtonLabel(productData, purchasable);
+
+    const buttonLabel =
+      productData.add_to_cart_button_label ||
+      M.getButtonLabel(productData, purchasable);
 
     availabilityBadge.className = `badge rounded-pill ${badgeClass}`;
     availabilityBadge.textContent = badgeLabel;
@@ -312,13 +319,15 @@ document.addEventListener("DOMContentLoaded", () => {
     stockText.textContent = buildUnavailableMessage();
 
     if (purchasable) {
-      const stock = Number(productData.remaining_quantity ?? 0);
-      if (stock > 0) {
-        stockText.textContent = M.getStockText(productData, stock);
+      stockText.textContent =
+        productData.stock_message ||
+        M.getStockText(
+          productData,
+          Number(productData.remaining_quantity ?? 0),
+        );
 
-        if (stock <= 5) {
-          stockText.classList.add("is-low");
-        }
+      if (productData.availability_label === "Low stock") {
+        stockText.classList.add("is-low");
       }
     }
 
@@ -375,8 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
       data.producer?.business_name ||
       data.producer?.name ||
       M.unknownProducer;
-    productDescription.textContent =
-      data.description || M.noDescription;
+    productDescription.textContent = data.description || M.noDescription;
     storageGuidance.textContent = data.storage_guidance || M.dash;
     farmOrigin.textContent = data.farm_origin || M.dash;
 

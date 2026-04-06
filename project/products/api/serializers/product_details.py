@@ -172,7 +172,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def _is_low_stock(self, obj):
         stock = self._get_remaining_quantity_value(obj)
         threshold = obj.low_stock_threshold or 0
-        return stock > 0 and stock <= threshold
+        return threshold > 0 and stock > 0 and stock <= threshold
 
     def get_effective_price(self, obj):
         active_inventory = self._get_active_inventory(obj)
@@ -255,35 +255,58 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_availability_label(self, obj):
         if self.get_is_expired(obj):
             return "Expired"
+
         if obj.availability_status == Product.Availability_status.DISCONTINUED:
             return "Discontinued"
+
         if obj.availability_status != Product.Availability_status.AVAILABLE:
             return "Unavailable"
+
         if self._is_out_of_stock(obj):
             return "Out of stock"
+
+        if self._is_low_stock(obj):
+            return "Low stock"
+
         return "Available"
 
     def get_availability_badge_class(self, obj):
         if self.get_is_expired(obj):
             return "text-bg-danger"
+
         if obj.availability_status == Product.Availability_status.DISCONTINUED:
             return "text-bg-secondary"
+
         if obj.availability_status != Product.Availability_status.AVAILABLE:
             return "text-bg-secondary"
+
         if self._is_out_of_stock(obj):
             return "text-bg-danger"
+
+        if self._is_low_stock(obj):
+            return "bg-warning text-dark"
+
         return "text-bg-success"
 
     def get_stock_message(self, obj):
         if self.get_is_expired(obj):
             return "Expired"
+    
+        if obj.availability_status == Product.Availability_status.DISCONTINUED:
+            return "Discontinued"
+    
+        if obj.availability_status != Product.Availability_status.AVAILABLE:
+            return "Unavailable"
+    
         stock = self._get_remaining_quantity_value(obj)
-
+    
         if stock <= 0:
             return "Out of stock"
+    
         if self._is_low_stock(obj):
-            return f"Low stock — only {stock} left"
-        return "In stock"
+            return f"Only {stock} left"
+    
+        return f"{stock} remaining"
 
     def get_is_purchasable(self, obj):
         return (
