@@ -1,123 +1,89 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class Review(models.Model):
     class Status(models.TextChoices):
-        PUBLISHED = 'PUB', 'Published'
-        HIDDEN = 'HID', 'Hidden'
-        FLAGGED = 'FLG', 'Flagged'
-        REMOVED = 'RMV', 'Removed'
+        PUBLISHED = "PUB", "Published"
+        HIDDEN = "HID", "Hidden"
+        FLAGGED = "FLG", "Flagged"
+        REMOVED = "RMV", "Removed"
 
     product = models.ForeignKey(
-        "products.Product", 
-        on_delete=models.CASCADE, 
-        related_name = "product_reviews"
+        "products.Product",
+        on_delete=models.CASCADE,
+        related_name="product_reviews",
     )
 
     customer = models.ForeignKey(
         "accounts.Customer",
-        on_delete=models.CASCADE, 
-        related_name = "customer_reviews"
+        on_delete=models.CASCADE,
+        related_name="customer_reviews",
     )
 
     order = models.ForeignKey(
-        "orders.Order", 
-        on_delete=models.CASCADE, 
-        related_name = "order_reviews"
+        "orders.Order",
+        on_delete=models.CASCADE,
+        related_name="order_reviews",
+    )
+
+    order_item = models.ForeignKey(
+        "orders.OrderItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviews",
     )
 
     moderated_by_admin = models.ForeignKey(
-        "accounts.Admin", 
-        on_delete=models.CASCADE, 
-        related_name = "admin_reviews", 
-        null=True
+        "accounts.Admin",
+        on_delete=models.CASCADE,
+        related_name="admin_reviews",
+        null=True,
     )
 
     rating = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
 
-    title = models.CharField(
-        max_length=255
-    )
-
+    title = models.CharField(max_length=255)
     text = models.TextField()
-
-    anonymous = models.BooleanField(
-        default = True
-    )
+    anonymous = models.BooleanField(default=True)
 
     status = models.CharField(
-        max_length = 10,
-        choices = Status.choices,
-        default = Status.PUBLISHED
+        max_length=10,
+        choices=Status.choices,
+        default=Status.PUBLISHED,
     )
 
     moderated_at = models.DateTimeField(
-        auto_now_add=True, 
-        null=True
+        auto_now_add=True,
+        null=True,
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
-class ReviewResponse(models.Model):
-    class Status(models.TextChoices):
-        PUBLISHED = 'PUB', 'Published'
-        HIDDEN = 'HID', 'Hidden'
-        FLAGGED = 'FLG', 'Flagged'
-        REMOVED = 'RMV', 'Removed'
+    def clean(self):
+        errors = {}
 
-    review = models.ForeignKey(
-        Review, 
-        on_delete=models.CASCADE, 
-        related_name = "review_reviews"
-    )
+        if self.order_id and self.order.status != self.order.Status.COMPLETED:
+            errors["order"] = "Reviews can only be linked to fulfilled orders."
 
-    producer = models.ForeignKey(
-        "accounts.Producer", 
-        on_delete=models.CASCADE, 
-        related_name="producer_reviews"
-    )
-    # moderated_by_admin_id = models.ForeignKey(
-    #   "admin_records.AdmintionLog", 
-    #   on_delete=models.CASCADE, 
-    #   related_name="moderated_by_admin_id", 
-    #   null=True
-    #) 
+        if self.order_item_id:
+            if self.order_item.order_id != self.order_id:
+                errors["order_item"] = (
+                    "Selected order item does not belong to the selected order."
+                )
 
-    moderated_by_admin = models.ForeignKey(
-        "accounts.Admin", 
-        on_delete=models.CASCADE, 
-        related_name="moderated_by_admin_reviews", 
-        null=True
-    )
+            if self.order_item.product_id != self.product_id:
+                errors["product"] = (
+                    "Selected order item does not match the reviewed product."
+                )
 
-    response_text = models.TextField(
-        blank=True
-    )
+        if errors:
+            raise ValidationError(errors)
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    status = models.CharField(
-        max_length = 10,
-        choices = Status.choices,
-        default = Status.PUBLISHED
-    )
-
-    moderated_at = models.DateTimeField(
-        auto_now_add=True, 
-        null=True
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-
-
-
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
