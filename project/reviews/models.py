@@ -4,6 +4,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class Review(models.Model):
+    
     class Status(models.TextChoices):
         PUBLISHED = "PUB", "Published"
         HIDDEN = "HID", "Hidden"
