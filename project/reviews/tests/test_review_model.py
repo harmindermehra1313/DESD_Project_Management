@@ -498,6 +498,83 @@ def run_review_model_shell_tests():
                     "Review text cannot be blank.",
                 ],
             )
+            # ------------------------------------------------------------------------
+            # feat (Review Model): add 1-5 star rating input for product reviews
+            # ------------------------------------------------------------------------
+            print_divider(
+                "feat (Review Model): add 1-5 star rating input for product reviews"
+            )
+
+            rating_feature_customer = baker.make("accounts.Customer")
+            rating_feature_product = baker.make("products.Product")
+            rating_feature_order = baker.make(
+                "orders.Order",
+                user=rating_feature_customer.user,
+                status=Order.Status.COMPLETED,
+            )
+            rating_feature_order_item = baker.make(
+                "orders.OrderItem",
+                order=rating_feature_order,
+                product=rating_feature_product,
+            )
+
+            run_case(
+                case_name="review saves when rating is 1",
+                review=build_review(
+                    customer=rating_feature_customer,
+                    order=rating_feature_order,
+                    order_item=rating_feature_order_item,
+                    product=rating_feature_product,
+                    rating=1,
+                    title="Minimum valid rating",
+                    text="Rating 1 should be valid.",
+                ),
+                should_pass=True,
+            )
+
+            run_case(
+                case_name="review saves when rating is 5",
+                review=build_review(
+                    customer=rating_feature_customer,
+                    order=rating_feature_order,
+                    order_item=rating_feature_order_item,
+                    product=rating_feature_product,
+                    rating=5,
+                    title="Maximum valid rating",
+                    text="Rating 5 should be valid.",
+                ),
+                should_pass=True,
+            )
+
+            run_case(
+                case_name="review fails when rating is below 1",
+                review=build_review(
+                    customer=rating_feature_customer,
+                    order=rating_feature_order,
+                    order_item=rating_feature_order_item,
+                    product=rating_feature_product,
+                    rating=0,
+                    title="Invalid low rating",
+                    text="Rating 0 should fail.",
+                ),
+                should_pass=False,
+                expected_field="rating",
+            )
+
+            run_case(
+                case_name="review fails when rating is above 5",
+                review=build_review(
+                    customer=rating_feature_customer,
+                    order=rating_feature_order,
+                    order_item=rating_feature_order_item,
+                    product=rating_feature_product,
+                    rating=6,
+                    title="Invalid high rating",
+                    text="Rating 6 should fail.",
+                ),
+                should_pass=False,
+                expected_field="rating",
+            )
             print_divider("SUMMARY")
             print("All shell validation checks finished.")
             print(
