@@ -71,15 +71,15 @@ class CartAPIView(APIView):
         try:
             cart = cart_get_or_create_active(owner=_owner(request))
 
-            # IMPORTANT: reload with prefetch so the serializer has everything efficiently
             cart = (
                 Cart.objects.filter(pk=cart.pk)
-                # .prefetch_related("items__product", "items__product__producer")
                 .prefetch_related(
                     "items__inventory",
                     "items__inventory__product",
                     "items__inventory__product__producer",
-                ).get()
+                    "items__inventory__product__inventory_batches",
+                )
+                .get()
             )
         except Exception as exc:
             raise _translate_service_error(exc)
@@ -93,7 +93,7 @@ class CartItemAddView(CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         ser = self.get_serializer(data=request.data)
-        
+
         ser.is_valid(raise_exception=True)
 
         try:

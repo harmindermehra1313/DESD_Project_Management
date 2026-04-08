@@ -34,9 +34,10 @@ from rest_framework.exceptions import ValidationError
 from carts.services import CartOwner, _get_effective_unit_price, cart_add_item_for_owner
 from orders.models import Order
 from orders.selectors import get_order_detail_for_user, get_reorder_suggestion_inventories
+from django.apps import apps
 
 User = get_user_model()
-
+Inventory = apps.get_model("products", "Inventory")
 
 def _product_reorderable(product):
     """
@@ -62,28 +63,61 @@ def _product_reorderable(product):
         return False, "Product is not currently available."
 
     return True, None
+def _all_product_batches_deleted(*, product) -> bool:
+    all_batches = product.inventory_batches.all()
+    return all_batches.exists() and not all_batches.filter(
+        status=Inventory.BatchStatus.ACTIVE
+    ).exists()
 
+
+def _get_preferred_active_inventory_for_product(*, product):
+    """
+    Earliest sellable active batch for this product.
+
+    This mirrors the product-detail behaviour:
+    - batch must be ACTIVE
+    - batch must have remaining stock
+    - batch must not be expired
+    - earliest expiry wins
+    """
+    today = timezone.localdate()
+
+    return (
+        product.inventory_batches
+        .filter(
+            status=Inventory.BatchStatus.ACTIVE,
+            remaining_quantity__gt=0,
+            expiry_date__gte=today,
+        )
+        .order_by("expiry_date", "created_at")
+        .first()
+    )
+
+
+def _get_fallback_active_inventory_for_reason(*, product):
+    """
+    Earliest ACTIVE batch regardless of stock/expiry.
+
+    Used only to produce a precise unavailable reason when no sellable batch exists.
+    """
+    return (
+        product.inventory_batches
+        .filter(status=Inventory.BatchStatus.ACTIVE)
+        .order_by("expiry_date", "created_at")
+        .first()
+    )
 
 def _inventory_reorderable(inventory):
     """
     Determine whether an inventory batch is still valid for reorder use.
-
-    Current rule:
-    - expired inventory cannot be reordered
-
-    Expiry messaging differs slightly depending on the expiry type so that
-    the rejection reason remains precise.
-
-    Args:
-        inventory:
-            Inventory batch linked to the historical order item.
-
-    Returns:
-        tuple[bool, str | None]:
-            A boolean indicating reorder eligibility and an optional
-            human-readable rejection reason.
     """
     today = timezone.localdate()
+    product = inventory.product
+
+    if inventory.status != Inventory.BatchStatus.ACTIVE:
+        if _all_product_batches_deleted(product=product):
+            return False, "Product no longer available."
+        return False, "This batch is no longer available."
 
     if inventory.expiry_date < today:
         if inventory.expiry_type == inventory.ExpiryType.USE_BY:
@@ -198,9 +232,8 @@ def _build_suggestion_candidates(
     """
     Build live alternative candidates for one historical order item.
 
-    Each returned entry keeps both:
-    - ORM objects needed for commit-time cart mutation
-    - a serialised payload suitable for preview UI rendering
+    Each alternative product should expose only its preferred active batch,
+    not multiple batches for the same product.
     """
     suggestion_inventories = get_reorder_suggestion_inventories(
         source_product=product,
@@ -210,28 +243,41 @@ def _build_suggestion_candidates(
 
     match_basis = _get_match_basis_for_product(product)
     candidates: list[dict] = []
+    seen_product_ids: set[int] = set()
 
     for inventory in suggestion_inventories:
         suggested_product = inventory.product
+
+        if suggested_product.pk in seen_product_ids:
+            continue
+
+        preferred_inventory = _get_preferred_active_inventory_for_product(
+            product=suggested_product
+        )
+        if preferred_inventory is None:
+            continue
+
+        seen_product_ids.add(suggested_product.pk)
+
         pricing = _build_pricing_context(
             user=user,
-            inventory=inventory,
+            inventory=preferred_inventory,
             requested_quantity=requested_quantity,
         )
 
         candidates.append(
             {
                 "product": suggested_product,
-                "inventory": inventory,
-                "available_quantity": inventory.remaining_quantity,
+                "inventory": preferred_inventory,
+                "available_quantity": preferred_inventory.remaining_quantity,
                 "match_basis": match_basis,
                 "serialized": {
                     "product_id": suggested_product.pk,
                     "product_name": suggested_product.name,
                     "producer_id": suggested_product.producer_id,
                     "producer_name": suggested_product.producer.farm_name,
-                    "inventory_id": inventory.pk,
-                    "available_quantity": inventory.remaining_quantity,
+                    "inventory_id": preferred_inventory.pk,
+                    "available_quantity": preferred_inventory.remaining_quantity,
                     "current_price": pricing["effective_unit_price"],
                     "pricing": pricing,
                     "category_id": suggested_product.category_id,
@@ -249,42 +295,51 @@ def _build_suggestion_candidates(
 
     return candidates
 
-
 def _serialise_suggested_items_from_candidates(suggestion_candidates: list[dict]) -> list[dict]:
     return [candidate["serialized"] for candidate in suggestion_candidates]
 
 
 def _build_original_candidate(*, item) -> tuple[dict | None, str | None]:
     """
-    Build the original-product candidate for one order item if it is still live.
+    Build the current live original-product candidate for one order item.
 
-    Returns:
-        tuple[candidate | None, reason | None]
+    Important:
+    - do not reuse the historical batch blindly
+    - resolve the current preferred active batch for the same product
     """
     product = item.product
-    inventory = item.inventory
 
     reorderable, reason = _product_reorderable(product)
     if not reorderable:
         return None, reason
 
-    inventory_ok, inventory_reason = _inventory_reorderable(inventory)
+    if _all_product_batches_deleted(product=product):
+        return None, "Product no longer available."
+
+    current_inventory = _get_preferred_active_inventory_for_product(product=product)
+    if current_inventory is not None:
+        return (
+            {
+                "product": product,
+                "inventory": current_inventory,
+                "available_quantity": current_inventory.remaining_quantity,
+                "match_basis": "original",
+            },
+            None,
+        )
+
+    fallback_inventory = _get_fallback_active_inventory_for_reason(product=product)
+    if fallback_inventory is None:
+        return None, "Product is not currently available."
+
+    inventory_ok, inventory_reason = _inventory_reorderable(fallback_inventory)
     if not inventory_ok:
         return None, inventory_reason
 
-    available_quantity = inventory.remaining_quantity
-    if available_quantity <= 0:
+    if fallback_inventory.remaining_quantity <= 0:
         return None, "Product batch is out of stock."
 
-    return (
-        {
-            "product": product,
-            "inventory": inventory,
-            "available_quantity": available_quantity,
-            "match_basis": "original",
-        },
-        None,
-    )
+    return None, "Product cannot be reordered."
 
 
 def _build_selection_map(*, order, selections: list[dict] | None) -> dict[int, dict]:

@@ -14,7 +14,6 @@ from accounts.models import Producer
 from api.serializers.accounts import ProducerSerializer, AdminSerializer
 
 
-
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -78,7 +77,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     surplus_active = serializers.SerializerMethodField()
     surplus_discount_percentage = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
-    
+
     expiry_date = serializers.SerializerMethodField()
     expiry_type = serializers.SerializerMethodField()
     expiry_type_label = serializers.SerializerMethodField()
@@ -131,10 +130,21 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "allergens",
         )
 
+    def _get_active_batches(self, obj):
+        return obj.inventory_batches.filter(
+            status=Inventory.BatchStatus.ACTIVE
+        )
+
+    def _all_batches_deleted(self, obj):
+        all_batches = obj.inventory_batches.all()
+        return all_batches.exists() and not all_batches.filter(
+            status=Inventory.BatchStatus.ACTIVE
+        ).exists()
+
     def _get_active_inventory(self, obj):
         today = timezone.localdate()
         return (
-            obj.inventory_batches
+            self._get_active_batches(obj)
             .filter(
                 remaining_quantity__gt=0,
                 expiry_date__gte=today,
@@ -142,18 +152,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             .order_by("expiry_date", "created_at")
             .first()
         )
+
     def _get_next_inventory_batch(self, obj):
         """
-        Earliest stock batch regardless of expiry.
+        Earliest non-deleted stock batch regardless of expiry.
         Useful for determining whether remaining stock exists
         but is already expired.
         """
         return (
-            obj.inventory_batches
+            self._get_active_batches(obj)
             .filter(remaining_quantity__gt=0)
             .order_by("expiry_date", "created_at")
             .first()
         )
+
     def _has_only_expired_stock(self, obj):
         next_batch = self._get_next_inventory_batch(obj)
         if not next_batch:
@@ -194,12 +206,13 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_active_inventory_id(self, obj):
         active_inventory = self._get_active_inventory(obj)
         return active_inventory.id if active_inventory else None
+
     def _get_inventory_for_display(self, obj):
         active_inventory = self._get_active_inventory(obj)
         if active_inventory:
             return active_inventory
         return self._get_next_inventory_batch(obj)
-    
+
     def get_expiry_date(self, obj):
         inventory = self._get_inventory_for_display(obj)
         return inventory.expiry_date if inventory else None
@@ -214,7 +227,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_is_expired(self, obj):
         return self._has_only_expired_stock(obj)
-    
+
     def _is_wholesale_customer(self):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
@@ -224,8 +237,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         if not customer:
             return False
 
-        return customer.organisation_type  in {"BUSINESS", "COMMUNITY_GROUP"}
-    
+        return customer.organisation_type in {"BUSINESS", "COMMUNITY_GROUP"}
+
     def get_wholesale_prices(self, obj):
         if not self._is_wholesale_customer():
             return []
@@ -253,6 +266,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return self._get_remaining_quantity_value(obj)
 
     def get_availability_label(self, obj):
+        if self._all_batches_deleted(obj):
+            return "Unavailable"
+
         if self.get_is_expired(obj):
             return "Expired"
 
@@ -271,6 +287,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return "Available"
 
     def get_availability_badge_class(self, obj):
+        if self._all_batches_deleted(obj):
+            return "text-bg-secondary"
+
         if self.get_is_expired(obj):
             return "text-bg-danger"
 
@@ -289,35 +308,41 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return "text-bg-success"
 
     def get_stock_message(self, obj):
+        if self._all_batches_deleted(obj):
+            return "Product no longer available"
+
         if self.get_is_expired(obj):
             return "Expired"
-    
+
         if obj.availability_status == Product.Availability_status.DISCONTINUED:
             return "Discontinued"
-    
+
         if obj.availability_status != Product.Availability_status.AVAILABLE:
             return "Unavailable"
-    
+
         stock = self._get_remaining_quantity_value(obj)
-    
+
         if stock <= 0:
             return "Out of stock"
-    
+
         if self._is_low_stock(obj):
             return f"Only {stock} left"
-    
+
         return f"{stock} remaining"
 
     def get_is_purchasable(self, obj):
         return (
             obj.status == Product.Status.PUBLISHED
             and obj.availability_status == Product.Availability_status.AVAILABLE
+            and not self._all_batches_deleted(obj)
             and bool(self.get_active_inventory_id(obj))
             and not self._is_out_of_stock(obj)
             and not self.get_is_expired(obj)
         )
 
     def get_add_to_cart_button_label(self, obj):
+        if self._all_batches_deleted(obj):
+            return "No longer available"
         if self.get_is_expired(obj):
             return "Expired"
         if self.get_is_purchasable(obj):
@@ -330,10 +355,14 @@ class ProductInlineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ("id", "name", "image", "price", "unit")
+
+
 class InventorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Inventory
         fields = "__all__"
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category

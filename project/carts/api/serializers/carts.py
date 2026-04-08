@@ -7,6 +7,9 @@ from django.db.models.functions import Coalesce
 from rest_framework import serializers
 
 from carts.models import Cart, CartItem
+from products.models import Inventory
+
+
 
 
 class ProductMiniSerializer(serializers.Serializer):
@@ -14,16 +17,20 @@ class ProductMiniSerializer(serializers.Serializer):
     name = serializers.CharField(source="product.name", read_only=True)
 
     price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="product.price", read_only=True
+        max_digits=10,
+        decimal_places=2,
+        source="product.price",
+        read_only=True,
     )
 
     base_unit_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="product.price", read_only=True
+        max_digits=10,
+        decimal_places=2,
+        source="product.price",
+        read_only=True,
     )
 
-    stock_quantity = serializers.IntegerField(
-        source="remaining_quantity", read_only=True
-    )
+    stock_quantity = serializers.SerializerMethodField()
 
     unit = serializers.CharField(source="product.unit", read_only=True)
 
@@ -32,7 +39,9 @@ class ProductMiniSerializer(serializers.Serializer):
 
     surplus_status = serializers.CharField(read_only=True)
     surplus_discount_percentage = serializers.DecimalField(
-        max_digits=5, decimal_places=2, read_only=True
+        max_digits=5,
+        decimal_places=2,
+        read_only=True,
     )
     surplus_note = serializers.CharField(read_only=True, allow_null=True)
 
@@ -42,6 +51,20 @@ class ProductMiniSerializer(serializers.Serializer):
     is_expired = serializers.SerializerMethodField()
     is_purchasable = serializers.SerializerMethodField()
     stock_message = serializers.SerializerMethodField()
+
+    def _get_active_batches(self, obj):
+        return obj.product.inventory_batches.filter(
+            status=Inventory.BatchStatus.ACTIVE
+        )
+
+    def _all_batches_deleted(self, obj):
+        all_batches = obj.product.inventory_batches.all()
+        return all_batches.exists() and not all_batches.filter(
+            status=Inventory.BatchStatus.ACTIVE
+        ).exists()
+
+    def _linked_batch_deleted(self, obj):
+        return obj.status == Inventory.BatchStatus.DELETED
 
     def get_producer_name(self, obj):
         producer = obj.product.producer
@@ -56,20 +79,48 @@ class ProductMiniSerializer(serializers.Serializer):
     def get_expiry_type_label(self, obj):
         return obj.get_expiry_type_display() if obj.expiry_type else None
 
+    def get_stock_quantity(self, obj):
+        if self._all_batches_deleted(obj):
+            return 0
+
+        if self._linked_batch_deleted(obj):
+            return 0
+
+        return obj.remaining_quantity or 0
+
     def get_is_expired(self, obj):
+        if self._all_batches_deleted(obj):
+            return False
+
+        if self._linked_batch_deleted(obj):
+            return False
+
         return obj.is_expired()
 
     def get_is_purchasable(self, obj):
         product = obj.product
+
+        if self._all_batches_deleted(obj):
+            return False
+
+        if self._linked_batch_deleted(obj):
+            return False
+
         return (
             product.status == product.Status.PUBLISHED
             and product.availability_status == product.Availability_status.AVAILABLE
-            and obj.remaining_quantity > 0
+            and (obj.remaining_quantity or 0) > 0
             and not obj.is_expired()
         )
 
     def get_stock_message(self, obj):
         product = obj.product
+
+        if self._all_batches_deleted(obj):
+            return "Product no longer available. Please remove the item."
+
+        if self._linked_batch_deleted(obj):
+            return "This batch is no longer available. Please remove the item."
 
         if obj.is_expired():
             return "This product has expired. Please remove the item."
@@ -80,13 +131,10 @@ class ProductMiniSerializer(serializers.Serializer):
         if product.availability_status != product.Availability_status.AVAILABLE:
             return "This product is unavailable. Please remove the item."
 
-        if obj.remaining_quantity <= 0:
+        if (obj.remaining_quantity or 0) <= 0:
             return "This item is out of stock. Please remove the item."
 
         return "In stock"
-
-
-#
 class CartItemSerializer(serializers.ModelSerializer):
     inventory_id = serializers.IntegerField(source="inventory.id", read_only=True)
     product_id = serializers.IntegerField(source="inventory.product.id", read_only=True)

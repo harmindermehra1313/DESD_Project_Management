@@ -31,7 +31,14 @@
     checkoutPath: "/orders/checkout",
 
     getBlockedMessage(product) {
-      if (product?.is_expired) return this.expiredItem;
+      if (product?.stock_message) {
+        return product.stock_message;
+      }
+
+      if (product?.is_expired) {
+        return this.expiredItem;
+      }
+
       return this.unavailableItem;
     },
 

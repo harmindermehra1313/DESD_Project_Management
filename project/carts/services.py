@@ -67,21 +67,12 @@ def _assert_owner(owner: CartOwner) -> None:
         )
 
 
-# def _get_product_data(*, product_id: int) -> tuple[Decimal, Decimal]:
-#     """
-#     Returns (price, stock_quantity) for the product_id.
+def _all_product_batches_deleted(*, product: Product) -> bool:
+    all_batches = product.inventory_batches.all()
+    return all_batches.exists() and not all_batches.filter(
+        status=Inventory.BatchStatus.ACTIVE
+    ).exists()
 
-#     Raises ValueError for invalid product_id.
-#     """
-#     row = (
-#         Product.objects.filter(pk=product_id)
-#         .values_list("price", "stock_quantity")
-#         .first()
-#     )
-#     if row is None:
-#         raise ValueError("Invalid product_id")
-#     price, stock = row
-#     return Decimal(str(price)), Decimal(str(stock))
 
 def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
     """
@@ -91,11 +82,10 @@ def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
     - inventory exists
     - product is published
     - product availability is AVAILABLE
+    - batch status is ACTIVE
     - batch has stock remaining
     - batch is not expired
     """
-    today = timezone.localdate()
-
     inventory = (
         Inventory.objects.select_related("product")
         .filter(pk=inventory_id)
@@ -113,6 +103,12 @@ def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
     if product.availability_status != Product.Availability_status.AVAILABLE:
         raise ValidationError("This product is not available for purchase.")
 
+    if inventory.status != Inventory.BatchStatus.ACTIVE:
+        if _all_product_batches_deleted(product=product):
+            raise ValidationError("Product no longer available.")
+
+        raise ValidationError("This batch is no longer available.")
+
     if inventory.is_expired():
         raise ValidationError("This batch has expired.")
 
@@ -120,6 +116,38 @@ def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
         raise ValidationError("This batch is out of stock.")
 
     return inventory
+
+def _get_preferred_active_inventory_for_product(*, product: Product) -> Inventory | None:
+    today = timezone.localdate()
+    return (
+        product.inventory_batches
+        .filter(
+            status=Inventory.BatchStatus.ACTIVE,
+            remaining_quantity__gt=0,
+            expiry_date__gte=today,
+        )
+        .order_by("expiry_date", "created_at")
+        .first()
+    )
+def _resolve_inventory_for_cart_add(*, inventory_id: int) -> Inventory:
+    requested_inventory = (
+        Inventory.objects.select_related("product")
+        .filter(pk=inventory_id)
+        .first()
+    )
+
+    if requested_inventory is None:
+        raise ValidationError("Invalid inventory_id.")
+
+    product = requested_inventory.product
+
+    preferred_inventory = _get_preferred_active_inventory_for_product(product=product)
+
+    if preferred_inventory is None:
+        # fall back to current validation flow so the user gets the correct error
+        return _get_sellable_inventory(inventory_id=inventory_id)
+
+    return preferred_inventory
 
 def _get_inventory_data(*, inventory_id: int) -> tuple[Decimal, Decimal]:
     inventory = _get_sellable_inventory(inventory_id=inventory_id)
@@ -281,17 +309,7 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
 
 
 @transaction.atomic
-def cart_add_item(
-    # *, cart: Cart, product_id: int, quantity: Union[int, str, Decimal]
-    *, cart: Cart, inventory_id: int, quantity: Union[int, str, Decimal]
-) -> CartItem:
-    """
-    Add quantity to an item.
-
-    NEW RULE:
-    - unit_price is the effective wholesale price for the resulting line quantity.
-    - so if qty crosses a tier, unit_price changes.
-    """
+def cart_add_item(*, cart: Cart, inventory_id: int, quantity: Union[int, str, Decimal]) -> CartItem:
     if cart.status != CartStatus.ACTIVE:
         raise CartNotActive("Cannot modify a non-active cart.")
 
@@ -299,13 +317,13 @@ def cart_add_item(
     if add_qty <= 0:
         raise ValueError("quantity must be > 0")
 
-    # Lock cart row to keep merges/checkout consistent
+    preferred_inventory = _resolve_inventory_for_cart_add(inventory_id=inventory_id)
+    inventory_id = preferred_inventory.id
+
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
 
-    # Lock item row (if exists) to safely compute resulting qty
     item = (
         CartItem.objects.select_for_update()
-        # .filter(cart_id=cart.pk, product_id=product_id)
         .filter(cart_id=cart.pk, inventory_id=inventory_id)
         .first()
     )
@@ -313,10 +331,8 @@ def cart_add_item(
     existing_qty = item.quantity if item else Decimal("0")
     new_qty = existing_qty + add_qty
 
-    # validate_stock(product_id=product_id, requested_quantity=new_qty)
     validate_stock(inventory_id=inventory_id, requested_quantity=new_qty)
 
-    # Compute correct unit price for the resulting qty (server-side truth)
     wholesale_allowed = _cart_allows_wholesale(cart)
     unit_price = _get_effective_unit_price(
         inventory_id=inventory_id,
@@ -325,7 +341,6 @@ def cart_add_item(
     )
 
     if item:
-        # Update both quantity and unit_price (tier-aware)
         CartItem.objects.filter(pk=item.pk).update(
             quantity=new_qty,
             unit_price=unit_price,
@@ -335,25 +350,22 @@ def cart_add_item(
         item.unit_price = unit_price
         return item
 
-    # Create new line with effective unit_price
     try:
         return CartItem.objects.create(
             cart_id=cart.pk,
-            # product_id=product_id,
             inventory_id=inventory_id,
             quantity=new_qty,
             unit_price=unit_price,
         )
     except IntegrityError:
-        # Race: someone created; lock and update properly
         item = CartItem.objects.select_for_update().get(
-            # cart_id=cart.pk, product_id=product_id
-            cart_id=cart.pk, inventory_id=inventory_id
+            cart_id=cart.pk,
+            inventory_id=inventory_id,
         )
         new_qty = (item.quantity or Decimal("0")) + add_qty
-        # validate_stock(product_id=product_id, requested_quantity=new_qty)
+
         validate_stock(inventory_id=inventory_id, requested_quantity=new_qty)
-        # unit_price = _get_effective_unit_price(product_id=product_id, qty=new_qty)
+
         wholesale_allowed = _cart_allows_wholesale(cart)
         unit_price = _get_effective_unit_price(
             inventory_id=inventory_id,
