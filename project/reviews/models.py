@@ -1,4 +1,3 @@
-from django.apps import apps
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -43,6 +42,7 @@ class Review(models.Model):
         on_delete=models.CASCADE,
         related_name="admin_reviews",
         null=True,
+        blank=True,
     )
 
     rating = models.IntegerField(
@@ -70,42 +70,36 @@ class Review(models.Model):
         super().clean()
         errors = {}
 
-        OrderItem = apps.get_model("orders", "OrderItem")
-
-        # Required relation presence checks
         if not self.order_id:
             errors["order"] = "A review must be linked to an order."
+
         if not self.customer_id:
             errors["customer"] = "A review must be linked to a customer."
+
         if not self.product_id:
             errors["product"] = "A review must be linked to a product."
 
         if errors:
             raise ValidationError(errors)
 
-        # Order must be completed
+        # Restrict review submission to delivered orders only
         if self.order.status != self.order.Status.COMPLETED:
-            errors["order"] = "Reviews can only be linked to fulfilled orders."
+            errors["order"] = "Reviews can only be submitted for delivered orders."
 
-        # Order must belong to the same customer
-        if self.order.customer_id != self.customer_id:
+        # The order must belong to the same customer
+        if self.order.user_id != self.customer.user_id:
             errors["customer"] = (
-                "You can only review products from your own completed orders."
+                "You can only review products from your own delivered orders."
             )
 
         # Verified purchase check:
-        # the reviewed product must exist in the selected order
-        purchased_item_qs = OrderItem.objects.filter(
-            order_id=self.order_id,
-            product_id=self.product_id,
-        )
-
-        if not purchased_item_qs.exists():
+        # the reviewed product must exist in the selected completed order
+        if not self.order.items.filter(product_id=self.product_id).exists():
             errors["product"] = (
-                "You can only review products you purchased in this completed order."
+                "You can only review products that were delivered in this order."
             )
 
-        # Optional exact order-item consistency checks
+        # Exact order_item linkage checks
         if self.order_item_id:
             if self.order_item.order_id != self.order_id:
                 errors["order_item"] = (
@@ -116,10 +110,9 @@ class Review(models.Model):
                 errors["product"] = (
                     "Selected order item does not match the reviewed product."
                 )
-
-            if self.order_item.order.customer_id != self.customer_id:
+            if self.order_item.order.user_id != self.customer.user_id:
                 errors["customer"] = (
-                    "You can only review products from your own completed orders."
+                    "You can only review products from your own delivered orders."
                 )
 
         if errors:
