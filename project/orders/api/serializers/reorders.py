@@ -11,11 +11,12 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from orders.models import Order, OrderItem, ProducerOrderSummary
+from orders.selectors import get_derived_order_status_label
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source="unique_reference", read_only=True)
-    order_status = serializers.CharField(source="get_status_display", read_only=True)
+    order_status = serializers.SerializerMethodField()
     total = serializers.DecimalField(
         source="total_price",
         max_digits=10,
@@ -34,6 +35,9 @@ class OrderHistorySerializer(serializers.ModelSerializer):
             "order_status",
             "producer_names",
         ]
+
+    def get_order_status(self, obj: Order) -> str:
+        return get_derived_order_status_label(obj)
 
     def get_producer_names(self, obj: Order) -> list[str]:
         names: list[str] = []
@@ -168,7 +172,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source="unique_reference", read_only=True)
     items = OrderItemDetailSerializer(many=True, read_only=True)
-    status = serializers.CharField(source="get_status_display", read_only=True)
+    status = serializers.SerializerMethodField()
     producer_breakdown = ProducerOrderSummarySerializer(
         source="producer_summaries",
         many=True,
@@ -193,6 +197,9 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "payment_method_display",
             "total_price",
         ]
+
+    def get_status(self, obj: Order) -> str:
+        return get_derived_order_status_label(obj)
 
     def get_payment_method_display(self, obj: Order) -> str | None:
         payments = list(obj.payments.all().order_by("-created_at"))

@@ -98,7 +98,6 @@ class OrderHistoryApiView(generics.ListAPIView):
     def get_queryset(self):
         params = self.request.query_params
 
-        recurring_only = _parse_bool(params.get("recurring_only"))
         start_date = _parse_date(params.get("start_date"), "start_date")
         end_date = _parse_date(params.get("end_date"), "end_date")
         producer_id = _parse_int(params.get("producer_id"), "producer_id")
@@ -122,7 +121,6 @@ class OrderHistoryApiView(generics.ListAPIView):
             start_date=start_date,
             end_date=end_date,
             delivery_or_collection=params.get("delivery_or_collection") or None,
-            recurring_only=recurring_only,
         )
 
 

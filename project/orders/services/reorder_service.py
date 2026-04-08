@@ -33,7 +33,7 @@ from rest_framework.exceptions import ValidationError
 
 from carts.services import CartOwner, _get_effective_unit_price, cart_add_item_for_owner
 from orders.models import Order
-from orders.selectors import get_order_detail_for_user, get_reorder_suggestion_inventories
+from orders.selectors import get_order_detail_for_user, get_reorder_suggestion_inventories, get_derived_order_status_key, get_order_detail_for_user, get_reorder_suggestion_inventories
 from django.apps import apps
 
 User = get_user_model()
@@ -518,7 +518,7 @@ def reorder_order(
     """
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
-    if order.status != Order.Status.COMPLETED:
+    if get_derived_order_status_key(order) != "completed":
         raise ValidationError("This order cannot be reordered.")
 
     owner = CartOwner(user_id=user.id)

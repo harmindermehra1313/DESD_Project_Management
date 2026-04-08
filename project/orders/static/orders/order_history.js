@@ -10,7 +10,6 @@ const DEFAULT_FILTERS = {
   start_date: "",
   end_date: "",
   delivery_or_collection: "",
-  recurring_only: "",
 };
 
 const REORDER_RESULT_FOOTER = `
@@ -183,7 +182,6 @@ function readFiltersFromForm() {
     end_date: document.getElementById("end_date")?.value || "",
     delivery_or_collection:
       document.getElementById("delivery_or_collection")?.value || "",
-    recurring_only: document.getElementById("recurring_only")?.value || "",
   };
 }
 
@@ -193,7 +191,6 @@ function writeFiltersToForm(filters) {
     "start_date",
     "end_date",
     "delivery_or_collection",
-    "recurring_only",
   ];
   fields.forEach((field) => {
     const el = document.getElementById(field);
@@ -380,7 +377,7 @@ function getStatusBadgeClass(status) {
 
 function isReorderAllowed(status) {
   const value = normaliseStatus(status);
-  return !value.includes("pending") && !value.includes("cancel");
+  return value.includes("completed");
 }
 
 function isReceiptAllowed(status) {
