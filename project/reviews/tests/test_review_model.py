@@ -37,6 +37,8 @@ def run_review_model_shell_tests():
         should_pass,
         expected_field=None,
         expected_text=None,
+        expected_fields=None,
+        expected_texts=None,
         cleanup_after_success=True,
     ):
         print(f"\nCASE: {case_name}")
@@ -57,9 +59,10 @@ def run_review_model_shell_tests():
                     )
             else:
                 print("RESULT: FAIL")
-                print("OUTPUT: Review saved unexpectedly, but this case should have failed.")
+                print(
+                    "OUTPUT: Review saved unexpectedly, but this case should have failed."
+                )
 
-                # Cleanup unexpected success so later cases are not polluted
                 if review.pk:
                     unexpected_review_id = review.pk
                     review.delete()
@@ -87,12 +90,30 @@ def run_review_model_shell_tests():
                     for message in messages
                 )
 
-            if field_ok and text_ok:
+            fields_ok = True
+            if expected_fields is not None:
+                fields_ok = all(field in exc.message_dict for field in expected_fields)
+
+            texts_ok = True
+            if expected_texts is not None:
+                all_messages = [
+                    message
+                    for messages in exc.message_dict.values()
+                    for message in messages
+                ]
+                texts_ok = all(
+                    any(expected_text in message for message in all_messages)
+                    for expected_text in expected_texts
+                )
+
+            if field_ok and text_ok and fields_ok and texts_ok:
                 print("RESULT: PASS")
                 print("OUTPUT: Validation failed exactly where expected.")
             else:
                 print("RESULT: FAIL")
-                print("OUTPUT: Validation failed, but not with the expected field/message.")
+                print(
+                    "OUTPUT: Validation failed, but not with the expected field/message."
+                )
 
         except Exception as exc:
             print("RESULT: FAIL")
@@ -198,7 +219,9 @@ def run_review_model_shell_tests():
                 "completed_order_without_target_product_id="
                 f"{completed_order_without_target_product.id}"
             )
-            print(f"other_customer_completed_order_id={other_customer_completed_order.id}")
+            print(
+                f"other_customer_completed_order_id={other_customer_completed_order.id}"
+            )
             print(f"non_completed_order_id={non_completed_order.id}")
             print(f"non_completed_status_used={non_completed_status}")
 
@@ -209,12 +232,16 @@ def run_review_model_shell_tests():
                 print("\nWARNING:")
                 print("Order object has no 'items' related name.")
                 print("If your Review.clean() uses self.order.items.filter(...),")
-                print("update that line to the real related_name on OrderItem.order before trusting these checks.")
+                print(
+                    "update that line to the real related_name on OrderItem.order before trusting these checks."
+                )
 
             # ----------------------------------------------------------------------------------
             # feat (Review Model): link reviews to the originating fulfilled order or order item
             # ----------------------------------------------------------------------------------
-            print_divider("feat (Review Model): link reviews to the originating fulfilled order or order item")
+            print_divider(
+                "feat (Review Model): link reviews to the originating fulfilled order or order item"
+            )
 
             run_case(
                 case_name="review saves when order and order_item match the same completed purchase",
@@ -255,7 +282,9 @@ def run_review_model_shell_tests():
             # ----------------------------------------------------------------------------
             # feat (Review Model): restrict reviews to verified purchased products
             # ----------------------------------------------------------------------------
-            print_divider("feat (Review Model): restrict reviews to verified purchased products")
+            print_divider(
+                "feat (Review Model): restrict reviews to verified purchased products"
+            )
 
             run_case(
                 case_name="review saves when completed order contains the product even without order_item",
@@ -301,7 +330,9 @@ def run_review_model_shell_tests():
             # ------------------------------------------------------------------------
             # feat (Review Model): restrict review submission to delivered orders
             # ------------------------------------------------------------------------
-            print_divider("feat (Review Model): restrict review submission to delivered orders")
+            print_divider(
+                "feat (Review Model): restrict review submission to delivered orders"
+            )
 
             run_case(
                 case_name="review fails when the linked order is not completed",
@@ -332,7 +363,9 @@ def run_review_model_shell_tests():
             # ------------------------------------------------------------------------
             # feat (Review Model): prevent duplicate reviews per customer per product
             # ------------------------------------------------------------------------
-            print_divider("feat (Review Model): prevent duplicate reviews per customer per product")
+            print_divider(
+                "feat (Review Model): prevent duplicate reviews per customer per product"
+            )
 
             run_case(
                 case_name="first review saves for a customer-product pair",
@@ -385,10 +418,91 @@ def run_review_model_shell_tests():
                 ),
                 should_pass=True,
             )
+            # Extra data for title/text validation cases
+            text_feature_customer = baker.make("accounts.Customer")
+            text_feature_product = baker.make("products.Product")
+            text_feature_order = baker.make(
+                "orders.Order",
+                user=text_feature_customer.user,
+                status=Order.Status.COMPLETED,
+            )
+            text_feature_order_item = baker.make(
+                "orders.OrderItem",
+                order=text_feature_order,
+                product=text_feature_product,
+            )
+            # ------------------------------------------------------------------------
+            # feat (Review Model): add review title and review text fields
+            # ------------------------------------------------------------------------
+            print_divider(
+                "feat (Review Model): add review title and review text fields"
+            )
 
+            run_case(
+                case_name="review saves when title and text are provided",
+                review=build_review(
+                    customer=text_feature_customer,
+                    order=text_feature_order,
+                    order_item=text_feature_order_item,
+                    product=text_feature_product,
+                    title="Valid review title",
+                    text="Valid review body text.",
+                ),
+                should_pass=True,
+            )
+
+            run_case(
+                case_name="review fails when title is blank",
+                review=build_review(
+                    customer=text_feature_customer,
+                    order=text_feature_order,
+                    order_item=text_feature_order_item,
+                    product=text_feature_product,
+                    title="   ",
+                    text="Valid review body text.",
+                ),
+                should_pass=False,
+                expected_field="title",
+                expected_text="Review title cannot be blank.",
+            )
+
+            run_case(
+                case_name="review fails when text is blank",
+                review=build_review(
+                    customer=text_feature_customer,
+                    order=text_feature_order,
+                    order_item=text_feature_order_item,
+                    product=text_feature_product,
+                    title="Valid review title",
+                    text="   ",
+                ),
+                should_pass=False,
+                expected_field="text",
+                expected_text="Review text cannot be blank.",
+            )
+
+            run_case(
+                case_name="review fails when both title and text are blank",
+                review=build_review(
+                    customer=text_feature_customer,
+                    order=text_feature_order,
+                    order_item=text_feature_order_item,
+                    product=text_feature_product,
+                    title="   ",
+                    text="   ",
+                ),
+                should_pass=False,
+                expected_fields=["title", "text"],
+                expected_texts=[
+                    "Review title cannot be blank.",
+                    "Review text cannot be blank.",
+                ],
+            )
             print_divider("SUMMARY")
             print("All shell validation checks finished.")
-            print("The transaction will now be rolled back, so no test data will remain.")
+            print(
+                "The transaction will now be rolled back, so no test data will remain."
+            )
 
         finally:
             transaction.set_rollback(True)

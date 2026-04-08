@@ -65,6 +65,7 @@ class Review(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -76,68 +77,90 @@ class Review(models.Model):
     def clean(self):
         super().clean()
         errors = {}
-    
-        if not self.order_id:
-            errors["order"] = "A review must be linked to an order."
-    
-        if not self.customer_id:
-            errors["customer"] = "A review must be linked to a customer."
-    
-        if not self.product_id:
-            errors["product"] = "A review must be linked to a product."
-    
+
+        self._validate_required_links(errors)
+        self._validate_order_rules(errors)
+        self._validate_order_item_rules(errors)
+        self._validate_duplicate_review(errors)
+        self._validate_text_fields(errors)
+
         if errors:
             raise ValidationError(errors)
-    
-        # Restrict review submission to delivered orders only
+
+    def _validate_required_links(self, errors):
+        if not self.order_id:
+            errors["order"] = "A review must be linked to an order."
+
+        if not self.customer_id:
+            errors["customer"] = "A review must be linked to a customer."
+
+        if not self.product_id:
+            errors["product"] = "A review must be linked to a product."
+
+    def _validate_order_rules(self, errors):
+        if not (self.order_id and self.customer_id and self.product_id):
+            return
+
         if self.order.status != self.order.Status.COMPLETED:
             errors["order"] = "Reviews can only be submitted for delivered orders."
-    
-        # The order must belong to the same customer
+
         if self.order.user_id != self.customer.user_id:
             errors["customer"] = (
                 "You can only review products from your own delivered orders."
             )
-    
-        # Verified purchase check:
-        # the reviewed product must exist in the selected completed order
+
         if not self.order.items.filter(product_id=self.product_id).exists():
             errors["product"] = (
                 "You can only review products that were delivered in this order."
             )
-    
-        # Exact order_item linkage checks
-        if self.order_item_id:
-            if self.order_item.order_id != self.order_id:
-                errors["order_item"] = (
-                    "Selected order item does not belong to the selected order."
-                )
-    
-            if self.order_item.product_id != self.product_id:
-                errors["product"] = (
-                    "Selected order item does not match the reviewed product."
-                )
-    
-            if self.order_item.order.user_id != self.customer.user_id:
-                errors["customer"] = (
-                    "You can only review products from your own delivered orders."
-                )
-    
-        # Prevent duplicate reviews per customer per product
-        if self.customer_id and self.product_id:
-            duplicate_exists = (
-                Review.objects.filter(
-                    customer_id=self.customer_id,
-                    product_id=self.product_id,
-                )
-                .exclude(pk=self.pk)
-                .exists()
+
+    def _validate_order_item_rules(self, errors):
+        if not (self.order_item_id and self.order_id and self.product_id and self.customer_id):
+            return
+
+        if self.order_item.order_id != self.order_id:
+            errors["order_item"] = (
+                "Selected order item does not belong to the selected order."
             )
-            if duplicate_exists:
-                errors["product"] = "You have already reviewed this product."
-    
-        if errors:
-            raise ValidationError(errors)
+
+        if self.order_item.product_id != self.product_id:
+            errors["product"] = (
+                "Selected order item does not match the reviewed product."
+            )
+
+        if self.order_item.order.user_id != self.customer.user_id:
+            errors["customer"] = (
+                "You can only review products from your own delivered orders."
+            )
+
+    def _validate_duplicate_review(self, errors):
+        if not (self.customer_id and self.product_id):
+            return
+
+        duplicate_exists = (
+            Review.objects.filter(
+                customer_id=self.customer_id,
+                product_id=self.product_id,
+            )
+            .exclude(pk=self.pk)
+            .exists()
+        )
+
+        if duplicate_exists:
+            errors["product"] = "You have already reviewed this product."
+
+    def _validate_text_fields(self, errors):
+        if self.title is not None:
+            self.title = self.title.strip()
+
+        if self.text is not None:
+            self.text = self.text.strip()
+
+        if not self.title:
+            errors["title"] = "Review title cannot be blank."
+
+        if not self.text:
+            errors["text"] = "Review text cannot be blank."
 
     def save(self, *args, **kwargs):
         self.full_clean()
