@@ -31,7 +31,14 @@ def run_review_model_shell_tests():
         data.update(overrides)
         return Review(**data)
 
-    def run_case(case_name, review, should_pass, expected_field=None, expected_text=None):
+    def run_case(
+        case_name,
+        review,
+        should_pass,
+        expected_field=None,
+        expected_text=None,
+        cleanup_after_success=True,
+    ):
         print(f"\nCASE: {case_name}")
 
         try:
@@ -40,9 +47,26 @@ def run_review_model_shell_tests():
             if should_pass:
                 print("RESULT: PASS")
                 print(f"OUTPUT: Review saved successfully. review_id={review.pk}")
+
+                if cleanup_after_success:
+                    saved_review_id = review.pk
+                    review.delete()
+                    print(
+                        f"OUTPUT: Cleanup successful. Deleted review_id={saved_review_id} "
+                        "to keep later cases isolated."
+                    )
             else:
                 print("RESULT: FAIL")
                 print("OUTPUT: Review saved unexpectedly, but this case should have failed.")
+
+                # Cleanup unexpected success so later cases are not polluted
+                if review.pk:
+                    unexpected_review_id = review.pk
+                    review.delete()
+                    print(
+                        f"OUTPUT: Cleanup successful. Deleted unexpected "
+                        f"review_id={unexpected_review_id}."
+                    )
 
         except ValidationError as exc:
             print("OUTPUT: ValidationError raised")
@@ -170,7 +194,10 @@ def run_review_model_shell_tests():
             print(f"completed_order_item_id={completed_order_item.id}")
             print(f"another_completed_order_id={another_completed_order.id}")
             print(f"another_completed_order_item_id={another_completed_order_item.id}")
-            print(f"completed_order_without_target_product_id={completed_order_without_target_product.id}")
+            print(
+                "completed_order_without_target_product_id="
+                f"{completed_order_without_target_product.id}"
+            )
             print(f"other_customer_completed_order_id={other_customer_completed_order.id}")
             print(f"non_completed_order_id={non_completed_order.id}")
             print(f"non_completed_status_used={non_completed_status}")
@@ -298,6 +325,63 @@ def run_review_model_shell_tests():
                     product=product,
                     title="Completed order review attempt",
                     text="Order status is completed",
+                ),
+                should_pass=True,
+            )
+
+            # ------------------------------------------------------------------------
+            # feat (Review Model): prevent duplicate reviews per customer per product
+            # ------------------------------------------------------------------------
+            print_divider("feat (Review Model): prevent duplicate reviews per customer per product")
+
+            run_case(
+                case_name="first review saves for a customer-product pair",
+                review=build_review(
+                    order=completed_order,
+                    order_item=completed_order_item,
+                    product=product,
+                    title="First duplicate-rule review",
+                    text="This is the first saved review for the duplicate rule.",
+                ),
+                should_pass=True,
+                cleanup_after_success=False,
+            )
+
+            run_case(
+                case_name="second review fails for the same customer and product",
+                review=build_review(
+                    order=another_completed_order,
+                    order_item=another_completed_order_item,
+                    product=product,
+                    title="Second duplicate-rule review",
+                    text="This should fail because the customer already reviewed the product.",
+                ),
+                should_pass=False,
+                expected_field="product",
+                expected_text="You have already reviewed this product.",
+            )
+
+            run_case(
+                case_name="review still saves for the same customer when the product is different",
+                review=build_review(
+                    order=completed_order,
+                    order_item=completed_order_other_product_item,
+                    product=other_product,
+                    title="Same customer different product",
+                    text="Same customer should still be allowed to review a different product.",
+                ),
+                should_pass=True,
+            )
+
+            run_case(
+                case_name="review still saves for a different customer on the same product",
+                review=build_review(
+                    customer=other_customer,
+                    order=other_customer_completed_order,
+                    order_item=other_customer_completed_order_item,
+                    product=product,
+                    title="Different customer same product",
+                    text="A different customer should still be allowed to review the same product.",
                 ),
                 should_pass=True,
             )
