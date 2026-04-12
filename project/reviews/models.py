@@ -161,6 +161,55 @@ class Review(models.Model):
 
         if not self.text:
             errors["text"] = "Review text cannot be blank."
+    
+    @property
+    def is_anonymous_display(self):
+        return bool(self.anonymous)
+
+    @property
+    def public_reviewer_name(self):
+        """
+        Safe public display name for templates, serializers, and API responses.
+
+        Rules:
+        - anonymous=True  -> 'Anonymous'
+        - anonymous=False -> best available user/customer display name
+        """
+        if self.is_anonymous_display:
+            return "Anonymous"
+
+        customer = getattr(self, "customer", None)
+        user = getattr(customer, "user", None)
+
+        if user is not None:
+            full_name = getattr(user, "get_full_name", lambda: "")()
+            if full_name and full_name.strip():
+                return full_name.strip()
+
+            for attr in ("full_name", "username", "email"):
+                value = getattr(user, attr, None)
+                if value:
+                    return str(value).strip()
+
+        for attr in ("full_name", "name"):
+            value = getattr(customer, attr, None)
+            if value:
+                return str(value).strip()
+
+        return "Verified Customer"
+
+    def public_review_data(self):
+      
+        return {
+            "id": self.pk,
+            "title": self.title,
+            "text": self.text,
+            "rating": self.rating,
+            "anonymous": self.anonymous,
+            "reviewer_name": self.public_reviewer_name,
+            "status": self.status,
+            "created_at": self.created_at,
+        }
 
     def save(self, *args, **kwargs):
         self.full_clean()
