@@ -294,25 +294,43 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 # Create Recurring Order Template
                 # -----------------------------
                 is_recurring = validated_data.get(f"is_recurring_{producer.id}")
-                recurrence_day = validated_data.get(f"recurrence_day_{producer.id}")
+                recurrence_pattern = validated_data.get(f"recurrence_pattern_{producer.id}", "WEEKLY")
+                recurrence_day_code = validated_data.get(f"recurrence_day_{producer.id}")
 
                 if (is_recurring == "true" or is_recurring is True) and not is_guest:
-                    # Map selected delivery_date to a Day string (e.g. "WED")
-                    del_day_str = "WED"
+                    # Validate recurrence_pattern
+                    valid_patterns = dict(RecurringOrder.RecurrencePattern.choices)
+                    if recurrence_pattern not in valid_patterns:
+                        recurrence_pattern = "WEEKLY"
+
+                    # Validate recurrence_day_code (day the recurring order repeats on)
+                    valid_days = dict(RecurringOrder.Day.choices)
+                    if not recurrence_day_code or recurrence_day_code not in valid_days:
+                        recurrence_day_code = "WED"
+                        if delivery_date:
+                            try:
+                                dt = datetime.strptime(delivery_date, "%Y-%m-%d")
+                                days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+                                recurrence_day_code = days[dt.weekday()]
+                            except ValueError:
+                                pass
+
+                    # Derive delivery_day_code from the selected delivery date
+                    delivery_day_code = "WED"
                     if delivery_date:
                         try:
                             dt = datetime.strptime(delivery_date, "%Y-%m-%d")
                             days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
-                            del_day_str = days[dt.weekday()]
+                            delivery_day_code = days[dt.weekday()]
                         except ValueError:
                             pass
 
                     recurring_template = RecurringOrder.objects.create(
                         user=user,
                         delivery_address=addr if delivery_or_collection == "DEL" else None,
-                        recurrence_pattern=RecurringOrder.RecurrencePattern.WEEKLY,
-                        recurrence_day=recurrence_day,
-                        delivery_day=del_day_str,
+                        recurrence_pattern=recurrence_pattern,
+                        recurrence_day=recurrence_day_code,
+                        delivery_day=delivery_day_code,
                         special_instructions=special_instructions,
                         status=RecurringOrder.Status.ACTIVE
                     )

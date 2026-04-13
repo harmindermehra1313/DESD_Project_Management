@@ -212,6 +212,50 @@
                             Earliest available: 
                             {{ delivery_earliest|date:"D j M, H:i" }}
                         </p>
+
+                        {% if user.is_authenticated %}
+                        <hr>
+                        <div class="recurring-order-section">
+                            <h3>Recurring Order</h3>
+
+                            <select id="is-recurring-{{ producer.id }}"
+                                    name="is_recurring_{{ producer.id }}"
+                                    class="recurring-select"
+                                    data-producer-id="{{ producer.id }}">
+                                <option value="no" selected>No</option>
+                                <option value="yes">Yes</option>
+                            </select>
+
+                            <div class="recurring-options" id="recurring-options-{{ producer.id }}" style="display:none;">
+                                <label for="recurrence-pattern-{{ producer.id }}">Frequency</label>
+                                <select id="recurrence-pattern-{{ producer.id }}"
+                                        name="recurrence_pattern_{{ producer.id }}"
+                                        class="recurrence-pattern"
+                                        data-producer-id="{{ producer.id }}">
+                                    <option value="WEEKLY" selected>Weekly</option>
+                                    <option value="FORTNIGHTLY">Fortnightly</option>
+                                </select>
+
+                                <label for="recurrence-day-{{ producer.id }}">Repeat every</label>
+                                <select id="recurrence-day-{{ producer.id }}"
+                                        name="recurrence_day_{{ producer.id }}"
+                                        class="recurrence-day-select"
+                                        data-producer-id="{{ producer.id }}">
+                                    <option value="">Select a day</option>
+                                    <option value="MON">Monday</option>
+                                    <option value="TUE">Tuesday</option>
+                                    <option value="WED">Wednesday</option>
+                                    <option value="THU">Thursday</option>
+                                    <option value="FRI">Friday</option>
+                                    <option value="SAT">Saturday</option>
+                                    <option value="SUN">Sunday</option>
+                                </select>
+                                <span class="error-message">Please select a recurrence day.</span>
+
+                                <p class="form-text recurring-summary" id="recurring-summary-{{ producer.id }}"></p>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             
