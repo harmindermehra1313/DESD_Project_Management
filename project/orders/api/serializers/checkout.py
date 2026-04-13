@@ -51,8 +51,9 @@ class CheckoutSerializer(serializers.Serializer):
                 "delivery_or_collection_", 
                 "delivery_date_", 
                 "delivery_time_",
-                "is_recurring_",      # <-- Added recurring flags
-                "recurrence_day_"     # <-- Added recurring days
+                "is_recurring_",
+                "recurrence_pattern_",
+                "recurrence_day_",
             )):
                 validated[key] = value
 
