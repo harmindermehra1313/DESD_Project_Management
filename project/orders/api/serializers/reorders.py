@@ -12,6 +12,11 @@ from rest_framework import serializers
 
 from orders.models import Order, OrderItem, ProducerOrderSummary
 from orders.selectors import get_derived_order_status_label
+from reviews.models import Review
+from reviews.selectors import (
+    build_review_action_for_order_item,
+    get_reviewed_product_ids_for_user_and_products,
+)
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
@@ -59,6 +64,7 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     producer = serializers.SerializerMethodField()
+    review_action = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -68,6 +74,7 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
             "quantity",
             "paid_unit_price",
             "producer",
+            "review_action",
         ]
 
     def get_product_name(self, obj: OrderItem) -> str:
@@ -92,6 +99,17 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
             return str(obj.producer)
 
         return "Unknown producer"
+
+    def get_review_action(self, obj: OrderItem) -> dict:
+        request = self.context.get("request")
+        reviewed_product_ids = self.context.get("reviewed_product_ids", set())
+        user_id = getattr(getattr(request, "user", None), "id", None)
+
+        return build_review_action_for_order_item(
+            order_item=obj,
+            user_id=user_id,
+            reviewed_product_ids=reviewed_product_ids,
+        )
 
 
 class ProducerOrderSummarySerializer(serializers.ModelSerializer):
@@ -171,7 +189,7 @@ class ProducerOrderSummarySerializer(serializers.ModelSerializer):
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source="unique_reference", read_only=True)
-    items = OrderItemDetailSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     producer_breakdown = ProducerOrderSummarySerializer(
         source="producer_summaries",
@@ -197,6 +215,30 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "payment_method_display",
             "total_price",
         ]
+
+    def get_items(self, obj: Order) -> list[dict]:
+        request = self.context.get("request")
+        user_id = getattr(getattr(request, "user", None), "id", None)
+
+        product_ids = list(
+            obj.items.exclude(product_id__isnull=True).values_list("product_id", flat=True)
+        )
+
+        reviewed_product_ids = get_reviewed_product_ids_for_user_and_products(
+            user_id=user_id,
+            product_ids=product_ids,
+        )
+
+        serializer = OrderItemDetailSerializer(
+            obj.items.all(),
+            many=True,
+            read_only=True,
+            context={
+                **self.context,
+                "reviewed_product_ids": reviewed_product_ids,
+            },
+        )
+        return serializer.data
 
     def get_status(self, obj: Order) -> str:
         return get_derived_order_status_label(obj)
@@ -371,7 +413,9 @@ class ReorderSelectionSerializer(serializers.Serializer):
 
         if attrs.get("selected_product_id") in (None, ""):
             raise serializers.ValidationError(
-                {"selected_product_id": "Selected product is required for keep and replace actions."}
+                {
+                    "selected_product_id": "Selected product is required for keep and replace actions."
+                }
             )
 
         return attrs
@@ -387,5 +431,7 @@ class ReorderResponseSerializer(serializers.Serializer):
     unavailable_items = ReorderUnavailableItemSerializer(many=True)
     quantity_adjusted_items = ReorderQuantityAdjustedItemSerializer(many=True)
     price_changed_items = ReorderPriceChangedItemSerializer(many=True)
-    producer_changed_items = ReorderProducerChangedItemSerializer(many=True, required=False)
+    producer_changed_items = ReorderProducerChangedItemSerializer(
+        many=True, required=False
+    )
     message = serializers.CharField()

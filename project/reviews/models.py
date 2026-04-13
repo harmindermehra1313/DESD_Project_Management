@@ -97,40 +97,51 @@ class Review(models.Model):
         if not self.product_id:
             errors["product"] = "A review must be linked to a product."
 
+    def _get_matching_producer_summary_for_order_item(self):
+        if not (self.order_item_id and self.order_id and self.order_item.producer_id):
+            return None
+
+        return self.order.producer_summaries.filter(
+            producer_id=self.order_item.producer_id
+        ).first()
+
     def _validate_order_rules(self, errors):
         if not (self.order_id and self.customer_id and self.product_id):
             return
 
-        if self.order.status != self.order.Status.COMPLETED:
-            errors["order"] = "Reviews can only be submitted for delivered orders."
-
         if self.order.user_id != self.customer.user_id:
             errors["customer"] = (
-                "You can only review products from your own delivered orders."
+                "You can only review products from your own shipped orders."
             )
 
         if not self.order.items.filter(product_id=self.product_id).exists():
             errors["product"] = (
-                "You can only review products that were delivered in this order."
+                "You can only review products that were included in this order."
             )
 
     def _validate_order_item_rules(self, errors):
         if not (self.order_item_id and self.order_id and self.product_id and self.customer_id):
             return
-
+    
         if self.order_item.order_id != self.order_id:
             errors["order_item"] = (
                 "Selected order item does not belong to the selected order."
             )
-
+    
         if self.order_item.product_id != self.product_id:
             errors["product"] = (
                 "Selected order item does not match the reviewed product."
             )
-
+    
         if self.order_item.order.user_id != self.customer.user_id:
             errors["customer"] = (
-                "You can only review products from your own delivered orders."
+                "You can only review products from your own shipped orders."
+            )
+    
+        summary = self._get_matching_producer_summary_for_order_item()
+        if not summary or summary.status != summary.Status.SHIPPED:
+            errors["order_item"] = (
+                "Reviews can only be submitted for order items that have been shipped."
             )
 
     def _validate_duplicate_review(self, errors):
@@ -161,7 +172,7 @@ class Review(models.Model):
 
         if not self.text:
             errors["text"] = "Review text cannot be blank."
-    
+
     @property
     def is_anonymous_display(self):
         return bool(self.anonymous)
@@ -199,7 +210,7 @@ class Review(models.Model):
         return "Verified Customer"
 
     def public_review_data(self):
-      
+
         return {
             "id": self.pk,
             "title": self.title,
