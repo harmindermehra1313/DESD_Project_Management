@@ -1,0 +1,47 @@
+/* ============================================
+   PRODUCER DASHBOARD STYLES
+   ============================================ */
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Headings */
+.dashboard-heading {
+    color: var(--prussian-blue);
+    font-weight: 600;
+}
+
+/* Notification Card */
+.dashboard-card {
+    border-radius: var(--radius);
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* Notification List Items */
+.dashboard-list-item {
+    border-bottom: 1px solid var(--alabaster-grey);
+}
+
+.dashboard-list-item:last-child {
+    border-bottom: none;
+}
+
+/* Notification Type Badge */
+.dashboard-type-badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    font-weight: 600;
+}
+
+/* Hover effect for list items */
+.dashboard-list-item:hover {
+    background-color: var(--background-grey);
+}
+
+/* Ensure consistent spacing */
+.dashboard-card .card-body {
+    padding: 1.5rem;
+}

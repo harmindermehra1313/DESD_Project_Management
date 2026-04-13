@@ -136,6 +136,7 @@
                     data-edit-category-id="{{ product.category.pk }}"
                     data-edit-availability="{{ product.availability_status }}"
                     data-edit-organic="{{ product.organic_certification_status }}"
+                    data-edit-low-stock="{{ product.low_stock_threshold }}"
                     data-edit-description="{{ product.description|default:'' }}"
                     data-edit-wholesale-price="{% if wholesale_tier %}{{ wholesale_tier.unit_price }}{% endif %}"
                     data-edit-wholesale-min-qty="{% if wholesale_tier %}{{ wholesale_tier.min_quantity }}{% endif %}"
@@ -146,7 +147,15 @@
                     <td>{{ product.category.name }}</td>
                     <td>£{{ product.price }}</td>
                     <td>{{ product.get_unit_display }}</td>
-                    <td>{{ product.total_stock|default:"0" }}</td>
+                    <td>
+                        {{ product.total_stock|default:"0" }}
+
+                        {% if product.total_stock is not None and product.total_stock <= product.low_stock_threshold %}
+                            <span class="text-danger ms-1 low-stock-icon" title="Low stock">
+                                ⚠
+                            </span>
+                        {% endif %}
+                    </td>
 
                     <td>
                         <span class="status-badge avail-{{ product.availability_status|lower }}">
@@ -207,7 +216,18 @@
                 {% endif %}
                 {% endwith %}
                 <span class="text-muted small">Farm Origin:</span> {{ product.farm_origin }}<br>
-                <span class="text-muted small">Organic:</span> <span class="js-detail-organic">{{ product.get_organic_certification_status_display }}</span><br><br>
+                <span class="text-muted small">Organic:</span> <span class="js-detail-organic">{{ product.get_organic_certification_status_display }}</span><br>
+                
+                <span class="text-muted small">Unit:</span> {{ product.get_unit_display }}<br>
+
+                <span class="text-muted small">Low Stock Threshold:</span>
+                <span class="js-detail-low-stock">{{ product.low_stock_threshold }} units</span><br>
+
+                {% if product.total_stock <= product.low_stock_threshold %}
+                    <div class="text-danger small fw-semibold mt-1 low-stock-warning">
+                        ⚠ Low Stock Alert: only {{ product.total_stock }} {{ product.get_unit_display }} remaining
+                    </div>
+                {% endif %}
 
                 <strong>Description:</strong><br>
                 <span class="fst-italic js-detail-description">{{ product.description|default:"No description provided." }}</span>
@@ -377,6 +397,13 @@
                             <input type="number" class="form-control" id="editWholesaleMinQty" name="wholesale_min_quantity" min="2" placeholder="20">
                             <small class="text-muted">Minimum units a buyer must order to get wholesale price.</small>
                         </div>
+
+                        <div class="col-md-6">
+                            <label for="editLowStock" class="form-label fw-semibold">Low Stock Threshold</label>
+                            <input type="number" class="form-control" id="editLowStock" name="low_stock_threshold" min="0" max="9999" placeholder="Leave blank to remain unchanged">
+                            <small class="text-muted">Alert level for low stock warnings.</small>
+                        </div>
+
                     </div>
                     <div id="editFormAlert" class="alert mt-3 d-none" role="alert"></div>
                 </form>
