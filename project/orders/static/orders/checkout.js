@@ -252,6 +252,116 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ===============================
+    // Recurring order dropdowns
+    // ===============================
+    const DAY_LABELS = {MON:"Monday",TUE:"Tuesday",WED:"Wednesday",THU:"Thursday",FRI:"Friday",SAT:"Saturday",SUN:"Sunday"};
+    const DATE_TO_DAY = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+
+    document.querySelectorAll('.recurring-select').forEach(sel => {
+        const producerId = sel.dataset.producerId;
+        const panel = document.getElementById(`recurring-options-${producerId}`);
+        if (!panel) return;
+
+        sel.addEventListener('change', () => {
+            panel.style.display = sel.value === 'yes' ? 'block' : 'none';
+            if (sel.value !== 'yes') {
+                // Reset child fields
+                const patternSel = panel.querySelector('.recurrence-pattern');
+                if (patternSel) patternSel.value = 'WEEKLY';
+                const daySel = panel.querySelector('.recurrence-day-select');
+                if (daySel) daySel.value = '';
+                updateRecurringSummary(producerId);
+            } else {
+                // Auto-select recurrence day based on selected delivery date
+                autoSelectRecurrenceDay(producerId);
+            }
+        });
+    });
+
+    // When the delivery date changes, auto-default the recurrence day
+    document.querySelectorAll('.delivery-date').forEach(dateInput => {
+        dateInput.addEventListener('change', () => {
+            const section = dateInput.closest('.producer-delivery');
+            if (!section) return;
+            const producerId = section.querySelector('.producer-id')?.value;
+            if (producerId) autoSelectRecurrenceDay(producerId);
+        });
+    });
+
+    // When frequency or recurrence day changes, update the summary text
+    document.querySelectorAll('.recurrence-pattern, .recurrence-day-select').forEach(el => {
+        el.addEventListener('change', () => {
+            const producerId = el.dataset.producerId || el.closest('.recurring-options')?.id?.replace('recurring-options-','');
+            if (producerId) updateRecurringSummary(producerId);
+        });
+    });
+
+    function autoSelectRecurrenceDay(producerId) {
+        const section = document.querySelector(`.producer-delivery .producer-id[value="${producerId}"]`)?.closest('.producer-delivery');
+        if (!section) return;
+        const dateInput = section.querySelector('.delivery-date');
+        const daySel = document.querySelector(`#recurrence-day-${producerId}`);
+        if (!dateInput || !daySel || !dateInput.value) return;
+
+        const dt = new Date(dateInput.value + 'T00:00:00');
+        const dayCode = DATE_TO_DAY[dt.getDay()];
+        if (dayCode) daySel.value = dayCode;
+        updateRecurringSummary(producerId);
+    }
+
+    function updateRecurringSummary(producerId) {
+        const summary = document.getElementById(`recurring-summary-${producerId}`);
+        if (!summary) return;
+
+        const recurringSel = document.getElementById(`is-recurring-${producerId}`);
+        if (!recurringSel || recurringSel.value !== 'yes') {
+            summary.textContent = '';
+            return;
+        }
+
+        const pattern = document.getElementById(`recurrence-pattern-${producerId}`)?.value;
+        const dayCode = document.getElementById(`recurrence-day-${producerId}`)?.value;
+
+        if (!dayCode) {
+            summary.textContent = 'Select a recurrence day to see the schedule.';
+            return;
+        }
+
+        const freq = pattern === 'FORTNIGHTLY' ? 'every two weeks' : 'every week';
+        const dayName = DAY_LABELS[dayCode] || dayCode;
+
+        // Calculate the first recurring delivery date (after initial delivery)
+        const section = document.querySelector(`.producer-delivery .producer-id[value="${producerId}"]`)?.closest('.producer-delivery');
+        const dateInput = section?.querySelector('.delivery-date');
+        let firstDeliveryText = '';
+
+        if (dateInput?.value) {
+            const initialDate = new Date(dateInput.value + 'T00:00:00');
+            const targetDayIndex = Object.keys(DAY_LABELS).indexOf(dayCode);
+            // JS day: 0=Sun,1=Mon,...6=Sat; our mapping: MON=0,...SUN=6
+            const jsDayTarget = targetDayIndex === 6 ? 0 : targetDayIndex + 1;
+            let nextDate = new Date(initialDate);
+            nextDate.setDate(nextDate.getDate() + 1); // start from day after initial delivery
+
+            // Find next occurrence of the chosen day
+            while (nextDate.getDay() !== jsDayTarget) {
+                nextDate.setDate(nextDate.getDate() + 1);
+            }
+
+            if (pattern === 'FORTNIGHTLY') {
+                // For fortnightly, skip one more week if the gap is less than 7 days
+                const gap = (nextDate - initialDate) / (1000 * 60 * 60 * 24);
+                if (gap < 7) nextDate.setDate(nextDate.getDate() + 7);
+            }
+
+            const opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            firstDeliveryText = ` First recurring delivery: ${nextDate.toLocaleDateString('en-GB', opts)}.`;
+        }
+
+        summary.textContent = `This order will repeat ${freq} on ${dayName}.${firstDeliveryText} Recurrence begins after the initial order is delivered.`;
+    }
+
+    // ===============================
     // Handle delivery/collection addresses showing
     // ===============================
 
@@ -452,14 +562,28 @@ document.addEventListener("DOMContentLoaded", () => {
                 const date = block.querySelector(`input[name="delivery_date_${producerId}"]`)?.value;
                 const time = block.querySelector(`select[name="delivery_time_${producerId}"]`)?.value;
                 
+                // Recurring order fields
+                const recurringSelect = block.querySelector(`select[name="is_recurring_${producerId}"]`);
+                const isRecurring = recurringSelect ? recurringSelect.value === 'yes' : false;
+                const recurrencePattern = block.querySelector(`select[name="recurrence_pattern_${producerId}"]`)?.value || "";
+                const recurrenceDay = block.querySelector(`select[name="recurrence_day_${producerId}"]`)?.value || "";
+
                 // Validate all required fields exist per producer
                 if (!method || !date || !time) {
                     missingFields = true; 
                 }
 
+                // Validate recurrence day is selected when recurring is enabled
+                if (isRecurring && !recurrenceDay) {
+                    missingFields = true;
+                }
+
                 producerData[`delivery_or_collection_${producerId}`] = method;
                 producerData[`delivery_date_${producerId}`] = date;
                 producerData[`delivery_time_${producerId}`] = time;
+                producerData[`is_recurring_${producerId}`] = isRecurring;
+                producerData[`recurrence_pattern_${producerId}`] = recurrencePattern;
+                producerData[`recurrence_day_${producerId}`] = recurrenceDay;
             });
 
             console.log("producerData =", producerData);

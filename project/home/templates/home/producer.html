@@ -1,12 +1,103 @@
 {% extends "base.html" %}
-{% block title %}Admin Dashboard{% endblock %}
+{% load static %}
+{% block title %}Producer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/producer_dashboard.css' %}">
+{% endblock %}
 
 {% block content %}
 
-  <div class="card border-0 shadow-none">
-  <div class="card-body p-3 p-md-4">
-    <h1>Dashboard</h1>
-    <p>Use the navbar to visit each app’s placeholder page.</p>
-  </div>
+<div class="container py-4 dashboard-container">
+
+    <!-- Page Title -->
+    <h1 class="mb-4 title">
+        Producer Dashboard
+    </h1>
+
+    <!-- Notification Centre Card -->
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: var(--radius);">
+        <div class="card-body p-3 p-md-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h4 class="mb-0" style="color: var(--prussian-blue); font-weight: 600;">
+                  Notification Centre
+              </h4>
+
+              <form method="POST" action="{% url 'home:mark_all_notifications_read' %}">
+                  {% csrf_token %}
+                  <button 
+                      class="btn btn-sm btn-outline-secondary"
+                      {% if unread_count == 0 %}disabled{% endif %}
+                  >
+                      Mark all as read 
+                      {% if unread_count > 0 %}
+                          ({{ unread_count }})
+                      {% endif %}
+                  </button>
+              </form>
+            </div>
+
+            {% if notifications %}
+                <ul class="list-group list-group-flush">
+
+                    {% for note in notifications %}
+                    <li class="list-group-item d-flex justify-content-between align-items-start py-3 dashboard-list-item">
+
+                        <div class="ms-0">
+
+                            <!-- Notification Type Badge -->
+                            <span class="badge rounded-pill dashboard-type-badge
+                                {% if note.type == 'PA' %} bg-danger 
+                                {% elif note.type == 'OU' %} bg-primary 
+                                {% elif note.type == 'RC' %} bg-warning text-dark
+                                {% elif note.type == 'SYS' %} bg-secondary
+                                {% elif note.type == 'PRO' %} bg-success
+                                {% else %} bg-info
+                                {% endif %}
+                            ">
+                                {{ note.get_type_display }}
+                            </span>
+
+                            <!-- Message -->
+                            <div class="fw-semibold mt-2">
+                                {{ note.message }}
+                            </div>
+
+                            <!-- Metadata -->
+                            <div class="text-muted small mt-1">
+                                {{ note.created_at|date:"d M Y, H:i" }}
+                                {% if note.product %}
+                                    • Product: <strong>{{ note.product.name }}</strong>
+                                {% endif %}
+                                {% if note.order %}
+                                    • Order #{{ note.order.pk }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Read / Unread -->
+                        {% if not note.read_at %}
+                            <span class="badge bg-danger rounded-pill">New</span>
+                        {% else %}
+                            <span class="badge bg-light text-muted rounded-pill">Read</span>
+                        {% endif %}
+
+                    </li>
+                    {% endfor %}
+
+                </ul>
+
+            {% else %}
+                <div class="text-center py-4 text-muted">
+                    <p class="mb-1">No notifications yet.</p>
+                    <p class="small">You’ll see product alerts, order updates, and system messages here.</p>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+
 </div>
+
 {% endblock %}

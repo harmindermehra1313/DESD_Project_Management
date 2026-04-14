@@ -14,7 +14,8 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
-
+from notifications.services.notifications import NotificationService
+from notifications.models import Notification
 from admin_records.models import ModerationLog
 from django.db.models import Prefetch
 
@@ -425,12 +426,26 @@ def edit_producer_product(request, pk):
                     'success': False,
                     'error': f'At least {wholesale_min_quantity} items in stock are required to set a wholesale price.',
                 })
+        
+        # Low stock threshold
+        low_stock_raw = data.get('low_stock_threshold')
+
+        try:
+            low_stock_threshold = int(low_stock_raw)
+            if low_stock_threshold < 0 or low_stock_threshold > 9999:
+                raise ValueError
+        except (TypeError, ValueError):
+            return JsonResponse({
+                'success': False,
+                'error': 'Low stock threshold must be a number between 0 and 9999.'
+            })
 
         product.name = name
         product.price = price
         product.unit = unit
         product.availability_status = availability_status
         product.organic_certification_status = organic
+        product.low_stock_threshold = low_stock_threshold
         product.description = data.get('description', product.description)
         product.category = category
         product.save()
@@ -444,6 +459,22 @@ def edit_producer_product(request, pk):
             )
         else:
             product.product_wholesale.all().delete()
+        
+        # Check stock vs threshold for notification
+        stock_total = product.inventory_batches.aggregate(total=Sum('remaining_quantity')).get('total') or 0
+
+        if stock_total <= product.low_stock_threshold:
+            NotificationService.create_unique(
+                user=request.user,
+                type=Notification.Type.PRODUCT_ALERT,
+                product=product,
+                message=f"Low Stock Alert: {product.name} - only {stock_total} {product.get_unit_display()} remaining."
+            )
+        else:
+            NotificationService.resolve_for_product(
+                product,
+                Notification.Type.PRODUCT_ALERT
+            )
 
         return JsonResponse({
             'success': True,
@@ -459,6 +490,7 @@ def edit_producer_product(request, pk):
             'description': product.description or '',
             'wholesale_price': str(wholesale_price) if wholesale_price is not None else '',
             'wholesale_min_quantity': wholesale_min_quantity if wholesale_price is not None else '',
+            'low_stock_threshold': product.low_stock_threshold,
         })
 
     except json.JSONDecodeError:
