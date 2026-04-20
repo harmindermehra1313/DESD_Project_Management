@@ -1,3 +1,4 @@
+{# added food miles - joe #}
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Cart{% endblock %}
@@ -49,6 +50,16 @@
             <div class="d-flex justify-content-between mb-2">
               <span>Subtotal</span>
               <span id="subtotal" class="fw-semibold">£0.00</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Total food miles</span>
+              <span id="totalFoodMiles" class="fw-semibold">
+                {% if user.is_authenticated %}
+                  0.00 miles
+                {% else %}
+                  Log in to see your food miles
+                {% endif %}
+              </span>
             </div>
             <hr>
             <div class="d-flex justify-content-between fw-semibold mb-3">

@@ -1,3 +1,4 @@
+# added food miles - joe
 from decimal import Decimal
 from django.utils import timezone
 
@@ -12,6 +13,7 @@ from products.models import (
 )
 from accounts.models import Producer
 from api.serializers.accounts import ProducerSerializer, AdminSerializer
+from orders.services.food_miles import calculate_food_miles, get_default_delivery_postcode
 
 
 
@@ -89,6 +91,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     stock_message = serializers.SerializerMethodField()
     is_purchasable = serializers.SerializerMethodField()
     add_to_cart_button_label = serializers.SerializerMethodField()
+    customer_postcode = serializers.SerializerMethodField()
+    food_miles = serializers.SerializerMethodField()
+    food_miles_login_required = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -118,6 +123,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "image",
             "low_stock_threshold",
             "farm_origin",
+            "customer_postcode",
+            "food_miles",
+            "food_miles_login_required",
             "organic_certification_status",
             "storage_guidance",
             "availability_start",
@@ -323,6 +331,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         if self.get_is_purchasable(obj):
             return "Add to cart"
         return "Unavailable"
+
+    def get_customer_postcode(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return None
+        return get_default_delivery_postcode(request.user)
+
+    def get_food_miles(self, obj):
+        customer_postcode = self.get_customer_postcode(obj)
+        return calculate_food_miles(obj.producer.farm_postcode, customer_postcode)
+
+    def get_food_miles_login_required(self, obj):
+        request = self.context.get("request")
+        return bool(request and not request.user.is_authenticated)
 
 
 # Following serializers are being used by others

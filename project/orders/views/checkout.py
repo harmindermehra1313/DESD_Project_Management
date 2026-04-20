@@ -1,3 +1,4 @@
+# added food miles - joe
 from django.shortcuts import render, redirect
 from django.apps import apps
 from decimal import Decimal
@@ -15,6 +16,7 @@ from orders.services.session_loader import load_checkout_data_from_session
 from orders.services.order_validation import validate_checkout_session
 from payments.services import create_payment_intent
 from django.urls import reverse
+from orders.services.food_miles import calculate_food_miles
 
 Product = apps.get_model('products', 'Product')
 Order = apps.get_model('orders', 'Order')
@@ -160,11 +162,38 @@ def checkout(request):
         "inventory__product__producer",
     )
 
+    # Logged-in user: load real addresses
+    if request.user.is_authenticated:
+        user = request.user
+        addresses = user.addresses.all()
+
+        default_address = (
+            addresses.filter(is_default_delivery=True).first()
+            or addresses.first()
+        )
+
+        default_billing = (
+            addresses.filter(is_default_billing=True).first()
+            or addresses.first()
+        )
+
+    # Guest user: no saved addresses
+    else:
+        user = None
+        addresses = []
+        default_address = None
+        default_billing = None
+
+    customer_postcode = default_address.postcode if default_address else None
+    food_miles_cache = {}
+
     enriched_items = []
     producers = {}
     total = Decimal("0")
     vat_cart_total = Decimal("0")
     order_savings_total = Decimal("0")
+    total_food_miles = None
+    counted_food_miles_producer_ids = set()
 
     for entry in items:
         # product = Product.objects.get(id=entry["product_id"])
@@ -174,6 +203,20 @@ def checkout(request):
         inventory = entry.inventory
         quantity = entry.quantity
         producer = product.producer
+
+        food_miles_cache_key = (producer.farm_postcode, customer_postcode)
+        if food_miles_cache_key in food_miles_cache:
+            food_miles = food_miles_cache[food_miles_cache_key]
+        else:
+            food_miles = calculate_food_miles(producer.farm_postcode, customer_postcode)
+            food_miles_cache[food_miles_cache_key] = food_miles
+
+        line_food_miles = food_miles
+        if food_miles is not None and producer.id not in counted_food_miles_producer_ids:
+            counted_food_miles_producer_ids.add(producer.id)
+            if total_food_miles is None:
+                total_food_miles = Decimal("0.00")
+            total_food_miles += food_miles
         
         # Price
         #discounted_price = inventory.get_discounted_price() # Normal price if no discount
@@ -241,6 +284,8 @@ def checkout(request):
             "savings_per_unit": savings_per_unit,
             "savings_total": savings_total,
             "producer": producer,
+            "food_miles": food_miles,
+            "line_food_miles": line_food_miles,
         }
 
         total += total_price
@@ -256,6 +301,7 @@ def checkout(request):
                 "savings_total": Decimal("0"),
                 "grand_total": Decimal("0"),
                 "expiry_dates": [],
+                "food_miles_total": None,
             }
         
         #producers[producer].append(enriched_item)
@@ -272,6 +318,8 @@ def checkout(request):
         producers[producer]["vat_total"] += vat_total
         producers[producer]["savings_total"] += savings_total
         producers[producer]["grand_total"] += total_price + vat_total
+        if line_food_miles is not None and producers[producer]["food_miles_total"] is None:
+            producers[producer]["food_miles_total"] = line_food_miles
 
         # TBC Get producers address as collection address??
         producer_address = producer.user.addresses.first()
@@ -308,28 +356,6 @@ def checkout(request):
 
     # Get original total before vat or discounts
     original_total = total + order_savings_total
-
-    # Logged‑in user: load real addresses
-    if request.user.is_authenticated:
-        user = request.user
-        addresses = user.addresses.all()
-
-        default_address = (
-            addresses.filter(is_default_delivery=True).first()
-            or addresses.first()
-        )
-
-        default_billing = (
-            addresses.filter(is_default_billing=True).first()
-            or addresses.first()
-        )
-
-    # Guest user: no saved addresses
-    else:
-        user = None
-        addresses = []
-        default_address = None
-        default_billing = None
 
     # Dates for date validation
     now = datetime.now()
@@ -395,6 +421,7 @@ def checkout(request):
             "savings_total": order_savings_total,
             "original_total": original_total,
             "final_total": total + vat_cart_total,
+            "total_food_miles": total_food_miles,
         },
         "addresses": addresses,
         "default_delivery": default_address,

@@ -1,3 +1,4 @@
+// added food miles - joe
 const M = window.ProductDetailMessages;
 document.addEventListener("DOMContentLoaded", () => {
   const root = document.getElementById("productDetailPage");
@@ -25,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const allergensWrap = document.getElementById("allergensWrap");
   const storageGuidance = document.getElementById("storageGuidance");
   const farmOrigin = document.getElementById("farmOrigin");
+  const foodMiles = document.getElementById("foodMiles");
   const organicCertification = document.getElementById("organicCertification");
   const unitPriceEl = document.getElementById("unitPriceLabel");
   const compareAtEl = document.getElementById("compareAtPrice");
@@ -48,6 +50,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const n = Number(String(value ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
     return Math.floor(n);
+  }
+
+  function parseMiles(value) {
+    if (value === null || value === undefined || value === "") {
+      return NaN;
+    }
+
+    const n = Number(value);
+    return Number.isFinite(n) ? n : NaN;
   }
 
   function setMsg(text, variant = "danger") {
@@ -387,6 +398,19 @@ document.addEventListener("DOMContentLoaded", () => {
     productDescription.textContent = data.description || M.noDescription;
     storageGuidance.textContent = data.storage_guidance || M.dash;
     farmOrigin.textContent = data.farm_origin || M.dash;
+
+    if (foodMiles) {
+      const miles = parseMiles(data.food_miles);
+      if (Number.isFinite(miles)) {
+        foodMiles.textContent = `${miles.toFixed(2)} miles from farm to your default delivery postcode`;
+      } else if (data.food_miles_login_required) {
+        foodMiles.textContent = "Log in to see your food miles.";
+      } else if (data.customer_postcode) {
+        foodMiles.textContent = "Food miles are currently unavailable for this route.";
+      } else {
+        foodMiles.textContent = "Add a delivery address to view food miles.";
+      }
+    }
 
     const organicStatus = data.organic_certification_status;
     if (organicStatus === "CERTIFIED") {

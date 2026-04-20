@@ -1,3 +1,4 @@
+# added food miles - joe
 from __future__ import annotations
 
 from decimal import Decimal
@@ -7,10 +8,12 @@ from django.db.models.functions import Coalesce
 from rest_framework import serializers
 
 from carts.models import Cart, CartItem
+from orders.services.food_miles import calculate_food_miles, get_default_delivery_postcode
 
 
 class ProductMiniSerializer(serializers.Serializer):
     id = serializers.IntegerField(source="product.id", read_only=True)
+    producer_id = serializers.IntegerField(source="product.producer.id", read_only=True)
     name = serializers.CharField(source="product.name", read_only=True)
 
     price = serializers.DecimalField(
@@ -42,6 +45,7 @@ class ProductMiniSerializer(serializers.Serializer):
     is_expired = serializers.SerializerMethodField()
     is_purchasable = serializers.SerializerMethodField()
     stock_message = serializers.SerializerMethodField()
+    food_miles = serializers.SerializerMethodField()
 
     def get_producer_name(self, obj):
         producer = obj.product.producer
@@ -85,6 +89,24 @@ class ProductMiniSerializer(serializers.Serializer):
 
         return "In stock"
 
+    def get_food_miles(self, obj):
+        customer_postcode = self.context.get("customer_postcode")
+
+        if customer_postcode is None:
+            request = self.context.get("request")
+            if request:
+                customer_postcode = get_default_delivery_postcode(request.user)
+
+        cache = self.context.setdefault("_food_miles_cache", {})
+        cache_key = (obj.product.producer.farm_postcode, customer_postcode)
+
+        if cache_key in cache:
+            return cache[cache_key]
+
+        miles = calculate_food_miles(obj.product.producer.farm_postcode, customer_postcode)
+        cache[cache_key] = miles
+        return miles
+
 
 #
 class CartItemSerializer(serializers.ModelSerializer):
@@ -96,6 +118,8 @@ class CartItemSerializer(serializers.ModelSerializer):
     base_line_total = serializers.SerializerMethodField()
     savings_total = serializers.SerializerMethodField()
     savings_per_unit = serializers.SerializerMethodField()
+    food_miles = serializers.SerializerMethodField()
+    line_food_miles = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
@@ -110,6 +134,8 @@ class CartItemSerializer(serializers.ModelSerializer):
             "base_line_total",
             "savings_total",
             "savings_per_unit",
+            "food_miles",
+            "line_food_miles",
             "created_at",
             "updated_at",
         ]
@@ -129,6 +155,34 @@ class CartItemSerializer(serializers.ModelSerializer):
         base = obj.inventory.product.price
         return Decimal(str(base)) - (obj.unit_price or 0)
 
+    def get_food_miles(self, obj):
+        customer_postcode = self.context.get("customer_postcode")
+
+        if customer_postcode is None:
+            request = self.context.get("request")
+            if request:
+                customer_postcode = get_default_delivery_postcode(request.user)
+
+        cache = self.context.setdefault("_food_miles_cache", {})
+        cache_key = (obj.inventory.product.producer.farm_postcode, customer_postcode)
+
+        if cache_key in cache:
+            return cache[cache_key]
+
+        miles = calculate_food_miles(
+            obj.inventory.product.producer.farm_postcode,
+            customer_postcode,
+        )
+        cache[cache_key] = miles
+        return miles
+
+    def get_line_food_miles(self, obj):
+        food_miles = self.get_food_miles(obj)
+        if food_miles is None:
+            return None
+
+        return food_miles
+
 
 class CartSerializer(serializers.ModelSerializer):
     """
@@ -139,6 +193,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     item_count = serializers.SerializerMethodField()
     total_quantity = serializers.SerializerMethodField()
+    food_miles_login_required = serializers.SerializerMethodField()
 
     # keep your existing field name if your Cart model has it
     total_price = serializers.DecimalField(
@@ -155,6 +210,7 @@ class CartSerializer(serializers.ModelSerializer):
             "items",
             "item_count",
             "total_quantity",
+            "food_miles_login_required",
             "total_price",
             "created_at",
             "updated_at",
@@ -181,6 +237,10 @@ class CartSerializer(serializers.ModelSerializer):
         if total == total.to_integral():
             return int(total)
         return str(total)
+
+    def get_food_miles_login_required(self, obj):
+        request = self.context.get("request")
+        return bool(request and not request.user.is_authenticated)
 
 
 class AddToCartSerializer(serializers.Serializer):

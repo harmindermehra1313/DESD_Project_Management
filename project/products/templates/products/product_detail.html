@@ -1,3 +1,4 @@
+{# added food miles - joe #}
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Product details{% endblock %}
@@ -66,6 +67,16 @@
                 <div class="mb-3">
                   <div class="product-meta-label">Farm origin</div>
                   <div id="farmOrigin" class="product-meta-value"></div>
+                </div>
+                <div class="mb-3">
+                  <div class="product-meta-label">Food miles</div>
+                  <div id="foodMiles" class="product-meta-value">
+                    {% if user.is_authenticated %}
+                      Add a delivery address to view food miles.
+                    {% else %}
+                      Log in to see your food miles.
+                    {% endif %}
+                  </div>
                 </div>
                 <div class="mb-3">
                   <div class="product-meta-label">Organic certification</div>

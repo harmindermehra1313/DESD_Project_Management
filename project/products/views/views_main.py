@@ -155,7 +155,7 @@ def add_product(request):
             )
 
         wholesale_price = None
-        wholesale_min_quantity = 20
+        wholesale_min_quantity = 1
         if wholesale_price_raw:
             try:
                 wholesale_price = Decimal(wholesale_price_raw)
@@ -189,11 +189,11 @@ def add_product(request):
                         'products/add_product.html',
                         _build_add_product_context('Please enter a valid minimum wholesale quantity.'),
                     )
-                if wholesale_min_quantity < 2:
+                if wholesale_min_quantity < 1:
                     return render(
                         request,
                         'products/add_product.html',
-                        _build_add_product_context('Minimum wholesale quantity must be at least 2.'),
+                        _build_add_product_context('Minimum wholesale quantity must be at least 1.'),
                     )
 
             if stock_quantity_value < wholesale_min_quantity:
