@@ -108,6 +108,29 @@
       `;
     }
 
+    function renderReviewerBadges(review) {
+      const badges = [];
+
+      if (review?.verified_purchase) {
+        badges.push(
+          `<span class="product-review-badge product-review-badge--verified">
+            <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
+            Verified purchase
+          </span>`
+        );
+      }
+
+      if (review?.anonymous) {
+        badges.push(
+          `<span class="product-review-badge product-review-badge--anonymous">
+            Anonymous
+          </span>`
+        );
+      }
+
+      return badges.join("");
+    }
+
     function renderReviews(reviews) {
       if (!Array.isArray(reviews) || !reviews.length) {
         renderEmptyState();
@@ -121,16 +144,20 @@
           const safeReviewer = escapeHtml(review.reviewer_name || "Verified Customer");
           const safeDate = escapeHtml(formatReviewDate(review.created_at));
           const ratingValue = Math.max(0, Math.min(5, Number(review.rating) || 0));
+          const badgeMarkup = renderReviewerBadges(review);
 
           return `
             <article class="product-review-card">
               <div class="product-review-card-top">
                 <div>
                   <h3 class="product-review-title">${safeTitle}</h3>
+
                   <div class="product-review-meta">
                     <span class="product-review-author">${safeReviewer}</span>
                     ${safeDate ? `<span class="product-review-sep">•</span><span>${safeDate}</span>` : ""}
                   </div>
+
+                  ${badgeMarkup ? `<div class="product-review-badges">${badgeMarkup}</div>` : ""}
                 </div>
 
                 <div class="product-review-rating" aria-label="${ratingValue} out of 5">
@@ -184,6 +211,19 @@
         `;
       }
     }
+
+    // Public hook for manual refresh
+    window.ProductReviews = window.ProductReviews || {};
+    window.ProductReviews.reload = loadReviews;
+
+    // Event-driven refresh after review submission
+    window.addEventListener("reviews:refresh", (event) => {
+      const refreshedProductId = Number(event?.detail?.productId ?? 0);
+
+      if (!refreshedProductId || refreshedProductId === productId) {
+        loadReviews();
+      }
+    });
 
     loadReviews();
   }

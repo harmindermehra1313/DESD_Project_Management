@@ -1,4 +1,35 @@
+.product-review-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+}
 
+.product-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid var(--alabaster-grey);
+    background: #fff;
+    color: var(--text-dark);
+}
+
+.product-review-badge--verified {
+    border-color: rgba(57, 163, 150, 0.22);
+    background: rgba(57, 163, 150, 0.10);
+    color: var(--prussian-blue);
+}
+
+.product-review-badge--anonymous {
+    border-color: var(--alabaster-grey);
+    background: var(--background-grey);
+    color: var(--lavender-grey);
+}
 
 .product-reviews-panel {
     margin-top: 1.25rem;
