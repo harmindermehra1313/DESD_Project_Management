@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Q
 
 
 class Review(models.Model):
@@ -60,17 +61,19 @@ class Review(models.Model):
     )
 
     moderated_at = models.DateTimeField(
-        auto_now_add=True,
         null=True,
+        blank=True,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["customer", "product"],
-                name="unique_review_per_customer_per_product",
+                condition=~Q(status="RMV"),
+                name="unique_active_review_per_customer_per_product",
             )
         ]
 
@@ -153,6 +156,7 @@ class Review(models.Model):
                 customer_id=self.customer_id,
                 product_id=self.product_id,
             )
+            .exclude(status=self.Status.REMOVED)
             .exclude(pk=self.pk)
             .exists()
         )
