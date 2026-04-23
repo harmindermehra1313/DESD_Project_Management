@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from reviews.models import Review
 from reviews.selectors import get_reviewable_order_item_for_user
-from reviews.services import create_review_for_order_item
+from reviews.services.review_services import create_review_for_order_item
 
 class ReviewCreateSerializer(serializers.Serializer):
     order_id = serializers.IntegerField(required=False)

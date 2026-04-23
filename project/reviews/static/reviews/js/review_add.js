@@ -20,17 +20,26 @@
   };
 
   const messages = {
-    genericSubmitError: "The review could not be submitted at this time. Please try again.",
-    genericValidationError: "Please correct the highlighted fields and try again.",
-    sessionExpired: "The session has expired. Sign in again and submit the review once more.",
+    genericSubmitError:
+      "The review could not be submitted at this time. Please try again.",
+    genericValidationError:
+      "Please correct the highlighted fields and try again.",
+    sessionExpired:
+      "The session has expired. Sign in again and submit the review once more.",
     forbidden: "This review cannot be submitted for the selected order item.",
-    notFound: "The selected order item could not be found. Refresh the page and try again.",
-    duplicateOrInvalid: "This review cannot be submitted. A review may already exist, or the item may no longer be eligible.",
-    rateLimited: "Too many submission attempts were made. Please wait a moment and try again.",
-    serviceUnavailable: "The review service is temporarily unavailable. Please try again later.",
-    invalidSelection: "The selected review item is invalid. Refresh the page and try again.",
+    notFound:
+      "The selected order item could not be found. Refresh the page and try again.",
+    duplicateOrInvalid:
+      "This review cannot be submitted. A review may already exist, or the item may no longer be eligible.",
+    rateLimited:
+      "Too many submission attempts were made. Please wait a moment and try again.",
+    serviceUnavailable:
+      "The review service is temporarily unavailable. Please try again later.",
+    invalidSelection:
+      "The selected review item is invalid. Refresh the page and try again.",
     titleRequired: "Enter a review title.",
-    titleTooLong: "Enter a shorter review title. A maximum of 120 characters is allowed.",
+    titleTooLong:
+      "Enter a shorter review title. A maximum of 120 characters is allowed.",
     ratingRequired: "Select a rating between 1 and 5.",
     ratingInvalid: "Select a whole-number rating between 1 and 5.",
     textRequired: "Enter review details before submitting.",
@@ -46,7 +55,9 @@
   function getFeedbackElement(field) {
     if (!field) return null;
 
-    let feedback = field.parentElement?.querySelector(".invalid-feedback[data-generated='true']");
+    let feedback = field.parentElement?.querySelector(
+      ".invalid-feedback[data-generated='true']",
+    );
     if (feedback) return feedback;
 
     feedback = document.createElement("div");
@@ -183,9 +194,12 @@
     const formErrors = [];
 
     if (response.status === 400 || response.status === 422) {
-      const hasTitleError = Array.isArray(data?.title) || typeof data?.title === "string";
-      const hasRatingError = Array.isArray(data?.rating) || typeof data?.rating === "string";
-      const hasTextError = Array.isArray(data?.text) || typeof data?.text === "string";
+      const hasTitleError =
+        Array.isArray(data?.title) || typeof data?.title === "string";
+      const hasRatingError =
+        Array.isArray(data?.rating) || typeof data?.rating === "string";
+      const hasTextError =
+        Array.isArray(data?.text) || typeof data?.text === "string";
       const hasSelectionError =
         Array.isArray(data?.order_id) ||
         Array.isArray(data?.order_item_id) ||
@@ -213,7 +227,12 @@
         formErrors.push(messages.invalidSelection);
       }
 
-      if (!hasTitleError && !hasRatingError && !hasTextError && !hasSelectionError) {
+      if (
+        !hasTitleError &&
+        !hasRatingError &&
+        !hasTextError &&
+        !hasSelectionError
+      ) {
         formErrors.push(messages.duplicateOrInvalid);
       }
 
@@ -304,7 +323,18 @@
     submitBtn.textContent = "Submitting...";
 
     try {
-      await submitReview(payload);
+      const data = await submitReview(payload);
+
+      successBox.textContent =
+        data?.message || "Review submitted successfully.";
+
+      if (data?.is_flagged) {
+        successBox.classList.remove("alert-success");
+        successBox.classList.add("alert-warning");
+      } else {
+        successBox.classList.remove("alert-warning");
+        successBox.classList.add("alert-success");
+      }
 
       successBox.classList.remove("d-none");
 

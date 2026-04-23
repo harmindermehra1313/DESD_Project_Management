@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from reviews.models import Review
 
 from reviews.api.serializers import ReviewCreateSerializer, PublicReviewSerializer
 
@@ -12,6 +13,7 @@ from reviews.selectors import (
     get_published_review_summary_for_product,
     get_published_reviews_for_product,
 )
+
 
 class ReviewCreateAPIView(generics.CreateAPIView):
     serializer_class = ReviewCreateSerializer
@@ -22,14 +24,23 @@ class ReviewCreateAPIView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         review = serializer.save()
 
+        message = (
+            "Review submitted successfully."
+            if review.status == Review.Status.PUBLISHED
+            else "Review submitted and sent for moderation."
+        )
+
         return Response(
             {
-                "message": "Review submitted successfully.",
+                "message": message,
+                "status": review.status,
+                "is_flagged": review.status == Review.Status.FLAGGED,
                 "product_id": review.product_id,
                 "review": PublicReviewSerializer(review).data,
             },
             status=status.HTTP_201_CREATED,
         )
+
 
 class ProductReviewListAPIView(APIView):
     permission_classes = [AllowAny]
