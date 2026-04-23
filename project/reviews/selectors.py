@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from django.db.models import Avg, Count
+
 from reviews.models import Review
 
 
@@ -90,4 +92,42 @@ def build_review_action_for_order_item(*, order_item, user_id: int, reviewed_pro
             "order_item_id": order_item.id,
             "product_id": order_item.product_id,
         },
+    }
+
+
+
+
+def get_published_reviews_for_product(*, product_id: int):
+    return (
+        Review.objects.filter(
+            product_id=product_id,
+            status=Review.Status.PUBLISHED,
+        )
+        .select_related("customer__user")
+        .order_by("-created_at", "-id")
+    )
+
+
+
+def get_published_review_summary_for_product(*, product_id: int) -> dict:
+    qs = Review.objects.filter(
+        product_id=product_id,
+        status=Review.Status.PUBLISHED,
+    )
+
+    aggregate = qs.aggregate(
+        review_count=Count("id"),
+        average_rating=Avg("rating"),
+    )
+
+    rating_breakdown = {str(rating): 0 for rating in range(1, 6)}
+    for row in qs.values("rating").annotate(count=Count("id")):
+        rating_breakdown[str(row["rating"])] = row["count"]
+
+    average_rating = aggregate["average_rating"]
+
+    return {
+        "review_count": aggregate["review_count"] or 0,
+        "average_rating": round(float(average_rating), 2) if average_rating is not None else 0.0,
+        "rating_breakdown": rating_breakdown,
     }
