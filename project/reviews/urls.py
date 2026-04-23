@@ -1,8 +1,9 @@
 from django.urls import path
-from . import views
 
-app_name = 'reviews'
+from reviews.views import ReviewCreateView
+
+app_name = "reviews"
 
 urlpatterns = [
-    path('', views.index, name='index')
+    path("add/", ReviewCreateView.as_view(), name="add"),
 ]

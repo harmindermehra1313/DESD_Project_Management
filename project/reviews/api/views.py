@@ -1,16 +1,35 @@
 from django.shortcuts import get_object_or_404
-
+from rest_framework import generics, permissions
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
+
+from reviews.api.serializers import ReviewCreateSerializer, PublicReviewSerializer
 
 from products.models import Product
-from reviews.api.serializers import PublicReviewSerializer
 from reviews.selectors import (
     get_published_review_summary_for_product,
     get_published_reviews_for_product,
 )
 
+class ReviewCreateAPIView(generics.CreateAPIView):
+    serializer_class = ReviewCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        review = serializer.save()
+
+        return Response(
+            {
+                "message": "Review submitted successfully.",
+                "product_id": review.product_id,
+                "review": PublicReviewSerializer(review).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 class ProductReviewListAPIView(APIView):
     permission_classes = [AllowAny]

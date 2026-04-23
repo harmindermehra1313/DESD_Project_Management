@@ -3,6 +3,8 @@ from __future__ import annotations
 from django.db.models import Avg, Count
 
 from reviews.models import Review
+from django.core.exceptions import PermissionDenied
+from orders.models import OrderItem
 
 
 def get_reviewed_product_ids_for_user_and_products(*, user_id: int, product_ids: list[int]) -> set[int]:
@@ -94,7 +96,48 @@ def build_review_action_for_order_item(*, order_item, user_id: int, reviewed_pro
         },
     }
 
+def get_reviewable_order_item_for_user(
+    *,
+    user_id: int,
+    order_item_id: int,
+    order_id: int | None = None,
+    product_id: int | None = None,
+):
+    """
+    Resolve and validate an order item that can be reviewed by the current user.
+    All review eligibility rules remain inside the reviews app.
+    """
+    if not user_id:
+        raise PermissionDenied("You must be signed in to write a review.")
 
+    order_item = (
+        OrderItem.objects.select_related("order", "product", "producer")
+        .prefetch_related("order__producer_summaries")
+        .get(pk=order_item_id)
+    )
+
+    if order_id is not None and order_item.order_id != order_id:
+        raise PermissionDenied("This order item does not belong to the selected order.")
+
+    if product_id is not None and order_item.product_id != product_id:
+        raise PermissionDenied("This order item does not match the selected product.")
+
+    product_ids = [order_item.product_id] if order_item.product_id else []
+    reviewed_product_ids = get_reviewed_product_ids_for_user_and_products(
+        user_id=user_id,
+        product_ids=product_ids,
+    )
+
+    action = build_review_action_for_order_item(
+        order_item=order_item,
+        user_id=user_id,
+        reviewed_product_ids=reviewed_product_ids,
+    )
+
+    if not action["eligible"]:
+        raise PermissionDenied(action.get("reason") or "Review is not available for this item.")
+
+    return order_item
 
 
 def get_published_reviews_for_product(*, product_id: int):

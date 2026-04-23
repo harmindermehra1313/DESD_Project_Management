@@ -3,6 +3,7 @@ const ORDER_DETAIL_API_BASE = "/api/orders/";
 const ORDER_REORDER_PREVIEW_API_SUFFIX = "/reorder-preview/";
 const ORDER_REORDER_API_SUFFIX = "/reorder/";
 const RECEIPT_URL_BASE = "/orders/receipt/";
+const REVIEW_ADD_PAGE_URL = "/reviews/add/";
 const M = window.OrderHistoryMessages;
 
 const DEFAULT_FILTERS = {
@@ -694,6 +695,18 @@ function renderReviewActionCell(item) {
   `;
 }
 
+function buildReviewAddUrl(payload) {
+  const params = new URLSearchParams({
+    order_id: String(payload.orderId || ""),
+    order_item_id: String(payload.orderItemId || ""),
+    product_id: String(payload.productId || ""),
+    next: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    popup: "1",
+  });
+
+  return `${REVIEW_ADD_PAGE_URL}?${params.toString()}`;
+}
+
 function handleWriteReviewClick(button) {
   const payload = {
     orderId: button.dataset.orderId || "",
@@ -703,14 +716,21 @@ function handleWriteReviewClick(button) {
     producerName: button.dataset.producerName || "",
   };
 
-  document.dispatchEvent(
-    new CustomEvent("order-history:write-review", {
-      detail: payload,
-    }),
+  const reviewUrl = buildReviewAddUrl(payload);
+
+  const popup = window.open(
+    reviewUrl,
+    "write-review",
+    "popup=yes,width=760,height=860,resizable=yes,scrollbars=yes",
   );
 
-  console.log("Write Review clicked:", payload);
+  if (!popup) {
+    window.location.assign(reviewUrl);
+  }
 }
+
+
+
 function renderItemsSection(items) {
   return `
     <div class="mb-4">
