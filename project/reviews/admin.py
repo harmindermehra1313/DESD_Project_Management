@@ -73,6 +73,15 @@ class ReviewAdmin(admin.ModelAdmin):
         actions.pop("delete_selected", None)
         return actions
 
+    def changelist_view(self, request, extra_context=None):
+        if not request.GET:
+            query = request.GET.copy()
+            query["status__exact"] = Review.Status.FLAGGED
+            request.GET = query
+            request.META["QUERY_STRING"] = request.GET.urlencode()
+    
+        return super().changelist_view(request, extra_context=extra_context)
+
     def save_model(self, request, obj, form, change):
         admin_profile = getattr(request.user, "admin_profile", None)
         obj.moderated_by_admin = admin_profile
