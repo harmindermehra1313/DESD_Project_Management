@@ -324,7 +324,11 @@ def producer_products(request):
                 to_attr='product_wholesale_first',
             ),
         )
-        .annotate(total_stock=Sum('inventory_batches__remaining_quantity'))
+        .annotate(
+            total_stock=Sum(
+                'inventory_batches__remaining_quantity', 
+                filter=Q(inventory_batches__status="ACT"
+            )))
         .order_by("-created_at")
     )
 

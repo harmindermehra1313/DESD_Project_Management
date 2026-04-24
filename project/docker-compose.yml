@@ -44,6 +44,28 @@ services:
         condition: service_healthy
       web:
         condition: service_started
+  
+  # dramatiq:
+  #   build: .
+  #   container_name: brfn_dramatiq
+  #   working_dir: /code
+  #   command: ["dramatiq", "BRFN", "--path", "."]
+  #   volumes:
+  #     - .:/code
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DJANGO_SETTINGS_MODULE: "BRFN.settings"
+  #   depends_on:
+  #     redis:
+  #       condition: service_started
+  #     web:
+  #       condition: service_started
+  
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: brfn_redis
+  #   restart: unless-stopped
 
   camunda:
     image: camunda/camunda-bpm-platform:run-latest
@@ -65,44 +87,3 @@ services:
 
 volumes:
   postgres_data:
-
-# Pippal Config file 
-# services:
-#   db:
-#     image: mysql:8.0
-#     container_name: brfn_db
-#     restart: always
-#     environment:
-#       MYSQL_DATABASE: ${MYSQL_DATABASE}
-#       MYSQL_USER: ${MYSQL_USER}
-#       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-#       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-#     ports:
-#       - "3307:3306"
-#     volumes:
-#       - mysql_data:/var/lib/mysql
-
-#   web:
-#     build: .
-#     container_name: brfn_app
-#     command: python manage.py runserver 0.0.0.0:8000
-#     volumes:
-#       - .:/code
-#     ports:
-#       - "8000:8000"
-#     env_file:
-#       - .env
-#     depends_on:
-#       - db
-  
-#   adminer:
-#     image: adminer:latest
-#     container_name: brfn_adminer
-#     restart: always
-#     ports:
-#       - "8080:8080"
-#     depends_on:
-#       - db
-
-# volumes:
-#   mysql_data:
