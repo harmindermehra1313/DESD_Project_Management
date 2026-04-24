@@ -31,6 +31,20 @@ services:
       db:
         condition: service_healthy
 
+  qcluster:
+    build: .
+    container_name: brfn_qcluster
+    command: ["python", "manage.py", "qcluster"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+
   camunda:
     image: camunda/camunda-bpm-platform:run-latest
     container_name: camunda
