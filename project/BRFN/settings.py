@@ -65,7 +65,7 @@ INSTALLED_APPS = [
     'products',
     'orders',
     'payments',
-    'reviews',
+    'reviews.apps.ReviewsConfig',
     'community',
     'notifications',
     'admin_records',

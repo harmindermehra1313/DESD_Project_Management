@@ -64,16 +64,23 @@ def get_model():
     if _model is None:
         _model = Detoxify("unbiased-small")
 
+        # Warm-up prediction.
+        # This initialises PyTorch/model execution before the first real review.
+        _model.predict("Warm up moderation model.")
+
     return _model
 
 
 def moderate_review_content(*, title: str, text: str) -> ModerationResult:
-    # review_input = f"{title}\n\n{text}".strip()
-
     try:
         model = get_model()
-        title_scores = model.predict(title.strip())
-        text_scores = model.predict(text.strip())
+
+        title_text = (title or "").strip()
+        body_text = (text or "").strip()
+
+        title_scores = model.predict(title_text) if title_text else {}
+        text_scores = model.predict(body_text) if body_text else {}
+
         scores = {
             category: max(
                 float(title_scores.get(category, 0)),
@@ -108,7 +115,10 @@ def moderate_review_content(*, title: str, text: str) -> ModerationResult:
         if category in thresholds
     }
 
-    category_scores = {category: float(score) for category, score in scores.items()}
+    category_scores = {
+        category: float(score)
+        for category, score in scores.items()
+    }
 
     return ModerationResult(
         flagged=any(flagged_categories.values()),
