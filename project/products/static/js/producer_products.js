@@ -177,6 +177,7 @@ function openEditModal() {
     document.getElementById('editAvailability').value = row.getAttribute('data-edit-availability') || 'AV';
     document.getElementById('editOrganic').value     = row.getAttribute('data-edit-organic') || 'NOT_CERTIFIED';
     document.getElementById('editDescription').value = row.getAttribute('data-edit-description') || '';
+    document.getElementById('editLowStock').value = row.getAttribute('data-edit-low-stock') || 0;
     document.getElementById('editWholesalePrice').value = row.getAttribute('data-edit-wholesale-price') || '';
     document.getElementById('editWholesaleMinQty').value = row.getAttribute('data-edit-wholesale-min-qty') || '';
 
@@ -216,6 +217,7 @@ function updateDetailsTemplateAfterEdit(productId, data) {
     setText('.js-detail-category', data.category);
     setText('.js-detail-price', priceText);
     setText('.js-detail-wholesale', wholesaleText);
+    setText('.js-detail-low-stock', data.low_stock_threshold);
     if (organicDisplay) setText('.js-detail-organic', organicDisplay);
     setText('.js-detail-description', descriptionText);
 }
@@ -228,6 +230,9 @@ async function submitEditForm() {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const alertEl   = document.getElementById('editFormAlert');
 
+    const lowStockThresholdValue = document.getElementById('editLowStock').value.trim();
+    const lowStockThreshold = parseInt(lowStockThresholdValue, 10);
+
     const payload = {
         name:                        document.getElementById('editName').value.trim(),
         price:                       document.getElementById('editPrice').value,
@@ -236,6 +241,7 @@ async function submitEditForm() {
         availability_status:         document.getElementById('editAvailability').value,
         organic_certification_status: document.getElementById('editOrganic').value,
         description:                 document.getElementById('editDescription').value,
+        low_stock_threshold: lowStockThreshold,
         wholesale_price:             document.getElementById('editWholesalePrice').value.trim(),
         wholesale_min_quantity:      document.getElementById('editWholesaleMinQty').value.trim(),
     };
@@ -243,6 +249,18 @@ async function submitEditForm() {
     if (!payload.name) {
         alertEl.className = 'alert alert-danger mt-3';
         alertEl.textContent = 'Product name is required.';
+        return;
+    }
+
+    if (
+        lowStockThresholdValue === "" ||
+        isNaN(lowStockThreshold) ||
+        lowStockThreshold < 0 ||
+        lowStockThreshold > 9999
+    ) {
+        alertEl.className = 'alert alert-danger mt-3';
+        alertEl.textContent =
+            'Low stock threshold must be a number between 0 and 9999.';
         return;
     }
 
@@ -284,6 +302,7 @@ async function submitEditForm() {
             row.setAttribute('data-edit-description',   data.description);
             row.setAttribute('data-edit-wholesale-price', data.wholesale_price || '');
             row.setAttribute('data-edit-wholesale-min-qty', data.wholesale_min_quantity || '');
+            row.setAttribute('data-edit-low-stock', data.low_stock_threshold);
             row.setAttribute('data-product-name',       data.name.toLowerCase());
             row.setAttribute('data-category',           data.category.toLowerCase());
             row.setAttribute('data-availability',       data.availability_status);
@@ -302,6 +321,22 @@ async function submitEditForm() {
             }
 
             updateDetailsTemplateAfterEdit(editedProductId, data);
+            // Recompute low-stock UI after editing threshold
+            const stockCell = row.cells[5];
+            const currentStock = parseInt(stockCell.textContent) || 0;
+            const threshold = parseInt(data.low_stock_threshold);
+            const unitDisplay = row.cells[4].textContent;
+
+            // Update details panel + hidden template
+            updateLowStockWarningUI(
+                editedProductId,
+                currentStock,
+                threshold,
+                unitDisplay
+            );
+
+            // Update main table icon
+            updateLowStockIcon(row, currentStock, threshold);
 
             // Update detail panel name
             document.getElementById('detailProductName').textContent = data.name;
@@ -470,6 +505,20 @@ async function submitBatchForm() {
             const row2 = document.getElementById(`row-${selectedProductId}`);
             if (row2 && data.total_stock !== undefined) {
                 row2.cells[5].textContent = data.total_stock; // column 5 = stock
+                
+                updateLowStockWarningUI(
+                    selectedProductId,
+                    parseInt(data.total_stock),
+                    parseInt(row2.getAttribute('data-edit-low-stock')),
+                    row2.cells[4].textContent // unit display
+                );
+
+                // Update low stock icon
+                const stockCell = row2.cells[5];
+                const currentStock = parseInt(stockCell.textContent);
+                const threshold = parseInt(row2.getAttribute('data-edit-low-stock'));
+
+                updateLowStockIcon(row2, currentStock, threshold);
             }
 
             // Reapply filters and keep selection
@@ -559,6 +608,65 @@ function insertNewBatchIntoUI(batch) {
 
     // Sort after both containers are updated
     sortBatchItems();
+}
+
+function updateLowStockWarningUI(productId, currentStock, threshold, unitDisplay) {
+    // Update details panel
+    const detailsContainer = document.getElementById('detailsContent');
+    if (detailsContainer) {
+        const existing = detailsContainer.querySelector('.low-stock-warning');
+        if (existing) existing.remove();
+
+        if (currentStock <= threshold) {
+            const warning = document.createElement('div');
+            warning.className = 'text-danger small fw-semibold mt-1 low-stock-warning';
+            warning.textContent = `⚠ Low Stock Alert: only ${currentStock} ${unitDisplay} remaining`;
+            const lowStockSpan = detailsContainer.querySelector('.js-detail-low-stock');
+            if (lowStockSpan) {
+                lowStockSpan.insertAdjacentElement('afterend', warning);
+            }
+        }
+    }
+
+    // Update hidden template
+    const template = document.getElementById(`details-template-${productId}`);
+    if (template) {
+        const content = template.content;
+
+        const existingHidden = content.querySelector('.low-stock-warning');
+        if (existingHidden) existingHidden.remove();
+
+        if (currentStock <= threshold) {
+            const warning = document.createElement('div');
+            warning.className = 'text-danger small fw-semibold mt-1 low-stock-warning';
+            warning.textContent = `⚠ Low Stock Alert: only ${currentStock} ${unitDisplay} remaining`;
+
+            const lowStockSpanHidden = content.querySelector('.js-detail-low-stock');
+            if (lowStockSpanHidden) {
+                lowStockSpanHidden.insertAdjacentElement('afterend', warning);
+            }
+        }
+    }
+}
+
+function updateLowStockIcon(row, currentStock, threshold) {
+    if (!row) return;
+
+    const stockCell = row.cells[5]; // stock column
+    if (!stockCell) return;
+
+    // Always remove any existing icon first
+    const existingIcon = stockCell.querySelector('.low-stock-icon');
+    if (existingIcon) existingIcon.remove();
+
+    // Add icon only if we're at/under threshold
+    if (currentStock <= threshold) {
+        const icon = document.createElement('span');
+        icon.className = 'text-danger ms-1 low-stock-icon';
+        icon.title = 'Low stock';
+        icon.textContent = '⚠';
+        stockCell.appendChild(icon);
+    }
 }
 
 // ─── 9. Open Cancel Modal ─────────────────────────────────────────────────────
@@ -725,10 +833,29 @@ function updateBatchUI(data) {
     const row = document.getElementById(`row-${selectedProductId}`);
     if (row) row.cells[5].textContent = data.total_stock;
 
+    // Update low stock icon
+    const stockCell = row.cells[5];
+    const currentStock = parseInt(stockCell.textContent) || 0;
+    const threshold = parseInt(row.getAttribute('data-edit-low-stock'));
+    const unitDisplay = row.cells[4].textContent;
+
+    updateLowStockWarningUI(
+        selectedProductId,
+        currentStock,
+        threshold,
+        unitDisplay
+    );
+
+    updateLowStockIcon(row, currentStock, threshold);
+
     // Update hidden template
     const template = document.getElementById(`details-template-${selectedProductId}`);
-    const hiddenContainer = template.content.querySelector('#batchItemsContainer');
-    hiddenContainer.innerHTML = data.updated_batches_html;
+    if (template) {
+        const hiddenContainer = template.content.querySelector('#batchItemsContainer');
+        if (hiddenContainer) {
+            hiddenContainer.innerHTML = data.updated_batches_html;
+        }
+    }
 
     // Update visible details panel
     const visibleContainer = document.querySelector('#detailsContent #batchItemsContainer');
