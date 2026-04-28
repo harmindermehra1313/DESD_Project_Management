@@ -194,6 +194,9 @@ class Product(models.Model):
             or 0
         )
 
+    def __str__(self):
+        return self.name
+
 
 class Inventory(models.Model):
 

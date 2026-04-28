@@ -1,3 +1,4 @@
+{# added food miles - joe #}
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Product details{% endblock %}
@@ -68,6 +69,16 @@
                   <div id="farmOrigin" class="product-meta-value"></div>
                 </div>
                 <div class="mb-3">
+                  <div class="product-meta-label">Food miles</div>
+                  <div id="foodMiles" class="product-meta-value">
+                    {% if user.is_authenticated %}
+                      Add a delivery address to view food miles.
+                    {% else %}
+                      Log in to see your food miles.
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="mb-3">
                   <div class="product-meta-label">Organic certification</div>
                   <div id="organicCertification" class="product-meta-value"></div>
                 </div>
@@ -93,8 +104,14 @@
                   Add to Cart
                 </button>
                 <a class="btn btn-primary product-action-btn product-back-link"
-                   href="{% url 'product_view' category_id=0 %}">Back to products</a>
+                   href="{% url 'products:product_view' category_id=0 %}">Back to products</a>
               </div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <h3 class="product-section-title">Recipe Suggestions</h3>
+            <div id="recipeSuggestions">
+              <p class="text-muted">Loading recipes...</p>
             </div>
           </div>
         </div>
@@ -104,5 +121,6 @@
 {% endblock %}
 {% block scripts %}
   {{ block.super }}
+  <script src="{% static 'js/product_detail_messages.js' %}"></script>
   <script src="{% static 'js/product_detail.js' %}"></script>
 {% endblock %}

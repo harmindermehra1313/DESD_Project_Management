@@ -1,3 +1,5 @@
+// added food miles - joe
+const M = window.CartPageMessages;
 // carts/static/carts/cart_page.js
 document.addEventListener("DOMContentLoaded", () => {
   const cartMsg = document.getElementById("cartMsg");
@@ -8,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const totalQtyEl = document.getElementById("totalQty");
   const subtotalEl = document.getElementById("subtotal");
   const totalEl = document.getElementById("total");
+  const totalFoodMilesEl = document.getElementById("totalFoodMiles");
 
   const checkoutBtn = document.getElementById("checkoutBtn");
 
@@ -48,12 +51,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getBlockedMessage(product) {
-  if (product?.is_expired) {
-    return "This product has expired. Please remove the item.";
+    return M.getBlockedMessage(product);
   }
-
-  return product?.stock_message || "This item is currently unavailable.";
-}
 
   function money(v) {
     const n = Number(v);
@@ -85,6 +84,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return Number.isFinite(n) ? n : fallback;
   }
 
+  function parseMiles(v) {
+    if (v === null || v === undefined || v === "") return NaN;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   function clampQty(v) {
     const n = Number(String(v ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
@@ -113,23 +118,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchCart() {
     if (!window.CartAPI?.getCart) {
-      throw new Error(
-        "CartAPI not found. Ensure carts/cart.js is loaded in base.html",
-      );
+      throw new Error(M.cartApiMissing);
     }
     return window.CartAPI.getCart();
   }
 
-  // ---- REQUIRED: each row has name, producer, qty input, unit label, unit_price, line_total, remove btn
-  function buildItemRow(item) {
+  function buildItemRow(item, foodMilesLoginRequired = false) {
     const product = item.product || {};
     const itemId = item.id;
-    // const productId = product.id;
     const inventoryId = Number(item.inventory_id ?? 0);
     const productId = Number(product.id ?? item.product_id ?? 0);
     const productUrl = productId ? `/products/${productId}/` : "#";
 
-    const name = product.name ?? "Product";
+    const name = product.name ?? M.productFallback;
     const producer = product.producer_name ?? "";
     const unitLabelText = product.unit ?? "";
 
@@ -139,15 +140,16 @@ document.addEventListener("DOMContentLoaded", () => {
       item.line_total ?? qty * unitPrice,
       qty * unitPrice,
     );
+    const foodMiles = parseMiles(item.food_miles);
+    const lineFoodMiles = parseMiles(item.line_food_miles);
+    const producerId = Number(product.producer_id ?? NaN);
 
     const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
 
-    // Surplus fields (from product snapshot, if backend provides them)
     const surplusStatus = String(product.surplus_status ?? "");
     const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
     const surplusNote = String(product.surplus_note ?? "");
 
-    // Compute expected surplus unit price (so we can distinguish surplus from wholesale)
     const expectedSurplusUnit = computeSurplusUnitPrice(
       baseUnitPrice,
       surplusPercent,
@@ -156,16 +158,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const unitIsDiscounted =
       baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
 
-    // Surplus applies if:
-    // - product says surplus is active, AND
-    // - unit price matches the expected surplus price (derived from base + %)
     const isSurplus =
       surplusStatus === "SA" &&
       expectedSurplusUnit !== null &&
       approxEqual(unitPrice, expectedSurplusUnit);
 
-    // Wholesale applies if:
-    // - it’s discounted vs base, AND it is NOT the surplus discount
     const isWholesale = unitIsDiscounted && !isSurplus;
 
     const wholesaleSavingsTotal = isWholesale
@@ -175,15 +172,15 @@ document.addEventListener("DOMContentLoaded", () => {
       ? (baseUnitPrice - unitPrice) * qty
       : 0;
 
-    const { isExpired, isOutOfStock, isPurchasable, isBlocked } =
+    const { isExpired, isOutOfStock, isPurchasable, isBlocked, stockQty } =
       getItemStatus(product);
+    const rowFoodMilesLoginRequired = Boolean(foodMilesLoginRequired);
 
     const row = document.createElement("div");
     row.className = "cart-row mb-3";
     row.dataset.itemId = String(itemId ?? "");
     row.dataset.inventoryId = String(item.inventory_id ?? "");
 
-    // image
     const placeholder =
       cartItemsEl?.dataset?.placeholderImg || "/static/img/default-product.png";
 
@@ -195,18 +192,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const imgWrap = document.createElement("div");
     imgWrap.className = "cart-thumb-wrap";
-
     imgWrap.innerHTML = `
-  <img
-    class="cart-thumb"
-    src="${imgSrc}"
-    alt="${name}"
-    loading="lazy"
-    onerror="this.onerror=null;this.src='${placeholder}';"
-  >
-`;
+    <img
+      class="cart-thumb"
+      src="${imgSrc}"
+      alt="${name}"
+      loading="lazy"
+      onerror="this.onerror=null;this.src='${placeholder}';"
+    >
+  `;
 
-    // meta
     const meta = document.createElement("div");
     meta.className = "cart-meta";
     meta.innerHTML = `
@@ -214,16 +209,17 @@ document.addEventListener("DOMContentLoaded", () => {
       <a href="${productUrl}" class="cart-product-link text-decoration-none">
         ${name}
       </a>
-      ${isExpired ? `<span class="badge text-bg-danger">Expired</span>` : ""}
-      ${isOutOfStock ? `<span class="badge text-bg-danger">Out of stock</span>` : ""}
-      ${isWholesale ? `<span class="badge text-bg-warning">Wholesale</span>` : ""}
-      ${isSurplus ? `<span class="badge text-bg-danger">Surplus reduction</span>` : ""}
+      ${isExpired ? `<span class="badge text-bg-danger">${M.expiredBadge}</span>` : ""}
+      ${isOutOfStock ? `<span class="badge text-bg-danger">${M.outOfStockBadge}</span>` : ""}
+      ${isWholesale ? `<span class="badge text-bg-warning">${M.wholesaleBadge}</span>` : ""}
+      ${isSurplus ? `<span class="badge text-bg-danger">${M.surplusBadge}</span>` : ""}
     </div>
     ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+    ${Number.isFinite(foodMiles) ? `<div class="small text-muted mt-1">Food miles: ${foodMiles.toFixed(2)} miles from this producer</div>` : `<div class="small text-muted mt-1">${rowFoodMilesLoginRequired ? "Log in to see your food miles" : "Food miles unavailable for this route"}</div>`}
     ${
       product.expiry_date
         ? `<div class="small mt-1 ${isExpired ? "text-danger fw-semibold" : "text-muted"}">
-             ${product.expiry_type_label || "Expiry"}: ${formatDate(product.expiry_date)}
+             ${M.getExpiryLabel(product)}: ${formatDate(product.expiry_date)}
            </div>`
         : ``
     }
@@ -234,13 +230,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     ${
       isWholesale
-        ? `<div class="small text-success mt-1">You save ${money(wholesaleSavingsTotal)} with wholesale pricing</div>`
+        ? `<div class="small text-success mt-1">${M.saveWithWholesale(money(wholesaleSavingsTotal))}</div>`
         : ``
     }
     ${
       isSurplus
         ? `<div class="small text-danger mt-1">
-             Surplus reduction: you save ${money(surplusSavingsTotal)}
+             ${M.saveWithSurplus(money(surplusSavingsTotal))}
            </div>
            ${
              hasMeaningfulNote(surplusNote)
@@ -251,7 +247,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   `;
 
-    // qty
+    const rowMsg = document.createElement("div");
+    rowMsg.className = "cart-row-msg mt-2";
+    rowMsg.setAttribute("aria-live", "polite");
+    meta.appendChild(rowMsg);
+
+    function flashRow(text, variant = "warning") {
+      rowMsg.innerHTML = `
+      <div class="alert alert-${variant} py-2 px-3 mb-0" role="alert">
+        ${text}
+      </div>
+    `;
+    }
+
+    function clearRowFlash() {
+      rowMsg.innerHTML = "";
+    }
+
     const qtyWrap = document.createElement("div");
     qtyWrap.className = "cart-qty";
 
@@ -278,7 +290,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     qtyWrap.append(minus, qtyInput, plus, unitLabel);
 
-    // prices
     const prices = document.createElement("div");
     prices.className = "cart-prices";
     const showWasNow =
@@ -289,23 +300,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     prices.innerHTML = showWasNow
       ? `
-    <div class="small text-muted">
-      Unit:
-      <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
-      <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
-    </div>
-    <div class="fw-semibold">Line: ${money(lineTotal)}</div>
-  `
+      <div class="small text-muted">
+        ${M.unitLabelPrefix}:
+        <span class="text-decoration-line-through">${money(baseUnitPrice)}</span>
+        <span class="ms-1 fw-semibold ${isWholesale ? "text-success" : "text-danger"}">${money(unitPrice)}</span>
+      </div>
+      <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
+    `
       : `
-    <div class="small text-muted">Unit: ${money(unitPrice)}</div>
-    <div class="fw-semibold">Line: ${money(lineTotal)}</div>
-  `;
+      <div class="small text-muted">${M.unitLabel(money(unitPrice))}</div>
+      <div class="fw-semibold">${M.lineLabel(money(lineTotal))}</div>
+    `;
 
-    // remove
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "btn btn-danger btn-sm cart-remove-btn";
-    removeBtn.textContent = "Remove";
+    removeBtn.textContent = M.removeButton;
 
     function setDisabled(disabled) {
       minus.disabled = disabled;
@@ -323,24 +333,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function commitQty(newQty) {
+      clearRowFlash();
+
       if (isBlocked) {
-        flash(getBlockedMessage(product), "warning", { persist: true });
+        flashRow(getBlockedMessage(product), "warning");
         return;
       }
+
       const q = clampQty(newQty);
+
+      if (q > stockQty) {
+        flashRow(M.inventoryLimitMessage(name, stockQty), "warning");
+        return;
+      }
+
       setDisabled(true);
       try {
         await window.CartAPI.setItemQuantity({ inventoryId, quantity: q });
-        window.CartAPI.showToast?.(`Updated quantity to ${q}`, {
-          title: "Cart",
+
+        window.CartAPI.showToast?.(M.updatedQuantity(q), {
+          title: M.cartTitle,
           variant: "success",
           delay: 1800,
         });
+
         await refresh();
       } catch (e) {
-        const raw = e?.message ? e.message : String(e);
-        const message = /expired/i.test(raw) ? getBlockedMessage(product) : raw;
-        flash(`Update failed: ${message}`, "danger", { persist: true });
+        const message = M.getRowUpdateError(e, product, q);
+        const variant =
+          M.isInventoryLimitError(e) || /expired|unavailable/i.test(message)
+            ? "warning"
+            : "danger";
+
+        flashRow(message, variant);
       } finally {
         setDisabled(false);
       }
@@ -349,29 +374,32 @@ document.addEventListener("DOMContentLoaded", () => {
     minus.addEventListener("click", () =>
       commitQty(clampQty(qtyInput.value) - 1),
     );
+
     plus.addEventListener("click", () =>
       commitQty(clampQty(qtyInput.value) + 1),
     );
+
+    qtyInput.addEventListener("input", clearRowFlash);
+
     qtyInput.addEventListener("change", () =>
       commitQty(clampQty(qtyInput.value)),
     );
 
     removeBtn.addEventListener("click", async () => {
-      const ok = window.confirm(`Remove “${name}” from your cart?`);
+      const ok = window.confirm(M.removeConfirm(name));
       if (!ok) return;
 
       setDisabled(true);
       try {
         await window.CartAPI.removeItem({ inventoryId });
-        window.CartAPI.showToast?.(`Removed “${name}”`, {
-          title: "Cart",
+        window.CartAPI.showToast?.(M.removedItem(name), {
+          title: M.cartTitle,
           variant: "success",
           delay: 1800,
         });
         await refresh();
       } catch (e) {
-        const m = e?.message ? e.message : String(e);
-        flash(`Remove failed: ${m}`, "danger", { persist: true });
+        flash(M.getRemoveError(e), "danger", { persist: true });
       } finally {
         setDisabled(false);
       }
@@ -383,6 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function render(cart) {
     const items = cart?.items ?? [];
+    const foodMilesLoginRequired = Boolean(cart?.food_miles_login_required);
     const hasBlockedItems = items.some((it) => {
       const status = getItemStatus(it?.product || {});
       return status.isBlocked;
@@ -395,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       setEmpty(false);
       for (const it of items) {
-        cartItemsEl.appendChild(buildItemRow(it));
+        cartItemsEl.appendChild(buildItemRow(it, foodMilesLoginRequired));
       }
     }
 
@@ -404,11 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (hasBlockedItems) {
-      flash(
-        "Some items are expired or unavailable. Remove them to proceed to checkout.",
-        "warning",
-        { persist: true },
-      );
+      flash(M.blockedCheckout, "warning", { persist: true });
     } else if (cartMsg) {
       cartMsg.innerHTML = "";
     }
@@ -421,6 +446,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let baseSubtotal = 0;
     let wholesaleSavings = 0;
     let surplusSavings = 0;
+    let totalFoodMiles = 0;
+    let hasFoodMiles = false;
+    const countedProducerIds = new Set();
 
     for (const it of items) {
       const qty = toNum(it.quantity ?? 0, 0);
@@ -439,9 +467,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const lineActual = unitPrice * qty;
       const lineBase = baseUnit * qty;
+      const foodMiles = parseMiles(it.food_miles);
+      const producerId = Number(it?.product?.producer_id ?? NaN);
 
       actualSubtotal += lineActual;
       baseSubtotal += lineBase;
+
+      if (Number.isFinite(foodMiles) && Number.isFinite(producerId) && !countedProducerIds.has(producerId)) {
+        countedProducerIds.add(producerId);
+        totalFoodMiles += foodMiles;
+        hasFoodMiles = true;
+      }
 
       const unitIsDiscounted =
         baseUnit > 0 && unitPrice > 0 && unitPrice < baseUnit;
@@ -469,6 +505,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // - total: same as subtotal for now (no shipping/tax in your UI)
     subtotalEl && (subtotalEl.textContent = money(actualSubtotal));
     totalEl && (totalEl.textContent = money(actualSubtotal));
+    if (totalFoodMilesEl) {
+      totalFoodMilesEl.textContent = hasFoodMiles
+        ? `${totalFoodMiles.toFixed(2)} miles`
+        : (foodMilesLoginRequired ? "Log in to see your food miles" : "Unavailable");
+    }
 
     // Inject “before wholesale” + “savings” rows into summary (professional look)
     const summaryCard = subtotalEl?.closest(".cart-card");
@@ -488,14 +529,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
           extra.innerHTML = `
             <div class="d-flex justify-content-between mb-2">
-              <span class="text-muted">Subtotal (before discounts)</span>
+              <span class="text-muted">${M.subtotalBeforeDiscounts}</span>
               <span class="text-muted">${money(baseSubtotal)}</span>
             </div>
 
             ${
               wholesaleSavings > 0.009
                 ? `<div class="d-flex justify-content-between mb-2">
-                     <span class="text-success fw-semibold">Wholesale savings</span>
+                     <span class="text-success fw-semibold">${M.wholesaleSavings}</span>
                      <span class="text-success fw-semibold">- ${money(wholesaleSavings)}</span>
                    </div>`
                 : ``
@@ -504,14 +545,14 @@ document.addEventListener("DOMContentLoaded", () => {
             ${
               surplusSavings > 0.009
                 ? `<div class="d-flex justify-content-between mb-2">
-                     <span class="text-danger fw-semibold">Surplus savings</span>
+                     <span class="text-danger fw-semibold">${M.surplusSavings}</span>
                      <span class="text-danger fw-semibold">- ${money(surplusSavings)}</span>
                    </div>`
                 : ``
             }
 
             <div class="alert alert-success py-2 mb-0">
-              <strong>Nice!</strong> You saved <strong>${money(totalSavings)}</strong> with discounts.
+              <strong>${M.savingsIntro}</strong> <strong>${M.savingsMessage(money(totalSavings))}</strong>
             </div>
           `;
 
@@ -527,12 +568,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   checkoutBtn?.addEventListener("click", () => {
-    window.location.href = "/orders/checkout";
+    window.location.href = M.checkoutPath;
   });
 
   refresh().catch((e) => {
-    const m = e?.message ? e.message : String(e);
-    flash(`Failed to load cart: ${m}`, "danger", { persist: true });
+    flash(M.getLoadError(e), "danger", { persist: true });
     setEmpty(true);
   });
 

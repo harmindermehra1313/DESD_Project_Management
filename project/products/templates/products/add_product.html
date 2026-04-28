@@ -17,7 +17,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="{% url 'add_product' %}" enctype="multipart/form-data">
+    <form method="POST" action="{% url 'products:add_product' %}" enctype="multipart/form-data">
         {% csrf_token %}
         
         <div class="row g-4 mb-4">
@@ -111,7 +111,7 @@
 
                 <div class="mb-3">
                     <label for="id_wholesale_min_quantity" class="form-label custom-form-label">Minimum Wholesale Quantity</label>
-                    <input type="number" class="form-control" name="wholesale_min_quantity" id="id_wholesale_min_quantity" min="2" placeholder="20">
+                    <input type="number" class="form-control" name="wholesale_min_quantity" id="id_wholesale_min_quantity" min="1" placeholder="1">
                     <small class="text-muted">Minimum number of units a buyer must order to get the wholesale price.</small>
                 </div>
 

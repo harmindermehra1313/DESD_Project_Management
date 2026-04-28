@@ -87,11 +87,11 @@
                  data-bs-toggle="dropdown">Products</a>
               <ul class="dropdown-menu custom-dropdown">
                 <li>
-                  <a class="dropdown-item" href="{% url 'product_view' 0 %}">All</a>
+                  <a class="dropdown-item" href="{% url 'products:product_view' 0 %}">All</a>
                 </li>
                 {% for cat in header_categories %}
                   <li>
-                    <a class="dropdown-item" href="{% url 'product_view' cat.id %}">{{ cat.name }}</a>
+                    <a class="dropdown-item" href="{% url 'products:product_view' cat.id %}">{{ cat.name }}</a>
                   </li>
                 {% endfor %}
                 <li>
@@ -99,7 +99,7 @@
                 </li>
                 {% for org in organic %}
                   <li>
-                    <a class="dropdown-item" href="{% url 'product_view' org.id %}">{{ org.name }}</a>
+                    <a class="dropdown-item" href="{% url 'products:product_view' org.id %}">{{ org.name }}</a>
                   </li>
                 {% endfor %}
               </ul>
@@ -118,7 +118,7 @@
                   <a class="dropdown-item" href="/about/">About Us</a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="/contact/">Contact Us</a>
+                  <a class="dropdown-item" href="{% url 'community:contact_us' %}">Contact Us</a>
                 </li>
                 <li>
                   <a class="dropdown-item" href="/sustainability/">Food Miles</a>

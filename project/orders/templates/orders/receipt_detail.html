@@ -45,6 +45,7 @@
 {% endblock %}
 {% block scripts %}
     {{ block.super }}
+    <script src="{% static 'orders/receipt_detail_messages.js' %}"></script>
     <script>window.RECEIPT_ORDER_ID = "{{ order_id }}";</script>
     <script src="{% static 'orders/receipt_detail.js' %}"></script>
 {% endblock %}
