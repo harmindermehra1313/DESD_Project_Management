@@ -19,6 +19,35 @@ from notifications.models import Notification
 from admin_records.models import ModerationLog
 from django.db.models import Prefetch
 
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from community.models import Recipe
+
+@api_view(["GET"])
+def product_recipes(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response({"recipes": []})
+
+    qs = Recipe.objects.filter(
+        linked_products=product,
+        status=Recipe.Status.PUBLISHED
+    ).order_by("-created_at")
+
+    data = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "image": r.image.url if r.image else "",
+            "season": r.season,
+        }
+        for r in qs
+    ]
+
+    return Response({"recipes": data})
+
 def _get_category_default_image(category_obj):
     image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
     fallback = getattr(settings, 'DEFAULT_PRODUCT_IMAGE', 'products/img/default-product.png')
@@ -90,24 +119,6 @@ def is_producer_or_admin(user):
         return True
 
     return False
-
-
-# def product_list(request):
-#     all_products = (
-#         Product.objects.filter(status=Product.Status.PUBLISHED)
-#         .select_related("producer")
-#         .prefetch_related("product_allergen__allergen")
-#     )
-#     recommended_products = all_products.order_by("-created_at")[:4]
-#     categories = Category.objects.all()
-
-#     context = {
-#         "all_products": all_products,
-#         "recommended_products": recommended_products,
-#         "categories": categories,
-#     }
-#     return render(request, "products/products_list.html", context)
-
 
 @producer_required
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")

@@ -13,6 +13,7 @@ from products.models import (
 )
 from accounts.models import Producer
 from api.serializers.accounts import ProducerSerializer, AdminSerializer
+from community.models import FarmStory, Recipe
 from orders.services.food_miles import calculate_food_miles, get_default_delivery_postcode
 
 
@@ -91,6 +92,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     stock_message = serializers.SerializerMethodField()
     is_purchasable = serializers.SerializerMethodField()
     add_to_cart_button_label = serializers.SerializerMethodField()
+    recipes = serializers.SerializerMethodField()
+    # stories = serializers.SerializerMethodField()
     customer_postcode = serializers.SerializerMethodField()
     food_miles = serializers.SerializerMethodField()
     food_miles_login_required = serializers.SerializerMethodField()
@@ -137,6 +140,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "moderated_at",
             "wholesale_prices",
             "allergens",
+            "recipes",
         )
 
     def _get_active_inventory(self, obj):
@@ -162,6 +166,29 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             .order_by("expiry_date", "created_at")
             .first()
         )
+    def get_recipes(self, obj):
+        from community.models import Recipe
+
+        qs = Recipe.objects.filter(
+            recipe_products__product=obj,
+            status=Recipe.Status_choices.PUBLISHED
+        ).order_by("-created_at")
+
+        return RecipeInlineSerializer(qs, many=True).data
+
+
+
+    # def get_stories(self, obj):
+    #     from community.models import FarmStory
+
+    #     qs = FarmStory.objects.filter(
+    #         producer=obj.producer,
+    #         status=FarmStory.Status.PUBLISHED
+    #     ).order_by("-created_at")
+
+    #     return StoryInlineSerializer(qs, many=True).data
+
+
     def _has_only_expired_stock(self, obj):
         next_batch = self._get_next_inventory_batch(obj)
         if not next_batch:
@@ -360,3 +387,12 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = "__all__"
+
+class RecipeInlineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ("id", "title", "image", "seasonal_tag", "created_at")
+# class StoryInlineSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = FarmStory
+#         fields = ("id", "title", "image", "created_at")

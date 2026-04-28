@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        Edit Recipe
+    {% else %}
+        Create Recipe
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/content.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="rp-wrapper">
+
+    <div class="rp-card">
+        <h2 class="rp-title">
+            {% if form.instance.pk %}
+                Edit Recipe
+            {% else %}
+                Create Recipe
+            {% endif %}
+        </h2>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Title -->
+            <div class="rp-field">
+                <label class="rp-label">Title</label>
+                {{ form.title }}
+            </div>
+
+            <!-- Description -->
+            <div class="rp-field">
+                <label class="rp-label">Short description</label>
+                {{ form.description }}
+            </div>
+
+            <!-- Seasonal Tag -->
+            <div class="rp-field">
+                <label class="rp-label">Seasonal tag</label>
+                {{ form.seasonal_tag }}
+            </div>
+
+            <!-- Ingredients + Instructions -->
+            <div class="rp-grid">
+                <div class="rp-col">
+                    <label class="rp-label">Ingredients</label>
+                    {{ form.ingredients_text }}
+                </div>
+
+                <div class="rp-col">
+                    <label class="rp-label">Instructions</label>
+                    {{ form.instructions_text }}
+                </div>
+            </div>
+
+            <!-- Status + Image -->
+            <div class="rp-grid">
+                <div class="rp-col-small">
+                    <label class="rp-label">Status</label>
+                    {{ form.status }}
+                </div>
+
+                <div class="rp-col-large">
+                    <label class="rp-label">Upload image</label>
+                    {{ form.image }}
+
+                    {% if form.instance.image %}
+                        <img id="previewImage" class="rp-preview" src="{{ form.instance.image.url }}">
+                    {% else %}
+                        <img id="previewImage" class="rp-preview" src="">
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Linked Products -->
+            <div class="rp-field">
+                <label class="rp-label">Link products</label>
+
+                <div class="rp-product-box">
+                    {% if form.linked_products.field.queryset %}
+                        {{ form.linked_products }}
+                    {% else %}
+                        <p class="rp-no-products">No products available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="rp-buttons">
+                {% if form.instance.pk %}
+                    <button type="submit" name="action" value="publish" class="rp-btn-primary">Update recipe</button>
+                {% else %}
+                <button type="submit" name="action" value="publish" class="rp-btn-primary">Publish recipe</button>
+                {% endif %}
+            </div>
+
+        </form>
+    </div>
+
+</div>
+
+<script src="{% static 'js/recipe_preview.js' %}"></script>
+{% endblock %}

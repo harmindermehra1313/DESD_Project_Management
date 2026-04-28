@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/story_detail.css' %}">
+
+<div class="container py-4 story-page">
+
+  <div class="story-card shadow-sm rounded-4 p-4 bg-white">
+
+    <h1 class="story-title mb-3">{{ story.title }}</h1>
+
+    {% if story.image %}
+      <img src="{{ story.image.url }}"
+           class="story-hero-img rounded-4 mb-4"
+           alt="{{ story.title }}">
+    {% endif %}
+
+    <p class="text-muted small mb-4">
+      {{ story.created_at|date:"d M Y" }}
+    </p>
+
+    <div class="story-body mb-4">
+      {{ story.body|linebreaks }}
+    </div>
+
+    <hr class="my-4">
+
+    <div class="producer-box p-3 rounded-4 shadow-sm">
+      <div class="d-flex align-items-center">
+        <div class="flex-grow-1">
+          <p class="mb-1 text-muted small">Story by</p>
+          <a href="/community/producers/{{ producer.id }}/"
+             class="fw-bold producer-link">
+            {{ producer.farm_name }}
+          </a>
+        </div>
+        <i class="bi bi-chevron-right text-muted"></i>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}
