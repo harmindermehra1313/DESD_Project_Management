@@ -50,10 +50,7 @@ from products.api.views.product_details import (
     AllergenViewSet,
     ProductAllergenViewSet,
 )
-from api.views.reviews import (
-    ReviewViewSet,
-    ReviewResponseViewSet,
-)
+
 
 
 
@@ -108,9 +105,7 @@ router.register("wholesale-prices", WholesalePriceViewSet)
 router.register("allergens", AllergenViewSet)
 router.register("product-allergens", ProductAllergenViewSet)
 
-# Reviews
-router.register("reviews", ReviewViewSet)
-router.register("review-responses", ReviewResponseViewSet)
+
 
 
 # urlpatterns = router.urls

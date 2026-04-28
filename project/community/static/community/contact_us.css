@@ -1,0 +1,36 @@
+.contact-page {
+  background: linear-gradient(180deg, rgba(241, 249, 245, 0.6), rgba(255, 255, 255, 1));
+}
+
+.contact-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(31, 40, 35, 0.08);
+}
+
+.contact-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: #4f6f5d;
+}
+
+.contact-item {
+  border: 1px solid rgba(40, 57, 48, 0.12);
+  border-radius: 0.75rem;
+  background: #f9fcfa;
+}
+
+.contact-icon {
+  font-size: 1.1rem;
+  color: #1f5b3e;
+  line-height: 1;
+  margin-top: 0.15rem;
+}
+
+.contact-login-prompt {
+  border: 1px dashed rgba(40, 57, 48, 0.25);
+  border-radius: 0.75rem;
+  background: #f8faf8;
+}

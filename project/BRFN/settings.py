@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'api',
     'carts',
+    # Task queue
+    'django_q',
 ]
 
 MIDDLEWARE = [
@@ -254,3 +256,26 @@ LOGGING = {
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
+
+# Django Q – background task queue
+Q_CLUSTER = {
+    'name': 'brfn',
+    'workers': 2,
+    'recycle': 500,
+    'timeout': 120,
+    'retry': 180,
+    'queue_limit': 50,
+    'bulk': 10,
+    'orm': 'default',           # uses the same Postgres DB as the broker
+}
+
+# Email backend
+# Prints emails to terminal instead of sending (useful for dev/testing):
+# EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@brfn.com')
