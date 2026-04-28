@@ -688,29 +688,14 @@ def get_cart_summary(cart) -> dict:
         items.append(
             {
                 "id": it.id,
-                # "product_id": it.product_id,
-                # "product": {
-                #     "id": it.product_id,
-                #     "name": it.product.name,
-                #     "unit": getattr(it.product, "unit", "") or "",
-                #     "producer_name": getattr(it.product, "producer_name", "") or "",
-                #     "image": _safe_image_url(it.product),
-                #     "stock_quantity": getattr(it.product, "stock_quantity", None),
-                #     # for professional UI
-                #     "base_unit_price": base_unit_price,
-                #     "surplus_status": getattr(it.product, "surplus_status", None),
-                #     "surplus_discount_percentage": getattr(
-                #         it.product, "surplus_discount_percentage", None
-                #     ),
-                #     "surplus_note": getattr(it.product, "surplus_note", None),
-                # },
                 "product_id": product.id,
                 "inventory_id": inventory.id,
                 "product": {
                     "id": product.id,
                     "name": product.name,
                     "unit": getattr(product, "unit", "") or "",
-                    "producer_name": product.producer.user.name,
+                    # "producer_name": product.producer.farm_name,
+                    "producer_name": getattr(product.producer, "farm_name", None),
                     "image": _safe_image_url(product),
                     "stock_quantity": inventory.remaining_quantity,
                     # for professional UI
@@ -722,7 +707,6 @@ def get_cart_summary(cart) -> dict:
                 "quantity": qty,
                 "unit_price": unit_price,
                 "line_total": line_total,
-                # useful for UI/analytics
                 "base_line_total": base_line_total,
                 "savings_per_unit": savings_per_unit,
                 "savings_total": savings_total,

@@ -3,6 +3,7 @@ const ORDER_DETAIL_API_BASE = "/api/orders/";
 const ORDER_REORDER_PREVIEW_API_SUFFIX = "/reorder-preview/";
 const ORDER_REORDER_API_SUFFIX = "/reorder/";
 const RECEIPT_URL_BASE = "/orders/receipt/";
+const M = window.OrderHistoryMessages;
 
 const DEFAULT_FILTERS = {
   status: "",
@@ -14,9 +15,9 @@ const DEFAULT_FILTERS = {
 
 const REORDER_RESULT_FOOTER = `
   <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-    Close
+    ${M.closeButton}
   </button>
-  <a href="/cart/" class="btn btn-primary">Go to Cart</a>
+  <a href="/cart/" class="btn btn-primary">${M.goToCartButton}</a>
 `;
 
 let appliedFilters = { ...DEFAULT_FILTERS };
@@ -293,7 +294,7 @@ function validateDateFilters() {
 
   if (startDate && startDate < MIN_ORDER_FILTER_DATE) {
     showDateValidationError(
-      `Start date cannot be earlier than ${MIN_ORDER_FILTER_DATE}.`,
+      M.startDateMin(MIN_ORDER_FILTER_DATE),
       [startDateEl],
     );
     return false;
@@ -301,27 +302,27 @@ function validateDateFilters() {
 
   if (endDate && endDate < MIN_ORDER_FILTER_DATE) {
     showDateValidationError(
-      `End date cannot be earlier than ${MIN_ORDER_FILTER_DATE}.`,
+      M.endDateMin(MIN_ORDER_FILTER_DATE),
       [endDateEl],
     );
     return false;
   }
 
   if (startDate && startDate > today) {
-    showDateValidationError("Start date cannot be in the future.", [
+    showDateValidationError(M.startDateFuture, [
       startDateEl,
     ]);
     return false;
   }
 
   if (endDate && endDate > today) {
-    showDateValidationError("End date cannot be in the future.", [endDateEl]);
+    showDateValidationError(M.endDateFuture, [endDateEl]);
     return false;
   }
 
   if (startDate && endDate && startDate > endDate) {
     showDateValidationError(
-      "Start date must be earlier than or equal to end date.",
+      M.startDateAfterEnd,
       [startDateEl, endDateEl],
     );
     return false;
@@ -391,8 +392,8 @@ function getReorderButtonHtml(orderId, status, extraClass = "") {
   const allowed = isReorderAllowed(status);
   const disabledAttr = allowed ? "" : "disabled";
   const title = allowed
-    ? "Preview reorder changes"
-    : "Reorder is not available for pending or cancelled orders";
+    ? M.reorderAllowedTooltip
+    : M.reorderBlockedTooltip;
 
   return `
     <button
@@ -403,7 +404,7 @@ function getReorderButtonHtml(orderId, status, extraClass = "") {
       ${disabledAttr}
       title="${escapeHtml(title)}"
     >
-      Reorder
+      ${M.reorderButton}
     </button>
   `;
 }
@@ -417,9 +418,9 @@ function getReceiptButtonHtml(orderId, status) {
         type="button"
         class="btn btn-primary"
         disabled
-        title="Receipt is only available for completed orders"
+        title="${escapeHtml(M.receiptBlockedTooltip)}"
       >
-        See Receipt
+        ${M.receiptButton}
       </button>
     `;
   }
@@ -429,7 +430,7 @@ function getReceiptButtonHtml(orderId, status) {
       class="btn btn-primary"
       href="${RECEIPT_URL_BASE}${orderId}/"
     >
-      See Receipt
+      ${M.receiptButton}
     </a>
   `;
 }
@@ -457,7 +458,7 @@ function setEmptyState() {
 
   if (paginationInfo) {
     paginationInfo.textContent =
-      totalCount === 0 ? "0 orders" : `Page ${currentPage}`;
+      totalCount === 0 ? M.zeroOrders : M.pageOnly(currentPage);
   }
 
   if (prevBtn) prevBtn.disabled = true;
@@ -470,7 +471,7 @@ function setErrorState(message) {
 
   const errorBox = document.getElementById("orderListError");
   if (errorBox) {
-    errorBox.textContent = message || "Failed to load orders.";
+    errorBox.textContent = message || M.loadFailed;
     errorBox.classList.remove("d-none");
   }
 }
@@ -481,7 +482,7 @@ function setPaginationState(totalPages) {
   const nextBtn = document.getElementById("nextPageBtn");
 
   if (paginationInfo) {
-    paginationInfo.textContent = `Page ${currentPage} of ${totalPages} · ${totalCount} total orders`;
+    paginationInfo.textContent = M.pageSummary(currentPage, totalPages, totalCount);
   }
 
   if (prevBtn) prevBtn.disabled = currentPage <= 1;
@@ -489,12 +490,7 @@ function setPaginationState(totalPages) {
 }
 
 async function parseErrorMessage(response, fallbackMessage) {
-  try {
-    const data = await response.json();
-    return data.detail || data.message || data.error || JSON.stringify(data);
-  } catch (_) {
-    return fallbackMessage;
-  }
+  return window.AppApiErrors.fromResponse(response, fallbackMessage);
 }
 
 async function loadOrders() {
@@ -512,7 +508,7 @@ async function loadOrders() {
     if (!response.ok) {
       const message = await parseErrorMessage(
         response,
-        `Failed to load order history (${response.status})`,
+        M.loadFailed,
       );
       throw new Error(message);
     }
@@ -535,7 +531,7 @@ async function loadOrders() {
     renderOrdersTable(orders);
     setPaginationState(totalPages);
   } catch (error) {
-    setErrorState(error.message || "Failed to load orders.");
+    setErrorState(M.getLoadError(error));
   }
 }
 
@@ -575,7 +571,7 @@ function renderOrdersTable(orders) {
           data-action="view-details"
           data-order-id="${escapeHtml(order.id)}"
         >
-          View Details
+          ${M.viewDetailsButton}
         </button>
         ${getReorderButtonHtml(order.id, order.order_status, "btn-sm btn-primary")}
       </td>
@@ -590,7 +586,7 @@ function renderOrdersTable(orders) {
 
 function formatAddress(address) {
   if (!address) {
-    return `<div class="text-muted">Address not available</div>`;
+    return `<div class="text-muted">${M.addressUnavailable}</div>`;
   }
 
   const lines = [
@@ -600,7 +596,7 @@ function formatAddress(address) {
   ].filter(Boolean);
 
   if (!lines.length) {
-    return `<div class="text-muted">Address not available</div>`;
+    return `<div class="text-muted">${M.addressUnavailable}</div>`;
   }
 
   return lines.map((line) => `<div>${escapeHtml(line)}</div>`).join("");
@@ -611,26 +607,26 @@ function renderOrderSummary(order) {
     <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Order Number</div>
+          <div class="small text-muted">${M.orderNumberLabel}</div>
           <div class="fw-semibold">${escapeHtml(order.order_number)}</div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Order Date</div>
+          <div class="small text-muted">${M.orderDateLabel}</div>
           <div class="fw-semibold">${formatDate(order.order_date)}</div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Status</div>
+          <div class="small text-muted">${M.statusLabel}</div>
           <div class="fw-semibold">${escapeHtml(order.status || order.order_status || "-")}</div>
         </div>
       </div>
       <div class="col-md-3">
         <div class="border rounded p-3 h-100">
-          <div class="small text-muted">Payment</div>
-          <div class="fw-semibold">${escapeHtml(order.payment_method_display || "Not available")}</div>
+          <div class="small text-muted">${M.paymentLabel}</div>
+          <div class="fw-semibold">${escapeHtml(order.payment_method_display || M.notAvailable)}</div>
         </div>
       </div>
     </div>
@@ -640,15 +636,15 @@ function renderOrderSummary(order) {
 function renderItemsSection(items) {
   return `
     <div class="mb-4">
-      <h6 class="mb-3">Items</h6>
+      <h6 class="mb-3">${M.itemsHeading}</h6>
       <div class="table-responsive">
         <table class="table table-bordered align-middle">
           <thead class="table-light">
             <tr>
-              <th>Product</th>
-              <th>Producer</th>
-              <th>Quantity</th>
-              <th>Unit Price</th>
+              <th>${M.productLabel}</th>
+              <th>${M.producerLabel}</th>
+              <th>${M.quantityLabel}</th>
+              <th>${M.unitPriceLabel}</th>
             </tr>
           </thead>
           <tbody>
@@ -675,9 +671,9 @@ function renderFulfilmentSection(producerBreakdown) {
   if (!(producerBreakdown || []).length) {
     return `
       <div class="mb-4">
-        <h6 class="mb-3">Delivery / Collection Details</h6>
+        <h6 class="mb-3">${M.fulfilmentHeading}</h6>
         <div class="border rounded p-3 text-muted">
-          Fulfilment information is not available.
+          ${M.fulfilmentUnavailable}
         </div>
       </div>
     `;
@@ -685,7 +681,7 @@ function renderFulfilmentSection(producerBreakdown) {
 
   return `
     <div class="mb-4">
-      <h6 class="mb-3">Delivery / Collection Details</h6>
+      <h6 class="mb-3">${M.fulfilmentHeading}</h6>
       <div class="row g-3">
         ${(producerBreakdown || [])
           .map((summary) => {
@@ -718,11 +714,11 @@ function renderFulfilmentSection(producerBreakdown) {
 
                 <div class="row g-3">
                   <div class="col-md-4">
-                    <div class="small text-muted">Date</div>
+                    <div class="small text-muted">${M.dateLabel}</div>
                     <div class="fw-semibold">${formatDate(date)}</div>
                   </div>
                   <div class="col-md-4">
-                    <div class="small text-muted">Time slot</div>
+                    <div class="small text-muted">${M.timeSlotLabel}</div>
                     <div class="fw-semibold">${escapeHtml(timeSlot || "-")}</div>
                   </div>
                   <div class="col-md-4">
@@ -744,7 +740,7 @@ function renderProducerSection(producerBreakdown) {
   if (!(producerBreakdown || []).length) {
     return `
       <div class="mb-4">
-        <h6 class="mb-3">Producer Details</h6>
+        <h6 class="mb-3">${M.producerDetailsHeading}</h6>
         <div class="border rounded p-3 text-muted">Producer details are not available.</div>
       </div>
     `;
@@ -752,7 +748,7 @@ function renderProducerSection(producerBreakdown) {
 
   return `
     <div class="mb-4">
-      <h6 class="mb-3">Producer Details</h6>
+      <h6 class="mb-3">${M.producerDetailsHeading}</h6>
       ${(producerBreakdown || [])
         .map(
           (summary) => `
@@ -764,22 +760,22 @@ function renderProducerSection(producerBreakdown) {
                 <div class="small text-muted">${escapeHtml(summary.status || "-")}</div>
               </div>
               <div class="text-end">
-                <div class="small text-muted">Subtotal</div>
+                <div class="small text-muted">${M.subtotalLabel}</div>
                 <div class="fw-semibold">${formatMoney(summary.subtotal)}</div>
               </div>
             </div>
 
             <div class="row g-3">
               <div class="col-md-3">
-                <div class="small text-muted">Fulfilment type</div>
+                <div class="small text-muted">${M.fulfilmentTypeLabel}</div>
                 <div>${escapeHtml(summary.delivery_or_collection || "-")}</div>
               </div>
               <div class="col-md-3">
-                <div class="small text-muted">VAT</div>
+                <div class="small text-muted">${M.vatLabel}</div>
                 <div>${formatMoney(summary.vat_total)}</div>
               </div>
               <div class="col-md-6">
-                <div class="small text-muted">Instructions</div>
+                <div class="small text-muted">${M.instructionsLabel}</div>
                 <div>${escapeHtml(summary.special_instructions || "-")}</div>
               </div>
             </div>
@@ -796,7 +792,7 @@ function renderOrderFooter(order) {
   return `
     <div class="border rounded p-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
-        <div class="small text-muted">Total Paid</div>
+        <div class="small text-muted">${M.totalPaidLabel}</div>
         <div class="fs-5 fw-bold">${formatMoney(order.total_price)}</div>
       </div>
 
@@ -835,7 +831,7 @@ async function openOrderDetails(orderId) {
       throw new Error(
         await parseErrorMessage(
           response,
-          `Failed to load order details (${response.status})`,
+          M.detailLoadFailed,
         ),
       );
     }
@@ -857,7 +853,7 @@ async function openOrderDetails(orderId) {
   } catch (error) {
     if (loading) loading.classList.add("d-none");
     if (errorBox) {
-      errorBox.textContent = error.message || "Failed to load order details.";
+      errorBox.textContent = M.getDetailLoadError(error);
       errorBox.classList.remove("d-none");
     }
   }
@@ -932,7 +928,7 @@ function createOptionFromAddableItem(item) {
     current_price: item.current_price,
     pricing: item.pricing || null,
     match_basis: item.match_basis || "same_product",
-    source_label: "Original product",
+    source_label: M.originalBadge,
   };
 }
 
@@ -949,7 +945,7 @@ function createOptionFromSuggestedItem(item) {
     current_price: item.current_price,
     pricing: item.pricing || null,
     match_basis: item.match_basis || "",
-    source_label: "Alternative product",
+    source_label: M.alternativeProducerBadge,
   };
 }
 
@@ -958,7 +954,7 @@ function createSkipOption(groupId) {
     key: `skip:${groupId}`,
     action: "skip",
     product_id: null,
-    product_name: "Skip this item",
+    product_name: M.skipItemTitle,
     producer_id: null,
     producer_name: "",
     inventory_id: null,
@@ -966,7 +962,7 @@ function createSkipOption(groupId) {
     current_price: 0,
     pricing: null,
     match_basis: "",
-    source_label: "Skip",
+    source_label: M.skipLabel,
   };
 }
 
@@ -1038,7 +1034,7 @@ function buildReorderPlannerState(orderId, preview) {
         product_name: item.product_name,
         producer_name: item.producer_name || "",
         requested_quantity: originalRequestedQuantity,
-        reason: item.reason || "Unavailable",
+        reason: item.reason || M.unavailable,
       },
       selectedOptionKey: selectedOption.key,
       quantity: hasSuggestions
@@ -1166,7 +1162,7 @@ function renderPriceCutBadge(pricingState) {
   if (pricingState.wholesaleActive) {
     return `
       <span class="badge rounded-pill bg-warning text-dark">
-        Wholesale price
+        ${M.wholesaleBadge} price
       </span>
     `;
   }
@@ -1182,7 +1178,7 @@ function renderPriceCutBadge(pricingState) {
 
     return `
       <span class="badge rounded-pill bg-danger">
-        Surplus price
+        ${M.surplusBadge} price
       </span>
     `;
   }
@@ -1388,36 +1384,34 @@ function renderPlannerSummaryCard() {
 
   if (needsReviewCount > 0) {
     helperNotes.push(
-      `${needsReviewCount} item${needsReviewCount === 1 ? "" : "s"} need review`,
+      M.needsReviewSummary(needsReviewCount),
     );
   }
 
   if (alternativeCount > 0) {
     helperNotes.push(
-      `${alternativeCount} alternative option${alternativeCount === 1 ? "" : "s"} available`,
+      M.alternativeOptionsSummary(alternativeCount),
     );
   }
 
   if (unavailableCount > 0) {
     helperNotes.push(
-      `${unavailableCount} item${unavailableCount === 1 ? "" : "s"} currently unavailable`,
+      M.unavailableSummary(unavailableCount),
     );
   }
 
   const helperSummary = helperNotes.length
     ? helperNotes.join(" • ")
-    : "All available items have been selected for you.";
+    : M.allAvailableSelectedSummary;
 
   return `
     <div class="border rounded p-3 mb-4 bg-light">
       <div class="row g-3 align-items-start">
         <div class="col-md-7">
-          <div class="fw-semibold mb-1">Please review your items</div>
+          <div class="fw-semibold mb-1">${M.reviewItemsTitle}</div>
 
           <div class="small text-muted">
-            Before adding items to the cart, check the products below. You can
-            change quantities, choose alternative items where available, or skip
-            anything you do not want.
+            ${M.reviewItemsBody}
           </div>
 
           <div class="small text-muted mt-2">
@@ -1426,18 +1420,18 @@ function renderPlannerSummaryCard() {
 
           <div class="d-flex flex-wrap gap-2 mt-3">
             <span class="badge text-bg-light border">
-              ${escapeHtml(stats.selectedCount)} selected
+              ${escapeHtml(M.selectedBadge(stats.selectedCount))}
             </span>
 
             <span class="badge text-bg-light border">
-              ${escapeHtml(stats.skippedCount)} skipped
+              ${escapeHtml(M.skippedBadge(stats.skippedCount))}
             </span>
 
             ${
               needsReviewCount > 0
                 ? `
                   <span class="badge text-bg-light border">
-                    ${escapeHtml(needsReviewCount)} need review
+                    ${escapeHtml(M.needsReviewBadge(needsReviewCount))}
                   </span>
                 `
                 : ""
@@ -1446,7 +1440,7 @@ function renderPlannerSummaryCard() {
         </div>
 
         <div class="col-md-5 text-md-end">
-          <div class="small text-muted">Estimated total</div>
+          <div class="small text-muted">${M.estimatedTotalLabel}</div>
           <div class="fs-4 fw-bold">${formatMoney(stats.estimatedSubtotal)}</div>
 
           ${
@@ -1454,7 +1448,7 @@ function renderPlannerSummaryCard() {
               ? `
                 <div class="mt-2">
                   <span class="badge rounded-pill bg-danger">
-                    You save ${escapeHtml(formatMoney(stats.estimatedSavings))}
+                    ${M.saveAmount(escapeHtml(formatMoney(stats.estimatedSavings)))}
                   </span>
                 </div>
               `
@@ -1465,7 +1459,7 @@ function renderPlannerSummaryCard() {
             stats.estimatedCompareSubtotal > stats.estimatedSubtotal
               ? `
                 <div class="small text-muted mt-2">
-                  Regular total
+                  ${M.regularTotalLabel}
                   <span class="text-decoration-line-through">
                     ${formatMoney(stats.estimatedCompareSubtotal)}
                   </span>
@@ -1509,7 +1503,7 @@ function renderOptionBadges(group, option) {
   if (group.kind === "available" && option.action === "keep") {
     badges.push(`
       <span class="badge rounded-pill text-bg-light border me-1 mb-1">
-        Original
+        ${M.originalBadge}
       </span>
     `);
   }
@@ -1517,7 +1511,7 @@ function renderOptionBadges(group, option) {
   if (option.action === "replace") {
     badges.push(`
       <span class="badge rounded-pill text-bg-light border me-1 mb-1">
-        Alternative producer
+        ${M.alternativeProducerBadge}
       </span>
     `);
   }
@@ -1525,7 +1519,7 @@ function renderOptionBadges(group, option) {
   if (option.action === "replace" && option.match_basis) {
     badges.push(`
       <span class="badge rounded-pill text-bg-light border me-1 mb-1">
-        ${escapeHtml(renderMatchBasisLabel(option.match_basis))} match
+        ${escapeHtml(M.matchBadge(renderMatchBasisLabel(option.match_basis)))}
       </span>
     `);
   }
@@ -1533,7 +1527,7 @@ function renderOptionBadges(group, option) {
   if (option.pricing?.surplus?.is_active) {
     badges.push(`
       <span class="badge rounded-pill bg-danger me-1 mb-1">
-        Surplus
+        ${M.surplusBadge}
       </span>
     `);
   }
@@ -1541,7 +1535,7 @@ function renderOptionBadges(group, option) {
   if (option.pricing?.wholesale?.has_wholesale_tiers) {
     badges.push(`
       <span class="badge rounded-pill bg-warning text-dark me-1 mb-1">
-        Wholesale
+        ${M.wholesaleBadge}
       </span>
     `);
   }
@@ -1553,8 +1547,7 @@ function renderQuantityAdjustmentNotice(signal) {
 
   return `
     <div class="small text-warning-emphasis mt-2">
-      Requested ${escapeHtml(signal.requested_quantity)} · available now ${escapeHtml(signal.added_quantity)}.
-      ${escapeHtml(signal.reason || "")}
+      ${escapeHtml(M.requestedAvailableNow(signal.requested_quantity, signal.added_quantity, signal.reason || ""))}
     </div>
   `;
 }
@@ -1564,7 +1557,7 @@ function renderPriceChangeNotice(signal) {
 
   return `
     <div class="small text-primary mt-2">
-      Price changed from ${formatMoney(signal.original_price)} to ${formatMoney(signal.current_price)}.
+      ${escapeHtml(M.priceChanged(formatMoney(signal.original_price), formatMoney(signal.current_price)))}
     </div>
   `;
 }
@@ -1574,7 +1567,7 @@ function renderProducerChangeNotice(signal) {
 
   return `
     <div class="small text-secondary mt-2">
-      Producer change: ${escapeHtml(signal.original_producer_name)} → ${escapeHtml(signal.current_producer_name)}.
+      ${escapeHtml(M.producerChanged(signal.original_producer_name, signal.current_producer_name))}
     </div>
   `;
 }
@@ -1591,17 +1584,16 @@ function renderWholesaleNotice(option, quantity) {
     if (pricingState.upcomingTier) {
       return `
         <div class="small text-muted mt-2">
-          <span class="fw-semibold text-dark">Wholesale active.</span>
-          Next tier: buy ${escapeHtml(pricingState.upcomingTier.min_quantity)}+ for
-          ${formatMoney(pricingState.upcomingTier.unit_price)} each.
+          <span class="fw-semibold text-dark">${M.wholesaleActive}</span>
+          ${M.wholesaleActiveNextTier(escapeHtml(pricingState.upcomingTier.min_quantity), formatMoney(pricingState.upcomingTier.unit_price))}
         </div>
       `;
     }
 
     return `
       <div class="small text-muted mt-2">
-        <span class="fw-semibold text-dark">Wholesale active.</span>
-        Current quantity qualifies for wholesale pricing.
+        <span class="fw-semibold text-dark">${M.wholesaleActive}</span>
+        ${M.wholesaleActiveQualified}
       </div>
     `;
   }
@@ -1611,9 +1603,7 @@ function renderWholesaleNotice(option, quantity) {
 
     return `
       <div class="small text-muted mt-2">
-        Buy ${escapeHtml(pricingState.upcomingTier.min_quantity)}+ for
-        ${formatMoney(pricingState.upcomingTier.unit_price)} each.
-        Add ${escapeHtml(difference)} more to unlock it.
+        ${M.wholesaleUnlock(escapeHtml(pricingState.upcomingTier.min_quantity), formatMoney(pricingState.upcomingTier.unit_price), escapeHtml(difference))}
       </div>
     `;
   }
@@ -1631,14 +1621,14 @@ function renderSurplusNotice(option, quantity) {
   if (pricingState.wholesaleActive) {
     return `
       <div class="small text-muted mt-2">
-        Surplus stock exists, but wholesale pricing is currently the better price.
+        ${M.surplusBetterPrice}
       </div>
     `;
   }
 
   return `
     <div class="small text-muted mt-2">
-      Surplus discount is applied to this item.
+      ${M.surplusApplied}
     </div>
   `;
 }
@@ -1665,7 +1655,7 @@ function renderQuantityControls(group, option) {
     <div class="mt-3 pt-3 border-top">
       <div class="row g-3">
         <div class="col-md-4">
-          <label class="form-label small text-muted mb-1">Quantity</label>
+          <label class="form-label small text-muted mb-1">${M.quantityLabel}</label>
 
           <div class="input-group">
             <button
@@ -1704,7 +1694,7 @@ function renderQuantityControls(group, option) {
           </div>
 
           <div class="small text-muted mt-2">
-            Available now: ${escapeHtml(option.available_quantity ?? "Not specified")}
+            ${M.availableNow(escapeHtml(option.available_quantity ?? M.notSpecified))}
           </div>
         </div>
 
@@ -1712,7 +1702,7 @@ function renderQuantityControls(group, option) {
           <div class="border rounded p-3 bg-light">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
               <div>
-                <div class="small text-muted">Current unit price</div>
+                <div class="small text-muted">${M.currentUnitPriceLabel}</div>
                 <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
                   <div class="fs-4 fw-bold">${formatMoney(pricingState.appliedUnitPrice)}</div>
 
@@ -1730,7 +1720,7 @@ function renderQuantityControls(group, option) {
                 </div>
 
                 <div class="small text-muted mt-1">
-                  Base price: ${formatMoney(pricingState.baseUnitPrice)} each
+                  ${M.basePriceLabel}: ${formatMoney(pricingState.baseUnitPrice)} each
                 </div>
 
                 ${renderWholesaleNotice(option, quantity)}
@@ -1738,14 +1728,14 @@ function renderQuantityControls(group, option) {
               </div>
 
               <div class="text-md-end">
-                <div class="small text-muted">Line total</div>
+                <div class="small text-muted">${M.lineTotalLabel}</div>
                 <div class="fw-semibold fs-5">${formatMoney(lineAppliedTotal)}</div>
 
                 ${
                   lineCompareTotal !== null
                     ? `
                       <div class="small text-muted">
-                        Was
+                        ${M.wasLabel}
                         <span class="text-decoration-line-through">
                           ${formatMoney(lineCompareTotal)}
                         </span>
@@ -1758,7 +1748,7 @@ function renderQuantityControls(group, option) {
                   pricingState.savingsPerUnit > 0
                     ? `
                       <div class="small text-success mt-1">
-                        You save ${formatMoney(pricingState.savingsPerUnit * quantity)}
+                        ${M.saveAmount(formatMoney(pricingState.savingsPerUnit * quantity))}
                       </div>
                     `
                     : ""
@@ -1783,9 +1773,9 @@ function renderOptionCard(group, option) {
   if (group.kind === "unavailable" && option.action === "skip") {
     return `
       <div class="border rounded p-3 bg-light">
-        <div class="fw-semibold">No alternative currently available</div>
+        <div class="fw-semibold">${M.noAlternativeTitle}</div>
         <div class="small text-muted mt-1">
-          This item cannot be reordered right now.
+          ${M.noAlternativeBody}
         </div>
       </div>
     `;
@@ -1824,12 +1814,12 @@ function renderOptionCard(group, option) {
                 option.action !== "skip"
                   ? `
                     <div class="small text-muted mt-2">
-                      Available: ${escapeHtml(option.available_quantity ?? "Not specified")}
+                      ${M.availableNow(escapeHtml(option.available_quantity ?? M.notSpecified))}
                     </div>
                   `
                   : `
                     <div class="small text-muted mt-2">
-                      This item will not be added to the cart.
+                      ${M.availableWithChoiceBody}
                     </div>
                   `
               }
@@ -1861,20 +1851,17 @@ function renderPlannerGroup(group) {
     group.options.filter((option) => option.action === "replace").length,
   );
 
-  let groupTitle = "Available to add";
-  let groupSubtitle =
-    "This original item is still available and selected for you.";
+  let groupTitle = M.availableToAddTitle;
+  let groupSubtitle = M.availableToAddSubtitle;
 
   if (group.kind === "needs-choice") {
-    groupTitle = "Please choose an alternative";
-    groupSubtitle =
-      "This original item is unavailable. Choose an alternative item or skip it.";
+    groupTitle = M.chooseAlternativeTitle;
+    groupSubtitle = M.chooseAlternativeSubtitle;
   } else if (group.kind === "unavailable") {
-    groupTitle = "Currently unavailable";
-    groupSubtitle = "No alternative item is available right now.";
+    groupTitle = M.currentlyUnavailableTitle;
+    groupSubtitle = M.currentlyUnavailableSubtitle;
   } else if (alternativeCount > 0) {
-    groupSubtitle =
-      "This original item is available. Alternative items are also available if you prefer.";
+    groupSubtitle = M.availableWithAlternativesSubtitle;
   }
 
   const selectedQuantity =
@@ -1905,14 +1892,14 @@ function renderPlannerGroup(group) {
                   ? `${escapeHtml(group.original.producer_name)} · `
                   : ""
               }
-              Originally ordered: ${escapeHtml(group.original.requested_quantity)}
+              ${M.originallyOrdered(escapeHtml(group.original.requested_quantity))}
             </div>
 
             <div class="small text-muted mt-1">${escapeHtml(groupSubtitle)}</div>
 
             ${
               group.original.reason
-                ? `<div class="small text-danger mt-1">Reason: ${escapeHtml(group.original.reason)}</div>`
+                ? `<div class="small text-danger mt-1">${M.requestedReasonLabel}: ${escapeHtml(group.original.reason)}</div>`
                 : ""
             }
 
@@ -1923,7 +1910,7 @@ function renderPlannerGroup(group) {
 
           <div class="col-md-5">
             <div class="border rounded p-3 bg-light">
-              <div class="small text-muted">Selected now</div>
+              <div class="small text-muted">${M.selectedNowLabel}</div>
 
               ${
                 selectedOption && selectedOption.action !== "skip"
@@ -1932,12 +1919,12 @@ function renderPlannerGroup(group) {
                     <div class="small text-muted">${escapeHtml(selectedOption.producer_name || "")}</div>
 
                     <div class="d-flex justify-content-between mt-3 small text-muted">
-                      <span>Quantity</span>
+                      <span>${M.quantityLabel}</span>
                       <span>${escapeHtml(selectedQuantity)}</span>
                     </div>
 
                     <div class="d-flex justify-content-between mt-1">
-                      <span class="small text-muted">Total</span>
+                      <span class="small text-muted">${M.totalLabel}</span>
                       <span class="fw-semibold">${formatMoney(selectedLineTotal)}</span>
                     </div>
 
@@ -1955,8 +1942,8 @@ function renderPlannerGroup(group) {
                     }
                   `
                   : `
-                    <div class="fw-semibold">Skip this item</div>
-                    <div class="small text-muted mt-1">This product will not be added.</div>
+                    <div class="fw-semibold">${M.skipItemTitle}</div>
+                    <div class="small text-muted mt-1">${M.skipItemBody}</div>
                   `
               }
             </div>
@@ -1975,8 +1962,8 @@ function renderReorderPlanner() {
   if (!reorderPlannerState || !reorderPlannerState.groups.length) {
     return `
       ${renderSimpleMessageCard(
-        "No reorderable items found.",
-        "This order does not currently contain any items that can be reordered.",
+        M.noReorderableItemsTitle,
+        M.noReorderableItemsBody,
         "alert-warning",
       )}
     `;
@@ -1996,20 +1983,20 @@ function renderReorderPlanner() {
     ${renderPlannerSummaryCard()}
 
     ${renderPlannerSection(
-      "Available items",
-      "These items are available now and are already selected for you.",
+      M.availableItemsSectionTitle,
+      M.availableItemsSectionSubtitle,
       availableGroups,
     )}
 
     ${renderPlannerSection(
-      "Choose alternative items",
-      "Some original items are unavailable. Choose an alternative item or skip them.",
+      M.chooseAlternativeItemsSectionTitle,
+      M.chooseAlternativeItemsSectionSubtitle,
       needsChoiceGroups,
     )}
 
     ${renderPlannerSection(
-      "Currently unavailable",
-      "These items do not have any alternatives right now.",
+      M.unavailableItemsSectionTitle,
+      M.unavailableItemsSectionSubtitle,
       unavailableGroups,
     )}
   `;
@@ -2024,17 +2011,17 @@ function getReorderPlannerFooterHtml() {
   ) {
     return `
       <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-        Close
+        ${M.closeButton}
       </button>
     `;
   }
 
   return `
     <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-      Cancel
+      ${M.cancelButton}
     </button>
     <button type="button" class="btn btn-primary" id="confirmReorderBtn">
-      Add Selected Items to Cart
+      ${M.confirmButton}
     </button>
   `;
 }
@@ -2044,7 +2031,7 @@ function updateReorderPlannerUI() {
   const content = document.getElementById("reorderModalContent");
   const footer = document.getElementById("reorderModalFooter");
 
-  if (title) title.textContent = "Review your items";
+  if (title) title.textContent = M.previewTitle;
   if (content) content.innerHTML = renderReorderPlanner();
   if (footer) footer.innerHTML = getReorderPlannerFooterHtml();
 }
@@ -2060,15 +2047,15 @@ function resetReorderModal() {
 
   reorderPlannerState = null;
 
-  if (title) title.textContent = "Review your items";
+  if (title) title.textContent = M.previewTitle;
   if (content) content.innerHTML = "";
   if (footer) {
     footer.innerHTML = `
       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-        Cancel
+        ${M.cancelButton}
       </button>
       <button type="button" class="btn btn-primary" id="confirmReorderBtn" disabled>
-        Add Selected Items to Cart
+        ${M.confirmButton}
       </button>
     `;
   }
@@ -2081,21 +2068,21 @@ function setReorderModalLoading() {
 
   reorderPlannerState = null;
 
-  if (title) title.textContent = "Review your items";
+  if (title) title.textContent = M.previewTitle;
   if (content) {
     content.innerHTML = `
       <div class="text-muted">
-        Checking item availability and finding alternatives...
+        ${M.loadingPlannerBody}
       </div>
     `;
   }
   if (footer) {
     footer.innerHTML = `
       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-        Cancel
+        ${M.cancelButton}
       </button>
       <button type="button" class="btn btn-primary" id="confirmReorderBtn" disabled>
-        Add Selected Items to Cart
+        ${M.confirmButton}
       </button>
     `;
   }
@@ -2105,7 +2092,7 @@ function setReorderSubmittingState() {
   const confirmBtn = document.getElementById("confirmReorderBtn");
   if (confirmBtn) {
     confirmBtn.disabled = true;
-    confirmBtn.textContent = "Adding to Cart...";
+    confirmBtn.textContent = M.submittingButton;
   }
 }
 
@@ -2131,14 +2118,14 @@ function renderResultSummaryBadges(result) {
   return `
     <div class="d-flex flex-wrap gap-2 mt-3">
       <span class="badge text-bg-light border">
-        ${escapeHtml(counts.added)} added
+        ${escapeHtml(M.resultBadge(counts.added, M.addedBadgeLabel))}
       </span>
 
       ${
         counts.unavailable > 0
           ? `
             <span class="badge text-bg-light border">
-              ${escapeHtml(counts.unavailable)} unavailable
+              ${escapeHtml(M.resultBadge(counts.unavailable, M.unavailableBadgeLabel))}
             </span>
           `
           : ""
@@ -2148,7 +2135,7 @@ function renderResultSummaryBadges(result) {
         counts.quantityAdjusted > 0
           ? `
             <span class="badge text-bg-light border">
-              ${escapeHtml(counts.quantityAdjusted)} quantity updated
+              ${escapeHtml(M.resultBadge(counts.quantityAdjusted, M.quantityUpdatedBadgeLabel))}
             </span>
           `
           : ""
@@ -2158,7 +2145,7 @@ function renderResultSummaryBadges(result) {
         counts.priceChanged > 0
           ? `
             <span class="badge text-bg-light border">
-              ${escapeHtml(counts.priceChanged)} price changed
+              ${escapeHtml(M.resultBadge(counts.priceChanged, M.priceChangedBadgeLabel))}
             </span>
           `
           : ""
@@ -2174,7 +2161,7 @@ function renderAddedItemsSection(items) {
 
   return `
     <div class="mb-4">
-      <h6 class="mb-3">Added to cart</h6>
+      <h6 class="mb-3">${M.addedToCartSectionTitle}</h6>
       ${items
         .map(
           (item) => `
@@ -2185,14 +2172,14 @@ function renderAddedItemsSection(items) {
                 item.producer_name
                   ? `
                     <div class="small text-muted mt-1">
-                      Producer: ${escapeHtml(item.producer_name)}
+                      ${M.producerLine(escapeHtml(item.producer_name))}
                     </div>
                   `
                   : ""
               }
 
               <div class="small text-muted mt-2">
-                Quantity added: ${escapeHtml(item.added_quantity)}
+                ${M.quantityAdded(escapeHtml(item.added_quantity))}
               </div>
             </div>
           `,
@@ -2209,7 +2196,7 @@ function renderUnavailableItemsSection(items) {
 
   return `
     <div class="mb-4">
-      <h6 class="mb-3">Unavailable items</h6>
+      <h6 class="mb-3">${M.unavailableItemsResultTitle}</h6>
       ${items
         .map(
           (item) => `
@@ -2220,15 +2207,14 @@ function renderUnavailableItemsSection(items) {
                 item.producer_name
                   ? `
                     <div class="small text-muted mt-1">
-                      Producer: ${escapeHtml(item.producer_name)}
+                      ${M.producerLine(escapeHtml(item.producer_name))}
                     </div>
                   `
                   : ""
               }
 
               <div class="small text-danger mt-2">
-                Requested: ${escapeHtml(item.requested_quantity)} ·
-                Reason: ${escapeHtml(item.reason || "Unavailable")}
+                ${M.requestedReason(escapeHtml(item.requested_quantity), escapeHtml(item.reason || M.unavailable))}
               </div>
             </div>
           `,
@@ -2245,15 +2231,14 @@ function renderQuantityAdjustmentsSection(items) {
 
   return `
     <div class="mb-4">
-      <h6 class="mb-3">Quantity updates</h6>
+      <h6 class="mb-3">${M.quantityUpdatesSectionTitle}</h6>
       ${items
         .map(
           (item) => `
             <div class="border border-warning rounded p-3 mb-2 bg-light">
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
               <div class="small text-muted mt-2">
-                Requested: ${escapeHtml(item.requested_quantity)} ·
-                Added: ${escapeHtml(item.added_quantity)}
+                ${M.requestedAdded(escapeHtml(item.requested_quantity), escapeHtml(item.added_quantity))}
               </div>
 
               ${
@@ -2280,7 +2265,7 @@ function renderPriceChangesSection(items) {
 
   return `
     <div class="mb-0">
-      <h6 class="mb-3">Price updates</h6>
+      <h6 class="mb-3">${M.priceUpdatesSectionTitle}</h6>
       ${items
         .map(
           (item) => `
@@ -2291,7 +2276,7 @@ function renderPriceChangesSection(items) {
                 item.producer_name
                   ? `
                     <div class="small text-muted mt-1">
-                      Producer: ${escapeHtml(item.producer_name)}
+                      ${M.producerLine(escapeHtml(item.producer_name))}
                     </div>
                   `
                   : ""
@@ -2318,12 +2303,12 @@ function renderReorderResult(result) {
 
   const title =
     counts.added > 0
-      ? "Your selected items were added to the cart."
-      : "No items were added to the cart.";
+      ? M.selectedAddedBody
+      : M.noItemsAddedBody;
 
   const body = hasUpdates
-    ? "A few updates were made while processing your reorder. Review the details below."
-    : "Everything selected was added successfully.";
+    ? M.resultUpdatesBody
+    : M.resultSuccessBody;
 
   return `
     <div class="border rounded p-3 mb-4 bg-light">
@@ -2369,7 +2354,7 @@ async function openReorderPreview(orderId) {
       throw new Error(
         await parseErrorMessage(
           response,
-          `Failed to load reorder preview (${response.status})`,
+          M.previewFailed,
         ),
       );
     }
@@ -2384,11 +2369,11 @@ async function openReorderPreview(orderId) {
 
     reorderPlannerState = null;
 
-    if (title) title.textContent = "Review your items";
+    if (title) title.textContent = M.previewTitle;
     if (content) {
       content.innerHTML = `
         <div class="alert alert-danger mb-0">
-          ${escapeHtml(error.message || "Failed to load reorder preview.")}
+          ${escapeHtml(M.getPreviewError(error))}
         </div>
       `;
     }
@@ -2396,7 +2381,7 @@ async function openReorderPreview(orderId) {
     if (footer) {
       footer.innerHTML = `
         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-          Close
+          ${M.closeButton}
         </button>
       `;
     }
@@ -2429,7 +2414,7 @@ async function confirmReorder(orderId) {
       throw new Error(
         await parseErrorMessage(
           response,
-          `Reorder failed (${response.status})`,
+          M.reorderFailed,
         ),
       );
     }
@@ -2442,7 +2427,7 @@ async function confirmReorder(orderId) {
 
     reorderPlannerState = null;
 
-    if (title) title.textContent = "Added to cart";
+    if (title) title.textContent = M.successTitle;
     if (content) content.innerHTML = renderReorderResult(result);
     if (footer) footer.innerHTML = REORDER_RESULT_FOOTER;
 
@@ -2466,7 +2451,7 @@ async function confirmReorder(orderId) {
         "afterbegin",
         `
           <div class="alert alert-danger">
-            ${escapeHtml(error.message || "Reorder failed.")}
+            ${escapeHtml(M.getReorderError(error))}
           </div>
         `,
       );
@@ -2474,7 +2459,7 @@ async function confirmReorder(orderId) {
 
     if (confirmBtn) {
       confirmBtn.disabled = false;
-      confirmBtn.textContent = "Add Selected Items to Cart";
+      confirmBtn.textContent = M.confirmButton;
     }
   }
 }
