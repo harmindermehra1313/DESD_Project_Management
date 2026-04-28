@@ -14,6 +14,7 @@ from carts.services import (
     CartOwner,
     CartItemNotFound,
     CartNotActive,
+    CartStockLimitExceeded,
     cart_get_or_create_active,
     cart_add_item,
     cart_set_item_quantity,
@@ -55,14 +56,21 @@ def _owner(request) -> CartOwner:
 
 
 def _translate_service_error(exc: Exception) -> Exception:
+    if isinstance(exc, CartStockLimitExceeded):
+        return ValidationError(detail=exc.detail)
+
     if isinstance(exc, DjangoValidationError):
         return ValidationError(detail=exc.message)
+
     if isinstance(exc, CartItemNotFound):
         return NotFound(detail=str(exc) or "Cart item not found.")
+
     if isinstance(exc, CartNotActive):
         return ValidationError(detail=str(exc) or "Cart is not active.")
+
     if isinstance(exc, ValueError):
         return ValidationError(detail=str(exc))
+
     return exc
 
 
@@ -73,15 +81,15 @@ class CartAPIView(APIView):
         try:
             cart = cart_get_or_create_active(owner=_owner(request))
 
-            # IMPORTANT: reload with prefetch so the serializer has everything efficiently
             cart = (
                 Cart.objects.filter(pk=cart.pk)
-                # .prefetch_related("items__product", "items__product__producer")
                 .prefetch_related(
                     "items__inventory",
                     "items__inventory__product",
                     "items__inventory__product__producer",
-                ).get()
+                    "items__inventory__product__inventory_batches",
+                )
+                .get()
             )
         except Exception as exc:
             raise _translate_service_error(exc)
@@ -100,7 +108,7 @@ class CartItemAddView(CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         ser = self.get_serializer(data=request.data)
-        
+
         ser.is_valid(raise_exception=True)
 
         try:
@@ -112,7 +120,6 @@ class CartItemAddView(CreateAPIView):
                 quantity=ser.validated_data["quantity"],
             )
         except Exception as exc:
-            print("DEBUG service exception =", repr(exc))
             raise _translate_service_error(exc)
 
         customer_postcode = get_default_delivery_postcode(request.user)
