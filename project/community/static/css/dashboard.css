@@ -1,0 +1,286 @@
+.dp-wrapper {
+    padding: 2rem;
+    background: var(--background-grey);
+}
+
+.dp-layout {
+    display: flex;
+    gap: 2rem;
+}
+
+/* LEFT SIDE */
+.dp-table-area {
+    flex: 0 0 60%;
+}
+
+.dp-section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--prussian-blue);
+    margin-bottom: 1rem;
+}
+
+.dp-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--alabaster-grey);
+}
+
+.dp-table th {
+    background: var(--prussian-blue);
+    color: #fff;
+    padding: .75rem;
+    font-weight: 600;
+}
+
+.dp-table td {
+    padding: .75rem;
+    border-bottom: 1px solid var(--alabaster-grey);
+}
+
+.dp-row {
+    cursor: pointer;
+    transition: background .2s;
+}
+
+.dp-row:hover {
+    background: #f3f4f6;
+}
+
+.dp-thumb-sm {
+    width: 55px;
+    height: 55px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+/* RIGHT SIDE */
+.dp-preview-area {
+    flex: 0 0 40%;
+}
+
+.dp-preview-placeholder {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    margin-right: 30px;
+    color: var(--muted);
+    border: 1px solid var(--alabaster-grey);
+}
+
+.dp-preview-card {
+    background: #fff;
+    padding: 1.5rem;
+    margin-right: 30px;
+    border-radius: 10px;
+    border: 1px solid var(--alabaster-grey);
+}
+
+.dp-preview-img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.dp-preview-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: .5rem;
+}
+
+.dp-preview-meta {
+    color: var(--muted);
+    margin-bottom: 1rem;
+}
+
+.dp-preview-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.dp-btn-primary {
+    background: var(--dusk-blue);
+    color: #fff;
+    padding: .6rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.dp-btn-danger {
+    background: #b02a37;
+    color: #fff;
+    padding: .6rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.dp-btn-outline {
+    background: #fff;
+    border: 1px solid var(--alabaster-grey);
+    padding: .6rem 1rem;
+    border-radius: 8px;
+}
+
+.dp-actions {
+    margin-top: 1rem;
+}
+
+.dp-empty {
+    color: var(--muted);
+    padding: 1rem 0;
+}
+
+.dp-preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    max-width: 100%;
+}
+
+.dp-preview-img {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.dp-preview-description {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #444;
+}
+
+.dp-preview-status {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2a7;
+}
+
+@media (max-width: 768px) {
+    .dp-layout {
+        flex-direction: column;
+    }
+
+    .dp-preview-area {
+        margin-top: 1.5rem;
+    }
+}
+
+.dp-preview-section {
+    margin-top: 1rem;
+}
+
+.dp-preview-section h4 {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.dp-preview-type {
+    display: inline-block;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 4px;
+    background: #eee;
+    color: #333;
+    margin-left: 8px;
+}
+
+
+/* Pagination container */
+.dp-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+/* Pagination buttons */
+.dp-pagination button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid #d0d0d0;
+    background: #fff;
+    color: #333;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.dp-pagination button:hover:not(.active):not(:disabled) {
+    background: #f5f5f5;
+    border-color: #bbb;
+}
+
+/* Active page */
+.dp-pagination button.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+    font-weight: 600;
+}
+
+/* Disabled (Prev/Next when not available) */
+.dp-pagination button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
+#dpPreviewIngredients li,
+#dpPreviewInstructions li {
+    margin-bottom: 0.4rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+    #dpPreviewCard {
+        padding: 1rem;
+        margin: 0;
+    }
+
+    #dpPreviewIngredients,
+    #dpPreviewInstructions {
+        padding-left: 1.2rem;
+    }
+
+    .dp-preview-placeholder {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    margin-right: 0px;
+    color: var(--muted);
+    border: 1px solid var(--alabaster-grey);
+    }
+}
+
+/* MOBILE: hide columns except Title + Status */
+@media (max-width: 480px) {
+    .dp-table td:nth-child(1), /* Image */
+    .dp-table th:nth-child(1),
+    .dp-table td:nth-child(3), /* Season */
+    .dp-table th:nth-child(3){
+        display: none;
+    }
+    .dp-pagination {
+        gap: 6px;
+    }
+
+    .dp-pagination button {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+}

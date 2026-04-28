@@ -17,7 +17,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="{% url 'add_product' %}" enctype="multipart/form-data">
+    <form method="POST" action="{% url 'products:add_product' %}" enctype="multipart/form-data">
         {% csrf_token %}
         
         <div class="row g-4 mb-4">

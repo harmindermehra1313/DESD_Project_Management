@@ -535,6 +535,36 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+  function loadRecipeSuggestions(productId) {
+    fetch(`/products/product/${productId}/recipes/`)
+      .then(res => res.json())
+      .then(data => {
+        const wrap = document.getElementById("recipeSuggestions");
+        if (!wrap) return;
 
+        if (!data.recipes.length) {
+          wrap.innerHTML = `<p class="text-muted">No recipes linked yet.</p>`;
+          return;
+        }
+
+        wrap.innerHTML = data.recipes.map(r => `
+          <div class="d-flex align-items-center mb-3">
+            <img src="${r.image}" 
+                style="width:70px;height:70px;object-fit:cover;border-radius:6px;"
+                class="me-3">
+            <div>
+              <a href="/community/recipes/${r.id}/" class="fw-bold">${r.title}</a><br>
+              ${r.season ? `<span class="badge bg-secondary">${r.season}</span>` : ""}
+            </div>
+          </div>
+        `).join("");
+      })
+      .catch(() => {
+        const wrap = document.getElementById("recipeSuggestions");
+        if (wrap) wrap.innerHTML = `<p class="text-danger">Failed to load recipes.</p>`;
+      });
+  }
+
+  loadRecipeSuggestions(productId);
   loadProduct();
 });

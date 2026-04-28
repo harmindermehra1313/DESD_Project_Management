@@ -43,9 +43,7 @@ class Recipe(models.Model):
 
     instructions = models.JSONField()     # list of steps
 
-    image = models.CharField(
-        max_length = 255
-    )
+    image = models.ImageField(upload_to="recipes/", max_length=255, blank=True, null=True)
 
     seasonal_tag = models.CharField(
         max_length = 20, 
@@ -125,11 +123,12 @@ class FarmStory(models.Model):
 
     body = models.TextField()
 
-    image = models.CharField(
-        max_length=255, 
-        null=True, 
-        blank=True
+    image = models.ImageField(
+    upload_to="farm_stories/",
+    null=True,
+    blank=True
     )
+
 
     created_at = models.DateTimeField(
         auto_now_add=True
@@ -178,4 +177,4 @@ class FavouriteRecipe(models.Model):
         unique_together = ("user", "recipe")  # prevents duplicate favourites
 
     def __str__(self):
-        return f"{self.user.name} ❤️ {self.recipe.title}"
+        return f"{self.user.name}  {self.recipe.title}"

@@ -128,6 +128,37 @@ def login_view(request):
 # ---------------------------------------
 # Firebase Autheciation function
 # ---------------------------------------
+# def firebase_auth_view(request):
+#     if request.method != "POST":
+#         return JsonResponse({"error": "POST required"}, status=400)
+
+#     data = json.loads(request.body)
+#     token = data.get("token")
+
+#     try:
+#         decoded = firebase_auth.verify_id_token(token)
+#         email = decoded.get("email")
+
+#         user, created = User.objects.get_or_create(email=email)
+
+#         # Check if user is active
+#         if not user.is_active:
+#             print("DEBUG: User is deactivated")   # <-- This will show in your terminal
+#             return JsonResponse({"error": "Your account is deactivated. Please contact support."}, status=403)
+
+#         login(request, user)
+
+#         if user.role == "ADMIN":
+#             return JsonResponse({"redirect": "/dashboard/"})
+#         elif user.role == "PRODUCER":
+#             return JsonResponse({"redirect": "/producer/"})
+#         else:
+#             return JsonResponse({"redirect": "/"})
+
+#     except Exception as e:
+#         return JsonResponse({"error": str(e)}, status=400)
+    
+
 def firebase_auth_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=400)
@@ -143,20 +174,46 @@ def firebase_auth_view(request):
 
         # Check if user is active
         if not user.is_active:
-            print("DEBUG: User is deactivated")   # <-- This will show in your terminal
             return JsonResponse({"error": "Your account is deactivated. Please contact support."}, status=403)
 
+        # Django session login
         login(request, user)
 
+        # -----------------------------
+        # Generate JWT tokens
+        # -----------------------------
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        request.session["jwt_access"] = access_token
+        request.session["jwt_refresh"] = str(refresh)
+
+        login_time = timezone.now()
+        request.session["login_time"] = login_time.isoformat()
+
+        expiry_timestamp = request.session.get_expiry_date()
+        request.session["expiry_time"] = expiry_timestamp.isoformat()
+
+        # -----------------------------
+        # Return redirect + tokens
+        # -----------------------------
+        response = {
+            "access": access_token,
+            "refresh": str(refresh),
+        }
+
         if user.role == "ADMIN":
-            return JsonResponse({"redirect": "/dashboard/"})
+            response["redirect"] = "/dashboard/"
         elif user.role == "PRODUCER":
-            return JsonResponse({"redirect": "/producer/"})
+            response["redirect"] = "/producer/"
         else:
-            return JsonResponse({"redirect": "/"})
+            response["redirect"] = "/"
+
+        return JsonResponse(response)
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
 
 # ---------------------------------------
 # Profile URL
