@@ -378,7 +378,7 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 message=(
                     f"Hi {first_name},\n\n"
                     f"Your order #{order.unique_reference} has been successfully placed.\n"
-                    f"Total: £{order.final_total_price}\n\n"
+                    f"Total: £{order.final_total_price:.2f}\n\n"
                     f"Thank you for shopping with us!"
                 ),
                 recipient=recipient_email
