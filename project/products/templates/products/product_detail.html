@@ -93,8 +93,14 @@
                   Add to Cart
                 </button>
                 <a class="btn btn-primary product-action-btn product-back-link"
-                   href="{% url 'product_view' category_id=0 %}">Back to products</a>
+                   href="{% url 'products:product_view' category_id=0 %}">Back to products</a>
               </div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <h3 class="product-section-title">Recipe Suggestions</h3>
+            <div id="recipeSuggestions">
+              <p class="text-muted">Loading recipes...</p>
             </div>
           </div>
         </div>

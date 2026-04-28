@@ -1,0 +1,307 @@
+/* ============================================
+   RECIPE PAGE — WRAPPER
+   ============================================ */
+.rp-wrapper {
+    background: var(--background-grey);
+    padding: 2rem 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* ============================================
+   CARD
+   ============================================ */
+.rp-card {
+    background: #fff;
+    width: 100%;
+    max-width: 900px;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+}
+
+.rp-title {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--prussian-blue);
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   FORM FIELDS
+   ============================================ */
+.rp-field {
+    margin-bottom: 1.2rem;
+}
+
+.rp-label {
+    font-weight: 600;
+    margin-bottom: .35rem;
+    display: block;
+    color: var(--ink-black);
+}
+
+.rp-field input[type="text"],
+.rp-field textarea,
+.rp-field select,
+.rp-field input[type="file"],
+.rp-col input[type="text"],
+.rp-col textarea,
+.rp-col select,
+.rp-col input[type="file"],
+.rp-col-small select {
+    width: 100%;
+    padding: .65rem .8rem;
+    border-radius: 8px;
+    border: 1px solid var(--alabaster-grey);
+    background: #fff;
+    font-size: .95rem;
+}
+
+/* Textareas */
+.rp-field textarea,
+.rp-col textarea {
+    min-height: 130px;
+    resize: vertical;
+}
+
+/* ============================================
+   GRID SYSTEM
+   ============================================ */
+.rp-grid {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.rp-col {
+    flex: 0 0 48%;
+}
+
+.rp-col-small {
+    flex: 0 0 30%;
+}
+
+.rp-col-large {
+    flex: 0 0 68%;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .rp-col,
+    .rp-col-small,
+    .rp-col-large {
+        flex: 0 0 100%;
+    }
+}
+
+/* ============================================
+   IMAGE PREVIEW
+   ============================================ */
+.rp-preview {
+    width: 160px;
+    height: 160px;
+    margin-top: .75rem;
+    border-radius: 10px;
+    border: 1px solid var(--alabaster-grey);
+    object-fit: cover;
+    display: none; /* shown only when JS loads image */
+}
+
+/* ============================================
+   PRODUCT LIST
+   ============================================ */
+.rp-product-box {
+    border: 1px solid var(--alabaster-grey);
+    border-radius: 10px;
+    padding: .75rem;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+.rp-product-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .4rem 0;
+}
+
+.rp-no-products {
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.rp-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.rp-btn-primary {
+    background: var(--dusk-blue);
+    color: #fff;
+    padding: .6rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rp-btn-primary:hover {
+    background: var(--ink-black);
+}
+
+.rp-btn-outline {
+    background: #fff;
+    border: 1px solid var(--alabaster-grey);
+    padding: .6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rp-btn-outline:hover {
+    background: var(--ink-black);
+    color: #fff;
+}
+
+
+
+/* Farm_Story_Form */
+/* -----------------------------------------
+   CARD + LAYOUT
+----------------------------------------- */
+
+.content-card {
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    padding: 2rem;
+}
+
+.content-card h2 {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+
+/* -----------------------------------------
+   FORM LABELS
+----------------------------------------- */
+
+.form-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.35rem;
+}
+
+
+/* -----------------------------------------
+   FORM FIELDS
+----------------------------------------- */
+
+.form-control {
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #d1d5db;
+    font-size: 0.95rem;
+    background-color: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 0.15rem rgba(37, 99, 235, 0.25);
+}
+
+
+/* -----------------------------------------
+   BUTTONS
+----------------------------------------- */
+
+.btn-primary {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    padding: 0.55rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.btn-outline-secondary {
+    border-radius: 8px;
+    padding: 0.55rem 1.2rem;
+    font-weight: 600;
+}
+
+
+/* -----------------------------------------
+   IMAGE PREVIEW
+----------------------------------------- */
+/* 
+.rp-preview {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    display: block;
+} */
+
+
+/* -----------------------------------------
+   VALIDATION
+----------------------------------------- */
+
+.invalid-feedback {
+    font-size: 0.85rem;
+}
+
+.was-validated .form-control:invalid,
+.form-control.is-invalid {
+    border-color: #dc2626;
+}
+
+
+/* -----------------------------------------
+   FALLBACK (if form-control missing)
+----------------------------------------- */
+
+.content-card input[type="text"],
+.content-card input[type="file"],
+.content-card textarea,
+.content-card select {
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #d1d5db;
+    font-size: 0.95rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+/* -----------------------------------------
+   RESPONSIVE
+----------------------------------------- */
+
+@media (max-width: 768px) {
+    .content-card {
+        padding: 1.25rem;
+    }
+
+    .rp-preview {
+        width: 140px;
+        height: 140px;
+    }
+}
+
