@@ -1,3 +1,4 @@
+# added food miles - joe
 from decimal import Decimal
 from django.utils import timezone
 
@@ -12,6 +13,8 @@ from products.models import (
 )
 from accounts.models import Producer
 from api.serializers.accounts import ProducerSerializer, AdminSerializer
+from community.models import FarmStory, Recipe
+from orders.services.food_miles import calculate_food_miles, get_default_delivery_postcode
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -88,6 +91,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     stock_message = serializers.SerializerMethodField()
     is_purchasable = serializers.SerializerMethodField()
     add_to_cart_button_label = serializers.SerializerMethodField()
+    recipes = serializers.SerializerMethodField()
+    # stories = serializers.SerializerMethodField()
+    customer_postcode = serializers.SerializerMethodField()
+    food_miles = serializers.SerializerMethodField()
+    food_miles_login_required = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -117,6 +125,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "image",
             "low_stock_threshold",
             "farm_origin",
+            "customer_postcode",
+            "food_miles",
+            "food_miles_login_required",
             "organic_certification_status",
             "storage_guidance",
             "availability_start",
@@ -128,6 +139,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "moderated_at",
             "wholesale_prices",
             "allergens",
+            "recipes",
         )
 
     def _get_active_batches(self, obj):
@@ -165,6 +177,28 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             .order_by("expiry_date", "created_at")
             .first()
         )
+    def get_recipes(self, obj):
+        from community.models import Recipe
+
+        qs = Recipe.objects.filter(
+            recipe_products__product=obj,
+            status=Recipe.Status_choices.PUBLISHED
+        ).order_by("-created_at")
+
+        return RecipeInlineSerializer(qs, many=True).data
+
+
+
+    # def get_stories(self, obj):
+    #     from community.models import FarmStory
+
+    #     qs = FarmStory.objects.filter(
+    #         producer=obj.producer,
+    #         status=FarmStory.Status.PUBLISHED
+    #     ).order_by("-created_at")
+
+    #     return StoryInlineSerializer(qs, many=True).data
+
 
     def _has_only_expired_stock(self, obj):
         next_batch = self._get_next_inventory_batch(obj)
@@ -321,7 +355,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             return "Unavailable"
 
         stock = self._get_remaining_quantity_value(obj)
-
+    
         if stock <= 0:
             return "Out of stock"
 
@@ -349,6 +383,20 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             return "Add to cart"
         return "Unavailable"
 
+    def get_customer_postcode(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return None
+        return get_default_delivery_postcode(request.user)
+
+    def get_food_miles(self, obj):
+        customer_postcode = self.get_customer_postcode(obj)
+        return calculate_food_miles(obj.producer.farm_postcode, customer_postcode)
+
+    def get_food_miles_login_required(self, obj):
+        request = self.context.get("request")
+        return bool(request and not request.user.is_authenticated)
+
 
 # Following serializers are being used by others
 class ProductInlineSerializer(serializers.ModelSerializer):
@@ -367,3 +415,12 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = "__all__"
+
+class RecipeInlineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ("id", "title", "image", "seasonal_tag", "created_at")
+# class StoryInlineSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = FarmStory
+#         fields = ("id", "title", "image", "created_at")

@@ -14,9 +14,39 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum, Prefetch
 from BRFN.decorators import admin_required, producer_required
 import json
-
+from notifications.services.notifications import NotificationService
+from notifications.models import Notification
 from admin_records.models import ModerationLog
 from django.db.models import Prefetch
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from community.models import Recipe
+
+@api_view(["GET"])
+def product_recipes(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response({"recipes": []})
+
+    qs = Recipe.objects.filter(
+        linked_products=product,
+        status=Recipe.Status.PUBLISHED
+    ).order_by("-created_at")
+
+    data = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "image": r.image.url if r.image else "",
+            "season": r.season,
+        }
+        for r in qs
+    ]
+
+    return Response({"recipes": data})
 
 def _get_category_default_image(category_obj):
     image_map = getattr(settings, 'DEFAULT_PRODUCT_IMAGES_BY_GROUP', {})
@@ -90,24 +120,6 @@ def is_producer_or_admin(user):
 
     return False
 
-
-# def product_list(request):
-#     all_products = (
-#         Product.objects.filter(status=Product.Status.PUBLISHED)
-#         .select_related("producer")
-#         .prefetch_related("product_allergen__allergen")
-#     )
-#     recommended_products = all_products.order_by("-created_at")[:4]
-#     categories = Category.objects.all()
-
-#     context = {
-#         "all_products": all_products,
-#         "recommended_products": recommended_products,
-#         "categories": categories,
-#     }
-#     return render(request, "products/products_list.html", context)
-
-
 @producer_required
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
@@ -155,7 +167,7 @@ def add_product(request):
             )
 
         wholesale_price = None
-        wholesale_min_quantity = 20
+        wholesale_min_quantity = 1
         if wholesale_price_raw:
             try:
                 wholesale_price = Decimal(wholesale_price_raw)
@@ -189,11 +201,11 @@ def add_product(request):
                         'products/add_product.html',
                         _build_add_product_context('Please enter a valid minimum wholesale quantity.'),
                     )
-                if wholesale_min_quantity < 2:
+                if wholesale_min_quantity < 1:
                     return render(
                         request,
                         'products/add_product.html',
-                        _build_add_product_context('Minimum wholesale quantity must be at least 2.'),
+                        _build_add_product_context('Minimum wholesale quantity must be at least 1.'),
                     )
 
             if stock_quantity_value < wholesale_min_quantity:
@@ -323,7 +335,11 @@ def producer_products(request):
                 to_attr='product_wholesale_first',
             ),
         )
-        .annotate(total_stock=Sum('inventory_batches__remaining_quantity'))
+        .annotate(
+            total_stock=Sum(
+                'inventory_batches__remaining_quantity', 
+                filter=Q(inventory_batches__status="ACT"
+            )))
         .order_by("-created_at")
     )
 
@@ -425,12 +441,26 @@ def edit_producer_product(request, pk):
                     'success': False,
                     'error': f'At least {wholesale_min_quantity} items in stock are required to set a wholesale price.',
                 })
+        
+        # Low stock threshold
+        low_stock_raw = data.get('low_stock_threshold')
+
+        try:
+            low_stock_threshold = int(low_stock_raw)
+            if low_stock_threshold < 0 or low_stock_threshold > 9999:
+                raise ValueError
+        except (TypeError, ValueError):
+            return JsonResponse({
+                'success': False,
+                'error': 'Low stock threshold must be a number between 0 and 9999.'
+            })
 
         product.name = name
         product.price = price
         product.unit = unit
         product.availability_status = availability_status
         product.organic_certification_status = organic
+        product.low_stock_threshold = low_stock_threshold
         product.description = data.get('description', product.description)
         product.category = category
         product.save()
@@ -444,6 +474,22 @@ def edit_producer_product(request, pk):
             )
         else:
             product.product_wholesale.all().delete()
+        
+        # Check stock vs threshold for notification
+        stock_total = product.inventory_batches.aggregate(total=Sum('remaining_quantity')).get('total') or 0
+
+        if stock_total <= product.low_stock_threshold:
+            NotificationService.create_unique(
+                user=request.user,
+                type=Notification.Type.PRODUCT_ALERT,
+                product=product,
+                message=f"Low Stock Alert: {product.name} - only {stock_total} {product.get_unit_display()} remaining."
+            )
+        else:
+            NotificationService.resolve_for_product(
+                product,
+                Notification.Type.PRODUCT_ALERT
+            )
 
         return JsonResponse({
             'success': True,
@@ -459,6 +505,7 @@ def edit_producer_product(request, pk):
             'description': product.description or '',
             'wholesale_price': str(wholesale_price) if wholesale_price is not None else '',
             'wholesale_min_quantity': wholesale_min_quantity if wholesale_price is not None else '',
+            'low_stock_threshold': product.low_stock_threshold,
         })
 
     except json.JSONDecodeError:

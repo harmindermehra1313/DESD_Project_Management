@@ -1,3 +1,4 @@
+# added food miles - joe
 from __future__ import annotations
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -27,6 +28,7 @@ from carts.api.serializers.carts import (
     CartSerializer,
     CartItemSerializer,
 )
+from orders.services.food_miles import get_default_delivery_postcode
 
 
 def _ensure_session_key(request) -> str:
@@ -92,7 +94,12 @@ class CartAPIView(APIView):
         except Exception as exc:
             raise _translate_service_error(exc)
 
-        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+        customer_postcode = get_default_delivery_postcode(request.user)
+        serializer = CartSerializer(
+            cart,
+            context={"request": request, "customer_postcode": customer_postcode},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CartItemAddView(CreateAPIView):
@@ -115,7 +122,12 @@ class CartItemAddView(CreateAPIView):
         except Exception as exc:
             raise _translate_service_error(exc)
 
-        return Response(CartItemSerializer(item).data, status=status.HTTP_201_CREATED)
+        customer_postcode = get_default_delivery_postcode(request.user)
+        serializer = CartItemSerializer(
+            item,
+            context={"request": request, "customer_postcode": customer_postcode},
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CartItemDetailView(APIView):
@@ -161,7 +173,12 @@ class CartItemDetailView(APIView):
         if item is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        return Response(CartItemSerializer(item).data, status=status.HTTP_200_OK)
+        customer_postcode = get_default_delivery_postcode(request.user)
+        serializer = CartItemSerializer(
+            item,
+            context={"request": request, "customer_postcode": customer_postcode},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CartMergeAPIView(APIView):

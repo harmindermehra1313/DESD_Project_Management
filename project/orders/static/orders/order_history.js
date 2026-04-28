@@ -1047,9 +1047,7 @@ async function openOrderDetails(orderId) {
   }
 }
 
-/* =========================
-   REORDER PLANNER HELPERS
-   ========================= */
+
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
@@ -2538,9 +2536,7 @@ function renderReorderResult(result) {
   `;
 }
 
-/* =========================
-   REORDER API ACTIONS
-   ========================= */
+
 
 async function openReorderPreview(orderId) {
   pendingReorderOrderId = orderId;

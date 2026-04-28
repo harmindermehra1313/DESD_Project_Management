@@ -1,3 +1,4 @@
+// added food miles - joe
 const M = window.CartPageMessages;
 // carts/static/carts/cart_page.js
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const totalQtyEl = document.getElementById("totalQty");
   const subtotalEl = document.getElementById("subtotal");
   const totalEl = document.getElementById("total");
+  const totalFoodMilesEl = document.getElementById("totalFoodMiles");
 
   const checkoutBtn = document.getElementById("checkoutBtn");
 
@@ -82,6 +84,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return Number.isFinite(n) ? n : fallback;
   }
 
+  function parseMiles(v) {
+    if (v === null || v === undefined || v === "") return NaN;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   function clampQty(v) {
     const n = Number(String(v ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
@@ -115,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return window.CartAPI.getCart();
   }
 
-  function buildItemRow(item) {
+  function buildItemRow(item, foodMilesLoginRequired = false) {
     const product = item.product || {};
     const itemId = item.id;
     const inventoryId = Number(item.inventory_id ?? 0);
@@ -132,6 +140,9 @@ document.addEventListener("DOMContentLoaded", () => {
       item.line_total ?? qty * unitPrice,
       qty * unitPrice,
     );
+    const foodMiles = parseMiles(item.food_miles);
+    const lineFoodMiles = parseMiles(item.line_food_miles);
+    const producerId = Number(product.producer_id ?? NaN);
 
     const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
 
@@ -163,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { isExpired, isOutOfStock, isPurchasable, isBlocked, stockQty } =
       getItemStatus(product);
+    const rowFoodMilesLoginRequired = Boolean(foodMilesLoginRequired);
 
     const row = document.createElement("div");
     row.className = "cart-row mb-3";
@@ -203,6 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ${isSurplus ? `<span class="badge text-bg-danger">${M.surplusBadge}</span>` : ""}
     </div>
     ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
+    ${Number.isFinite(foodMiles) ? `<div class="small text-muted mt-1">Food miles: ${foodMiles.toFixed(2)} miles from this producer</div>` : `<div class="small text-muted mt-1">${rowFoodMilesLoginRequired ? "Log in to see your food miles" : "Food miles unavailable for this route"}</div>`}
     ${
       product.expiry_date
         ? `<div class="small mt-1 ${isExpired ? "text-danger fw-semibold" : "text-muted"}">
@@ -395,6 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function render(cart) {
     const items = cart?.items ?? [];
+    const foodMilesLoginRequired = Boolean(cart?.food_miles_login_required);
     const hasBlockedItems = items.some((it) => {
       const status = getItemStatus(it?.product || {});
       return status.isBlocked;
@@ -407,7 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       setEmpty(false);
       for (const it of items) {
-        cartItemsEl.appendChild(buildItemRow(it));
+        cartItemsEl.appendChild(buildItemRow(it, foodMilesLoginRequired));
       }
     }
 
@@ -429,6 +443,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let baseSubtotal = 0;
     let wholesaleSavings = 0;
     let surplusSavings = 0;
+    let totalFoodMiles = 0;
+    let hasFoodMiles = false;
+    const countedProducerIds = new Set();
 
     for (const it of items) {
       const qty = toNum(it.quantity ?? 0, 0);
@@ -447,9 +464,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const lineActual = unitPrice * qty;
       const lineBase = baseUnit * qty;
+      const foodMiles = parseMiles(it.food_miles);
+      const producerId = Number(it?.product?.producer_id ?? NaN);
 
       actualSubtotal += lineActual;
       baseSubtotal += lineBase;
+
+      if (Number.isFinite(foodMiles) && Number.isFinite(producerId) && !countedProducerIds.has(producerId)) {
+        countedProducerIds.add(producerId);
+        totalFoodMiles += foodMiles;
+        hasFoodMiles = true;
+      }
 
       const unitIsDiscounted =
         baseUnit > 0 && unitPrice > 0 && unitPrice < baseUnit;
@@ -477,6 +502,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // - total: same as subtotal for now (no shipping/tax in your UI)
     subtotalEl && (subtotalEl.textContent = money(actualSubtotal));
     totalEl && (totalEl.textContent = money(actualSubtotal));
+    if (totalFoodMilesEl) {
+      totalFoodMilesEl.textContent = hasFoodMiles
+        ? `${totalFoodMiles.toFixed(2)} miles`
+        : (foodMilesLoginRequired ? "Log in to see your food miles" : "Unavailable");
+    }
 
     // Inject “before wholesale” + “savings” rows into summary (professional look)
     const summaryCard = subtotalEl?.closest(".cart-card");

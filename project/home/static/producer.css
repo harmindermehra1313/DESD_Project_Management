@@ -1,0 +1,91 @@
+/* ============================================
+   PRODUCER DASHBOARD STYLES
+   ============================================ */
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Headings */
+.dashboard-heading {
+    color: var(--prussian-blue);
+    font-weight: 600;
+}
+
+.dashboard-icon {
+    color: var(--prussian-blue);
+    font-size: 1.5rem;
+}
+
+/* Notification Card */
+.dashboard-card {
+    border-radius: var(--radius);
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* Notification List Items */
+.dashboard-list-item {
+    border-bottom: 1px solid var(--alabaster-grey);
+}
+
+.dashboard-list-item:last-child {
+    border-bottom: none;
+}
+
+/* Notification Type Badge */
+.dashboard-type-badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    font-weight: 600;
+}
+
+/* Hover effect for list items */
+.dashboard-list-item:hover {
+    background-color: var(--background-grey);
+}
+
+/* Ensure consistent spacing */
+.dashboard-card .card-body {
+    padding: 1.5rem;
+}
+
+/* Statistic styling */
+.stat-box {
+    background: var(--background-grey);
+    padding: 20px;
+    border-radius: var(--radius);
+}
+
+.stat-value {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--prussian-blue);
+    margin-bottom: 2px;
+}
+
+.stat-label {
+    font-size: 0.95rem;
+    color: var(--dusk-blue);
+}
+
+.low-stock-item {
+    gap: var(--gap);
+}
+
+#orderStatusChart {
+    width: 260px !important;
+    height: 260px !important;
+    margin: 0 auto;
+}
+
+.chart-toggle-active {
+    background-color: var(--dusk-blue);
+    color: white;
+}
+
+.dashboard-list-item:hover {
+    background-color: var(--background-grey) !important;
+    cursor: pointer;
+}

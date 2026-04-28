@@ -4,6 +4,10 @@ from django.urls import path
 from . import views
 from .views.views_main import add_product, product_view, producer_products, edit_producer_product, cancel_producer_product, ProductDetailView, product_detail_page
 from .views import reductions, api_reductions, batch
+from community.views import api_product_recipes
+
+
+app_name = 'products'
 
 urlpatterns = [
     # path('', views.product_list, name='products_list'),
@@ -13,6 +17,10 @@ urlpatterns = [
     # Harminder Edits
     path("category/<int:category_id>/", product_view, name="product_view"),
     path("producer/products/", producer_products, name="producer_products"),
+
+    path("product/<int:product_id>/recipes/", api_product_recipes, name="product_recipes"),
+
+
     
     # Hannah edit: reductions handling
     path("reductions/", reductions.manage_reductions, name="producer_manage_reductions"),

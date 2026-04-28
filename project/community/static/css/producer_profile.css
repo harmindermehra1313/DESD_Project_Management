@@ -1,0 +1,59 @@
+.producer-page {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Producer Header */
+.producer-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid #e5e7eb;
+}
+
+.producer-name {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* Section Titles */
+.section-title {
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Story Cards */
+.story-img,
+.recipe-img {
+  height: 180px;
+  object-fit: cover;
+  border-radius: 16px 16px 0 0;
+}
+
+.story-card .card,
+.recipe-card .card {
+  border-radius: 20px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.story-card:hover .card,
+.recipe-card:hover .card {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .producer-card {
+    padding: 1.25rem;
+  }
+
+  .producer-name {
+    font-size: 1.6rem;
+  }
+
+  .story-img,
+  .recipe-img {
+    height: 150px;
+  }
+}
