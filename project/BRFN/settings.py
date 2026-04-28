@@ -266,8 +266,35 @@ Q_CLUSTER = {
     'retry': 180,
     'queue_limit': 50,
     'bulk': 10,
-    'orm': 'default',           # uses the same Postgres DB as the broker
+    'orm': 'default',
 }
+
+# DRAMATIQ_BROKER = {
+#     "BROKER": "dramatiq.brokers.redis.RedisBroker",
+#     "OPTIONS": {
+#         "host": os.getenv("REDIS_HOST", "redis"),
+#         "port": 6379,
+#         "db": 0,
+#     },
+#     "MIDDLEWARE": [
+#         "dramatiq.middleware.AgeLimit",
+#         "dramatiq.middleware.TimeLimit",
+#         "dramatiq.middleware.Callbacks",
+#         "dramatiq.middleware.Retries",
+#     ]
+# }
+
+# DRAMATIQ_TASKS_DATABASE = "default"
+
+# DRAMATIQ_SCHEDULER = {
+#     "enabled": True,
+#     "tasks": [
+#         {
+#             "name": "check_low_stock",
+#             "cron": "*/1 * * * *",   # every minute
+#         },
+#     ],
+# }
 
 # Email backend
 # Prints emails to terminal instead of sending (useful for dev/testing):

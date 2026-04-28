@@ -1,0 +1,13 @@
+<p>Hello {{ producer_name }},</p>
+
+<p>Your product <strong>{{ product.name }}</strong> is running low on stock.</p>
+
+<ul>
+    <li><strong>Current stock:</strong> {{ product.total_stock }} {{ product.get_unit_display }}</li>
+    <li><strong>Low stock threshold:</strong> {{ product.low_stock_threshold }}</li>
+</ul>
+
+<p>Please restock soon to avoid interruptions.</p>
+
+<p>— Your BRFN Dashboard</p>
+<p>This is an automated email, please do not reply to it. Contact brfncustomerservice@gmail.com if required.</p>
