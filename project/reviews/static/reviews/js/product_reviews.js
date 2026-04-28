@@ -9,7 +9,9 @@
     const reviewsListEl = document.getElementById("productReviewsList");
     const reviewsMetaEl = document.getElementById("productReviewsMeta");
     const reviewsAverageEl = document.getElementById("productReviewsAverage");
-    const reviewsBreakdownEl = document.getElementById("productReviewsBreakdown");
+    const reviewsBreakdownEl = document.getElementById(
+      "productReviewsBreakdown",
+    );
 
     if (!reviewsSummaryEl || !reviewsListEl) return;
 
@@ -55,8 +57,7 @@
         return;
       }
 
-      reviewsSummaryEl.textContent =
-        `${averageRating.toFixed(1)} / 5 from ${reviewCount} review${reviewCount === 1 ? "" : "s"}`;
+      reviewsSummaryEl.textContent = `${averageRating.toFixed(1)} / 5 from ${reviewCount} review${reviewCount === 1 ? "" : "s"}`;
 
       if (reviewsAverageEl) {
         reviewsAverageEl.textContent = averageRating.toFixed(1);
@@ -116,7 +117,7 @@
           `<span class="product-review-badge product-review-badge--verified">
             <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
             Verified purchase
-          </span>`
+          </span>`,
         );
       }
 
@@ -124,7 +125,7 @@
         badges.push(
           `<span class="product-review-badge product-review-badge--anonymous">
             Anonymous
-          </span>`
+          </span>`,
         );
       }
 
@@ -141,9 +142,14 @@
         .map((review) => {
           const safeTitle = escapeHtml(review.title || "Untitled review");
           const safeText = escapeHtml(review.text || "").replace(/\n/g, "<br>");
-          const safeReviewer = escapeHtml(review.reviewer_name || "Verified Customer");
+          const safeReviewer = escapeHtml(
+            review.reviewer_name || "Verified Customer",
+          );
           const safeDate = escapeHtml(formatReviewDate(review.created_at));
-          const ratingValue = Math.max(0, Math.min(5, Number(review.rating) || 0));
+          const ratingValue = Math.max(
+            0,
+            Math.min(5, Number(review.rating) || 0),
+          );
           const badgeMarkup = renderReviewerBadges(review);
 
           return `
@@ -171,7 +177,41 @@
         })
         .join("");
     }
+    async function buildApiErrorFromResponse(response, fallbackMessage) {
+      let payload = null;
 
+      try {
+        payload = await response.clone().json();
+      } catch {
+        payload = null;
+      }
+
+      const message = payload
+        ? window.AppApiErrors?.fromPayload?.(payload, fallbackMessage) ||
+          fallbackMessage
+        : fallbackMessage;
+
+      const error = new Error(message || fallbackMessage);
+      error.status = response.status;
+      error.payload = payload;
+      return error;
+    }
+
+    function getReviewListLoadError(error) {
+      const payload = error?.payload || null;
+      const structuredError =
+        payload && typeof payload === "object"
+          ? payload.error || payload
+          : null;
+
+      if (structuredError?.code === "review_product_not_found") {
+        return "Reviews are unavailable because this product could not be found.";
+      }
+
+      return (
+        structuredError?.message || error?.message || "Unable to load reviews."
+      );
+    }
     async function loadReviews() {
       if (!Number.isInteger(productId) || productId <= 0) {
         reviewsSummaryEl.textContent = "Reviews are unavailable.";
@@ -182,13 +222,19 @@
       }
 
       try {
-        const response = await fetch(`/api/reviews/products/${productId}/reviews/`, {
-          headers: { Accept: "application/json" },
-          credentials: "same-origin",
-        });
+        const response = await fetch(
+          `/api/reviews/products/${productId}/reviews/`,
+          {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          },
+        );
 
         if (!response.ok) {
-          throw new Error(`Unable to load reviews. HTTP ${response.status}`);
+          throw await buildApiErrorFromResponse(
+            response,
+            "Unable to load reviews.",
+          );
         }
 
         const data = await response.json();
@@ -205,7 +251,7 @@
             <div class="product-review-empty-icon text-danger">!</div>
             <div>
               <h3 class="h6 mb-1">Unable to load reviews</h3>
-              <p class="mb-0 text-danger">${escapeHtml(err?.message || "Unable to load reviews.")}</p>
+              <p class="mb-0 text-danger">${escapeHtml(getReviewListLoadError(err))}</p>
             </div>
           </div>
         `;

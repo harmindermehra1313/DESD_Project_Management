@@ -13,6 +13,7 @@ from carts.services import (
     CartOwner,
     CartItemNotFound,
     CartNotActive,
+    CartStockLimitExceeded,
     cart_get_or_create_active,
     cart_add_item,
     cart_set_item_quantity,
@@ -53,14 +54,21 @@ def _owner(request) -> CartOwner:
 
 
 def _translate_service_error(exc: Exception) -> Exception:
+    if isinstance(exc, CartStockLimitExceeded):
+        return ValidationError(detail=exc.detail)
+
     if isinstance(exc, DjangoValidationError):
         return ValidationError(detail=exc.message)
+
     if isinstance(exc, CartItemNotFound):
         return NotFound(detail=str(exc) or "Cart item not found.")
+
     if isinstance(exc, CartNotActive):
         return ValidationError(detail=str(exc) or "Cart is not active.")
+
     if isinstance(exc, ValueError):
         return ValidationError(detail=str(exc))
+
     return exc
 
 
@@ -105,7 +113,6 @@ class CartItemAddView(CreateAPIView):
                 quantity=ser.validated_data["quantity"],
             )
         except Exception as exc:
-            print("DEBUG service exception =", repr(exc))
             raise _translate_service_error(exc)
 
         return Response(CartItemSerializer(item).data, status=status.HTTP_201_CREATED)

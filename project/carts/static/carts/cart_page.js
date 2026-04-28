@@ -329,10 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const q = clampQty(newQty);
 
-      if (q > stockQty) {
-        flashRow(M.inventoryLimitMessage(name, stockQty), "warning");
-        return;
-      }
+      
 
       setDisabled(true);
       try {

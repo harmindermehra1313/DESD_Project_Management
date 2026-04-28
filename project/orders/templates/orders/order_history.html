@@ -4,6 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'orders/order_history.css' %}">
+    <link rel="stylesheet" href="{% static 'css/toast.css' %}">
 {% endblock %}
 {% block content %}
     <div class="container py-4">
@@ -131,6 +132,8 @@
 {% endblock %}
 {% block scripts %}
     {{ block.super }}
+    <script src="{% static 'carts/cart_api_messages.js' %}"></script>
+    <script type="module" src="{% static 'carts/cart.js' %}"></script>
     <script src="{% static 'orders/order_history_messages.js' %}"></script>
     <script src="{% static 'orders/order_history.js' %}"></script>
 {% endblock %}

@@ -190,87 +190,179 @@
     };
   }
 
-  function handleApiError(response, data) {
-    const formErrors = [];
+  function firstErrorValue(value) {
+    if (value === null || value === undefined) {
+      return "";
+    }
 
-    if (response.status === 400 || response.status === 422) {
-      const hasTitleError =
-        Array.isArray(data?.title) || typeof data?.title === "string";
-      const hasRatingError =
-        Array.isArray(data?.rating) || typeof data?.rating === "string";
-      const hasTextError =
-        Array.isArray(data?.text) || typeof data?.text === "string";
-      const hasSelectionError =
-        Array.isArray(data?.order_id) ||
-        Array.isArray(data?.order_item_id) ||
-        Array.isArray(data?.product_id) ||
-        typeof data?.order_id === "string" ||
-        typeof data?.order_item_id === "string" ||
-        typeof data?.product_id === "string";
+    if (typeof value === "string") {
+      return value;
+    }
 
-      if (hasTitleError) {
-        setFieldError(fields.title, messages.titleRequired);
-        formErrors.push(messages.titleRequired);
+    if (Array.isArray(value)) {
+      return firstErrorValue(value[0]);
+    }
+
+    return String(value);
+  }
+
+  function getStructuredError(data) {
+    if (!data || typeof data !== "object") {
+      return null;
+    }
+
+    return data.error || data;
+  }
+
+  function getStructuredErrorCode(data) {
+    const structuredError = getStructuredError(data);
+    return firstErrorValue(structuredError?.code);
+  }
+
+  function getStructuredErrorMessage(data) {
+    const structuredError = getStructuredError(data);
+    return firstErrorValue(structuredError?.message);
+  }
+
+  function getStructuredErrorData(data) {
+    const structuredError = getStructuredError(data);
+    return structuredError?.data && typeof structuredError.data === "object"
+      ? structuredError.data
+      : {};
+  }
+
+  function normaliseErrorList(value) {
+    if (!value) {
+      return [];
+    }
+
+    if (typeof value === "string") {
+      return [value];
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => normaliseErrorList(item));
+    }
+
+    if (typeof value === "object") {
+      return Object.values(value).flatMap((item) => normaliseErrorList(item));
+    }
+
+    return [String(value)];
+  }
+
+  function getReviewApiErrorMessage(response, data) {
+    const structuredError = getStructuredError(data);
+    const code = getStructuredErrorCode(data);
+    const details = getStructuredErrorData(data);
+
+    if (code === "review_customer_profile_required") {
+      return "A customer profile is required before a review can be submitted.";
+    }
+
+    if (code === "review_spam_detected") {
+      const reasons = Array.isArray(details.reasons) ? details.reasons : [];
+
+      if (reasons.length) {
+        return "This review looks like spam or promotional content. Remove links, discount codes, or advertising language and try again.";
       }
 
-      if (hasRatingError) {
-        setFieldError(fields.rating, messages.ratingInvalid);
-        formErrors.push(messages.ratingInvalid);
-      }
+      return "This review looks like spam or promotional content. Please revise it and try again.";
+    }
 
-      if (hasTextError) {
-        setFieldError(fields.text, messages.textRequired);
-        formErrors.push(messages.textRequired);
-      }
+    if (code === "review_not_allowed") {
+      return messages.forbidden;
+    }
 
-      if (hasSelectionError) {
-        formErrors.push(messages.invalidSelection);
-      }
+    if (code === "review_order_item_not_found") {
+      return messages.notFound;
+    }
 
-      if (
-        !hasTitleError &&
-        !hasRatingError &&
-        !hasTextError &&
-        !hasSelectionError
-      ) {
-        formErrors.push(messages.duplicateOrInvalid);
-      }
+    if (code === "review_item_not_eligible") {
+      return messages.duplicateOrInvalid;
+    }
 
-      showFormErrors(formErrors);
-      return;
+    const backendMessage = getStructuredErrorMessage(data);
+    if (backendMessage) {
+      return backendMessage;
     }
 
     if (response.status === 401) {
-      showFormErrors([messages.sessionExpired]);
-      return;
+      return messages.sessionExpired;
     }
 
     if (response.status === 403) {
-      showFormErrors([messages.forbidden]);
-      return;
+      return messages.forbidden;
     }
 
     if (response.status === 404) {
-      showFormErrors([messages.notFound]);
-      return;
+      return messages.notFound;
     }
 
     if (response.status === 409) {
-      showFormErrors([messages.duplicateOrInvalid]);
-      return;
+      return messages.duplicateOrInvalid;
     }
 
     if (response.status === 429) {
-      showFormErrors([messages.rateLimited]);
-      return;
+      return messages.rateLimited;
     }
 
     if (response.status >= 500) {
-      showFormErrors([messages.serviceUnavailable]);
+      return messages.serviceUnavailable;
+    }
+
+    return messages.genericSubmitError;
+  }
+
+  function applyFieldErrors(data) {
+    const fieldMappings = {
+      title: {
+        field: fields.title,
+        fallback: messages.titleRequired,
+      },
+      rating: {
+        field: fields.rating,
+        fallback: messages.ratingInvalid,
+      },
+      text: {
+        field: fields.text,
+        fallback: messages.textRequired,
+      },
+    };
+
+    const formErrors = [];
+
+    Object.entries(fieldMappings).forEach(([fieldName, config]) => {
+      const fieldErrors = normaliseErrorList(data?.[fieldName]);
+
+      if (fieldErrors.length) {
+        setFieldError(config.field, fieldErrors[0] || config.fallback);
+        formErrors.push(fieldErrors[0] || config.fallback);
+      }
+    });
+
+    const selectionErrors = [
+      ...normaliseErrorList(data?.order_id),
+      ...normaliseErrorList(data?.order_item_id),
+      ...normaliseErrorList(data?.product_id),
+    ];
+
+    if (selectionErrors.length) {
+      formErrors.push(messages.invalidSelection);
+    }
+
+    return formErrors;
+  }
+  function handleApiError(response, data) {
+    const fieldErrors = applyFieldErrors(data);
+
+    if (fieldErrors.length) {
+      showFormErrors(fieldErrors);
       return;
     }
 
-    showFormErrors([messages.genericSubmitError]);
+    const message = getReviewApiErrorMessage(response, data);
+    showFormErrors([message]);
   }
 
   async function submitReview(payload) {
@@ -326,9 +418,14 @@
       const data = await submitReview(payload);
 
       successBox.textContent =
-        data?.message || "Review submitted successfully.";
+        data?.code === "review_submitted_for_moderation"
+          ? "Review submitted and sent for moderation."
+          : "Review submitted successfully.";
 
-      if (data?.is_flagged) {
+      if (
+        data?.code === "review_submitted_for_moderation" ||
+        data?.is_flagged
+      ) {
         successBox.classList.remove("alert-success");
         successBox.classList.add("alert-warning");
       } else {

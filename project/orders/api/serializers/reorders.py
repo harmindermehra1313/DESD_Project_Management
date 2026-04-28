@@ -326,6 +326,8 @@ class ReorderUnavailableItemSerializer(serializers.Serializer):
     product_name = serializers.CharField()
     requested_quantity = serializers.IntegerField()
     reason = serializers.CharField()
+    reason_code = serializers.CharField(required=False, allow_blank=True)
+    reason_data = serializers.DictField(required=False)
     producer_id = serializers.IntegerField(required=False)
     producer_name = serializers.CharField(required=False)
     suggested_items = ReorderSuggestedItemSerializer(many=True, required=False)
@@ -338,6 +340,8 @@ class ReorderQuantityAdjustedItemSerializer(serializers.Serializer):
     requested_quantity = serializers.IntegerField()
     added_quantity = serializers.IntegerField()
     reason = serializers.CharField()
+    reason_code = serializers.CharField(required=False, allow_blank=True)
+    reason_data = serializers.DictField(required=False)
 
 
 class ReorderPriceChangedItemSerializer(serializers.Serializer):

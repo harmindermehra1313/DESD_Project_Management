@@ -19,7 +19,8 @@
     loadFailed: "We couldn't load this product right now.",
     unavailable: "This product is not available right now.",
     missingInventory: "This product cannot be added to your cart right now.",
-    cartUnavailable: "The cart is unavailable right now. Please refresh and try again.",
+    cartUnavailable:
+      "The cart is unavailable right now. Please refresh and try again.",
     addedToCart: "Added to cart.",
     addFailed: "We couldn't add this item to your cart. Please try again.",
     addToCartLabel: "Add to cart",
@@ -132,7 +133,87 @@
       return window.AppApiErrors.fromError(error, this.loadFailed);
     },
 
+    getErrorPayload(error) {
+      return (
+        error?.payload ||
+        error?.data ||
+        error?.response?.data ||
+        error?.details ||
+        null
+      );
+    },
+    getStructuredError(error) {
+      const payload = this.getErrorPayload(error);
+
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      return payload.error || payload;
+    },
+
+    toNonNegativeInteger(value) {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
+      const number = Number(value);
+
+      if (!Number.isFinite(number) || number < 0) {
+        return null;
+      }
+
+      return Math.floor(number);
+    },
+
+    getCartStockLimitMessage(error) {
+      const structuredError = this.getStructuredError(error);
+
+      if (structuredError?.code !== "cart_stock_limit_exceeded") {
+        return null;
+      }
+
+      const data = structuredError.data || structuredError.details || {};
+
+      const availableStock = this.toNonNegativeInteger(data.available_stock);
+      const quantityInCart = this.toNonNegativeInteger(data.quantity_in_cart);
+      const maxAddableQuantity = this.toNonNegativeInteger(
+        data.max_addable_quantity,
+      );
+
+      if (
+        Number.isInteger(availableStock) &&
+        Number.isInteger(quantityInCart) &&
+        Number.isInteger(maxAddableQuantity)
+      ) {
+        if (maxAddableQuantity > 0) {
+          return (
+            `${availableStock} items are available. ` +
+            `${quantityInCart} are already in the cart, so a maximum of ` +
+            `${maxAddableQuantity} more can be added.`
+          );
+        }
+
+        return (
+          `${availableStock} items are available and ` +
+          `${quantityInCart} are already in the cart. ` +
+          "No more can be added."
+        );
+      }
+
+      return (
+        structuredError.message ||
+        "The requested quantity exceeds available stock."
+      );
+    },
+
     getAddError(error, productData, formatDate) {
+      const structuredError = this.getStructuredError(error);
+
+      if (structuredError?.code === "cart_stock_limit_exceeded") {
+        return this.getCartStockLimitMessage(error);
+      }
+
       const raw = window.AppApiErrors.fromError(error, this.addFailed);
 
       if (/expired/i.test(raw)) {

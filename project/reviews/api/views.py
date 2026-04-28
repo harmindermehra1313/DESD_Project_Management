@@ -24,14 +24,16 @@ class ReviewCreateAPIView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         review = serializer.save()
 
-        message = (
-            "Review submitted successfully."
-            if review.status == Review.Status.PUBLISHED
-            else "Review submitted and sent for moderation."
-        )
+        if review.status == Review.Status.PUBLISHED:
+            code = "review_submitted"
+            message = "Review submitted successfully."
+        else:
+            code = "review_submitted_for_moderation"
+            message = "Review submitted and sent for moderation."
 
         return Response(
             {
+                "code": code,
                 "message": message,
                 "status": review.status,
                 "is_flagged": review.status == Review.Status.FLAGGED,
@@ -46,7 +48,17 @@ class ProductReviewListAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, product_id: int):
-        get_object_or_404(Product, pk=product_id)
+        if not Product.objects.filter(pk=product_id).exists():
+            return Response(
+                {
+                    "code": "review_product_not_found",
+                    "message": "The selected product could not be found.",
+                    "data": {
+                        "product_id": product_id,
+                    },
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         reviews = get_published_reviews_for_product(product_id=product_id)
         summary = get_published_review_summary_for_product(product_id=product_id)

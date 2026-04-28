@@ -2,7 +2,28 @@ from rest_framework import serializers
 
 from reviews.models import Review
 from reviews.selectors import get_reviewable_order_item_for_user
-from reviews.services.review_services import create_review_for_order_item
+from reviews.services.review_services import (
+    ReviewSubmissionError,
+    create_review_for_order_item,
+)
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from rest_framework.exceptions import ValidationError
+
+
+def structured_review_error(
+    *,
+    code: str,
+    message: str,
+    data: dict | None = None,
+) -> ValidationError:
+    return ValidationError(
+        {
+            "code": code,
+            "message": message,
+            "data": data or {},
+        }
+    )
+
 
 class ReviewCreateSerializer(serializers.Serializer):
     order_id = serializers.IntegerField(required=False)
@@ -16,12 +37,47 @@ class ReviewCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         request = self.context["request"]
 
-        order_item = get_reviewable_order_item_for_user(
-            user_id=request.user.id,
-            order_item_id=attrs["order_item_id"],
-            order_id=attrs.get("order_id"),
-            product_id=attrs.get("product_id"),
-        )
+        try:
+            order_item = get_reviewable_order_item_for_user(
+                user_id=request.user.id,
+                order_item_id=attrs["order_item_id"],
+                order_id=attrs.get("order_id"),
+                product_id=attrs.get("product_id"),
+            )
+        except PermissionDenied as exc:
+            raise structured_review_error(
+                code="review_not_allowed",
+                message="This review cannot be submitted for the selected order item.",
+                data={
+                    "order_id": attrs.get("order_id"),
+                    "order_item_id": attrs.get("order_item_id"),
+                    "product_id": attrs.get("product_id"),
+                    "reason": str(exc),
+                },
+            ) from exc
+        except ObjectDoesNotExist as exc:
+            raise structured_review_error(
+                code="review_order_item_not_found",
+                message="The selected order item could not be found.",
+                data={
+                    "order_id": attrs.get("order_id"),
+                    "order_item_id": attrs.get("order_item_id"),
+                    "product_id": attrs.get("product_id"),
+                },
+            ) from exc
+        except ValidationError:
+            raise
+        except Exception as exc:
+            raise structured_review_error(
+                code="review_item_not_eligible",
+                message="This item is no longer eligible for review.",
+                data={
+                    "order_id": attrs.get("order_id"),
+                    "order_item_id": attrs.get("order_item_id"),
+                    "product_id": attrs.get("product_id"),
+                    "reason": str(exc),
+                },
+            ) from exc
 
         attrs["order_item"] = order_item
         return attrs
@@ -37,11 +93,15 @@ class ReviewCreateSerializer(serializers.Serializer):
             "anonymous": validated_data.get("anonymous", False),
         }
 
-        return create_review_for_order_item(
-            user=request.user,
-            order_item=order_item,
-            cleaned_data=cleaned_data,
-        )
+        try:
+            return create_review_for_order_item(
+                user=request.user,
+                order_item=order_item,
+                cleaned_data=cleaned_data,
+            )
+        except ReviewSubmissionError as exc:
+            raise ValidationError(exc.detail) from exc
+
 
 class PublicReviewSerializer(serializers.ModelSerializer):
     reviewer_name = serializers.CharField(source="public_reviewer_name", read_only=True)

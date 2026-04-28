@@ -73,35 +73,95 @@
     savingsMessage(total) {
       return `You saved ${total} with discounts.`;
     },
-    inventoryLimitMessage(name, availableQty) {
-      const qty = Math.max(0, Number(availableQty) || 0);
+    getErrorPayload(error) {
+      return (
+        error?.payload ||
+        error?.data ||
+        error?.response?.data ||
+        error?.details ||
+        null
+      );
+    },
 
-      if (qty <= 0) {
+    getStructuredError(error) {
+      const payload = this.getErrorPayload(error);
+
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      return payload.error || payload;
+    },
+
+    toNonNegativeInteger(value) {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
+      const number = Number(value);
+
+      if (!Number.isFinite(number) || number < 0) {
+        return null;
+      }
+
+      return Math.floor(number);
+    },
+
+    inventoryLimitMessage(name, availableQty) {
+      const qty = this.toNonNegativeInteger(availableQty);
+
+      if (!Number.isInteger(qty) || qty <= 0) {
         return `“${name}” is no longer available. Please remove it from your cart.`;
       }
 
-      return `Only ${qty} ${qty === 1 ? "item is" : "items are"} available for “${name}”. Change the quantity to ${qty} or less.`;
-    },
-    isInventoryLimitError(error) {
-      const raw = window.AppApiErrors.fromError(error, "");
-      return /(remaining|available|stock|quantity|insufficient|left|max(?:imum)?)/i.test(
-        raw,
+      return (
+        `Only ${qty} ${qty === 1 ? "item is" : "items are"} available ` +
+        `for “${name}”. Change the quantity to ${qty} or less.`
       );
     },
-    getRowUpdateError(error, product, requestedQty) {
+
+    getStockLimitMessage(error, product) {
+      const structuredError = this.getStructuredError(error);
+
+      if (structuredError?.code !== "cart_stock_limit_exceeded") {
+        return null;
+      }
+
+      const data = structuredError.data || structuredError.details || {};
+      const name = data.product_name || product?.name || this.productFallback;
+
+      const availableStock = this.toNonNegativeInteger(data.available_stock);
+      const maxAllowedQuantity =
+        this.toNonNegativeInteger(data.max_allowed_quantity) ?? availableStock;
+
+      if (!Number.isInteger(maxAllowedQuantity) || maxAllowedQuantity <= 0) {
+        return `“${name}” is no longer available. Please remove it from your cart.`;
+      }
+
+      return (
+        `Only ${maxAllowedQuantity} ` +
+        `${maxAllowedQuantity === 1 ? "item is" : "items are"} available ` +
+        `for “${name}”. Change the quantity to ${maxAllowedQuantity} or less.`
+      );
+    },
+
+    isInventoryLimitError(error) {
+      return (
+        this.getStructuredError(error)?.code === "cart_stock_limit_exceeded"
+      );
+    },
+
+    getRowUpdateError(error, product) {
+      const stockLimitMessage = this.getStockLimitMessage(error, product);
+
+      if (stockLimitMessage) {
+        return stockLimitMessage;
+      }
+
       const raw = window.AppApiErrors.fromError(error, this.updateFailed);
 
       if (/expired/i.test(raw)) {
         return this.getBlockedMessage(product);
-      }
-
-      const stockQty = Number(product?.stock_quantity ?? NaN);
-      const name = product?.name || this.productFallback;
-
-      if (Number.isFinite(stockQty) && stockQty >= 0) {
-        if (requestedQty > stockQty || this.isInventoryLimitError(error)) {
-          return this.inventoryLimitMessage(name, stockQty);
-        }
       }
 
       return raw;

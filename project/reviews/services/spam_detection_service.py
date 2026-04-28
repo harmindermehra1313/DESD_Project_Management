@@ -37,8 +37,8 @@ URL_PATTERN = re.compile(
 
 PROMO_PATTERN = re.compile(
     r"\b("
-    r"promo code|discount code|coupon|voucher|use code|"
-    r"click here|visit|limited offer|buy now|cheap deal|"
+    r"promo code|discount code|coupon|voucher|use code|code|"
+    r"click here|limited offer|buy now|cheap deal|"
     r"free money|telegram|whatsapp"
     r")\b",
     re.IGNORECASE,

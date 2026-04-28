@@ -498,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setMsg(M.addedToCart, "success");
       }
     } catch (err) {
-      const friendlyMessage = M.getAddError(err, productData, formatDate);
+      const friendlyMessage = M.getAddError(err, productData, formatDate,  quantity);
 
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast(friendlyMessage, {

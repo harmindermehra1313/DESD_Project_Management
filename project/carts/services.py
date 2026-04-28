@@ -41,6 +41,54 @@ class CartItemNotFound(CartError):
     pass
 
 
+class CartStockLimitExceeded(CartError):
+    """Raised when requested cart quantity exceeds available stock."""
+
+    code = "cart_stock_limit_exceeded"
+    message = "Requested quantity exceeds available stock."
+
+    def __init__(
+        self,
+        *,
+        inventory: Inventory,
+        available_stock: Decimal,
+        quantity_in_cart: Decimal,
+        requested_quantity: Decimal,
+        requested_total_quantity: Decimal,
+        operation: str,
+    ):
+        self.inventory = inventory
+        self.available_stock = available_stock
+        self.quantity_in_cart = quantity_in_cart
+        self.requested_quantity = requested_quantity
+        self.requested_total_quantity = requested_total_quantity
+        self.operation = operation
+
+        max_addable_quantity = max(
+            available_stock - quantity_in_cart,
+            Decimal("0"),
+        )
+
+        self.detail = {
+            "code": self.code,
+            "message": self.message,
+            "data": {
+                "operation": operation,
+                "inventory_id": inventory.id,
+                "product_id": inventory.product_id,
+                "product_name": inventory.product.name,
+                "available_stock": _quantity_for_api(available_stock),
+                "quantity_in_cart": _quantity_for_api(quantity_in_cart),
+                "requested_quantity": _quantity_for_api(requested_quantity),
+                "requested_total_quantity": _quantity_for_api(requested_total_quantity),
+                "max_addable_quantity": _quantity_for_api(max_addable_quantity),
+                "max_allowed_quantity": _quantity_for_api(available_stock),
+            },
+        }
+
+        super().__init__(self.message)
+
+
 @dataclass(frozen=True)
 class CartOwner:
     """Identifies exactly one of: authenticated user OR anonymous session."""
@@ -59,6 +107,21 @@ def _to_decimal(q: Union[int, str, Decimal]) -> Decimal:
     return Decimal(str(q))
 
 
+def _quantity_for_api(value: Decimal) -> int | str:
+    """
+    Convert Decimal quantities into JSON-friendly values.
+
+    Whole numbers are returned as integers. Decimal quantities are returned
+    as strings to avoid floating point precision issues.
+    """
+    quantity = Decimal(str(value))
+
+    if quantity == quantity.to_integral_value():
+        return int(quantity)
+
+    return str(quantity)
+
+
 def _assert_owner(owner: CartOwner) -> None:
     # Exactly one must be set
     if bool(owner.user_id) == bool(owner.session_key):
@@ -69,9 +132,10 @@ def _assert_owner(owner: CartOwner) -> None:
 
 def _all_product_batches_deleted(*, product: Product) -> bool:
     all_batches = product.inventory_batches.all()
-    return all_batches.exists() and not all_batches.filter(
-        status=Inventory.BatchStatus.ACTIVE
-    ).exists()
+    return (
+        all_batches.exists()
+        and not all_batches.filter(status=Inventory.BatchStatus.ACTIVE).exists()
+    )
 
 
 def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
@@ -87,9 +151,7 @@ def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
     - batch is not expired
     """
     inventory = (
-        Inventory.objects.select_related("product")
-        .filter(pk=inventory_id)
-        .first()
+        Inventory.objects.select_related("product").filter(pk=inventory_id).first()
     )
 
     if inventory is None:
@@ -117,11 +179,13 @@ def _get_sellable_inventory(*, inventory_id: int) -> Inventory:
 
     return inventory
 
-def _get_preferred_active_inventory_for_product(*, product: Product) -> Inventory | None:
+
+def _get_preferred_active_inventory_for_product(
+    *, product: Product
+) -> Inventory | None:
     today = timezone.localdate()
     return (
-        product.inventory_batches
-        .filter(
+        product.inventory_batches.filter(
             status=Inventory.BatchStatus.ACTIVE,
             remaining_quantity__gt=0,
             expiry_date__gte=today,
@@ -129,11 +193,11 @@ def _get_preferred_active_inventory_for_product(*, product: Product) -> Inventor
         .order_by("expiry_date", "created_at")
         .first()
     )
+
+
 def _resolve_inventory_for_cart_add(*, inventory_id: int) -> Inventory:
     requested_inventory = (
-        Inventory.objects.select_related("product")
-        .filter(pk=inventory_id)
-        .first()
+        Inventory.objects.select_related("product").filter(pk=inventory_id).first()
     )
 
     if requested_inventory is None:
@@ -149,21 +213,27 @@ def _resolve_inventory_for_cart_add(*, inventory_id: int) -> Inventory:
 
     return preferred_inventory
 
+
 def _get_inventory_data(*, inventory_id: int) -> tuple[Decimal, Decimal]:
     inventory = _get_sellable_inventory(inventory_id=inventory_id)
     price = inventory.product.price
     remaining = inventory.remaining_quantity
     return Decimal(str(price)), Decimal(str(remaining))
 
+
 def _is_wholesale_customer_by_user_id(user_id: Optional[int]) -> bool:
     if not user_id:
         return False
 
-    customer = Customer.objects.filter(user_id=user_id).only("organisation_type").first()
+    customer = (
+        Customer.objects.filter(user_id=user_id).only("organisation_type").first()
+    )
     if not customer:
         return False
 
     return customer.organisation_type in {"BUSINESS", "COMMUNITY_GROUP"}
+
+
 def _cart_allows_wholesale(cart: Cart) -> bool:
     return _is_wholesale_customer_by_user_id(cart.user_id)
 
@@ -225,16 +295,29 @@ def cart_touch(cart: Cart, *, at=None) -> None:
     Cart.objects.filter(pk=cart.pk).update(last_seen_at=at, updated_at=at)
 
 
-
-
-def validate_stock(*, inventory_id: int, requested_quantity: Decimal) -> None:
-    _, remaining = _get_inventory_data(inventory_id=inventory_id)
+def validate_stock(
+    *,
+    inventory_id: int,
+    requested_total_quantity: Decimal,
+    requested_quantity: Decimal,
+    quantity_in_cart: Decimal = Decimal("0"),
+    operation: str = "set_quantity",
+) -> None:
+    inventory = _get_sellable_inventory(inventory_id=inventory_id)
+    remaining = Decimal(str(inventory.remaining_quantity or 0))
 
     if remaining <= 0:
         raise ValidationError("This batch is out of stock.")
 
-    if remaining < requested_quantity:
-        raise ValidationError(f"Only {remaining} left in this batch.")
+    if requested_total_quantity > remaining:
+        raise CartStockLimitExceeded(
+            inventory=inventory,
+            available_stock=remaining,
+            quantity_in_cart=quantity_in_cart,
+            requested_quantity=requested_quantity,
+            requested_total_quantity=requested_total_quantity,
+            operation=operation,
+        )
 
 
 @transaction.atomic
@@ -309,7 +392,9 @@ def cart_get_or_create_active(*, owner: CartOwner, guest_ttl_days: int = 14) -> 
 
 
 @transaction.atomic
-def cart_add_item(*, cart: Cart, inventory_id: int, quantity: Union[int, str, Decimal]) -> CartItem:
+def cart_add_item(
+    *, cart: Cart, inventory_id: int, quantity: Union[int, str, Decimal]
+) -> CartItem:
     if cart.status != CartStatus.ACTIVE:
         raise CartNotActive("Cannot modify a non-active cart.")
 
@@ -331,7 +416,13 @@ def cart_add_item(*, cart: Cart, inventory_id: int, quantity: Union[int, str, De
     existing_qty = item.quantity if item else Decimal("0")
     new_qty = existing_qty + add_qty
 
-    validate_stock(inventory_id=inventory_id, requested_quantity=new_qty)
+    validate_stock(
+        inventory_id=inventory_id,
+        requested_total_quantity=new_qty,
+        requested_quantity=add_qty,
+        quantity_in_cart=existing_qty,
+        operation="add",
+    )
 
     wholesale_allowed = _cart_allows_wholesale(cart)
     unit_price = _get_effective_unit_price(
@@ -364,7 +455,13 @@ def cart_add_item(*, cart: Cart, inventory_id: int, quantity: Union[int, str, De
         )
         new_qty = (item.quantity or Decimal("0")) + add_qty
 
-        validate_stock(inventory_id=inventory_id, requested_quantity=new_qty)
+        validate_stock(
+            inventory_id=inventory_id,
+            requested_total_quantity=new_qty,
+            requested_quantity=add_qty,
+            quantity_in_cart=item.quantity or Decimal("0"),
+            operation="add",
+        )
 
         wholesale_allowed = _cart_allows_wholesale(cart)
         unit_price = _get_effective_unit_price(
@@ -385,8 +482,10 @@ def cart_add_item(*, cart: Cart, inventory_id: int, quantity: Union[int, str, De
 
 @transaction.atomic
 def cart_set_item_quantity(
-    # *, cart: Cart, product_id: int, quantity: Union[int, str, Decimal]
-    *, cart: Cart, inventory_id: int, quantity: Union[int, str, Decimal]
+    *,
+    cart: Cart,
+    inventory_id: int,
+    quantity: Union[int, str, Decimal],
 ) -> Optional[CartItem]:
     """
     Set absolute quantity.
@@ -406,13 +505,31 @@ def cart_set_item_quantity(
     if qty == 0:
         deleted, _ = CartItem.objects.filter(
             # cart_id=cart.pk, product_id=product_id
-            cart_id=cart.pk, inventory_id=inventory_id
+            cart_id=cart.pk,
+            inventory_id=inventory_id,
         ).delete()
         if not deleted:
             raise CartItemNotFound("Item not in cart.")
         return None
 
-    validate_stock(inventory_id=inventory_id, requested_quantity=qty)
+    item = (
+        CartItem.objects.select_for_update()
+        .filter(cart_id=cart.pk, inventory_id=inventory_id)
+        .first()
+    )
+
+    if item is None:
+        raise CartItemNotFound("Item not in cart.")
+
+    existing_qty = item.quantity or Decimal("0")
+
+    validate_stock(
+        inventory_id=inventory_id,
+        requested_total_quantity=qty,
+        requested_quantity=qty,
+        quantity_in_cart=existing_qty,
+        operation="set_quantity",
+    )
 
     wholesale_allowed = _cart_allows_wholesale(cart)
     unit_price = _get_effective_unit_price(
@@ -421,43 +538,16 @@ def cart_set_item_quantity(
         wholesale_allowed=wholesale_allowed,
     )
 
-    item = (
-        CartItem.objects.select_for_update()
-        # .filter(cart_id=cart.pk, product_id=product_id)
-        .filter(cart_id=cart.pk, inventory_id=inventory_id)
-        .first()
+    CartItem.objects.filter(pk=item.pk).update(
+        quantity=qty,
+        unit_price=unit_price,
+        updated_at=_now(),
     )
+    item.quantity = qty
+    item.unit_price = unit_price
+    return item
 
-    if item:
-        CartItem.objects.filter(pk=item.pk).update(
-            quantity=qty,
-            unit_price=unit_price,
-            updated_at=_now(),
-        )
-        item.quantity = qty
-        item.unit_price = unit_price
-        return item
-
-    try:
-        return CartItem.objects.create(
-            cart_id=cart.pk,
-            inventory_id=inventory_id,
-            quantity=qty,
-            unit_price=unit_price,
-        )
-    except IntegrityError:
-        item = CartItem.objects.select_for_update().get(
-            # cart_id=cart.pk, product_id=product_id
-            cart_id=cart.pk, inventory_id=inventory_id
-        )
-        CartItem.objects.filter(pk=item.pk).update(
-            quantity=qty,
-            unit_price=unit_price,
-            updated_at=_now(),
-        )
-        item.quantity = qty
-        item.unit_price = unit_price
-        return item
+    
 
 
 @transaction.atomic
@@ -469,7 +559,8 @@ def cart_remove_item(*, cart: Cart, inventory_id: int) -> None:
     Cart.objects.select_for_update().filter(pk=cart.pk).get()
     deleted, _ = CartItem.objects.filter(
         # cart_id=cart.pk, product_id=product_id
-        cart_id=cart.pk, inventory_id=inventory_id
+        cart_id=cart.pk,
+        inventory_id=inventory_id,
     ).delete()
     if not deleted:
         raise CartItemNotFound("Item not in cart.")
@@ -501,7 +592,9 @@ def cart_set_item_quantity_for_owner(
     *, owner: CartOwner, inventory_id: int, quantity: Union[int, str, Decimal]
 ) -> Optional[CartItem]:
     cart = cart_get_or_create_active(owner=owner)
-    return cart_set_item_quantity(cart=cart, inventory_id=inventory_id, quantity=quantity)
+    return cart_set_item_quantity(
+        cart=cart, inventory_id=inventory_id, quantity=quantity
+    )
 
 
 # @transaction.atomic
@@ -518,9 +611,9 @@ def cart_remove_item_for_owner(*, owner: CartOwner, inventory_id: int) -> None:
 def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     guest_cart = (
         # Added status=CartStatus.ACTIVE
-        Cart.objects.select_for_update().filter(
-            session_key=session_key, status=CartStatus.ACTIVE
-        ).first()
+        Cart.objects.select_for_update()
+        .filter(session_key=session_key, status=CartStatus.ACTIVE)
+        .first()
     )
     # if not guest_cart or guest_cart.status != CartStatus.ACTIVE:
     if not guest_cart:
@@ -546,7 +639,8 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
 
         updated = CartItem.objects.filter(
             # cart_id=user_cart.pk, product_id=gi.product_id
-            cart_id=user_cart.pk, inventory_id=gi.inventory_id
+            cart_id=user_cart.pk,
+            inventory_id=gi.inventory_id,
         ).update(
             quantity=F("quantity") + gi.quantity,
             updated_at=_now(),
@@ -564,7 +658,8 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
             except IntegrityError:
                 CartItem.objects.filter(
                     # cart_id=user_cart.pk, product_id=gi.product_id
-                    cart_id=user_cart.pk, inventory_id=gi.inventory_id
+                    cart_id=user_cart.pk,
+                    inventory_id=gi.inventory_id,
                 ).update(
                     quantity=F("quantity") + gi.quantity,
                     updated_at=_now(),
@@ -574,7 +669,8 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
     user_lines = list(
         CartItem.objects.select_for_update().filter(
             # cart_id=user_cart.pk, product_id__in=touched_product_ids
-            cart_id=user_cart.pk, inventory_id__in=touched_inventory_ids
+            cart_id=user_cart.pk,
+            inventory_id__in=touched_inventory_ids,
         )
     )
 

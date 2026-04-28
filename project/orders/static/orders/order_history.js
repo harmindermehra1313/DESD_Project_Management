@@ -181,6 +181,29 @@ function bindEvents() {
   }
 }
 
+function showReorderResultToasts(result) {
+  const quantityAdjustedItems = ensureArray(result?.quantity_adjusted_items);
+  const unavailableItems = ensureArray(result?.unavailable_items);
+
+  quantityAdjustedItems.forEach((item) => {
+    showOrderToast(M.getReorderItemReason(item), {
+      title: M.cartTitle,
+      variant: "danger",
+      delay: 3500,
+    });
+  });
+
+  unavailableItems
+    .filter((item) => item?.reason_code === "cart_stock_limit_exceeded")
+    .forEach((item) => {
+      showOrderToast(M.getReorderItemReason(item), {
+        title: M.cartTitle,
+        variant: "danger",
+        delay: 3500,
+      });
+    });
+}
+
 function readFiltersFromForm() {
   return {
     status: document.getElementById("status")?.value || "",
@@ -480,8 +503,81 @@ function setPaginationState(totalPages) {
   if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
 
-async function parseErrorMessage(response, fallbackMessage) {
-  return window.AppApiErrors.fromResponse(response, fallbackMessage);
+async function buildApiErrorFromResponse(response, fallbackMessage) {
+  let payload = null;
+
+  try {
+    payload = await response.clone().json();
+  } catch {
+    payload = null;
+  }
+
+  const message = payload
+    ? window.AppApiErrors.fromPayload(payload, fallbackMessage)
+    : await window.AppApiErrors.fromResponse(response, fallbackMessage);
+
+  const error = new Error(message || fallbackMessage);
+  error.status = response.status;
+  error.payload = payload;
+  return error;
+}
+
+function showOrderToast(
+  message,
+  { title = M.cartTitle || "Cart", variant = "warning", delay = 3000 } = {},
+) {
+  if (!message) return;
+
+  if (typeof window.CartAPI?.showToast === "function") {
+    window.CartAPI.showToast(message, {
+      title,
+      variant,
+      delay,
+    });
+    return;
+  }
+
+  const errorBox = document.getElementById("orderListError");
+  if (errorBox) {
+    errorBox.textContent = message;
+    errorBox.classList.remove("d-none");
+  }
+}
+
+function toPositiveInteger(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number) || number < 1) {
+    return null;
+  }
+
+  return Math.floor(number);
+}
+
+function getQuantityLimitToastMessage(
+  group,
+  selectedOption,
+  requestedQuantity,
+) {
+  const availableQuantity = toPositiveInteger(
+    selectedOption?.available_quantity,
+  );
+
+  if (!availableQuantity) {
+    return null;
+  }
+
+  const productName =
+    selectedOption?.product_name ||
+    group?.original?.product_name ||
+    M.productFallback ||
+    "this item";
+
+  if (requestedQuantity <= availableQuantity) {
+    return null;
+  }
+
+  return M.reorderQuantityLimitToast(productName, availableQuantity);
 }
 
 async function loadOrders() {
@@ -497,8 +593,7 @@ async function loadOrders() {
     );
 
     if (!response.ok) {
-      const message = await parseErrorMessage(response, M.loadFailed);
-      throw new Error(message);
+      throw await buildApiErrorFromResponse(response, M.loadFailed);
     }
 
     const data = await response.json();
@@ -729,8 +824,6 @@ function handleWriteReviewClick(button) {
   }
 }
 
-
-
 function renderItemsSection(items) {
   return `
     <div class="mb-4">
@@ -928,7 +1021,7 @@ async function openOrderDetails(orderId) {
     });
 
     if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, M.detailLoadFailed));
+      throw await buildApiErrorFromResponse(response, M.detailLoadFailed);
     }
 
     const order = await response.json();
@@ -1129,7 +1222,7 @@ function buildReorderPlannerState(orderId, preview) {
         product_name: item.product_name,
         producer_name: item.producer_name || "",
         requested_quantity: originalRequestedQuantity,
-        reason: item.reason || M.unavailable,
+        reason: M.getReorderItemReason(item),
       },
       selectedOptionKey: selectedOption.key,
       quantity: hasSuggestions
@@ -1427,7 +1520,29 @@ function updateGroupQuantity(groupId, rawValue) {
   const selectedOption = getSelectedOption(group);
   if (!selectedOption || selectedOption.action === "skip") return;
 
-  group.quantity = clampQuantity(rawValue, selectedOption.available_quantity);
+  const requestedQuantity = toPositiveInteger(rawValue) || 1;
+  const availableQuantity = toPositiveInteger(
+    selectedOption.available_quantity,
+  );
+
+  const toastMessage = getQuantityLimitToastMessage(
+    group,
+    selectedOption,
+    requestedQuantity,
+  );
+
+  if (toastMessage) {
+    showOrderToast(toastMessage, {
+      title: M.cartTitle,
+      variant: "danger",
+      delay: 3000,
+    });
+  }
+
+  group.quantity = availableQuantity
+    ? Math.min(requestedQuantity, availableQuantity)
+    : requestedQuantity;
+
   updateReorderPlannerUI();
 }
 
@@ -1438,14 +1553,30 @@ function changeGroupQuantity(groupId, delta) {
   const selectedOption = getSelectedOption(group);
   if (!selectedOption || selectedOption.action === "skip") return;
 
-  const current = clampQuantity(
-    group.quantity,
+  const current = toPositiveInteger(group.quantity) || 1;
+  const requestedQuantity = Math.max(1, current + delta);
+  const availableQuantity = toPositiveInteger(
     selectedOption.available_quantity,
   );
-  group.quantity = clampQuantity(
-    current + delta,
-    selectedOption.available_quantity,
+
+  const toastMessage = getQuantityLimitToastMessage(
+    group,
+    selectedOption,
+    requestedQuantity,
   );
+
+  if (toastMessage) {
+    showOrderToast(toastMessage, {
+      title: M.cartTitle,
+      variant: "danger",
+      delay: 3000,
+    });
+  }
+
+  group.quantity = availableQuantity
+    ? Math.min(requestedQuantity, availableQuantity)
+    : requestedQuantity;
+
   updateReorderPlannerUI();
 }
 
@@ -1725,13 +1856,7 @@ function renderSurplusNotice(option, quantity) {
 function renderQuantityControls(group, option) {
   const quantity = clampQuantity(group.quantity, option.available_quantity);
   const minusDisabled = quantity <= 1 ? "disabled" : "";
-  const plusDisabled =
-    option.available_quantity !== null &&
-    option.available_quantity !== undefined
-      ? quantity >= toNumber(option.available_quantity, quantity)
-        ? "disabled"
-        : ""
-      : "";
+  const plusDisabled = "";
 
   const pricingState = getPricingState(option, quantity);
   const lineAppliedTotal = pricingState.appliedUnitPrice * quantity;
@@ -2303,7 +2428,10 @@ function renderUnavailableItemsSection(items) {
               }
 
               <div class="small text-danger mt-2">
-                ${M.requestedReason(escapeHtml(item.requested_quantity), escapeHtml(item.reason || M.unavailable))}
+               ${M.requestedReason(
+                 escapeHtml(item.requested_quantity),
+                 escapeHtml(M.getReorderItemReason(item)),
+               )}
               </div>
             </div>
           `,
@@ -2331,12 +2459,12 @@ function renderQuantityAdjustmentsSection(items) {
               </div>
 
               ${
-                item.reason
+                item.reason || item.reason_code
                   ? `
-                    <div class="small text-warning-emphasis mt-1">
-                      ${escapeHtml(item.reason)}
-                    </div>
-                  `
+      <div class="small text-warning-emphasis mt-1">
+        ${escapeHtml(M.getReorderItemReason(item))}
+      </div>
+    `
                   : ""
               }
             </div>
@@ -2435,7 +2563,7 @@ async function openReorderPreview(orderId) {
     );
 
     if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, M.previewFailed));
+      throw await buildApiErrorFromResponse(response, M.previewFailed);
     }
 
     const preview = await response.json();
@@ -2490,10 +2618,11 @@ async function confirmReorder(orderId) {
     );
 
     if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, M.reorderFailed));
+      throw await buildApiErrorFromResponse(response, M.reorderFailed);
     }
 
     const result = await response.json();
+    showReorderResultToasts(result);
 
     const content = document.getElementById("reorderModalContent");
     const footer = document.getElementById("reorderModalFooter");
