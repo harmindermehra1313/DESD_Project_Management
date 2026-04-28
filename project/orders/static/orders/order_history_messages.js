@@ -4,6 +4,16 @@
     return `${count} ${count === 1 ? singular : plural}`;
   }
 
+  function formatQuantity(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+      return value ?? "0";
+    }
+
+    return Number.isInteger(number) ? String(number) : String(number);
+  }
+
   window.OrderHistoryMessages = {
     dash: "-",
     notAvailable: "Not available",
@@ -321,11 +331,32 @@
           this.productFallback ||
           "this item";
 
-        const availableStock = Number(
+        const quantityInCart = formatQuantity(data.quantity_in_cart ?? 0);
+        const requestedQuantity = formatQuantity(
+          data.requested_quantity ?? item?.requested_quantity ?? 0,
+        );
+        const requestedTotalQuantity = formatQuantity(
+          data.requested_total_quantity ?? 0,
+        );
+        const availableStock = formatQuantity(
           data.available_stock ?? data.max_allowed_quantity ?? 0,
         );
+        const maxAddableQuantity = Number(data.max_addable_quantity ?? 0);
 
-        return this.reorderQuantityLimitToast(productName, availableStock);
+        if (maxAddableQuantity <= 0) {
+          return (
+            `“${productName}” is already in the cart with quantity ${quantityInCart}. ` +
+            `No more can be added because only ${availableStock} are available in total. ` +
+            `Please reduce the quantity in the cart before reordering.`
+          );
+        }
+
+        return (
+          `“${productName}” is already in the cart with quantity ${quantityInCart}. ` +
+          `Adding ${requestedQuantity} more would make the cart quantity ${requestedTotalQuantity}, ` +
+          `but only ${availableStock} are available in total. ` +
+          `Please reduce this reorder quantity to ${formatQuantity(maxAddableQuantity)} or update the cart first.`
+        );
       }
 
       if (code === "reorder_quantity_reduced") {
