@@ -1,139 +1,150 @@
 <!-- Harminder Producer Header -->
-
 <header class="custom-header">
-
-<!-- ================= ROW 1 ================= -->
-<div class="container-fluid header-row-1">
-  <div class="row align-items-center">
-
-    <!-- LEFT: Website Branding -->
-    <div class="col-4 d-flex align-items-center">
-      <!-- Universal link to producer dashboard -->
-      <a href="{% url 'accounts:producer_dashboard' %}" class="custom-brand">
-        <span class="brand-line-1">Bristol Regional</span><br>
-        <span class="brand-line-2">Food Network</span>
-      </a>
-    </div>
-
-    <!-- CENTER: Dashboard Label -->
-    <div class="col-4 d-flex justify-content-center">
-      <span class="admin-badge">Producer Dashboard</span>
-    </div>
-
-    <!-- RIGHT: Welcome + Account Dropdown -->
-    <div class="col-4 d-flex justify-content-end align-items-center">
-
-      <!-- Welcome message -->
-      {% if user.is_authenticated %}
-        <span class="welcome-text me-3">Welcome, {{ user.name }}</span>
-      {% else %}
-        <span class="welcome-text me-3">Welcome, Guest</span>
-      {% endif %}
-
-      <!-- Account dropdown -->
-      {% if user.is_authenticated %}
-      <div class="dropdown">
-        <a class="custom-account-icon dropdown-toggle" href="#" role="button"
-           data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-person-circle"></i>
+  <!-- ================= ROW 1 ================= -->
+  <div class="container-fluid header-row-1">
+    <div class="row align-items-center">
+      <!-- LEFT: Website Branding -->
+      <div class="col-4 d-flex align-items-center">
+        <!-- Universal link to producer dashboard -->
+        <a href="{% url 'accounts:producer_dashboard' %}" class="custom-brand">
+          <span class="brand-line-1">Bristol Regional</span>
+          <br>
+          <span class="brand-line-2">Food Network</span>
         </a>
-
-        <ul class="dropdown-menu dropdown-menu-end custom-dropdown">
-          <!-- Universal profile link -->
-          <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">Profile</a></li>
-          <!-- Universal logout link -->
-          <li><a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">Logout</a></li>
-        </ul>
       </div>
-      {% else %}
-      <!-- Universal login link -->
-      <a href="{% url 'accounts:login' %}" class="custom-account-icon">
-        <i class="bi bi-person-circle"></i>
-      </a>
-      {% endif %}
-
-    </div>
-
-  </div>
-</div>
-
-<!-- ================= ROW 2 ================= -->
-<nav class="navbar navbar-expand-lg header-row-2">
-  <div class="container-fluid">
-
-    <!-- Mobile Toggle -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="adminNav">
-      <div class="row w-100 align-items-center">
-
-        <!-- LEFT: Navigation Links -->
-        <div class="col-12 col-xl-8 mb-3 mb-xl-0">
-          <ul class="navbar-nav flex-wrap align-items-center">
-
-            <!-- Dashboard -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="{% url 'home:producer' %}">Dashboard</a>
-            </li>
-
-            <!-- Products Dropdown -->
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                Products
-              </a>
-              <ul class="dropdown-menu custom-dropdown">
-                <!-- Add product -->
-                <li><a class="dropdown-item" href="{% url 'products:add_product' %}">Add Products</a></li>
-                <!-- Producer product list -->
-                <li><a class="dropdown-item" href="{% url 'products:producer_products' %}">View Products List</a></li>
-                <!-- Reductions -->
-                <li><a class="dropdown-item" href="{% url 'products:producer_manage_reductions' %}">Reductions</a></li>
-              </ul>
-            </li>
-
-            <!-- Orders -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="{% url 'accounts:producer_dashboard' %}">Orders</a>
-            </li>
-
-            <!-- Payments -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="{% url 'accounts:producer_payments' %}">Payments</a>
-            </li>
-
-            <!-- Content Dropdown (Recipes + Farm Stories) -->
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link" href="#" data-bs-toggle="dropdown">
-                Content
-              </a>
-              <ul class="dropdown-menu custom-dropdown">
-                <!-- Manage all content -->
-                <li><a class="dropdown-item" href="{% url 'community:producer_content_dashboard' %}">Manage Content</a></li>
-                <!-- Add recipe -->
-                <li><a class="dropdown-item" href="{% url 'community:recipe_create' %}">Add Recipe</a></li>
-                <!-- Add farm story -->
-                <li><a class="dropdown-item" href="{% url 'community:farm_story_create' %}">Add Farm Story</a></li>
-              </ul>
-            </li>
-
-          </ul>
-        </div>
-
-        <!-- RIGHT: Search -->
-        <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
-          <form class="d-flex custom-search w-100" action="{% url 'admin_records:global_search' %}">
-            <input class="form-control custom-search-input" name="q" placeholder="Search...">
-            <button class="btn custom-search-btn">Search</button>
-          </form>
-        </div>
-
+      <!-- CENTER: Dashboard Label -->
+      <div class="col-4 d-flex justify-content-center">
+        <span class="admin-badge">Producer Dashboard</span>
+      </div>
+      <!-- RIGHT: Welcome + Account Dropdown -->
+      <div class="col-4 d-flex justify-content-end align-items-center">
+        <!-- Welcome message -->
+        {% if user.is_authenticated %}
+          <span class="welcome-text me-3">Welcome, {{ user.name }}</span>
+        {% else %}
+          <span class="welcome-text me-3">Welcome, Guest</span>
+        {% endif %}
+        <!-- Account dropdown -->
+        {% if user.is_authenticated %}
+          <div class="dropdown">
+            <a class="custom-account-icon dropdown-toggle"
+               href="#"
+               role="button"
+               data-bs-toggle="dropdown"
+               aria-expanded="false">
+              <i class="bi bi-person-circle"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end custom-dropdown">
+              <!-- Universal profile link -->
+              <li>
+                <a class="dropdown-item" href="{% url 'accounts:profile' %}">Profile</a>
+              </li>
+              <!-- Universal logout link -->
+              <li>
+                <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">Logout</a>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <!-- Universal login link -->
+          <a href="{% url 'accounts:login' %}" class="custom-account-icon">
+            <i class="bi bi-person-circle"></i>
+          </a>
+        {% endif %}
       </div>
     </div>
   </div>
-</nav>
-
+  <!-- ================= ROW 2 ================= -->
+  <nav class="navbar navbar-expand-lg header-row-2">
+    <div class="container-fluid">
+      <!-- Mobile Toggle -->
+      <button class="navbar-toggler"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#adminNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="adminNav">
+        <div class="row w-100 align-items-center">
+          <!-- LEFT: Navigation Links -->
+          <div class="col-12 col-xl-8 mb-3 mb-xl-0">
+            <ul class="navbar-nav flex-wrap align-items-center">
+              <!-- Dashboard -->
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link" href="{% url 'home:producer' %}">Dashboard</a>
+              </li>
+              <!-- Products Dropdown -->
+              <li class="nav-item dropdown mx-2">
+                <a class="nav-link dropdown-toggle custom-nav-link"
+                   href="#"
+                   data-bs-toggle="dropdown">Products</a>
+                <ul class="dropdown-menu custom-dropdown">
+                  <!-- Add product -->
+                  <li>
+                    <a class="dropdown-item" href="{% url 'products:add_product' %}">Add Products</a>
+                  </li>
+                  <!-- Producer product list -->
+                  <li>
+                    <a class="dropdown-item" href="{% url 'products:producer_products' %}">View Products List</a>
+                  </li>
+                  <!-- Reductions -->
+                  <li>
+                    <a class="dropdown-item"
+                       href="{% url 'products:producer_manage_reductions' %}">Reductions</a>
+                  </li>
+                </ul>
+              </li>
+              <!-- Orders -->
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link"
+                   href="{% url 'accounts:producer_dashboard' %}">Orders</a>
+              </li>
+              <!-- My Reviews -->
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link"
+                   href="{% url 'reviews:producer-reviews' %}">My Reviews</a>
+              </li>
+              <!-- Payments -->
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link"
+                   href="{% url 'accounts:producer_payments' %}">Payments</a>
+              </li>
+              <!-- Content Dropdown (Recipes + Farm Stories) -->
+              <li class="nav-item dropdown mx-2">
+                <a class="nav-link dropdown-toggle custom-nav-link"
+                   href="#"
+                   data-bs-toggle="dropdown">Content</a>
+                <ul class="dropdown-menu custom-dropdown">
+                  <!-- Manage all content -->
+                  <li>
+                    <a class="dropdown-item"
+                       href="{% url 'community:producer_content_dashboard' %}">Manage Content</a>
+                  </li>
+                  <!-- Add recipe -->
+                  <li>
+                    <a class="dropdown-item" href="{% url 'community:recipe_create' %}">Add Recipe</a>
+                  </li>
+                  <!-- Add farm story -->
+                  <li>
+                    <a class="dropdown-item" href="{% url 'community:farm_story_create' %}">Add Farm Story</a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+          <!-- RIGHT: Search -->
+          <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
+            <form class="d-flex custom-search w-100"
+                  action="{% url 'admin_records:global_search' %}">
+              <input class="form-control custom-search-input"
+                     name="q"
+                     placeholder="Search...">
+              <button class="btn custom-search-btn">Search</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
 </header>
-
 <!-- Harminder Admin Header -->

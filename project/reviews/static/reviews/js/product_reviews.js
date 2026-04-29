@@ -132,6 +132,31 @@
       return badges.join("");
     }
 
+    function renderProducerResponse(review) {
+      const response = review?.producer_response;
+
+      if (!response) {
+        return "";
+      }
+
+      const safeText = escapeHtml(response.text || "").replace(/\n/g, "<br>");
+      const safeProducer = escapeHtml(response.producer_name || "Producer");
+      const safeDate = escapeHtml(formatReviewDate(response.updated_at));
+
+      return `
+    <div class="product-review-producer-response">
+      <div class="product-review-producer-response-header">
+        <span class="product-review-badge product-review-badge--verified">
+          <i class="bi bi-reply-fill" aria-hidden="true"></i>
+          Response from ${safeProducer}
+        </span>
+        ${safeDate ? `<span class="text-muted">${safeDate}</span>` : ""}
+      </div>
+      <p class="mb-0">${safeText}</p>
+    </div>
+  `;
+    }
+
     function renderReviews(reviews) {
       if (!Array.isArray(reviews) || !reviews.length) {
         renderEmptyState();
@@ -172,6 +197,7 @@
               </div>
 
               <p class="product-review-text mb-0">${safeText}</p>
+${renderProducerResponse(review)} 
             </article>
           `;
         })

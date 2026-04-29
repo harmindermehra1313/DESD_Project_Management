@@ -5,6 +5,7 @@ from django.db.models import Avg, Count
 from reviews.models import Review
 from django.core.exceptions import PermissionDenied
 from orders.models import OrderItem
+from django.db.models.functions import Coalesce
 
 
 def get_reviewed_product_ids_for_user_and_products(
@@ -158,7 +159,13 @@ def get_published_reviews_for_product(*, product_id: int):
             product_id=product_id,
             status=Review.Status.PUBLISHED,
         )
-        .select_related("customer__user")
+        .select_related(
+            "customer__user",
+            "product",
+            "product__producer",
+            "producer_response",
+            "producer_response__responder",
+        )
         .order_by("-created_at", "-id")
     )
 
@@ -187,3 +194,75 @@ def get_published_review_summary_for_product(*, product_id: int) -> dict:
         ),
         "rating_breakdown": rating_breakdown,
     }
+    
+
+def get_producer_profile_for_user(user):
+    """
+    Resolve the producer profile for the logged-in producer user.
+
+    If the project uses a different reverse relation name, only this helper
+    should need changing.
+    """
+    if not user or not user.is_authenticated:
+        return None
+
+    possible_attrs = (
+        "producer_profile",
+        "producerprofile",
+        "producer",
+    )
+
+    for attr in possible_attrs:
+        producer = getattr(user, attr, None)
+
+        if producer is not None:
+            return producer
+
+    return None
+
+
+def get_reviews_for_producer(*, producer):
+    """
+    Return published product reviews belonging to this producer.
+
+    latest_activity_at means:
+    - producer response updated_at, if a response exists
+    - otherwise customer review created_at
+    """
+    return (
+        Review.objects.filter(
+            product__producer=producer,
+            status=Review.Status.PUBLISHED,
+        )
+        .select_related(
+            "customer__user",
+            "product",
+            "product__producer",
+            "producer_response",
+            "producer_response__responder",
+        )
+        .annotate(
+            latest_activity_at=Coalesce(
+                "producer_response__updated_at",
+                "created_at",
+            )
+        )
+        .order_by("-latest_activity_at", "-created_at", "-id")
+    )
+
+
+def get_producer_owned_review_or_404(*, review_id: int, producer):
+    return (
+        Review.objects.select_related(
+            "customer__user",
+            "product",
+            "product__producer",
+            "producer_response",
+            "producer_response__responder",
+        )
+        .get(
+            id=review_id,
+            product__producer=producer,
+            status=Review.Status.PUBLISHED,
+        )
+    )

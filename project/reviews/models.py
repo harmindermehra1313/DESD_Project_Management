@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -64,6 +65,7 @@ class Review(models.Model):
         null=True,
         blank=True,
     )
+    moderation_notes = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -229,3 +231,39 @@ class Review(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
+
+
+class ReviewProducerResponse(models.Model):
+    class Status(models.TextChoices):
+        PUBLISHED = "PUB", "Published"
+        FLAGGED = "FLG", "Flagged"
+        REMOVED = "RMV", "Removed"
+
+    review = models.OneToOneField(
+        "reviews.Review",
+        on_delete=models.CASCADE,
+        related_name="producer_response",
+    )
+    responder = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="producer_review_responses",
+    )
+    text = models.TextField()
+    status = models.CharField(
+        max_length=3,
+        choices=Status.choices,
+        default=Status.PUBLISHED,
+    )
+    moderated_at = models.DateTimeField(null=True, blank=True)
+    moderation_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+        verbose_name = "Producer review response"
+        verbose_name_plural = "Producer review responses"
+
+    def __str__(self):
+        return f"Response to review #{self.review_id}"
