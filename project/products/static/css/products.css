@@ -136,6 +136,23 @@
     border-bottom: 1px solid var(--alabaster-grey);
 }
 
+.product-card--disabled {
+    opacity: 0.65;
+    filter: grayscale(0.4);
+}
+
+.product-card--disabled .card-img-top {
+    opacity: 0.75;
+}
+
+.product-card--disabled button[disabled] {
+    cursor: not-allowed;
+}
+
+.product-card .badge {
+    white-space: normal;
+}
+
 /* Price styling */
 .product-card h5 {
     color: var(--dark-green) !important;
