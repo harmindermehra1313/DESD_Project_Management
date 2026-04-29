@@ -15,12 +15,13 @@ Responsibilities:
 - return user-scoped order history querysets
 - return a single user-scoped order by internal ID or public reference
 - provide small convenience selectors for dashboards and recent activity
+- return live reorder suggestion inventories
 
 Architectural rules:
 - selector functions must remain read-only
 - user ownership must always be enforced at query level
 - query optimisation belongs here, not in views
-- views should call selectors instead of embedding ORM logic directly
+- views and services should call selectors instead of embedding ORM logic directly
 
 Query optimisation strategy:
 - select_related() is used for single-valued foreign key relations
@@ -30,39 +31,45 @@ Query optimisation strategy:
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, OuterRef, Prefetch, Q, QuerySet, Subquery, Sum
-
-from orders.models import Order, OrderItem, ProducerOrderSummary, ProducerOrderStatusHistory
-from products.models import Inventory, Product
 from django.utils import timezone
 
+from orders.models import (
+    Order,
+    OrderItem,
+    ProducerOrderSummary,
+    ProducerOrderStatusHistory,
+)
+from products.models import Inventory, Product
+
 User = get_user_model()
+
+TRENDING_RANK_LIMIT = 10
+TRENDING_LOOKBACK_DAYS = 30
+TRENDING_MIN_COMPLETED_ORDERS = 2
+NEW_PRODUCT_LOOKBACK_DAYS = 14
+
 
 def _normalise_derived_status_filter(value: str | None) -> str | None:
     if not value:
         return None
 
-    normalized = (
-        str(value)
-        .strip()
-        .lower()
-        .replace("-", "_")
-        .replace(" ", "_")
-    )
+    normalized = str(value).strip().lower().replace("-", "_").replace(" ", "_")
 
     allowed = {"pending", "in_progress", "completed"}
     return normalized if normalized in allowed else None
+
 
 def _normalise_summary_status(summary: ProducerOrderSummary) -> str:
     """
     Convert one producer summary status into a stable lowercase text value.
 
-    We prefer the display label because the uploaded files do not show the
-    exact enum constant names for the producer-summary model.
+    The display label is preferred because enum constant names may differ
+    from the public status wording shown to customers.
     """
     try:
         display_value = summary.get_status_display()
@@ -70,13 +77,7 @@ def _normalise_summary_status(summary: ProducerOrderSummary) -> str:
         display_value = None
 
     if display_value:
-        return (
-            str(display_value)
-            .strip()
-            .lower()
-            .replace("-", " ")
-            .replace("_", " ")
-        )
+        return str(display_value).strip().lower().replace("-", " ").replace("_", " ")
 
     return (
         str(getattr(summary, "status", "") or "")
@@ -125,15 +126,8 @@ def get_derived_order_status_label(order: Order) -> str:
     return "In Progress"
 
 
-
 def _normalise_status_text(value: str | None) -> str:
-    return (
-        (value or "")
-        .strip()
-        .lower()
-        .replace("-", " ")
-        .replace("_", " ")
-    )
+    return (value or "").strip().lower().replace("-", " ").replace("_", " ")
 
 
 def _normalise_requested_order_status(status: str | None) -> str | None:
@@ -172,7 +166,6 @@ def _get_producer_summary_status_labels(order: Order) -> list[str]:
     ]
 
 
-
 def _get_order_history_base_queryset() -> QuerySet[Order]:
     """
     Build the shared optimised queryset for order history and order detail retrieval.
@@ -183,33 +176,24 @@ def _get_order_history_base_queryset() -> QuerySet[Order]:
     - receipt rendering
     - reorder flows
 
-    Related loading plan:
-    - Order.delivery_address, Order.billing_address, and Order.recurring_order
-      are loaded with select_related() because each relation is single-valued.
-    - Order.items is prefetched with product, inventory, and producer joins.
-    - Order.producer_summaries is prefetched with producer joins.
-    - ProducerOrderSummary.status_history is prefetched with updated_by joins.
-
     Returns:
         QuerySet[Order]:
             Base queryset ordered from newest to oldest.
     """
-
-    item_queryset = (
-        OrderItem.objects.select_related(
-            "product",
-            "inventory",
-            "producer",
-        )
-        .order_by("pk")
-    )
+    item_queryset = OrderItem.objects.select_related(
+        "product",
+        "inventory",
+        "producer",
+    ).order_by("pk")
 
     producer_summary_queryset = (
         ProducerOrderSummary.objects.select_related("producer")
         .prefetch_related(
             Prefetch(
                 "status_history",
-                queryset=ProducerOrderStatusHistory.objects.select_related("updated_by").order_by("changed_at"),
+                queryset=ProducerOrderStatusHistory.objects.select_related(
+                    "updated_by"
+                ).order_by("changed_at"),
             )
         )
         .order_by("pk")
@@ -268,6 +252,7 @@ def _apply_order_history_filters(
 
     return queryset
 
+
 def get_order_history_for_user(
     *,
     user: User,
@@ -279,29 +264,6 @@ def get_order_history_for_user(
 ) -> QuerySet[Order]:
     """
     Return an optimised order history queryset scoped to one authenticated user.
-
-    This selector is intended for list-style consumers such as:
-    - paginated API endpoints
-    - account history pages
-    - filtered dashboard views
-
-    Behaviour:
-    - restricts results to orders owned by the supplied user
-    - applies optional filters
-    - preserves newest-first ordering from the base queryset
-
-    Args:
-        user: Authenticated user whose orders should be returned.
-        status: Optional order status code.
-        producer_id: Optional producer primary key.
-        start_date: Optional inclusive lower bound for order date.
-        end_date: Optional inclusive upper bound for order date.
-        delivery_or_collection: Optional fulfilment mode code.
-        recurring_only: Optional recurring-order filter flag.
-
-    Returns:
-        QuerySet[Order]:
-            Optimised, user-scoped queryset ready for list views or pagination.
     """
     queryset = _get_order_history_base_queryset().filter(user=user)
 
@@ -318,28 +280,6 @@ def get_order_history_for_user(
 def get_order_detail_for_user(*, user: User, order_id: int) -> Order:
     """
     Return one fully optimised order belonging to the supplied user.
-
-    This selector is suitable for:
-    - order detail pages
-    - receipt generation
-    - reorder source lookup
-    - API detail endpoints
-
-    Security rule:
-    - both the primary key and the user ownership condition are enforced
-      in the query itself
-
-    Args:
-        user: Authenticated owner of the order.
-        order_id: Internal primary key of the order.
-
-    Returns:
-        Order:
-            Matching order instance with related objects already loaded.
-
-    Raises:
-        Order.DoesNotExist:
-            Raised when the order does not exist or does not belong to the user.
     """
     return _get_order_history_base_queryset().get(pk=order_id, user=user)
 
@@ -347,21 +287,6 @@ def get_order_detail_for_user(*, user: User, order_id: int) -> Order:
 def get_order_by_reference_for_user(*, user: User, unique_reference: str) -> Order:
     """
     Return one fully optimised order using its public reference value.
-
-    This selector is useful when the external interface uses a public
-    order reference instead of an internal database primary key.
-
-    Args:
-        user: Authenticated owner of the order.
-        unique_reference: Public-facing order reference.
-
-    Returns:
-        Order:
-            Matching order instance with related objects already loaded.
-
-    Raises:
-        Order.DoesNotExist:
-            Raised when the order does not exist or does not belong to the user.
     """
     return _get_order_history_base_queryset().get(
         unique_reference=unique_reference,
@@ -376,21 +301,6 @@ def get_orders_for_status_dashboard(
 ) -> QuerySet[Order]:
     """
     Return a status-specific slice of a user's order history.
-
-    This function exists as a small convenience wrapper for dashboard
-    sections or tabs that repeatedly request the same filtered subset,
-    for example:
-    - completed orders
-    - cancelled orders
-    - in-progress orders
-
-    Args:
-        user: Authenticated user whose orders should be returned.
-        status: Order status code to filter by.
-
-    Returns:
-        QuerySet[Order]:
-            Optimised user-scoped queryset filtered by status.
     """
     return get_order_history_for_user(user=user, status=status)
 
@@ -398,27 +308,85 @@ def get_orders_for_status_dashboard(
 def get_recent_orders_for_user(*, user: User, limit: int = 5) -> QuerySet[Order]:
     """
     Return a limited slice of the most recent orders for one user.
-
-    Typical use cases:
-    - account dashboard widgets
-    - quick reorder panels
-    - homepage order summaries
-
-    Args:
-        user: Authenticated user whose recent orders should be returned.
-        limit: Maximum number of records to return.
-
-    Returns:
-        QuerySet[Order]:
-            Slice of the newest orders for the user.
     """
     return get_order_history_for_user(user=user)[:limit]
+
+
+def _build_live_product_queryset(
+    *,
+    preferred_inventory_subquery: Subquery,
+) -> QuerySet[Product]:
+    """
+    Return live products that have at least one sellable inventory batch.
+
+    A product is considered live for reorder suggestions when:
+    - product is published
+    - product is not discontinued
+    - at least one active inventory batch has remaining stock
+    - the preferred batch has not expired
+    """
+    return (
+        Product.objects.select_related(
+            "producer",
+            "category",
+            "product_type",
+        )
+        .filter(
+            status=Product.Status.PUBLISHED,
+        )
+        .exclude(
+            availability_status=Product.Availability_status.DISCONTINUED,
+        )
+        .annotate(
+            preferred_inventory_id=Subquery(preferred_inventory_subquery),
+        )
+        .filter(preferred_inventory_id__isnull=False)
+    )
+
+
+def _get_top_trending_product_ids(
+    *,
+    product_queryset: QuerySet[Product],
+    recent_completed_order_filter: Q,
+) -> set[int]:
+    """
+    Return true top-ranked product IDs inside the supplied type/category scope.
+
+    Important:
+    - this queryset should not exclude products from the original order
+    - the result is used only to decide whether a candidate deserves the
+      Trending badge
+    """
+    return set(
+        product_queryset.annotate(
+            recent_completed_order_count=Count(
+                "order_items",
+                filter=recent_completed_order_filter,
+            ),
+            recent_quantity_sold=Sum(
+                "order_items__quantity",
+                filter=recent_completed_order_filter,
+            ),
+        )
+        .filter(
+            recent_completed_order_count__gte=TRENDING_MIN_COMPLETED_ORDERS,
+        )
+        .order_by(
+            "-recent_completed_order_count",
+            "-recent_quantity_sold",
+            "name",
+            "pk",
+        )
+        .values_list("pk", flat=True)[:TRENDING_RANK_LIMIT]
+    )
+
 
 def get_reorder_suggestion_inventories(
     *,
     source_product: Product,
     original_producer_id: int,
     limit: int = 3,
+    excluded_product_ids: set[int] | None = None,
 ) -> list[Inventory]:
     """
     Return live reorder suggestions for one historical order item.
@@ -426,18 +394,28 @@ def get_reorder_suggestion_inventories(
     Recommendation rule:
     - prefer the same product type
     - fall back to the same category when no same-type suggestions exist
-    - return up to 2 popular products
-    - return 1 newer/discovery product
+    - exclude products already bought in the same original order
+    - return up to two popular live products
+    - return one discovery product where possible
+    - show Trending only when the product is truly in the top 10 for that scope
+    - show New only when the product was added recently
     - use Inventory as the source of truth for live stock
 
     Important:
     - the original product is excluded
-    - the original producer is not excluded, because suggestions are across all producers
+    - other products from the same original order can also be excluded by
+      passing excluded_product_ids
+    - the original producer is not excluded because suggestions are across
+      all producers
     """
     if limit <= 0:
         return []
 
+    _ = original_producer_id
+
     today = timezone.localdate()
+    trending_cutoff = timezone.now() - timedelta(days=TRENDING_LOOKBACK_DAYS)
+    new_product_cutoff = timezone.now() - timedelta(days=NEW_PRODUCT_LOOKBACK_DAYS)
 
     preferred_inventory_subquery = (
         Inventory.objects.filter(
@@ -450,32 +428,40 @@ def get_reorder_suggestion_inventories(
         .values("pk")[:1]
     )
 
-    base_queryset = (
-        Product.objects.select_related(
-            "producer",
-            "category",
-            "product_type",
-        )
-        .filter(
-            status=Product.Status.PUBLISHED,
-        )
-        .exclude(
-            availability_status=Product.Availability_status.DISCONTINUED,
-        )
-        .exclude(pk=source_product.pk)
-        .annotate(
-            preferred_inventory_id=Subquery(preferred_inventory_subquery),
-        )
-        .filter(preferred_inventory_id__isnull=False)
+    live_product_queryset = _build_live_product_queryset(
+        preferred_inventory_subquery=preferred_inventory_subquery,
     )
+
+    excluded_product_ids = set(excluded_product_ids or set())
+    excluded_product_ids.add(source_product.pk)
+
+    candidate_queryset = live_product_queryset.exclude(pk__in=excluded_product_ids)
 
     completed_order_filter = Q(order_items__order__status=Order.Status.COMPLETED)
 
-    def select_products(product_queryset: QuerySet[Product]) -> list[Product]:
+    recent_completed_order_filter = Q(
+        order_items__order__status=Order.Status.COMPLETED,
+        order_items__order__order_date__gte=trending_cutoff,
+    )
+
+    def is_recent_product(product: Product) -> bool:
+        created_at = getattr(product, "created_at", None)
+        return bool(created_at and created_at >= new_product_cutoff)
+
+    def select_products(
+        *,
+        candidates: QuerySet[Product],
+        ranking_scope: QuerySet[Product],
+    ) -> list[Product]:
         selected_products: list[Product] = []
 
+        top_trending_product_ids = _get_top_trending_product_ids(
+            product_queryset=ranking_scope,
+            recent_completed_order_filter=recent_completed_order_filter,
+        )
+
         popular_products = list(
-            product_queryset.annotate(
+            candidates.annotate(
                 completed_order_count=Count(
                     "order_items",
                     filter=completed_order_filter,
@@ -494,13 +480,16 @@ def get_reorder_suggestion_inventories(
             )[: min(2, limit)]
         )
 
-        selected_products.extend(popular_products)
+        for product in popular_products:
+            if product.pk in top_trending_product_ids:
+                product.reorder_recommendation_badge = "trending"
 
+        selected_products.extend(popular_products)
         selected_product_ids = [product.pk for product in selected_products]
 
         if len(selected_products) < limit:
             discovery_product = (
-                product_queryset.exclude(pk__in=selected_product_ids)
+                candidates.exclude(pk__in=selected_product_ids)
                 .annotate(
                     completed_order_count=Count(
                         "order_items",
@@ -514,18 +503,21 @@ def get_reorder_suggestion_inventories(
 
             if discovery_product is None:
                 discovery_product = (
-                    product_queryset.exclude(pk__in=selected_product_ids)
+                    candidates.exclude(pk__in=selected_product_ids)
                     .order_by("-created_at", "name", "pk")
                     .first()
                 )
 
             if discovery_product is not None:
+                if is_recent_product(discovery_product):
+                    discovery_product.reorder_recommendation_badge = "new"
+
                 selected_products.append(discovery_product)
                 selected_product_ids.append(discovery_product.pk)
 
         if len(selected_products) < limit:
             fallback_products = list(
-                product_queryset.exclude(pk__in=selected_product_ids)
+                candidates.exclude(pk__in=selected_product_ids)
                 .order_by("-created_at", "name", "pk")[
                     : limit - len(selected_products)
                 ]
@@ -535,22 +527,33 @@ def get_reorder_suggestion_inventories(
 
         return selected_products[:limit]
 
-    scoped_querysets: list[QuerySet[Product]] = []
+    scoped_querysets: list[tuple[QuerySet[Product], QuerySet[Product]]] = []
 
     if getattr(source_product, "product_type_id", None):
         scoped_querysets.append(
-            base_queryset.filter(product_type_id=source_product.product_type_id)
+            (
+                candidate_queryset.filter(product_type_id=source_product.product_type_id),
+                live_product_queryset.filter(
+                    product_type_id=source_product.product_type_id
+                ),
+            )
         )
 
     if getattr(source_product, "category_id", None):
         scoped_querysets.append(
-            base_queryset.filter(category_id=source_product.category_id)
+            (
+                candidate_queryset.filter(category_id=source_product.category_id),
+                live_product_queryset.filter(category_id=source_product.category_id),
+            )
         )
 
     selected_products: list[Product] = []
 
-    for scoped_queryset in scoped_querysets:
-        selected_products = select_products(scoped_queryset)
+    for candidates, ranking_scope in scoped_querysets:
+        selected_products = select_products(
+            candidates=candidates,
+            ranking_scope=ranking_scope,
+        )
 
         if selected_products:
             break
@@ -574,8 +577,27 @@ def get_reorder_suggestion_inventories(
         ).filter(pk__in=inventory_ids)
     }
 
-    return [
-        inventories_by_id[inventory_id]
-        for inventory_id in inventory_ids
-        if inventory_id in inventories_by_id
-    ]
+    recommendation_badges_by_inventory_id = {
+        product.preferred_inventory_id: getattr(
+            product,
+            "reorder_recommendation_badge",
+            "",
+        )
+        for product in selected_products
+        if product.preferred_inventory_id
+    }
+
+    suggested_inventories: list[Inventory] = []
+
+    for inventory_id in inventory_ids:
+        inventory = inventories_by_id.get(inventory_id)
+
+        if inventory is None:
+            continue
+
+        inventory.reorder_recommendation_badge = (
+            recommendation_badges_by_inventory_id.get(inventory_id, "")
+        )
+        suggested_inventories.append(inventory)
+
+    return suggested_inventories

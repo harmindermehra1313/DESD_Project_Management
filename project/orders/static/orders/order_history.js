@@ -1047,8 +1047,6 @@ async function openOrderDetails(orderId) {
   }
 }
 
-
-
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -1114,6 +1112,7 @@ function createOptionFromAddableItem(item) {
     current_price: item.current_price,
     pricing: item.pricing || null,
     match_basis: item.match_basis || "same_product",
+    recommendation_badge: item.recommendation_badge || "",
     source_label: M.originalBadge,
   };
 }
@@ -1131,6 +1130,7 @@ function createOptionFromSuggestedItem(item) {
     current_price: item.current_price,
     pricing: item.pricing || null,
     match_basis: item.match_basis || "",
+    recommendation_badge: item.recommendation_badge || "",
     source_label: M.alternativeProducerBadge,
   };
 }
@@ -1741,6 +1741,21 @@ function renderOptionBadges(group, option) {
       </span>
     `);
   }
+  if (option.recommendation_badge === "trending") {
+    badges.push(`
+      <span class="badge rounded-pill bg-success me-1 mb-1">
+        ${escapeHtml(M.trendingBadge)}
+      </span>
+    `);
+  }
+
+  if (option.recommendation_badge === "new") {
+    badges.push(`
+      <span class="badge rounded-pill bg-primary me-1 mb-1">
+        ${escapeHtml(M.newBadge)}
+      </span>
+    `);
+  }
 
   if (option.pricing?.surplus?.is_active) {
     badges.push(`
@@ -2129,6 +2144,9 @@ function renderPlannerGroup(group) {
                   ? `
                     <div class="fw-semibold">${escapeHtml(selectedOption.product_name)}</div>
                     <div class="small text-muted">${escapeHtml(selectedOption.producer_name || "")}</div>
+                    <div class="mt-2">
+                      ${renderOptionBadges(group, selectedOption)}
+                    </div>
 
                     <div class="d-flex justify-content-between mt-3 small text-muted">
                       <span>${M.quantityLabel}</span>
@@ -2535,8 +2553,6 @@ function renderReorderResult(result) {
     ${renderPriceChangesSection(result.price_changed_items || [])}
   `;
 }
-
-
 
 async function openReorderPreview(orderId) {
   pendingReorderOrderId = orderId;

@@ -103,6 +103,8 @@
     addedBadgeLabel: "added",
     unavailableBadgeLabel: "unavailable",
     quantityUpdatedBadgeLabel: "quantity updated",
+    trendingBadge: "Trending",
+    newBadge: "New",
     priceChangedBadgeLabel: "price changed",
     addedToCartSectionTitle: "Added to cart",
     unavailableItemsResultTitle: "Unavailable items",
