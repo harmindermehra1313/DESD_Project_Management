@@ -74,7 +74,6 @@ export async function getCart() {
 }
 
 export async function addToCart({ inventoryId, quantity = 1 } = {}) {
-  console.log("DEBUG addToCart called with:", { inventoryId, quantity });
 
   if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
     throw new Error(M.invalidInventoryId);
@@ -86,7 +85,6 @@ export async function addToCart({ inventoryId, quantity = 1 } = {}) {
   }
 
   const payload = { inventory_id: inventoryId, quantity: q };
-  console.log("DEBUG addToCart payload:", payload);
 
   const { data } = await request("POST", "/cart/items/", {
     body: payload,

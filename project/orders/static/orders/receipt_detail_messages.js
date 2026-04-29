@@ -42,8 +42,39 @@
         : this.deliveryAddressLabel;
     },
 
+        getErrorPayload(error) {
+      return (
+        error?.payload ||
+        error?.data ||
+        error?.response?.data ||
+        error?.details ||
+        null
+      );
+    },
+
+    getStructuredError(error) {
+      const payload = this.getErrorPayload(error);
+
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      return payload.error || payload;
+    },
+
+    getBackendMessage(error, fallback) {
+      const structuredError = this.getStructuredError(error);
+      return structuredError?.message || window.AppApiErrors.fromError(error, fallback);
+    },
+
     getLoadError(error) {
-      return window.AppApiErrors.fromError(error, this.loadFailed);
+      const structuredError = this.getStructuredError(error);
+
+      if (structuredError?.code === "receipt_not_available") {
+        return "Receipt is only available after an order has been completed.";
+      }
+
+      return this.getBackendMessage(error, this.loadFailed);
     },
   };
 })();

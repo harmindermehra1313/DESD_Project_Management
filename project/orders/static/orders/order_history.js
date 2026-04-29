@@ -3,6 +3,7 @@ const ORDER_DETAIL_API_BASE = "/api/orders/";
 const ORDER_REORDER_PREVIEW_API_SUFFIX = "/reorder-preview/";
 const ORDER_REORDER_API_SUFFIX = "/reorder/";
 const RECEIPT_URL_BASE = "/orders/receipt/";
+const REVIEW_ADD_PAGE_URL = "/reviews/add/";
 const M = window.OrderHistoryMessages;
 
 const DEFAULT_FILTERS = {
@@ -10,7 +11,6 @@ const DEFAULT_FILTERS = {
   start_date: "",
   end_date: "",
   delivery_or_collection: "",
-  recurring_only: "",
 };
 
 const REORDER_RESULT_FOOTER = `
@@ -118,6 +118,11 @@ function bindEvents() {
       }
       return;
     }
+    const writeReviewBtn = event.target.closest("[data-action='write-review']");
+    if (writeReviewBtn) {
+      handleWriteReviewClick(writeReviewBtn);
+      return;
+    }
 
     const reorderBtn = event.target.closest(
       "[data-action='open-reorder-preview']",
@@ -176,6 +181,29 @@ function bindEvents() {
   }
 }
 
+function showReorderResultToasts(result) {
+  const quantityAdjustedItems = ensureArray(result?.quantity_adjusted_items);
+  const unavailableItems = ensureArray(result?.unavailable_items);
+
+  quantityAdjustedItems.forEach((item) => {
+    showOrderToast(M.getReorderItemReason(item), {
+      title: M.cartTitle,
+      variant: "danger",
+      delay: 3500,
+    });
+  });
+
+  unavailableItems
+    .filter((item) => item?.reason_code === "cart_stock_limit_exceeded")
+    .forEach((item) => {
+      showOrderToast(M.getReorderItemReason(item), {
+        title: M.cartTitle,
+        variant: "danger",
+        delay: 3500,
+      });
+    });
+}
+
 function readFiltersFromForm() {
   return {
     status: document.getElementById("status")?.value || "",
@@ -183,18 +211,11 @@ function readFiltersFromForm() {
     end_date: document.getElementById("end_date")?.value || "",
     delivery_or_collection:
       document.getElementById("delivery_or_collection")?.value || "",
-    recurring_only: document.getElementById("recurring_only")?.value || "",
   };
 }
 
 function writeFiltersToForm(filters) {
-  const fields = [
-    "status",
-    "start_date",
-    "end_date",
-    "delivery_or_collection",
-    "recurring_only",
-  ];
+  const fields = ["status", "start_date", "end_date", "delivery_or_collection"];
   fields.forEach((field) => {
     const el = document.getElementById(field);
     if (el) {
@@ -293,25 +314,19 @@ function validateDateFilters() {
   const today = getTodayDateString();
 
   if (startDate && startDate < MIN_ORDER_FILTER_DATE) {
-    showDateValidationError(
-      M.startDateMin(MIN_ORDER_FILTER_DATE),
-      [startDateEl],
-    );
+    showDateValidationError(M.startDateMin(MIN_ORDER_FILTER_DATE), [
+      startDateEl,
+    ]);
     return false;
   }
 
   if (endDate && endDate < MIN_ORDER_FILTER_DATE) {
-    showDateValidationError(
-      M.endDateMin(MIN_ORDER_FILTER_DATE),
-      [endDateEl],
-    );
+    showDateValidationError(M.endDateMin(MIN_ORDER_FILTER_DATE), [endDateEl]);
     return false;
   }
 
   if (startDate && startDate > today) {
-    showDateValidationError(M.startDateFuture, [
-      startDateEl,
-    ]);
+    showDateValidationError(M.startDateFuture, [startDateEl]);
     return false;
   }
 
@@ -321,10 +336,7 @@ function validateDateFilters() {
   }
 
   if (startDate && endDate && startDate > endDate) {
-    showDateValidationError(
-      M.startDateAfterEnd,
-      [startDateEl, endDateEl],
-    );
+    showDateValidationError(M.startDateAfterEnd, [startDateEl, endDateEl]);
     return false;
   }
 
@@ -380,7 +392,7 @@ function getStatusBadgeClass(status) {
 
 function isReorderAllowed(status) {
   const value = normaliseStatus(status);
-  return !value.includes("pending") && !value.includes("cancel");
+  return value.includes("completed");
 }
 
 function isReceiptAllowed(status) {
@@ -391,9 +403,7 @@ function isReceiptAllowed(status) {
 function getReorderButtonHtml(orderId, status, extraClass = "") {
   const allowed = isReorderAllowed(status);
   const disabledAttr = allowed ? "" : "disabled";
-  const title = allowed
-    ? M.reorderAllowedTooltip
-    : M.reorderBlockedTooltip;
+  const title = allowed ? M.reorderAllowedTooltip : M.reorderBlockedTooltip;
 
   return `
     <button
@@ -482,15 +492,92 @@ function setPaginationState(totalPages) {
   const nextBtn = document.getElementById("nextPageBtn");
 
   if (paginationInfo) {
-    paginationInfo.textContent = M.pageSummary(currentPage, totalPages, totalCount);
+    paginationInfo.textContent = M.pageSummary(
+      currentPage,
+      totalPages,
+      totalCount,
+    );
   }
 
   if (prevBtn) prevBtn.disabled = currentPage <= 1;
   if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
 
-async function parseErrorMessage(response, fallbackMessage) {
-  return window.AppApiErrors.fromResponse(response, fallbackMessage);
+async function buildApiErrorFromResponse(response, fallbackMessage) {
+  let payload = null;
+
+  try {
+    payload = await response.clone().json();
+  } catch {
+    payload = null;
+  }
+
+  const message = payload
+    ? window.AppApiErrors.fromPayload(payload, fallbackMessage)
+    : await window.AppApiErrors.fromResponse(response, fallbackMessage);
+
+  const error = new Error(message || fallbackMessage);
+  error.status = response.status;
+  error.payload = payload;
+  return error;
+}
+
+function showOrderToast(
+  message,
+  { title = M.cartTitle || "Cart", variant = "warning", delay = 3000 } = {},
+) {
+  if (!message) return;
+
+  if (typeof window.CartAPI?.showToast === "function") {
+    window.CartAPI.showToast(message, {
+      title,
+      variant,
+      delay,
+    });
+    return;
+  }
+
+  const errorBox = document.getElementById("orderListError");
+  if (errorBox) {
+    errorBox.textContent = message;
+    errorBox.classList.remove("d-none");
+  }
+}
+
+function toPositiveInteger(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number) || number < 1) {
+    return null;
+  }
+
+  return Math.floor(number);
+}
+
+function getQuantityLimitToastMessage(
+  group,
+  selectedOption,
+  requestedQuantity,
+) {
+  const availableQuantity = toPositiveInteger(
+    selectedOption?.available_quantity,
+  );
+
+  if (!availableQuantity) {
+    return null;
+  }
+
+  const productName =
+    selectedOption?.product_name ||
+    group?.original?.product_name ||
+    M.productFallback ||
+    "this item";
+
+  if (requestedQuantity <= availableQuantity) {
+    return null;
+  }
+
+  return M.reorderQuantityLimitToast(productName, availableQuantity);
 }
 
 async function loadOrders() {
@@ -506,11 +593,7 @@ async function loadOrders() {
     );
 
     if (!response.ok) {
-      const message = await parseErrorMessage(
-        response,
-        M.loadFailed,
-      );
-      throw new Error(message);
+      throw await buildApiErrorFromResponse(response, M.loadFailed);
     }
 
     const data = await response.json();
@@ -632,6 +715,114 @@ function renderOrderSummary(order) {
     </div>
   `;
 }
+function getReviewActionLabel(action) {
+  return action?.label || "Write Review";
+}
+
+function getReviewedBadgeLabel() {
+  return "Reviewed";
+}
+
+function buildWriteReviewPayloadFromAction(item) {
+  const action = item?.review_action || {};
+  const payload = action.payload || {};
+
+  return {
+    orderId: payload.order_id || "",
+    orderItemId: payload.order_item_id || "",
+    productId: payload.product_id || "",
+    productName: item?.product_name || "",
+    producerName: item?.producer || "",
+    quantity: item?.quantity || 0,
+    paidUnitPrice: item?.paid_unit_price || null,
+  };
+}
+
+function renderReviewActionCell(item) {
+  const action = item?.review_action;
+
+  if (!action) {
+    return `<span class="text-muted">-</span>`;
+  }
+
+  const payload = buildWriteReviewPayloadFromAction(item);
+  const label = escapeHtml(getReviewActionLabel(action));
+
+  if (action.already_reviewed) {
+    return `
+      <span
+        class="badge text-bg-light border"
+        title="${escapeHtml(action.reason || getReviewedBadgeLabel())}"
+      >
+        ${escapeHtml(getReviewedBadgeLabel())}
+      </span>
+    `;
+  }
+
+  if (action.eligible) {
+    return `
+      <button
+        type="button"
+        class="btn btn-sm btn-primary"
+        data-action="write-review"
+        data-order-id="${escapeHtml(payload.orderId)}"
+        data-order-item-id="${escapeHtml(payload.orderItemId)}"
+        data-product-id="${escapeHtml(payload.productId)}"
+        data-product-name="${escapeHtml(payload.productName)}"
+        data-producer-name="${escapeHtml(payload.producerName)}"
+        title="${escapeHtml(action.reason || getReviewActionLabel(action))}"
+      >
+        ${label}
+      </button>
+    `;
+  }
+
+  return `
+    <button
+      type="button"
+      class="btn btn-sm btn-primary"
+      disabled
+      title="${escapeHtml(action.reason || "Review is not available yet.")}"
+      aria-disabled="true"
+    >
+      ${label}
+    </button>
+  `;
+}
+
+function buildReviewAddUrl(payload) {
+  const params = new URLSearchParams({
+    order_id: String(payload.orderId || ""),
+    order_item_id: String(payload.orderItemId || ""),
+    product_id: String(payload.productId || ""),
+    next: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    popup: "1",
+  });
+
+  return `${REVIEW_ADD_PAGE_URL}?${params.toString()}`;
+}
+
+function handleWriteReviewClick(button) {
+  const payload = {
+    orderId: button.dataset.orderId || "",
+    orderItemId: button.dataset.orderItemId || "",
+    productId: button.dataset.productId || "",
+    productName: button.dataset.productName || "",
+    producerName: button.dataset.producerName || "",
+  };
+
+  const reviewUrl = buildReviewAddUrl(payload);
+
+  const popup = window.open(
+    reviewUrl,
+    "write-review",
+    "popup=yes,width=760,height=860,resizable=yes,scrollbars=yes",
+  );
+
+  if (!popup) {
+    window.location.assign(reviewUrl);
+  }
+}
 
 function renderItemsSection(items) {
   return `
@@ -645,6 +836,7 @@ function renderItemsSection(items) {
               <th>${M.producerLabel}</th>
               <th>${M.quantityLabel}</th>
               <th>${M.unitPriceLabel}</th>
+              <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -656,6 +848,7 @@ function renderItemsSection(items) {
                 <td>${escapeHtml(item.producer)}</td>
                 <td>${escapeHtml(item.quantity)}</td>
                 <td>${formatMoney(item.paid_unit_price)}</td>
+                <td class="text-end">${renderReviewActionCell(item)}</td>
               </tr>
             `,
               )
@@ -828,12 +1021,7 @@ async function openOrderDetails(orderId) {
     });
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(
-          response,
-          M.detailLoadFailed,
-        ),
-      );
+      throw await buildApiErrorFromResponse(response, M.detailLoadFailed);
     }
 
     const order = await response.json();
@@ -859,9 +1047,7 @@ async function openOrderDetails(orderId) {
   }
 }
 
-/* =========================
-   REORDER PLANNER HELPERS
-   ========================= */
+
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
@@ -1034,7 +1220,7 @@ function buildReorderPlannerState(orderId, preview) {
         product_name: item.product_name,
         producer_name: item.producer_name || "",
         requested_quantity: originalRequestedQuantity,
-        reason: item.reason || M.unavailable,
+        reason: M.getReorderItemReason(item),
       },
       selectedOptionKey: selectedOption.key,
       quantity: hasSuggestions
@@ -1332,7 +1518,29 @@ function updateGroupQuantity(groupId, rawValue) {
   const selectedOption = getSelectedOption(group);
   if (!selectedOption || selectedOption.action === "skip") return;
 
-  group.quantity = clampQuantity(rawValue, selectedOption.available_quantity);
+  const requestedQuantity = toPositiveInteger(rawValue) || 1;
+  const availableQuantity = toPositiveInteger(
+    selectedOption.available_quantity,
+  );
+
+  const toastMessage = getQuantityLimitToastMessage(
+    group,
+    selectedOption,
+    requestedQuantity,
+  );
+
+  if (toastMessage) {
+    showOrderToast(toastMessage, {
+      title: M.cartTitle,
+      variant: "danger",
+      delay: 3000,
+    });
+  }
+
+  group.quantity = availableQuantity
+    ? Math.min(requestedQuantity, availableQuantity)
+    : requestedQuantity;
+
   updateReorderPlannerUI();
 }
 
@@ -1343,14 +1551,30 @@ function changeGroupQuantity(groupId, delta) {
   const selectedOption = getSelectedOption(group);
   if (!selectedOption || selectedOption.action === "skip") return;
 
-  const current = clampQuantity(
-    group.quantity,
+  const current = toPositiveInteger(group.quantity) || 1;
+  const requestedQuantity = Math.max(1, current + delta);
+  const availableQuantity = toPositiveInteger(
     selectedOption.available_quantity,
   );
-  group.quantity = clampQuantity(
-    current + delta,
-    selectedOption.available_quantity,
+
+  const toastMessage = getQuantityLimitToastMessage(
+    group,
+    selectedOption,
+    requestedQuantity,
   );
+
+  if (toastMessage) {
+    showOrderToast(toastMessage, {
+      title: M.cartTitle,
+      variant: "danger",
+      delay: 3000,
+    });
+  }
+
+  group.quantity = availableQuantity
+    ? Math.min(requestedQuantity, availableQuantity)
+    : requestedQuantity;
+
   updateReorderPlannerUI();
 }
 
@@ -1383,21 +1607,15 @@ function renderPlannerSummaryCard() {
   const helperNotes = [];
 
   if (needsReviewCount > 0) {
-    helperNotes.push(
-      M.needsReviewSummary(needsReviewCount),
-    );
+    helperNotes.push(M.needsReviewSummary(needsReviewCount));
   }
 
   if (alternativeCount > 0) {
-    helperNotes.push(
-      M.alternativeOptionsSummary(alternativeCount),
-    );
+    helperNotes.push(M.alternativeOptionsSummary(alternativeCount));
   }
 
   if (unavailableCount > 0) {
-    helperNotes.push(
-      M.unavailableSummary(unavailableCount),
-    );
+    helperNotes.push(M.unavailableSummary(unavailableCount));
   }
 
   const helperSummary = helperNotes.length
@@ -1636,13 +1854,7 @@ function renderSurplusNotice(option, quantity) {
 function renderQuantityControls(group, option) {
   const quantity = clampQuantity(group.quantity, option.available_quantity);
   const minusDisabled = quantity <= 1 ? "disabled" : "";
-  const plusDisabled =
-    option.available_quantity !== null &&
-    option.available_quantity !== undefined
-      ? quantity >= toNumber(option.available_quantity, quantity)
-        ? "disabled"
-        : ""
-      : "";
+  const plusDisabled = "";
 
   const pricingState = getPricingState(option, quantity);
   const lineAppliedTotal = pricingState.appliedUnitPrice * quantity;
@@ -2214,7 +2426,10 @@ function renderUnavailableItemsSection(items) {
               }
 
               <div class="small text-danger mt-2">
-                ${M.requestedReason(escapeHtml(item.requested_quantity), escapeHtml(item.reason || M.unavailable))}
+               ${M.requestedReason(
+                 escapeHtml(item.requested_quantity),
+                 escapeHtml(M.getReorderItemReason(item)),
+               )}
               </div>
             </div>
           `,
@@ -2242,12 +2457,12 @@ function renderQuantityAdjustmentsSection(items) {
               </div>
 
               ${
-                item.reason
+                item.reason || item.reason_code
                   ? `
-                    <div class="small text-warning-emphasis mt-1">
-                      ${escapeHtml(item.reason)}
-                    </div>
-                  `
+      <div class="small text-warning-emphasis mt-1">
+        ${escapeHtml(M.getReorderItemReason(item))}
+      </div>
+    `
                   : ""
               }
             </div>
@@ -2301,14 +2516,9 @@ function renderReorderResult(result) {
     counts.quantityAdjusted > 0 ||
     counts.priceChanged > 0;
 
-  const title =
-    counts.added > 0
-      ? M.selectedAddedBody
-      : M.noItemsAddedBody;
+  const title = counts.added > 0 ? M.selectedAddedBody : M.noItemsAddedBody;
 
-  const body = hasUpdates
-    ? M.resultUpdatesBody
-    : M.resultSuccessBody;
+  const body = hasUpdates ? M.resultUpdatesBody : M.resultSuccessBody;
 
   return `
     <div class="border rounded p-3 mb-4 bg-light">
@@ -2326,9 +2536,7 @@ function renderReorderResult(result) {
   `;
 }
 
-/* =========================
-   REORDER API ACTIONS
-   ========================= */
+
 
 async function openReorderPreview(orderId) {
   pendingReorderOrderId = orderId;
@@ -2351,12 +2559,7 @@ async function openReorderPreview(orderId) {
     );
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(
-          response,
-          M.previewFailed,
-        ),
-      );
+      throw await buildApiErrorFromResponse(response, M.previewFailed);
     }
 
     const preview = await response.json();
@@ -2411,15 +2614,11 @@ async function confirmReorder(orderId) {
     );
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(
-          response,
-          M.reorderFailed,
-        ),
-      );
+      throw await buildApiErrorFromResponse(response, M.reorderFailed);
     }
 
     const result = await response.json();
+    showReorderResultToasts(result);
 
     const content = document.getElementById("reorderModalContent");
     const footer = document.getElementById("reorderModalFooter");

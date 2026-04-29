@@ -41,4 +41,5 @@ urlpatterns = [
     # Cart Endpoint
     path("cart/", include(("carts.urls", "carts"), namespace="carts")),
     path("search/", admin_views.global_search, name="global_search"),
+    
 ]

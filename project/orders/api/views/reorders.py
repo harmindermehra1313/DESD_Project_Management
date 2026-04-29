@@ -45,6 +45,21 @@ class OrderHistoryPagination(PageNumberPagination):
     max_page_size = 100
 
 
+def _structured_validation_error(
+    *,
+    code: str,
+    message: str,
+    data: dict | None = None,
+) -> ValidationError:
+    return ValidationError(
+        {
+            "code": code,
+            "message": message,
+            "data": data or {},
+        }
+    )
+
+
 def _parse_date(value: str | None, field_name: str) -> date | None:
     if not value:
         return None
@@ -52,7 +67,11 @@ def _parse_date(value: str | None, field_name: str) -> date | None:
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
-        raise ValidationError({field_name: ["Invalid date format. Use YYYY-MM-DD."]}) from exc
+        raise _structured_validation_error(
+            code="order_filter_invalid_date_format",
+            message="Invalid date format. Use YYYY-MM-DD.",
+            data={"field": field_name},
+        ) from exc
 
 
 def _parse_bool(value: str | None) -> bool | None:
@@ -80,7 +99,11 @@ def _parse_int(value: str | None, field_name: str) -> int | None:
     try:
         return int(value)
     except (TypeError, ValueError) as exc:
-        raise ValidationError({field_name: [f"A valid {field_name} is required."]}) from exc
+        raise _structured_validation_error(
+            code="order_filter_invalid_integer",
+            message=f"A valid {field_name} is required.",
+            data={"field": field_name},
+        ) from exc
 
 
 def _raise_not_found_if_needed(exc: Exception) -> None:
@@ -98,21 +121,34 @@ class OrderHistoryApiView(generics.ListAPIView):
     def get_queryset(self):
         params = self.request.query_params
 
-        recurring_only = _parse_bool(params.get("recurring_only"))
         start_date = _parse_date(params.get("start_date"), "start_date")
         end_date = _parse_date(params.get("end_date"), "end_date")
         producer_id = _parse_int(params.get("producer_id"), "producer_id")
         today = date.today()
 
         if start_date and start_date > today:
-            raise ValidationError({"start_date": ["Start date cannot be in the future."]})
+            raise _structured_validation_error(
+                code="order_filter_start_date_future",
+                message="Start date cannot be in the future.",
+                data={"field": "start_date"},
+            )
 
         if end_date and end_date > today:
-            raise ValidationError({"end_date": ["End date cannot be in the future."]})
+            raise _structured_validation_error(
+                code="order_filter_end_date_future",
+                message="End date cannot be in the future.",
+                data={"field": "end_date"},
+            )
 
         if start_date and end_date and start_date > end_date:
-            raise ValidationError(
-                {"date_range": ["Start date must be earlier than or equal to end date."]}
+            raise _structured_validation_error(
+                code="order_filter_invalid_date_range",
+                message="Start date must be earlier than or equal to end date.",
+                data={
+                    "field": "date_range",
+                    "start_date": str(start_date),
+                    "end_date": str(end_date),
+                },
             )
 
         return get_order_history_for_user(
@@ -122,7 +158,6 @@ class OrderHistoryApiView(generics.ListAPIView):
             start_date=start_date,
             end_date=end_date,
             delivery_or_collection=params.get("delivery_or_collection") or None,
-            recurring_only=recurring_only,
         )
 
 
