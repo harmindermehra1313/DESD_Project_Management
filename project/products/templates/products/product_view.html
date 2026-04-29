@@ -3,127 +3,143 @@
 {% load static %}
 {% block title %}Products | BRFN{% endblock %}
 {% block extra_css %}
+    {{ block.super }}
     <link rel="stylesheet" href="{% static 'css/products.css' %}">
 {% endblock %}
 {% block content %}
-    <div class="container my-5">
-        <h1 class="mb-4">
-            {% if selected_category %}
-                {{ selected_category.name }}
-            {% else %}
-                All Products
-            {% endif %}
-        </h1>
-        <!-- FILTER BAR -->
-        <form method="get" class="filter-bar row g-3 mb-4">
-            <div class="col-md-4">
-                <input id="searchInput"
-                       name="q"
-                       type="text"
-                       class="form-control"
-                       placeholder="Search products..."
-                       value="{{ filters.q }}">
-            </div>
-            {% if show_filters %}
-                <div class="col-md-2">
-                    <select id="categoryFilter" name="category" class="form-select">
-                        <option value="">All Categories</option>
-                        {% for c in categories %}
-                            <option value="{{ c.name }}"
-                                    {% if filters.category == c.name %}selected{% endif %}>{{ c.name }}</option>
-                        {% endfor %}
-                        {% for o in organic %}
-                            <option value="{{ o.name }}"
-                                    {% if filters.category == o.name %}selected{% endif %}>{{ o.name }}</option>
-                        {% endfor %}
-                    </select>
+    <section class="product-list-page py-4 py-lg-5">
+        <div class="container">
+            <div class="product-list-header mb-4">
+                <div>
+                    <h1 class="product-list-heading mb-1">
+                        {% if selected_category %}
+                            {{ selected_category.name }}
+                        {% else %}
+                            All Products
+                        {% endif %}
+                    </h1>
+                    <p class="product-list-subtitle mb-0">Browse available local products from BRFN producers.</p>
                 </div>
-                <div class="col-md-2">
-                    <select id="producerFilter" name="producer" class="form-select">
-                        <option value="">All Producers</option>
-                        {% for p in producers %}
-                            <option value="{{ p }}" {% if filters.producer == p %}selected{% endif %}>{{ p }}</option>
-                        {% endfor %}
-                    </select>
+                {% if page_obj %}
+                    <div class="product-list-page-count">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</div>
+                {% endif %}
+            </div>
+            <!-- FILTER BAR -->
+            <form method="get" class="product-filter-panel mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="searchInput" class="product-filter-label">Search</label>
+                        <input id="searchInput"
+                               name="q"
+                               type="text"
+                               class="form-control product-filter-control"
+                               placeholder="Search products..."
+                               value="{{ filters.q }}">
+                    </div>
+                    {% if show_filters %}
+                        <div class="col-md-2">
+                            <label for="categoryFilter" class="product-filter-label">Category</label>
+                            <select id="categoryFilter"
+                                    name="category"
+                                    class="form-select product-filter-control">
+                                <option value="">All Categories</option>
+                                {% for c in categories %}
+                                    <option value="{{ c.name }}"
+                                            {% if filters.category == c.name %}selected{% endif %}>
+                                        {{ c.name }}
+                                    </option>
+                                {% endfor %}
+                                {% for o in organic %}
+                                    <option value="{{ o.name }}"
+                                            {% if filters.category == o.name %}selected{% endif %}>
+                                        {{ o.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="producerFilter" class="product-filter-label">Producer</label>
+                            <select id="producerFilter"
+                                    name="producer"
+                                    class="form-select product-filter-control">
+                                <option value="">All Producers</option>
+                                {% for p in producers %}
+                                    <option value="{{ p }}" {% if filters.producer == p %}selected{% endif %}>{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
+                    <div class="col-md-2">
+                        <label for="minPrice" class="product-filter-label">Min price</label>
+                        <input id="minPrice"
+                               name="min_price"
+                               type="number"
+                               step="0.01"
+                               class="form-control product-filter-control"
+                               placeholder="Min £"
+                               value="{{ filters.min_price }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="maxPrice" class="product-filter-label">Max price</label>
+                        <input id="maxPrice"
+                               name="max_price"
+                               type="number"
+                               step="0.01"
+                               class="form-control product-filter-control"
+                               placeholder="Max £"
+                               value="{{ filters.max_price }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="sortSelect" class="product-filter-label">Sort</label>
+                        <select id="sortSelect"
+                                name="sort"
+                                class="form-select product-filter-control">
+                            <option value="" {% if not filters.sort %}selected{% endif %}>Newest first</option>
+                            <option value="price_low"
+                                    {% if filters.sort == "price_low" %}selected{% endif %}>Price: Low → High</option>
+                            <option value="price_high"
+                                    {% if filters.sort == "price_high" %}selected{% endif %}>Price: High → Low</option>
+                            <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>Newest</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary product-action-btn w-100">Apply</button>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="?" class="btn btn-primary product-action-btn w-100">Reset</a>
+                    </div>
                 </div>
-            {% endif %}
-            <div class="col-md-2">
-                <input id="minPrice"
-                       name="min_price"
-                       type="number"
-                       step="0.01"
-                       class="form-control"
-                       placeholder="Min £"
-                       value="{{ filters.min_price }}">
-            </div>
-            <div class="col-md-2">
-                <input id="maxPrice"
-                       name="max_price"
-                       type="number"
-                       step="0.01"
-                       class="form-control"
-                       placeholder="Max £"
-                       value="{{ filters.max_price }}">
-            </div>
-            <div class="col-md-3 mt-3">
-                <select id="sortSelect" name="sort" class="form-select">
-                    <option value="" {% if not filters.sort %}selected{% endif %}>Sort by</option>
-                    <option value="price_low"
-                            {% if filters.sort == "price_low" %}selected{% endif %}>Price: Low → High</option>
-                    <option value="price_high"
-                            {% if filters.sort == "price_high" %}selected{% endif %}>Price: High → Low</option>
-                    <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>Newest</option>
-                </select>
-            </div>
-            <div class="col-md-2 mt-3">
-                <button type="submit" class="btn btn-brand-outline w-100">Apply</button>
-            </div>
-            <div class="col-md-2 mt-3">
-                <a href="?" class="btn btn-outline-secondary w-100">Reset</a>
-            </div>
-        </form>
-        <!-- PRODUCT GRID -->
-        <div id="productGrid"
-             class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-4"></div>
-        <!-- PAGINATION -->
-        {% if page_obj.has_other_pages %}
-            <nav aria-label="Product pagination" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link"
+            </form>
+            <!-- PRODUCT GRID -->
+            <div id="productGrid" class="product-grid"></div>
+            <!-- PAGINATION -->
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Product pagination" class="product-pagination-wrap mt-4">
+                    <div class="product-pagination">
+                        {% if page_obj.has_previous %}
+                            <a class="btn btn-primary product-page-btn"
                                href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">
                                 Previous
                             </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Previous</span>
-                        </li>
-                    {% endif %}
-                    <li class="page-item active">
-                        <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                    </li>
-                    {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link"
+                        {% else %}
+                            <button class="btn btn-primary product-page-btn" disabled>Previous</button>
+                        {% endif %}
+                        <span class="product-page-current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        {% if page_obj.has_next %}
+                            <a class="btn btn-primary product-page-btn"
                                href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">
                                 Next
                             </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Next</span>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        {% endif %}
-    </div>
-    <!-- JSON DATA -->
+                        {% else %}
+                            <button class="btn btn-primary product-page-btn" disabled>Next</button>
+                        {% endif %}
+                    </div>
+                </nav>
+            {% endif %}
+        </div>
+    </section>
     <script id="productsData" type="application/json">{{ products_json|safe }}</script>
     <script id="showFiltersFlag" type="text/plain">{{ show_filters|yesno:"true,false" }}</script>
     <script src="{% static 'js/product_view.js' %}"></script>
-    <!-- JS FILES -->
 {% endblock %}
 <!-- HARMINDER-SINGH -->

@@ -1,177 +1,261 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const products = JSON.parse(document.getElementById("productsData").textContent);
-    const showFilters = document.getElementById("showFiltersFlag").textContent.trim() === "true";
+  const productsDataEl = document.getElementById("productsData");
 
-    function escapeHTML(value) {
-        return String(value ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
+  if (!productsDataEl) {
+    return;
+  }
+
+  const products = JSON.parse(productsDataEl.textContent || "[]");
+
+  function escapeHTML(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function formatPrice(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(2) : "0.00";
+  }
+
+  function formatDate(value) {
+    if (!value) {
+      return "";
     }
 
-    function formatPrice(value) {
-        const number = Number(value);
-        return Number.isFinite(number) ? number.toFixed(2) : "0.00";
+    const date = new Date(`${value}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
     }
 
-    
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  }
 
-    function buildBadge(text, cssClass) {
-        return `<span class="badge ${cssClass} me-1 mb-1">${escapeHTML(text)}</span>`;
+  function truncateText(value, maxLength = 72) {
+    const text = String(value || "").trim();
+
+    if (!text) {
+      return "No description available.";
     }
 
-    function buildBadges(product) {
-        let badges = "";
-
-        if (product.is_disabled) {
-            return buildBadge(product.disabled_reason || "Unavailable", "bg-secondary");
-        }
-
-        if (product.surplus_active) {
-            badges += buildBadge("Surplus active", "bg-warning text-dark");
-        }
-
-        if (product.wholesale_active) {
-            badges += buildBadge("Wholesale available", "bg-info text-dark");
-        }
-
-        if (product.low_stock) {
-            badges += buildBadge("Low stock", "bg-danger");
-        }
-
-        if (product.organic) {
-            badges += buildBadge("Organic", "bg-success");
-        }
-
-        if (product.local) {
-            badges += buildBadge("Local", "bg-primary");
-        }
-
-        if (product.fresh_today) {
-            badges += buildBadge("Fresh Today", "bg-light text-dark border");
-        }
-
-        return badges;
+    if (text.length <= maxLength) {
+      return text;
     }
 
-    function buildPriceHTML(product) {
-        if (product.has_discount) {
-            return `
-                <div class="mb-3">
-                    <span class="text-danger fw-bold">£${formatPrice(product.price)}</span>
-                    <span class="text-muted text-decoration-line-through ms-2">
-                        £${formatPrice(product.original_price)}
-                    </span>
-                    <span class="badge bg-danger ms-2">
-                        -${escapeHTML(product.discount_percent)}%
-                    </span>
-                </div>
-            `;
-        }
+    return `${text.slice(0, maxLength).trim()}...`;
+  }
 
-        return `
-            <h5 class="fw-bold mb-3 text-success">
-                £${formatPrice(product.price)}
-            </h5>
-        `;
+  function buildBadge(text, modifierClass) {
+    return `
+      <span class="product-card-badge ${modifierClass}">
+        ${escapeHTML(text)}
+      </span>
+    `;
+  }
+
+  function buildBadges(product) {
+    const badges = [];
+
+    if (product.is_disabled) {
+      badges.push(
+        buildBadge(
+          product.disabled_reason || "Unavailable",
+          "product-card-badge--muted",
+        ),
+      );
+
+      return badges.join("");
     }
 
-    function buildActionHTML(product) {
-        if (product.is_disabled) {
-            return `
-                <button class="btn btn-secondary w-100 mt-auto" disabled>
-                    ${escapeHTML(product.disabled_reason || "Unavailable")}
-                </button>
-            `;
-        }
+    badges.push(buildBadge("Available", "product-card-badge--success"));
 
-        return `
-            <a href="/products/${product.id}/"
-               class="btn btn-brand-outline w-100 mt-auto">
-                More Information
-            </a>
-        `;
+    if (product.surplus_active) {
+      badges.push(buildBadge("Surplus", "product-card-badge--danger"));
+    } else if (product.wholesale_active) {
+      badges.push(buildBadge("Wholesale", "product-card-badge--warning"));
+    } else if (product.low_stock) {
+      badges.push(buildBadge("Low stock", "product-card-badge--danger"));
     }
 
-    function buildImageHTML(product) {
-        if (!product.image) {
-            return `
-                <div class="product-img-wrapper d-flex align-items-center justify-content-center">
-                    <span class="text-muted small">No image available</span>
-                </div>
-            `;
-        }
-
-        return `
-            <img src="${escapeHTML(product.image)}"
-                 class="card-img-top"
-                 alt="${escapeHTML(product.name)}"
-                 loading="lazy">
-        `;
+    if (product.organic) {
+      badges.push(buildBadge("Organic", "product-card-badge--soft"));
     }
 
-    function renderProducts(list) {
-        const grid = document.getElementById("productGrid");
-        grid.innerHTML = "";
+    return badges.slice(0, 3).join("");
+  }
 
-        if (list.length === 0) {
-            grid.innerHTML = "<p class='text-muted text-center mt-3'>No products found.</p>";
-            return;
-        }
-
-        list.forEach(product => {
-            const shortDesc = product.description
-                ? `${product.description.substring(0, 60)}...`
-                : "No description available.";
-
-            const cardClass = product.is_disabled
-                ? "card h-100 shadow-sm product-card product-card--disabled"
-                : "card h-100 shadow-sm product-card";
-
-            grid.innerHTML += `
-                <div class="col">
-                    <div class="${cardClass}">
-
-                        <div class="card-header bg-white text-center fw-bold border-0 pt-3">
-                            ${escapeHTML(product.name)}
-                        </div>
-
-                        ${buildImageHTML(product)}
-
-                        <div class="card-body d-flex flex-column">
-
-                            <div class="mb-2">
-                                ${buildBadges(product)}
-                            </div>
-
-                            <p class="text-muted small mb-2">
-                                By: ${escapeHTML(product.producer)}
-                            </p>
-
-                            <p class="card-text small mb-3">
-                                ${escapeHTML(shortDesc)}
-                            </p>
-
-                            <p class="text-muted small mb-2">
-                                Stock: ${escapeHTML(product.stock)}
-                                ${product.expiry ? ` · Expires: ${escapeHTML(product.expiry)}` : ""}
-                            </p>
-
-                            ${buildPriceHTML(product)}
-
-                            ${buildActionHTML(product)}
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
+  function buildImageHTML(product) {
+    if (!product.image) {
+      return `
+        <div class="product-card-image-placeholder">
+          No image
+        </div>
+      `;
     }
 
-    
+    return `
+      <img
+        src="${escapeHTML(product.image)}"
+        class="product-card-image"
+        alt="${escapeHTML(product.name)}"
+        loading="lazy"
+      >
+    `;
+  }
 
-    
+  function buildPriceHTML(product) {
+    if (product.has_discount) {
+      return `
+        <div class="product-card-price-row">
+          <span class="product-card-price">£${formatPrice(product.price)}</span>
+          <span class="product-card-price-compare">£${formatPrice(product.original_price)}</span>
+          <span class="product-card-discount">${escapeHTML(product.discount_percent)}% off</span>
+        </div>
+      `;
+    }
 
-    renderProducts(products);
+    return `
+      <div class="product-card-price-row">
+        <span class="product-card-price">£${formatPrice(product.price)}</span>
+      </div>
+    `;
+  }
+
+  function buildStockHTML(product) {
+    if (product.is_disabled) {
+      return `
+        <div class="product-card-meta-row">
+          <span class="product-card-meta-label">Status</span>
+          <span class="product-card-meta-value">
+            ${escapeHTML(product.disabled_reason || "Unavailable")}
+          </span>
+        </div>
+      `;
+    }
+
+    const expiryText = product.expiry
+      ? `Expires ${escapeHTML(formatDate(product.expiry))}`
+      : "Expiry unavailable";
+
+    return `
+      <div class="product-card-meta-row">
+        <span class="product-card-meta-label">Stock</span>
+        <span class="product-card-meta-value">
+          ${escapeHTML(product.stock)} left
+        </span>
+      </div>
+
+      <div class="product-card-meta-row">
+        <span class="product-card-meta-label">Expiry</span>
+        <span class="product-card-meta-value">
+          ${expiryText}
+        </span>
+      </div>
+    `;
+  }
+
+  function buildActionHTML(product) {
+  if (product.is_disabled) {
+    return `
+      <button
+        class="btn btn-primary product-action-btn w-100 mt-auto"
+        disabled
+      >
+        ${escapeHTML(product.disabled_reason || "Unavailable")}
+      </button>
+    `;
+  }
+
+  return `
+    <a
+      href="/products/${escapeHTML(product.id)}/"
+      class="btn btn-primary product-action-btn w-100 mt-auto"
+    >
+      View details
+    </a>
+  `;
+}
+
+  function renderProducts(list) {
+    const grid = document.getElementById("productGrid");
+
+    if (!grid) {
+      return;
+    }
+
+    grid.innerHTML = "";
+
+    if (!list.length) {
+      grid.innerHTML = `
+        <div class="product-empty-state">
+          <h2 class="h5 mb-2">No products found</h2>
+          <p class="mb-0">
+            Try changing the search, category, producer, or price filters.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    list.forEach((product) => {
+      const cardClass = product.is_disabled
+        ? "product-card product-card--disabled"
+        : "product-card";
+
+      grid.innerHTML += `
+        <article class="${cardClass}">
+
+          <div class="product-card-image-wrap">
+            ${buildImageHTML(product)}
+          </div>
+
+          <div class="product-card-body">
+
+            <div class="product-card-badges">
+              ${buildBadges(product)}
+            </div>
+
+            <h2 class="product-card-title">
+              ${escapeHTML(product.name)}
+            </h2>
+
+            <p class="product-card-producer">
+              Sold by <strong>${escapeHTML(product.producer)}</strong>
+            </p>
+
+            <p class="product-card-description">
+              ${escapeHTML(truncateText(product.description))}
+            </p>
+
+            <div class="product-card-meta">
+              <div class="product-card-meta-row">
+                <span class="product-card-meta-label">Category</span>
+                <span class="product-card-meta-value">
+                  ${escapeHTML(product.category)}
+                </span>
+              </div>
+
+              ${buildStockHTML(product)}
+            </div>
+
+            <div class="product-card-footer">
+              ${buildPriceHTML(product)}
+              ${buildActionHTML(product)}
+            </div>
+
+          </div>
+        </article>
+      `;
+    });
+  }
+
+  renderProducts(products);
 });
