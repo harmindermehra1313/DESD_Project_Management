@@ -830,17 +830,33 @@ class ProductDetailView(DetailView):
 #     })
 
 
+def _can_view_wholesale_prices(user):
+    """
+    Return True when the logged-in customer is allowed to see wholesale pricing.
+
+    User.role is usually CUSTOMER for all customer accounts. The business or
+    community-group distinction is stored on Customer.organisation_type.
+    """
+    if not user.is_authenticated:
+        return False
+
+    customer = getattr(user, "customer_profile", None)
+
+    if not customer:
+        return False
+
+    return customer.organisation_type in {
+        "BUSINESS",
+        "COMMUNITY_GROUP",
+    }
+
+
 def product_view(request, category_id):
     categories = Category.objects.exclude(name__icontains="organic")
     certified_organic = Category.objects.filter(name__icontains="organic")
     today = timezone.localdate()
 
-    wholesale_visible_roles = {"BUSINESS", "COMMUNITY_GROUP"}
-
-    user_role = str(getattr(request.user, "role", "") or "").upper()
-    can_view_wholesale = (
-        request.user.is_authenticated and user_role in wholesale_visible_roles
-    )
+    can_view_wholesale = _can_view_wholesale_prices(request.user)
 
     if category_id == 0:
         selected_category = None
@@ -903,10 +919,7 @@ def product_view(request, category_id):
         is_surplus_active = surplus_batch is not None
 
         wholesale_tiers = getattr(p, "wholesale_tiers", [])
-        active_wholesale_tier = next(
-            (tier for tier in wholesale_tiers if total_live_stock >= tier.min_quantity),
-            None,
-        )
+        active_wholesale_tier = wholesale_tiers[0] if wholesale_tiers else None
 
         is_available_status = (
             p.availability_status == Product.Availability_status.AVAILABLE
@@ -980,9 +993,7 @@ def product_view(request, category_id):
                 "surplus_active": is_surplus_active,
                 "wholesale_active": is_wholesale_active,
                 "wholesale_min_quantity": (
-                    active_wholesale_tier.min_quantity
-                    if is_wholesale_active
-                    else None
+                    active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
                 "is_disabled": is_disabled,
                 "disabled_reason": disabled_reason,
