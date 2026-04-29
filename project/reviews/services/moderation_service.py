@@ -45,7 +45,6 @@ from dataclasses import dataclass
 
 from detoxify import Detoxify
 
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)

@@ -34,7 +34,7 @@ from datetime import date
 from typing import Optional
 
 from django.contrib.auth import get_user_model
-from django.db.models import Prefetch, QuerySet
+from django.db.models import Count, OuterRef, Prefetch, Q, QuerySet, Subquery, Sum
 
 from orders.models import Order, OrderItem, ProducerOrderSummary, ProducerOrderStatusHistory
 from products.models import Inventory, Product
@@ -413,6 +413,7 @@ def get_recent_orders_for_user(*, user: User, limit: int = 5) -> QuerySet[Order]
             Slice of the newest orders for the user.
     """
     return get_order_history_for_user(user=user)[:limit]
+
 def get_reorder_suggestion_inventories(
     *,
     source_product: Product,
@@ -420,57 +421,161 @@ def get_reorder_suggestion_inventories(
     limit: int = 3,
 ) -> list[Inventory]:
     """
-    Return alternative inventory batches for reorder suggestions.
+    Return live reorder suggestions for one historical order item.
 
-    Matching rules:
-    - prefer the same product type when the source product has one
-    - otherwise fall back to the broader category
-    - only include products from a different producer
-    - only include published, available products with live stock
-    - only include non-expired inventory batches
-    - exclude the original product itself
+    Recommendation rule:
+    - prefer the same product type
+    - fall back to the same category when no same-type suggestions exist
+    - return up to 2 popular products
+    - return 1 newer/discovery product
+    - use Inventory as the source of truth for live stock
 
-    The function returns inventory batches rather than product rows so the
-    caller can price the suggestion using the live inventory context.
+    Important:
+    - the original product is excluded
+    - the original producer is not excluded, because suggestions are across all producers
     """
+    if limit <= 0:
+        return []
+
     today = timezone.localdate()
 
-    queryset = (
-        Inventory.objects.select_related(
+    preferred_inventory_subquery = (
+        Inventory.objects.filter(
+            product_id=OuterRef("pk"),
+            status=Inventory.BatchStatus.ACTIVE,
+            remaining_quantity__gt=0,
+            expiry_date__gte=today,
+        )
+        .order_by("expiry_date", "created_at", "pk")
+        .values("pk")[:1]
+    )
+
+    base_queryset = (
+        Product.objects.select_related(
+            "producer",
+            "category",
+            "product_type",
+        )
+        .filter(
+            status=Product.Status.PUBLISHED,
+        )
+        .exclude(
+            availability_status=Product.Availability_status.DISCONTINUED,
+        )
+        .exclude(pk=source_product.pk)
+        .annotate(
+            preferred_inventory_id=Subquery(preferred_inventory_subquery),
+        )
+        .filter(preferred_inventory_id__isnull=False)
+    )
+
+    completed_order_filter = Q(order_items__order__status=Order.Status.COMPLETED)
+
+    def select_products(product_queryset: QuerySet[Product]) -> list[Product]:
+        selected_products: list[Product] = []
+
+        popular_products = list(
+            product_queryset.annotate(
+                completed_order_count=Count(
+                    "order_items",
+                    filter=completed_order_filter,
+                ),
+                total_quantity_sold=Sum(
+                    "order_items__quantity",
+                    filter=completed_order_filter,
+                ),
+            )
+            .filter(completed_order_count__gt=0)
+            .order_by(
+                "-completed_order_count",
+                "-total_quantity_sold",
+                "name",
+                "pk",
+            )[: min(2, limit)]
+        )
+
+        selected_products.extend(popular_products)
+
+        selected_product_ids = [product.pk for product in selected_products]
+
+        if len(selected_products) < limit:
+            discovery_product = (
+                product_queryset.exclude(pk__in=selected_product_ids)
+                .annotate(
+                    completed_order_count=Count(
+                        "order_items",
+                        filter=completed_order_filter,
+                    )
+                )
+                .filter(completed_order_count=0)
+                .order_by("-created_at", "name", "pk")
+                .first()
+            )
+
+            if discovery_product is None:
+                discovery_product = (
+                    product_queryset.exclude(pk__in=selected_product_ids)
+                    .order_by("-created_at", "name", "pk")
+                    .first()
+                )
+
+            if discovery_product is not None:
+                selected_products.append(discovery_product)
+                selected_product_ids.append(discovery_product.pk)
+
+        if len(selected_products) < limit:
+            fallback_products = list(
+                product_queryset.exclude(pk__in=selected_product_ids)
+                .order_by("-created_at", "name", "pk")[
+                    : limit - len(selected_products)
+                ]
+            )
+
+            selected_products.extend(fallback_products)
+
+        return selected_products[:limit]
+
+    scoped_querysets: list[QuerySet[Product]] = []
+
+    if getattr(source_product, "product_type_id", None):
+        scoped_querysets.append(
+            base_queryset.filter(product_type_id=source_product.product_type_id)
+        )
+
+    if getattr(source_product, "category_id", None):
+        scoped_querysets.append(
+            base_queryset.filter(category_id=source_product.category_id)
+        )
+
+    selected_products: list[Product] = []
+
+    for scoped_queryset in scoped_querysets:
+        selected_products = select_products(scoped_queryset)
+
+        if selected_products:
+            break
+
+    if not selected_products:
+        return []
+
+    inventory_ids = [
+        product.preferred_inventory_id
+        for product in selected_products
+        if product.preferred_inventory_id
+    ]
+
+    inventories_by_id = {
+        inventory.pk: inventory
+        for inventory in Inventory.objects.select_related(
             "product",
             "product__producer",
             "product__category",
             "product__product_type",
-        )
-        .filter(
-            remaining_quantity__gt=0,
-            expiry_date__gte=today,
-            product__status=Product.Status.PUBLISHED,
-            product__availability_status=Product.Availability_status.AVAILABLE,
-        )
-        .exclude(product_id=source_product.pk)
-        .exclude(product__producer_id=original_producer_id)
-        .order_by("expiry_date", "product__name", "pk")
-    )
+        ).filter(pk__in=inventory_ids)
+    }
 
-    if getattr(source_product, "product_type_id", None):
-        queryset = queryset.filter(product__product_type_id=source_product.product_type_id)
-    elif getattr(source_product, "category_id", None):
-        queryset = queryset.filter(product__category_id=source_product.category_id)
-    else:
-        return []
-
-    suggestions: list[Inventory] = []
-    seen_product_ids: set[int] = set()
-
-    for inventory in queryset:
-        if inventory.product_id in seen_product_ids:
-            continue
-
-        suggestions.append(inventory)
-        seen_product_ids.add(inventory.product_id)
-
-        if len(suggestions) >= limit:
-            break
-
-    return suggestions
+    return [
+        inventories_by_id[inventory_id]
+        for inventory_id in inventory_ids
+        if inventory_id in inventories_by_id
+    ]
