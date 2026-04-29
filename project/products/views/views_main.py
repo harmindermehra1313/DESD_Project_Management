@@ -830,6 +830,7 @@ class ProductDetailView(DetailView):
 #         "organic": certified_organic,
 #     })
 
+# Updated on 30/06/2026 - 14:00 - Added search, filter, sort, pagination, wholesale visibility, and performance optimizations
 
 def _can_view_wholesale_prices(user):
     """
@@ -866,19 +867,26 @@ def product_view(request, category_id):
     max_price = (request.GET.get("max_price") or "").strip()
     sort = (request.GET.get("sort") or "").strip()
 
+    live_product_filters = {
+        "status": Product.Status.PUBLISHED,
+        "availability_status": Product.Availability_status.AVAILABLE,
+        "inventory_batches__status": Inventory.BatchStatus.ACTIVE,
+        "inventory_batches__remaining_quantity__gt": 0,
+        "inventory_batches__expiry_date__gte": today,
+    }
+
     if category_id == 0:
         selected_category = None
-        products_qs = Product.objects.filter(status=Product.Status.PUBLISHED)
+        products_qs = Product.objects.filter(**live_product_filters).distinct()
         show_filters = True
     else:
         selected_category = get_object_or_404(Category, id=category_id)
         products_qs = Product.objects.filter(
-            status=Product.Status.PUBLISHED,
+            **live_product_filters,
             category=selected_category,
-        )
+        ).distinct()
         show_filters = False
 
-    # Producer dropdown should be based on the base product list.
     producers = (
         products_qs.values_list("producer__farm_name", flat=True)
         .exclude(producer__farm_name__isnull=True)
@@ -929,6 +937,8 @@ def product_view(request, category_id):
                 "inventory_batches",
                 queryset=Inventory.objects.filter(
                     status=Inventory.BatchStatus.ACTIVE,
+                    remaining_quantity__gt=0,
+                    expiry_date__gte=today,
                 ).order_by("expiry_date"),
                 to_attr="active_inventory_batches",
             ),
@@ -948,16 +958,13 @@ def product_view(request, category_id):
     product_json = []
 
     for p in page_obj.object_list:
-        active_batches = getattr(p, "active_inventory_batches", [])
-
-        live_batches = [
-            batch
-            for batch in active_batches
-            if batch.remaining_quantity > 0 and batch.expiry_date >= today
-        ]
+        live_batches = getattr(p, "active_inventory_batches", [])
 
         total_live_stock = sum(batch.remaining_quantity for batch in live_batches)
         earliest_live_batch = live_batches[0] if live_batches else None
+
+        if not earliest_live_batch or total_live_stock <= 0:
+            continue
 
         surplus_batch = next(
             (
@@ -975,35 +982,12 @@ def product_view(request, category_id):
         wholesale_tiers = getattr(p, "wholesale_tiers", [])
         active_wholesale_tier = wholesale_tiers[0] if wholesale_tiers else None
 
-        is_available_status = (
-            p.availability_status == Product.Availability_status.AVAILABLE
-        )
-
-        is_disabled = (
-            not is_available_status
-            or earliest_live_batch is None
-            or total_live_stock <= 0
-        )
-
-        disabled_reason = ""
-
-        if is_disabled:
-            if p.availability_status == Product.Availability_status.DISCONTINUED:
-                disabled_reason = "Discontinued"
-            elif p.availability_status == Product.Availability_status.OUT_OF_STOCK:
-                disabled_reason = "Out of stock"
-            elif active_batches and not live_batches:
-                disabled_reason = "Expired or out of stock"
-            else:
-                disabled_reason = "Unavailable"
-
         is_wholesale_active = (
-            can_view_wholesale and not is_disabled and active_wholesale_tier is not None
+            can_view_wholesale and active_wholesale_tier is not None
         )
 
         low_stock = (
-            not is_disabled
-            and p.low_stock_threshold is not None
+            p.low_stock_threshold is not None
             and p.low_stock_threshold > 0
             and total_live_stock <= p.low_stock_threshold
         )
@@ -1025,11 +1009,8 @@ def product_view(request, category_id):
         farm_origin = p.farm_origin or ""
         local = farm_origin.strip().lower() == producer_name.strip().lower()
 
-        if earliest_live_batch:
-            days_old = (today - earliest_live_batch.harvest_date).days
-            fresh_today = days_old <= 1
-        else:
-            fresh_today = False
+        days_old = (today - earliest_live_batch.harvest_date).days
+        fresh_today = days_old <= 1
 
         product_json.append(
             {
@@ -1047,19 +1028,17 @@ def product_view(request, category_id):
                 "surplus_active": is_surplus_active,
                 "wholesale_active": is_wholesale_active,
                 "wholesale_min_quantity": (
-                    active_wholesale_tier.min_quantity if is_wholesale_active else None
+                    active_wholesale_tier.min_quantity
+                    if is_wholesale_active
+                    else None
                 ),
-                "is_disabled": is_disabled,
-                "disabled_reason": disabled_reason,
+                "is_disabled": False,
+                "disabled_reason": "",
                 "image": p.image.url if p.image else "",
                 "producer": producer_name,
                 "category": p.category.name,
                 "stock": total_live_stock,
-                "expiry": (
-                    earliest_live_batch.expiry_date.strftime("%Y-%m-%d")
-                    if earliest_live_batch
-                    else ""
-                ),
+                "expiry": earliest_live_batch.expiry_date.strftime("%Y-%m-%d"),
             }
         )
 
@@ -1089,7 +1068,6 @@ def product_view(request, category_id):
             },
         },
     )
-
 
 # Pippal
 def product_detail_page(request, product_id):
