@@ -23,6 +23,7 @@ from django.db.models import Prefetch
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from community.models import Recipe
+from django.core.paginator import Paginator
 
 
 @api_view(["GET"])
@@ -858,6 +859,13 @@ def product_view(request, category_id):
 
     can_view_wholesale = _can_view_wholesale_prices(request.user)
 
+    search_query = (request.GET.get("q") or "").strip()
+    category_filter = (request.GET.get("category") or "").strip()
+    producer_filter = (request.GET.get("producer") or "").strip()
+    min_price = (request.GET.get("min_price") or "").strip()
+    max_price = (request.GET.get("max_price") or "").strip()
+    sort = (request.GET.get("sort") or "").strip()
+
     if category_id == 0:
         selected_category = None
         products_qs = Product.objects.filter(status=Product.Status.PUBLISHED)
@@ -870,7 +878,49 @@ def product_view(request, category_id):
         )
         show_filters = False
 
-    producers = products_qs.values_list("producer__farm_name", flat=True).distinct()
+    # Producer dropdown should be based on the base product list.
+    producers = (
+        products_qs.values_list("producer__farm_name", flat=True)
+        .exclude(producer__farm_name__isnull=True)
+        .exclude(producer__farm_name="")
+        .distinct()
+        .order_by("producer__farm_name")
+    )
+
+    if search_query:
+        products_qs = products_qs.filter(
+            Q(name__icontains=search_query)
+            | Q(description__icontains=search_query)
+            | Q(producer__farm_name__icontains=search_query)
+            | Q(category__name__icontains=search_query)
+        )
+
+    if show_filters and category_filter:
+        products_qs = products_qs.filter(category__name=category_filter)
+
+    if show_filters and producer_filter:
+        products_qs = products_qs.filter(producer__farm_name=producer_filter)
+
+    try:
+        if min_price:
+            products_qs = products_qs.filter(price__gte=Decimal(min_price))
+    except InvalidOperation:
+        min_price = ""
+
+    try:
+        if max_price:
+            products_qs = products_qs.filter(price__lte=Decimal(max_price))
+    except InvalidOperation:
+        max_price = ""
+
+    if sort == "price_low":
+        order_by = ("price", "id")
+    elif sort == "price_high":
+        order_by = ("-price", "id")
+    elif sort == "newest":
+        order_by = ("-created_at", "-id")
+    else:
+        order_by = ("-created_at", "-id")
 
     products = (
         products_qs.select_related("producer", "category")
@@ -888,12 +938,16 @@ def product_view(request, category_id):
                 to_attr="wholesale_tiers",
             ),
         )
-        .order_by("-created_at")
+        .order_by(*order_by)
     )
+
+    paginator = Paginator(products, 12)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     product_json = []
 
-    for p in products:
+    for p in page_obj.object_list:
         active_batches = getattr(p, "active_inventory_batches", [])
 
         live_batches = [
@@ -1009,6 +1063,10 @@ def product_view(request, category_id):
             }
         )
 
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    pagination_query = query_params.urlencode()
+
     return render(
         request,
         "products/product_view.html",
@@ -1019,6 +1077,16 @@ def product_view(request, category_id):
             "selected_category": selected_category,
             "show_filters": show_filters,
             "organic": certified_organic,
+            "page_obj": page_obj,
+            "pagination_query": pagination_query,
+            "filters": {
+                "q": search_query,
+                "category": category_filter,
+                "producer": producer_filter,
+                "min_price": min_price,
+                "max_price": max_price,
+                "sort": sort,
+            },
         },
     )
 

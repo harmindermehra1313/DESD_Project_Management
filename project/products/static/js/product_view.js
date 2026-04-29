@@ -16,28 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return Number.isFinite(number) ? number.toFixed(2) : "0.00";
     }
 
-    function looseMatch(text, search) {
-        text = String(text ?? "").toLowerCase();
-        search = String(search ?? "").toLowerCase();
-
-        if (text.includes(search)) return true;
-
-        let t = 0;
-        let s = 0;
-        let mismatches = 0;
-
-        while (t < text.length && s < search.length) {
-            if (text[t] === search[s]) {
-                s++;
-            } else {
-                mismatches++;
-                if (mismatches > 2) return false;
-            }
-            t++;
-        }
-
-        return s === search.length;
-    }
+    
 
     function buildBadge(text, cssClass) {
         return `<span class="badge ${cssClass} me-1 mb-1">${escapeHTML(text)}</span>`;
@@ -190,74 +169,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function applyFilters() {
-        let list = [...products];
+    
 
-        const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
-        const minPrice = parseFloat(document.getElementById("minPrice")?.value);
-        const maxPrice = parseFloat(document.getElementById("maxPrice")?.value);
-        const sort = document.getElementById("sortSelect")?.value;
-
-        let category = "";
-        let producer = "";
-
-        if (showFilters) {
-            category = document.getElementById("categoryFilter")?.value || "";
-            producer = document.getElementById("producerFilter")?.value || "";
-        }
-
-        if (search) {
-            list = list.filter(product =>
-                looseMatch(product.name, search) ||
-                looseMatch(product.description, search) ||
-                looseMatch(product.producer, search) ||
-                looseMatch(product.category, search)
-            );
-        }
-
-        if (search && list.length === 0) {
-            list = products.slice(0, 10);
-        }
-
-        if (showFilters && category) {
-            list = list.filter(product => product.category === category);
-        }
-
-        if (showFilters && producer) {
-            list = list.filter(product => product.producer === producer);
-        }
-
-        if (!isNaN(minPrice)) {
-            list = list.filter(product => product.price >= minPrice);
-        }
-
-        if (!isNaN(maxPrice)) {
-            list = list.filter(product => product.price <= maxPrice);
-        }
-
-        if (sort === "price_low") {
-            list.sort((a, b) => a.price - b.price);
-        }
-
-        if (sort === "price_high") {
-            list.sort((a, b) => b.price - a.price);
-        }
-
-        if (sort === "newest") {
-            list.sort((a, b) => b.id - a.id);
-        }
-
-        renderProducts(list);
-    }
-
-    ["searchInput", "categoryFilter", "producerFilter", "minPrice", "maxPrice", "sortSelect"]
-        .forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.addEventListener("input", applyFilters);
-                element.addEventListener("change", applyFilters);
-            }
-        });
+    
 
     renderProducts(products);
 });
