@@ -629,41 +629,86 @@ def cart_merge_guest_into_user(*, session_key: str, user_id: int) -> Cart:
         CartItem.objects.select_for_update().filter(cart_id=guest_cart.pk)
     )
 
-    # touched_product_ids: set[int] = set()
     touched_inventory_ids: set[int] = set()
 
-    # 1) Merge quantities
+    # 1) Merge quantities safely without exceeding current stock.
     for gi in guest_items:
-        # touched_product_ids.add(gi.product_id)
-        touched_inventory_ids.add(gi.inventory_id)
+        guest_qty = gi.quantity or Decimal("0")
 
-        updated = CartItem.objects.filter(
-            # cart_id=user_cart.pk, product_id=gi.product_id
-            cart_id=user_cart.pk,
-            inventory_id=gi.inventory_id,
-        ).update(
-            quantity=F("quantity") + gi.quantity,
-            updated_at=_now(),
+        if guest_qty <= 0:
+            continue
+
+        try:
+            inventory = _get_sellable_inventory(inventory_id=gi.inventory_id)
+        except ValidationError:
+            # Guest item is no longer sellable, so do not merge it.
+            continue
+
+        available_stock = Decimal(str(inventory.remaining_quantity or 0))
+
+        if available_stock <= 0:
+            continue
+
+        user_item = (
+            CartItem.objects.select_for_update()
+            .filter(cart_id=user_cart.pk, inventory_id=gi.inventory_id)
+            .first()
         )
 
-        if not updated:
-            try:
-                CartItem.objects.create(
-                    cart_id=user_cart.pk,
-                    # product_id=gi.product_id,
-                    inventory_id=gi.inventory_id,
-                    quantity=gi.quantity,
-                    unit_price=gi.unit_price,  # temporary; normalized below
-                )
-            except IntegrityError:
-                CartItem.objects.filter(
-                    # cart_id=user_cart.pk, product_id=gi.product_id
-                    cart_id=user_cart.pk,
-                    inventory_id=gi.inventory_id,
-                ).update(
-                    quantity=F("quantity") + gi.quantity,
-                    updated_at=_now(),
-                )
+        existing_qty = user_item.quantity if user_item else Decimal("0")
+        requested_total_quantity = existing_qty + guest_qty
+
+        # Never allow the merged cart quantity to exceed stock.
+        final_qty = min(requested_total_quantity, available_stock)
+
+        if final_qty <= 0:
+            continue
+
+        touched_inventory_ids.add(gi.inventory_id)
+
+        wholesale_allowed = _cart_allows_wholesale(user_cart)
+        correct_unit_price = _get_effective_unit_price(
+            inventory_id=gi.inventory_id,
+            qty=final_qty,
+            wholesale_allowed=wholesale_allowed,
+        )
+
+        if user_item:
+            CartItem.objects.filter(pk=user_item.pk).update(
+                quantity=final_qty,
+                unit_price=correct_unit_price,
+                updated_at=_now(),
+            )
+            continue
+
+        try:
+            CartItem.objects.create(
+                cart_id=user_cart.pk,
+                inventory_id=gi.inventory_id,
+                quantity=final_qty,
+                unit_price=correct_unit_price,
+            )
+        except IntegrityError:
+            user_item = (
+                CartItem.objects.select_for_update()
+                .get(cart_id=user_cart.pk, inventory_id=gi.inventory_id)
+            )
+
+            existing_qty = user_item.quantity or Decimal("0")
+            requested_total_quantity = existing_qty + guest_qty
+            final_qty = min(requested_total_quantity, available_stock)
+
+            correct_unit_price = _get_effective_unit_price(
+                inventory_id=gi.inventory_id,
+                qty=final_qty,
+                wholesale_allowed=wholesale_allowed,
+            )
+
+            CartItem.objects.filter(pk=user_item.pk).update(
+                quantity=final_qty,
+                unit_price=correct_unit_price,
+                updated_at=_now(),
+            )
 
     # 2) Normalize unit_price based on FINAL quantities (wholesale tiers)
     user_lines = list(

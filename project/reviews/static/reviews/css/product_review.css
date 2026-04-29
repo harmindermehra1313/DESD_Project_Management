@@ -228,6 +228,32 @@
     color: var(--lavender-grey) !important;
 }
 
+
+.producer-review-card {
+  border-radius: 1rem;
+}
+
+.producer-response-existing {
+  background: #f8f9fa;
+  border-left: 4px solid #198754;
+}
+
+.product-review-producer-response {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-left: 4px solid #198754;
+  border-radius: 0.75rem;
+  background: #f8fdf9;
+}
+
+.product-review-producer-response-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 @media (max-width: 767.98px) {
     .product-reviews-panel {
         padding: 1rem;
@@ -247,3 +273,6 @@
         padding: 0.95rem;
     }
 }
+
+
+
