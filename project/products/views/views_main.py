@@ -24,6 +24,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from community.models import Recipe
 from django.core.paginator import Paginator
+from products.services.product_type_inference import get_or_create_inferred_product_type
 
 
 @api_view(["GET"])
@@ -265,6 +266,10 @@ def add_product(request):
         category_id = request.POST.get("category")
 
         category_obj = get_object_or_404(Category, id=category_id)
+        product_type = get_or_create_inferred_product_type(
+            name=name,
+            category=category_obj,
+        )
         default_image_path = _get_category_default_image(category_obj)
 
         producer = request.user.producer_profile
@@ -273,6 +278,7 @@ def add_product(request):
         new_product = Product.objects.create(
             producer=producer,
             category=category_obj,
+            product_type=product_type,
             name=name,
             price=base_price_value,
             availability_status=availability_status,
@@ -322,7 +328,7 @@ def producer_products(request):
 
     products = (
         Product.objects.filter(producer=producer)
-        .select_related("category")
+        .select_related("category", "product_type")
         .prefetch_related(
             Prefetch(
                 "inventory_batches",
@@ -436,6 +442,11 @@ def edit_producer_product(request, pk):
         else:
             category = product.category
 
+        product_type = get_or_create_inferred_product_type(
+            name=name,
+            category=category,
+        )
+
         wholesale_price_raw = str(data.get("wholesale_price", "") or "").strip()
         wholesale_min_qty_raw = str(
             data.get("wholesale_min_quantity", "") or ""
@@ -521,6 +532,7 @@ def edit_producer_product(request, pk):
         product.low_stock_threshold = low_stock_threshold
         product.description = data.get("description", product.description)
         product.category = category
+        product.product_type = product_type
         product.save()
 
         if wholesale_price is not None:
@@ -562,6 +574,12 @@ def edit_producer_product(request, pk):
                 "unit": product.unit,
                 "category": product.category.name,
                 "category_id": product.category.pk,
+                "product_type": (
+                    product.product_type.name
+                    if product.product_type
+                    else product.category.name
+                ),
+                "product_type_id": product.product_type_id,
                 "availability_status": product.availability_status,
                 "availability_display": product.get_availability_status_display(),
                 "organic_certification_status": product.organic_certification_status,
@@ -832,6 +850,7 @@ class ProductDetailView(DetailView):
 
 # Updated on 30/06/2026 - 14:00 - Added search, filter, sort, pagination, wholesale visibility, and performance optimizations
 
+
 def _can_view_wholesale_prices(user):
     """
     Return True when the logged-in customer is allowed to see wholesale pricing.
@@ -982,9 +1001,7 @@ def product_view(request, category_id):
         wholesale_tiers = getattr(p, "wholesale_tiers", [])
         active_wholesale_tier = wholesale_tiers[0] if wholesale_tiers else None
 
-        is_wholesale_active = (
-            can_view_wholesale and active_wholesale_tier is not None
-        )
+        is_wholesale_active = can_view_wholesale and active_wholesale_tier is not None
 
         low_stock = (
             p.low_stock_threshold is not None
@@ -1028,9 +1045,7 @@ def product_view(request, category_id):
                 "surplus_active": is_surplus_active,
                 "wholesale_active": is_wholesale_active,
                 "wholesale_min_quantity": (
-                    active_wholesale_tier.min_quantity
-                    if is_wholesale_active
-                    else None
+                    active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
                 "is_disabled": False,
                 "disabled_reason": "",
@@ -1068,6 +1083,7 @@ def product_view(request, category_id):
             },
         },
     )
+
 
 # Pippal
 def product_detail_page(request, product_id):
