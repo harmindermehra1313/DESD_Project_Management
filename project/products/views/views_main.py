@@ -295,7 +295,7 @@ def add_product(request):
                 allergen=allergen_obj
             )
 
-        return redirect('producer_products')
+        return redirect('products:producer_products')
 
     return render(request, 'products/add_product.html', _build_add_product_context())
 

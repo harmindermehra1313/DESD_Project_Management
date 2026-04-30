@@ -1,7 +1,6 @@
 # products/urls.py
 
 from django.urls import path
-from . import views
 from .views.views_main import add_product, product_view, producer_products, edit_producer_product, cancel_producer_product, ProductDetailView, product_detail_page
 from .views import reductions, api_reductions, batch
 from community.views import api_product_recipes
