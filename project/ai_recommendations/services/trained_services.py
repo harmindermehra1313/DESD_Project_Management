@@ -133,8 +133,6 @@ def get_trained_recommendations(user_id, current_product=None, limit=4):
         if current_product is not None and product.id == current_product.id:
             continue
 
-        
-
         als_signal = float(als_scores_norm[item_idx])
         tfidf_signal = float(tfidf_scores_norm[item_idx])
         hybrid_signal = float(score)
@@ -149,7 +147,12 @@ def get_trained_recommendations(user_id, current_product=None, limit=4):
             TrainedRecommendationResult(
                 product=product,
                 score=round(hybrid_signal, 3),
-                reason=build_reason(signals, user_idx),
+                reason=build_reason(
+                    signals=signals,
+                    user_idx=user_idx,
+                    product=product,
+                    current_product=current_product,
+                ),
                 signals=signals,
             )
         )
@@ -224,11 +227,25 @@ def normalise(scores):
     return (scores - score_min) / (score_max - score_min)
 
 
-def build_reason(signals, user_idx):
+def build_reason(signals, user_idx, product=None, current_product=None):
+    """
+    Return a clear customer-facing explanation for the recommendation.
+    """
+    if current_product is not None and product is not None:
+        if (
+            current_product.product_type_id
+            and product.product_type_id
+            and product.product_type_id == current_product.product_type_id
+        ):
+            return "Recommended as a close match to this product."
+
+        if (
+            current_product.category_id
+            and product.category_id == current_product.category_id
+        ):
+            return "Recommended from the same product category."
+
     if user_idx is None:
-        return "Recommended by product metadata similarity while history grows."
+        return "Recommended based on product similarity."
 
-    if signals["als"] >= signals["tfidf"]:
-        return "Recommended from learned customer-product behaviour."
-
-    return "Recommended from product similarity and previous activity."
+    return "Recommended based on previous customer activity."

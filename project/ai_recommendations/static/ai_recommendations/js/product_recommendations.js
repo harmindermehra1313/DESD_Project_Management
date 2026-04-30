@@ -96,7 +96,7 @@
       createTextElement(
         "p",
         "ai-rec-card__reason",
-        `Why recommended: ${product.reason}`,
+        product.reason,
       ),
     );
 
