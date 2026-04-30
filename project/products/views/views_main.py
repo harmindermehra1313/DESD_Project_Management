@@ -11,13 +11,12 @@ from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Sum, Prefetch
+from django.db.models import Q, Sum, Prefetch, Case, When, Value, IntegerField
 from BRFN.decorators import admin_required, producer_required
 import json
 from notifications.services.notifications import NotificationService
 from notifications.models import Notification
 from admin_records.models import ModerationLog
-from django.db.models import Prefetch
 
 
 from rest_framework.decorators import api_view
@@ -917,9 +916,25 @@ def product_view(request, category_id):
     if search_query:
         products_qs = products_qs.filter(
             Q(name__icontains=search_query)
+            | Q(product_type__name__icontains=search_query)
+            | Q(category__name__icontains=search_query)
             | Q(description__icontains=search_query)
             | Q(producer__farm_name__icontains=search_query)
-            | Q(category__name__icontains=search_query)
+        ).annotate(
+            search_rank=Case(
+                When(name__iexact=search_query, then=Value(1)),
+                When(product_type__name__iexact=search_query, then=Value(2)),
+                When(name__istartswith=search_query, then=Value(3)),
+                When(product_type__name__istartswith=search_query, then=Value(4)),
+                When(name__icontains=search_query, then=Value(5)),
+                When(product_type__name__icontains=search_query, then=Value(6)),
+                When(category__name__iexact=search_query, then=Value(7)),
+                When(category__name__icontains=search_query, then=Value(8)),
+                When(description__icontains=search_query, then=Value(9)),
+                When(producer__farm_name__icontains=search_query, then=Value(10)),
+                default=Value(99),
+                output_field=IntegerField(),
+            )
         )
 
     if show_filters and category_filter:
@@ -950,8 +965,11 @@ def product_view(request, category_id):
         sort = "newest"
         order_by = ("-created_at", "-id")
 
+    if search_query:
+        order_by = ("search_rank", *order_by)
+
     products = (
-        products_qs.select_related("producer", "category")
+        products_qs.select_related("producer", "category", "product_type")
         .prefetch_related(
             Prefetch(
                 "inventory_batches",
