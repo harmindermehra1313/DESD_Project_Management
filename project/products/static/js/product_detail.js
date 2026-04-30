@@ -46,6 +46,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return Number.isFinite(n) ? `£${n.toFixed(2)}` : "£0.00";
   }
 
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
   function clampQty(value) {
     const n = Number(String(value ?? "").trim());
     if (!Number.isFinite(n) || n < 1) return 1;
@@ -245,12 +254,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const surplusNote =
+      productData.surplus_note?.trim() || M.surplusDiscountAppliedNote;
+
     surplusNoticeEl.innerHTML = `
-    <div class="alert alert-danger py-2 mb-0" role="status">
-      <div class="fw-semibold">${M.surplusReductionTitle}</div>
-      <div class="small">${M.surplusDiscountAppliedNote}</div>
-    </div>
-  `;
+  <div class="alert alert-danger py-2 mb-0" role="status">
+    <div class="fw-semibold">${M.surplusReductionTitle}</div>
+    <div class="small">${escapeHtml(surplusNote)}</div>
+  </div>
+`;
   }
 
   function renderPrice(qtyOverride = null) {
@@ -406,7 +418,8 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (data.food_miles_login_required) {
         foodMiles.textContent = "Log in to see your food miles.";
       } else if (data.customer_postcode) {
-        foodMiles.textContent = "Food miles are currently unavailable for this route.";
+        foodMiles.textContent =
+          "Food miles are currently unavailable for this route.";
       } else {
         foodMiles.textContent = "Add a delivery address to view food miles.";
       }
@@ -512,6 +525,12 @@ document.addEventListener("DOMContentLoaded", () => {
         quantity,
       });
 
+      try {
+        await window.AIRecommendations?.trackAddToCart?.(productId);
+      } catch (trackingError) {
+        // Recommendation tracking failure should not block cart behaviour.
+      }
+
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast(M.addedToCart, {
           title: window.CartApiMessages?.cartTitle || "Cart",
@@ -522,7 +541,12 @@ document.addEventListener("DOMContentLoaded", () => {
         setMsg(M.addedToCart, "success");
       }
     } catch (err) {
-      const friendlyMessage = M.getAddError(err, productData, formatDate,  quantity);
+      const friendlyMessage = M.getAddError(
+        err,
+        productData,
+        formatDate,
+        quantity,
+      );
 
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast(friendlyMessage, {
@@ -537,8 +561,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   function loadRecipeSuggestions(productId) {
     fetch(`/products/product/${productId}/recipes/`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         const wrap = document.getElementById("recipeSuggestions");
         if (!wrap) return;
 
@@ -547,7 +571,9 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        wrap.innerHTML = data.recipes.map(r => `
+        wrap.innerHTML = data.recipes
+          .map(
+            (r) => `
           <div class="d-flex align-items-center mb-3">
             <img src="${r.image}" 
                 style="width:70px;height:70px;object-fit:cover;border-radius:6px;"
@@ -557,11 +583,14 @@ document.addEventListener("DOMContentLoaded", () => {
               ${r.season ? `<span class="badge bg-secondary">${r.season}</span>` : ""}
             </div>
           </div>
-        `).join("");
+        `,
+          )
+          .join("");
       })
       .catch(() => {
         const wrap = document.getElementById("recipeSuggestions");
-        if (wrap) wrap.innerHTML = `<p class="text-danger">Failed to load recipes.</p>`;
+        if (wrap)
+          wrap.innerHTML = `<p class="text-danger">Failed to load recipes.</p>`;
       });
   }
 

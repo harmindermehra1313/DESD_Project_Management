@@ -79,6 +79,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     active_inventory_id = serializers.SerializerMethodField()
     surplus_active = serializers.SerializerMethodField()
     surplus_discount_percentage = serializers.SerializerMethodField()
+    surplus_note = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
 
     expiry_date = serializers.SerializerMethodField()
@@ -111,6 +112,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "active_inventory_id",
             "surplus_active",
             "surplus_discount_percentage",
+            "surplus_note",
             "remaining_quantity",
             "expiry_date",
             "expiry_type",
@@ -289,7 +291,18 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             active_inventory
             and active_inventory.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE
         )
+        
+    def get_surplus_note(self, obj):
+        active_inventory = self._get_active_inventory(obj)
 
+        if not active_inventory:
+            return None
+
+        if not active_inventory.surplus_note:
+            return None
+
+        return active_inventory.surplus_note.strip()
+    
     def get_surplus_discount_percentage(self, obj):
         active_inventory = self._get_active_inventory(obj)
         if not active_inventory:

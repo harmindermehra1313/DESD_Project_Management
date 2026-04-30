@@ -318,7 +318,7 @@ class ReorderSuggestedItemSerializer(serializers.Serializer):
     product_type_id = serializers.IntegerField(required=False, allow_null=True)
     product_type_name = serializers.CharField(required=False, allow_null=True)
     match_basis = serializers.CharField()
-
+    recommendation_badge = serializers.CharField(required=False, allow_blank=True)
 
 class ReorderUnavailableItemSerializer(serializers.Serializer):
     order_item_id = serializers.IntegerField(required=False)
@@ -380,6 +380,7 @@ class ReorderAddableItemSerializer(serializers.Serializer):
     pricing = ReorderPricingSerializer()
     match_basis = serializers.CharField(required=False)
     suggested_items = ReorderSuggestedItemSerializer(many=True, required=False)
+    recommendation_badge = serializers.CharField(required=False, allow_blank=True)
 
 
 class ReorderProducerChangedItemSerializer(serializers.Serializer):

@@ -1,399 +1,261 @@
-// document.addEventListener("DOMContentLoaded", () => {
-
-//     const products = JSON.parse(document.getElementById("productsData").textContent);
-//     const showFilters = document.getElementById("showFiltersFlag").textContent.trim() === "true";
-
-//     function formatPrice(value) {
-//         return Number(value).toFixed(2);
-//     }
-
-//     function renderProducts(list) {
-//         const grid = document.getElementById("productGrid");
-//         grid.innerHTML = "";
-
-//         if (list.length === 0) {
-//             grid.innerHTML = "<p class='text-muted text-center mt-3'>No products found.</p>";
-//             return;
-//         }
-
-//         list.forEach(p => {
-//             const shortDesc = p.description
-//                 ? p.description.substring(0, 60) + "..."
-//                 : "No description available.";
-
-//             grid.innerHTML += `
-//                 <div class="col">
-//                     <div class="card h-100 shadow-sm product-card">
-//                         <div class="card-header bg-white text-center fw-bold border-0 pt-3">
-//                             ${p.name}
-//                         </div>
-
-//                         <img src="${p.image}" class="card-img-top" alt="${p.name}" loading="lazy">
-
-//                         <div class="card-body d-flex flex-column">
-//                             <p class="text-muted small mb-2">By: ${p.producer}</p>
-//                             <p class="card-text small mb-3">${shortDesc}</p>
-//                             <h5 class="fw-bold mb-3 text-success">£${formatPrice(p.price)}</h5>
-
-//                             <a href="/products/${p.id}/"
-//                                class="btn btn-brand-outline w-100 mt-auto">
-//                                 More Information
-//                             </a>
-//                         </div>
-//                     </div>
-//                 </div>
-//             `;
-//         });
-//     }
-
-//     function applyFilters() {
-//         let list = [...products];
-
-//         const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
-//         const minPrice = parseFloat(document.getElementById("minPrice")?.value);
-//         const maxPrice = parseFloat(document.getElementById("maxPrice")?.value);
-//         const sort = document.getElementById("sortSelect")?.value;
-
-//         let category = "";
-//         let producer = "";
-
-//         if (showFilters) {
-//             category = document.getElementById("categoryFilter")?.value || "";
-//             producer = document.getElementById("producerFilter")?.value || "";
-//         }
-
-//         if (search) {
-//             list = list.filter(p =>
-//                 p.name.toLowerCase().includes(search) ||
-//                 p.description.toLowerCase().includes(search) ||
-//                 p.producer.toLowerCase().includes(search)
-//             );
-//         }
-
-//         if (showFilters && category) list = list.filter(p => p.category === category);
-//         if (showFilters && producer) list = list.filter(p => p.producer === producer);
-
-//         if (!isNaN(minPrice)) list = list.filter(p => p.price >= minPrice);
-//         if (!isNaN(maxPrice)) list = list.filter(p => p.price <= maxPrice);
-
-//         if (sort === "price_low") list.sort((a, b) => a.price - b.price);
-//         if (sort === "price_high") list.sort((a, b) => b.price - a.price);
-//         if (sort === "newest") list.sort((a, b) => b.id - a.id);
-
-//         renderProducts(list);
-//     }
-
-//     ["searchInput", "categoryFilter", "producerFilter", "minPrice", "maxPrice", "sortSelect"]
-//         .forEach(id => {
-//             const el = document.getElementById(id);
-//             if (el) el.addEventListener("input", applyFilters);
-//         });
-
-//     renderProducts(products);
-// });
-// document.addEventListener("DOMContentLoaded", () => {
-
-//     const products = JSON.parse(document.getElementById("productsData").textContent);
-//     const showFilters = document.getElementById("showFiltersFlag").textContent.trim() === "true";
-
-//     function formatPrice(value) {
-//         return Number(value).toFixed(2);
-//     }
-
-//     function renderProducts(list) {
-//         const grid = document.getElementById("productGrid");
-//         grid.innerHTML = "";
-
-//         if (list.length === 0) {
-//             grid.innerHTML = "<p class='text-muted text-center mt-3'>No products found.</p>";
-//             return;
-//         }
-
-//         list.forEach(p => {
-
-//             // -------------------------
-//             // BADGES
-//             // -------------------------
-//             let badges = "";
-
-//             if (p.organic) {
-//                 badges += `<span class="badge bg-success me-1">Organic</span>`;
-//             }
-//             if (p.local) {
-//                 badges += `<span class="badge bg-primary me-1">Local</span>`;
-//             }
-//             if (p.fresh_today) {
-//                 badges += `<span class="badge bg-warning text-dark me-1">Fresh Today</span>`;
-//             }
-//             if (p.low_stock) {
-//                 badges += `<span class="badge bg-danger me-1">Low Stock</span>`;
-//             }
-//             if (p.has_discount) {
-//                 badges += `<span class="badge bg-danger me-1">Sale</span>`;
-//             }
-
-//             // -------------------------
-//             // PRICE DISPLAY (discount + original)
-//             // -------------------------
-//             let priceHTML = "";
-
-//             if (p.has_discount) {
-//                 priceHTML = `
-//                     <div class="mb-3">
-//                         <span class="text-danger fw-bold">£${formatPrice(p.price)}</span>
-//                         <span class="text-muted text-decoration-line-through ms-2">
-//                             £${formatPrice(p.original_price)}
-//                         </span>
-//                         <span class="badge bg-danger ms-2">-${p.discount_percent}%</span>
-//                     </div>
-//                 `;
-//             } else {
-//                 priceHTML = `
-//                     <h5 class="fw-bold mb-3 text-success">£${formatPrice(p.price)}</h5>
-//                 `;
-//             }
-
-//             // -------------------------
-//             // SHORT DESCRIPTION
-//             // -------------------------
-//             const shortDesc = p.description
-//                 ? p.description.substring(0, 60) + "..."
-//                 : "No description available.";
-
-//             // -------------------------
-//             // PRODUCT CARD
-//             // -------------------------
-//             grid.innerHTML += `
-//                 <div class="col">
-//                     <div class="card h-100 shadow-sm product-card">
-
-//                         <div class="card-header bg-white text-center fw-bold border-0 pt-3">
-//                             ${p.name}
-//                         </div>
-
-//                         <img src="${p.image}" class="card-img-top" alt="${p.name}" loading="lazy">
-
-//                         <div class="card-body d-flex flex-column">
-
-//                             <div class="mb-2">${badges}</div>
-
-//                             <p class="text-muted small mb-2">By: ${p.producer}</p>
-//                             <p class="card-text small mb-3">${shortDesc}</p>
-
-//                             ${priceHTML}
-
-//                             <a href="/products/${p.id}/"
-//                                class="btn btn-brand-outline w-100 mt-auto">
-//                                 More Information
-//                             </a>
-//                         </div>
-//                     </div>
-//                 </div>
-//             `;
-//         });
-//     }
-
-//     function applyFilters() {
-//         let list = [...products];
-
-//         const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
-//         const minPrice = parseFloat(document.getElementById("minPrice")?.value);
-//         const maxPrice = parseFloat(document.getElementById("maxPrice")?.value);
-//         const sort = document.getElementById("sortSelect")?.value;
-
-//         let category = "";
-//         let producer = "";
-
-//         if (showFilters) {
-//             category = document.getElementById("categoryFilter")?.value || "";
-//             producer = document.getElementById("producerFilter")?.value || "";
-//         }
-
-//         if (search) {
-//             list = list.filter(p =>
-//                 p.name.toLowerCase().includes(search) ||
-//                 p.description.toLowerCase().includes(search) ||
-//                 p.producer.toLowerCase().includes(search)
-//             );
-//         }
-
-//         if (showFilters && category) list = list.filter(p => p.category === category);
-//         if (showFilters && producer) list = list.filter(p => p.producer === producer);
-
-//         if (!isNaN(minPrice)) list = list.filter(p => p.price >= minPrice);
-//         if (!isNaN(maxPrice)) list = list.filter(p => p.price <= maxPrice);
-
-//         if (sort === "price_low") list.sort((a, b) => a.price - b.price);
-//         if (sort === "price_high") list.sort((a, b) => b.price - a.price);
-//         if (sort === "newest") list.sort((a, b) => b.id - a.id);
-
-//         renderProducts(list);
-//     }
-
-//     ["searchInput", "categoryFilter", "producerFilter", "minPrice", "maxPrice", "sortSelect"]
-//         .forEach(id => {
-//             const el = document.getElementById(id);
-//             if (el) el.addEventListener("input", applyFilters);
-//         });
-
-//     renderProducts(products);
-// });
 document.addEventListener("DOMContentLoaded", () => {
+  const productsDataEl = document.getElementById("productsData");
 
-    const products = JSON.parse(document.getElementById("productsData").textContent);
-    const showFilters = document.getElementById("showFiltersFlag").textContent.trim() === "true";
+  if (!productsDataEl) {
+    return;
+  }
 
-    function formatPrice(value) {
-        return Number(value).toFixed(2);
+  const products = JSON.parse(productsDataEl.textContent || "[]");
+
+  function escapeHTML(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function formatPrice(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toFixed(2) : "0.00";
+  }
+
+  function formatDate(value) {
+    if (!value) {
+      return "";
     }
 
-    // ----------------------------------------------------
-    // FORGIVING SEARCH (no library needed)
-    // ----------------------------------------------------
-    function looseMatch(text, search) {
-        text = text.toLowerCase();
-        search = search.toLowerCase();
+    const date = new Date(`${value}T00:00:00`);
 
-        if (text.includes(search)) return true;
-
-        let t = 0, s = 0, mismatches = 0;
-
-        while (t < text.length && s < search.length) {
-            if (text[t] === search[s]) {
-                s++;
-            } else {
-                mismatches++;
-                if (mismatches > 2) return false; // allow 2 mistakes
-            }
-            t++;
-        }
-
-        return true;
+    if (Number.isNaN(date.getTime())) {
+      return value;
     }
 
-    function renderProducts(list) {
-        const grid = document.getElementById("productGrid");
-        grid.innerHTML = "";
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  }
 
-        if (list.length === 0) {
-            grid.innerHTML = "<p class='text-muted text-center mt-3'>No products found.</p>";
-            return;
-        }
+  function truncateText(value, maxLength = 72) {
+    const text = String(value || "").trim();
 
-        list.forEach(p => {
-
-            let badges = "";
-
-            if (p.organic) badges += `<span class="badge bg-success me-1">Organic</span>`;
-            if (p.local) badges += `<span class="badge bg-primary me-1">Local</span>`;
-            if (p.fresh_today) badges += `<span class="badge bg-warning text-dark me-1">Fresh Today</span>`;
-            if (p.low_stock) badges += `<span class="badge bg-danger me-1">Low Stock</span>`;
-            if (p.has_discount) badges += `<span class="badge bg-danger me-1">Sale</span>`;
-
-            let priceHTML = "";
-
-            if (p.has_discount) {
-                priceHTML = `
-                    <div class="mb-3">
-                        <span class="text-danger fw-bold">£${formatPrice(p.price)}</span>
-                        <span class="text-muted text-decoration-line-through ms-2">
-                            £${formatPrice(p.original_price)}
-                        </span>
-                        <span class="badge bg-danger ms-2">-${p.discount_percent}%</span>
-                    </div>
-                `;
-            } else {
-                priceHTML = `
-                    <h5 class="fw-bold mb-3 text-success">£${formatPrice(p.price)}</h5>
-                `;
-            }
-
-            const shortDesc = p.description
-                ? p.description.substring(0, 60) + "..."
-                : "No description available.";
-
-            grid.innerHTML += `
-                <div class="col">
-                    <div class="card h-100 shadow-sm product-card">
-
-                        <div class="card-header bg-white text-center fw-bold border-0 pt-3">
-                            ${p.name}
-                        </div>
-
-                        <img src="${p.image}" class="card-img-top" alt="${p.name}" loading="lazy">
-
-                        <div class="card-body d-flex flex-column">
-
-                            <div class="mb-2">${badges}</div>
-
-                            <p class="text-muted small mb-2">By: ${p.producer}</p>
-                            <p class="card-text small mb-3">${shortDesc}</p>
-
-                            ${priceHTML}
-
-                            <a href="/products/${p.id}/"
-                               class="btn btn-brand-outline w-100 mt-auto">
-                                More Information
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
+    if (!text) {
+      return "No description available.";
     }
 
-    function applyFilters() {
-        let list = [...products];
-
-        const search = document.getElementById("searchInput")?.value.toLowerCase() || "";
-        const minPrice = parseFloat(document.getElementById("minPrice")?.value);
-        const maxPrice = parseFloat(document.getElementById("maxPrice")?.value);
-        const sort = document.getElementById("sortSelect")?.value;
-
-        let category = "";
-        let producer = "";
-
-        if (showFilters) {
-            category = document.getElementById("categoryFilter")?.value || "";
-            producer = document.getElementById("producerFilter")?.value || "";
-        }
-
-        // ----------------------------------------------------
-        // APPLY FORGIVING SEARCH
-        // ----------------------------------------------------
-        if (search) {
-            list = list.filter(p =>
-                looseMatch(p.name, search) ||
-                looseMatch(p.description, search) ||
-                looseMatch(p.producer, search)
-            );
-        }
-
-        // ----------------------------------------------------
-        // FALLBACK: ALWAYS SHOW SOMETHING
-        // ----------------------------------------------------
-        if (search && list.length === 0) {
-            list = products.slice(0, 10); // fallback suggestions
-        }
-
-        if (showFilters && category) list = list.filter(p => p.category === category);
-        if (showFilters && producer) list = list.filter(p => p.producer === producer);
-
-        if (!isNaN(minPrice)) list = list.filter(p => p.price >= minPrice);
-        if (!isNaN(maxPrice)) list = list.filter(p => p.price <= maxPrice);
-
-        if (sort === "price_low") list.sort((a, b) => a.price - b.price);
-        if (sort === "price_high") list.sort((a, b) => b.price - a.price);
-        if (sort === "newest") list.sort((a, b) => b.id - a.id);
-
-        renderProducts(list);
+    if (text.length <= maxLength) {
+      return text;
     }
 
-    ["searchInput", "categoryFilter", "producerFilter", "minPrice", "maxPrice", "sortSelect"]
-        .forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener("input", applyFilters);
-        });
+    return `${text.slice(0, maxLength).trim()}...`;
+  }
 
-    renderProducts(products);
+  function buildBadge(text, modifierClass) {
+    return `
+      <span class="product-card-badge ${modifierClass}">
+        ${escapeHTML(text)}
+      </span>
+    `;
+  }
+
+  function buildBadges(product) {
+    const badges = [];
+
+    if (product.is_disabled) {
+      badges.push(
+        buildBadge(
+          product.disabled_reason || "Unavailable",
+          "product-card-badge--muted",
+        ),
+      );
+
+      return badges.join("");
+    }
+
+    badges.push(buildBadge("Available", "product-card-badge--success"));
+
+    if (product.surplus_active) {
+      badges.push(buildBadge("Surplus", "product-card-badge--danger"));
+    } else if (product.wholesale_active) {
+      badges.push(buildBadge("Wholesale", "product-card-badge--warning"));
+    } else if (product.low_stock) {
+      badges.push(buildBadge("Low stock", "product-card-badge--danger"));
+    }
+
+    if (product.organic) {
+      badges.push(buildBadge("Organic", "product-card-badge--soft"));
+    }
+
+    return badges.slice(0, 3).join("");
+  }
+
+  function buildImageHTML(product) {
+    if (!product.image) {
+      return `
+        <div class="product-card-image-placeholder">
+          No image
+        </div>
+      `;
+    }
+
+    return `
+      <img
+        src="${escapeHTML(product.image)}"
+        class="product-card-image"
+        alt="${escapeHTML(product.name)}"
+        loading="lazy"
+      >
+    `;
+  }
+
+  function buildPriceHTML(product) {
+    if (product.has_discount) {
+      return `
+        <div class="product-card-price-row">
+          <span class="product-card-price">£${formatPrice(product.price)}</span>
+          <span class="product-card-price-compare">£${formatPrice(product.original_price)}</span>
+          <span class="product-card-discount">${escapeHTML(product.discount_percent)}% off</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="product-card-price-row">
+        <span class="product-card-price">£${formatPrice(product.price)}</span>
+      </div>
+    `;
+  }
+
+  function buildStockHTML(product) {
+    if (product.is_disabled) {
+      return `
+        <div class="product-card-meta-row">
+          <span class="product-card-meta-label">Status</span>
+          <span class="product-card-meta-value">
+            ${escapeHTML(product.disabled_reason || "Unavailable")}
+          </span>
+        </div>
+      `;
+    }
+
+    const expiryText = product.expiry
+      ? `Expires ${escapeHTML(formatDate(product.expiry))}`
+      : "Expiry unavailable";
+
+    return `
+      <div class="product-card-meta-row">
+        <span class="product-card-meta-label">Stock</span>
+        <span class="product-card-meta-value">
+          ${escapeHTML(product.stock)} left
+        </span>
+      </div>
+
+      <div class="product-card-meta-row">
+        <span class="product-card-meta-label">Expiry</span>
+        <span class="product-card-meta-value">
+          ${expiryText}
+        </span>
+      </div>
+    `;
+  }
+
+  function buildActionHTML(product) {
+  if (product.is_disabled) {
+    return `
+      <button
+        class="btn btn-primary product-action-btn w-100 mt-auto"
+        disabled
+      >
+        ${escapeHTML(product.disabled_reason || "Unavailable")}
+      </button>
+    `;
+  }
+
+  return `
+    <a
+      href="/products/${escapeHTML(product.id)}/"
+      class="btn btn-primary product-action-btn w-100 mt-auto"
+    >
+      View details
+    </a>
+  `;
+}
+
+  function renderProducts(list) {
+    const grid = document.getElementById("productGrid");
+
+    if (!grid) {
+      return;
+    }
+
+    grid.innerHTML = "";
+
+    if (!list.length) {
+      grid.innerHTML = `
+        <div class="product-empty-state">
+          <h2 class="h5 mb-2">No products found</h2>
+          <p class="mb-0">
+            Try changing the search, category, producer, or price filters.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    list.forEach((product) => {
+      const cardClass = product.is_disabled
+        ? "product-card product-card--disabled"
+        : "product-card";
+
+      grid.innerHTML += `
+        <article class="${cardClass}">
+
+          <div class="product-card-image-wrap">
+            ${buildImageHTML(product)}
+          </div>
+
+          <div class="product-card-body">
+
+            <div class="product-card-badges">
+              ${buildBadges(product)}
+            </div>
+
+            <h2 class="product-card-title">
+              ${escapeHTML(product.name)}
+            </h2>
+
+            <p class="product-card-producer">
+              Sold by <strong>${escapeHTML(product.producer)}</strong>
+            </p>
+
+            <p class="product-card-description">
+              ${escapeHTML(truncateText(product.description))}
+            </p>
+
+            <div class="product-card-meta">
+              <div class="product-card-meta-row">
+                <span class="product-card-meta-label">Category</span>
+                <span class="product-card-meta-value">
+                  ${escapeHTML(product.category)}
+                </span>
+              </div>
+
+              ${buildStockHTML(product)}
+            </div>
+
+            <div class="product-card-footer">
+              ${buildPriceHTML(product)}
+              ${buildActionHTML(product)}
+            </div>
+
+          </div>
+        </article>
+      `;
+    });
+  }
+
+  renderProducts(products);
 });
