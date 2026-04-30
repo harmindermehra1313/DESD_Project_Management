@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Your Product Listing Was Rejected</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px;">
+
+    <div style="max-width: 600px; margin: auto; background: white; border-radius: 10px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+
+        <h2 style="color: #dc2626; margin-bottom: 10px;">
+            ❌ Product Rejected
+        </h2>
+
+        <p style="font-size: 15px; color: #444;">
+            Hello {{ producer_name }},
+        </p>
+
+        <p style="font-size: 15px; color: #444;">
+            Your product listing <strong>{{ product_name }}</strong> has been reviewed by our moderation team and unfortunately it has been <strong style="color:#dc2626;">rejected</strong>.
+        </p>
+
+        <div style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 12px 15px; margin: 20px 0; border-radius: 6px;">
+            <strong>Reason for Rejection:</strong><br>
+            <span style="color: #333;">{{ reason }}</span>
+        </div>
+
+        <p style="font-size: 15px; color: #444;">
+            Please update your product details and resubmit it for approval.  
+            If you need clarification, feel free to reach out to our support team.
+        </p>
+
+        <p style="font-size: 14px; color: #888; margin-top: 30px;">
+            Regards,<br>
+            <strong>{{ admin_name }}</strong><br>
+            BRFN Admin Team
+        </p>
+
+    </div>
+
+</body>
+</html>

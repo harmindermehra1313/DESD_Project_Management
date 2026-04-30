@@ -295,7 +295,7 @@ def add_product(request):
                 allergen=allergen_obj
             )
 
-        return redirect('producer_products')
+        return redirect('products:producer_products')
 
     return render(request, 'products/add_product.html', _build_add_product_context())
 
@@ -590,6 +590,21 @@ class ProductDetailView(DetailView):
     # return redirect('products_list')
 
 # Harminder Edits
+
+def send_for_approval(request, pk):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    product = Product.objects.get(pk=pk)
+
+    # Only FLAGGED products can be sent for approval
+    if product.status != Product.Status.FLAGGED:
+        return JsonResponse({"error": "Only flagged products can be sent for approval"}, status=400)
+
+    product.status = Product.Status.PENDING
+    product.save()
+
+    return JsonResponse({"success": True})
 # def product_view(request, category_id):
 #     # All categories except organic
 #     categories = Category.objects.exclude(name__icontains="organic")

@@ -15,7 +15,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db.models import Prefetch
-
+from django.views.decorators.csrf import csrf_exempt
 # ---------------------------------------
 # Django Models
 # ---------------------------------------
@@ -67,97 +67,26 @@ def logout_view(request):
 
 # New Login function to generate jwt tokens
 
-# def login_view(request):
-#     if request.method == "POST":
-#         email = request.POST.get("email", "").strip().lower()
-#         password = request.POST.get("password")
-#         remember = request.POST.get("remember")
-
-#         # STEP 1 — Check if user exists BEFORE authenticate()
-#         try:
-#             user_obj = User.objects.get(email=email)
-#             if not user_obj.is_active:
-#                 messages.error(request, "Your account has been deactivated. Please contact support.")
-#                 return render(request, "accounts/login.html")
-#         except User.DoesNotExist:
-#             user_obj = None
-
-#         # STEP 2 — Authenticate normally
-#         user = authenticate(request, username=email, password=password)
-
-#         if user is not None:
-#             login(request, user)
-
-#             # Session expiry
-#             if not remember:
-#                 request.session.set_expiry(0)
-#             else:
-#                 request.session.set_expiry(60 * 60 * 24 * 1)
-
-#             # Generate JWT tokens
-#             refresh = RefreshToken.for_user(user)
-#             access_token = str(refresh.access_token)
-
-
-#             request.session["jwt_access"] = access_token
-#             request.session["jwt_refresh"] = str(refresh)
-
-#             login_time = timezone.now()
-#             request.session["login_time"] = login_time.isoformat()
-
-#             expiry_timestamp = request.session.get_expiry_date()
-            
-#             request.session["expiry_time"] = expiry_timestamp.isoformat()
-
-#             # Redirect based on role
-#             if user.role == "ADMIN":
-#                 return redirect("home:dashboard")
-#             elif user.role == "PRODUCER":
-#                 return redirect("home:producer")
-#             else:
-#                 return redirect("home:index")
-
-#         else:
-#             messages.error(request, "Invalid email or password.")
-
-#     return render(request, "accounts/login.html")
-
 def login_view(request):
     return render(request, "accounts/login.html")
 
 # ---------------------------------------
 # Firebase Autheciation function
 # ---------------------------------------
-# def firebase_auth_view(request):
-#     if request.method != "POST":
-#         return JsonResponse({"error": "POST required"}, status=400)
+@csrf_exempt
+def check_email_exists(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=400)
 
-#     data = json.loads(request.body)
-#     token = data.get("token")
+    data = json.loads(request.body)
+    email = data.get("email", "").strip()
 
-#     try:
-#         decoded = firebase_auth.verify_id_token(token)
-#         email = decoded.get("email")
+    if not email:
+        return JsonResponse({"exists": False})
 
-#         user, created = User.objects.get_or_create(email=email)
+    exists = User.objects.filter(email=email).exists()
 
-#         # Check if user is active
-#         if not user.is_active:
-#             print("DEBUG: User is deactivated")   # <-- This will show in your terminal
-#             return JsonResponse({"error": "Your account is deactivated. Please contact support."}, status=403)
-
-#         login(request, user)
-
-#         if user.role == "ADMIN":
-#             return JsonResponse({"redirect": "/dashboard/"})
-#         elif user.role == "PRODUCER":
-#             return JsonResponse({"redirect": "/producer/"})
-#         else:
-#             return JsonResponse({"redirect": "/"})
-
-#     except Exception as e:
-#         return JsonResponse({"error": str(e)}, status=400)
-    
+    return JsonResponse({"exists": exists})
 
 def firebase_auth_view(request):
     if request.method != "POST":
@@ -165,6 +94,7 @@ def firebase_auth_view(request):
 
     data = json.loads(request.body)
     token = data.get("token")
+    
 
     try:
         decoded = firebase_auth.verify_id_token(token)
@@ -178,7 +108,12 @@ def firebase_auth_view(request):
 
         # Django session login
         login(request, user)
+        remember = data.get("remember", False)
 
+        if remember:
+            request.session.set_expiry(60 * 60 * 24 * 1)  # 1 day
+        else:
+            request.session.set_expiry(60 * 60 * 0.5)  # browser close
         # -----------------------------
         # Generate JWT tokens
         # -----------------------------
