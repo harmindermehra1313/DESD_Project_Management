@@ -1,11 +1,36 @@
 document.addEventListener("DOMContentLoaded", () => {
- 
   const accountForm = document
     .querySelector('form input[name="form_type"][value="account"]')
     ?.closest("form");
 
+  document.querySelectorAll("[data-profile-toast]").forEach((toast) => {
+    const closeButton = toast.querySelector("[data-profile-toast-close]");
+    const dismissDelay = 5000;
+
+    function dismissToast() {
+      toast.classList.add("is-hiding");
+
+      window.setTimeout(() => {
+        toast.remove();
+      }, 250);
+    }
+
+    const timer = window.setTimeout(dismissToast, dismissDelay);
+
+    if (closeButton) {
+      closeButton.addEventListener("click", () => {
+        window.clearTimeout(timer);
+        dismissToast();
+      });
+    }
+  });
+
   const addressForm = document
     .querySelector('form input[name="form_type"][value="address"]')
+    ?.closest("form");
+
+  const producerBusinessForm = document
+    .querySelector('form input[name="form_type"][value="producer_business"]')
     ?.closest("form");
 
   const passwordForm = document
@@ -19,6 +44,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const line2 = document.querySelector('[name="line2"]');
   const city = document.querySelector('[name="city"]');
   const postcode = document.querySelector('[name="postcode"]');
+
+  const farmName = document.querySelector('[name="farm_name"]');
+  const producerContactName = document.querySelector('[name="contact_name"]');
+  const producerContactEmail = document.querySelector('[name="contact_email"]');
+  const producerContactPhone = document.querySelector('[name="contact_phone"]');
+  const farmPostcode = document.querySelector('[name="farm_postcode"]');
+  const organicCertificationNumber = document.querySelector(
+    '[name="organic_certification_number"]',
+  );
 
   const currentPassword = document.querySelector('[name="current_password"]');
   const newPassword = document.querySelector('[name="new_password"]');
@@ -94,6 +128,26 @@ document.addEventListener("DOMContentLoaded", () => {
       .join(" ");
   }
 
+  function normaliseBusinessName(input) {
+    if (!input) return;
+
+    const value = input.value;
+
+    if (value.endsWith(" ")) {
+      return;
+    }
+
+    input.value = value
+      .replace(/\s+/g, " ")
+      .split(" ")
+      .map((word) => {
+        if (!word) return "";
+        if (/^[A-Z]{2,}$/.test(word)) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(" ");
+  }
+
   function getUKPhoneMaxLength(value) {
     if (value.startsWith("+44800") || value.startsWith("+44808")) {
       return 12;
@@ -118,21 +172,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let value = input.value.trim();
 
-    // Remove spaces, brackets and hyphens.
     value = value.replace(/[\s\-()]/g, "");
 
-    // Convert 0044 format to +44.
     if (value.startsWith("0044")) {
       value = "+44" + value.substring(4);
     }
 
-    // Convert UK mobile format: 07123456789 → +447123456789.
-    if (value.startsWith("07")) {
-      value = "+44" + value.substring(1);
-    }
-
-    // Convert common UK landline/non-geographic formats.
     if (
+      value.startsWith("07") ||
       value.startsWith("01") ||
       value.startsWith("02") ||
       value.startsWith("03") ||
@@ -141,7 +188,6 @@ document.addEventListener("DOMContentLoaded", () => {
       value = "+44" + value.substring(1);
     }
 
-    // Fix accidental +440.
     if (value.startsWith("+440")) {
       value = "+44" + value.substring(4);
     }
@@ -167,117 +213,81 @@ document.addEventListener("DOMContentLoaded", () => {
     input.value = value;
   }
 
-  
+  function validatePersonName(input, requiredMessage, invalidMessage) {
+    if (!input) return true;
 
-  function validateName() {
-    if (!fullName) return true;
-
-    const value = fullName.value.trim();
+    const value = input.value.trim();
 
     if (!value) {
-      showFieldError(fullName, "Enter your full name.");
+      showFieldError(input, requiredMessage);
       return false;
     }
 
     if (/\d/.test(value)) {
-      showFieldError(fullName, "Name cannot contain numbers.");
+      showFieldError(input, "Name cannot contain numbers.");
       return false;
     }
 
     const namePattern = /^[A-Za-z]+(?:\s+[A-Za-z]+)+$/;
 
     if (!namePattern.test(value)) {
-      showFieldError(
-        fullName,
-        "Enter your full name using letters and spaces only. Use first and last name.",
-      );
+      showFieldError(input, invalidMessage);
       return false;
     }
 
-    showFieldSuccess(fullName);
+    showFieldSuccess(input);
     return true;
   }
 
-  if (fullName) {
-    fullName.addEventListener("input", () => {
-      titleCaseName(fullName);
+  function validateName() {
+    if (!fullName) return true;
 
-      if (!fullName.value.trim()) {
-        clearFieldState(fullName);
-        return;
-      }
-
-      validateName();
-    });
-
-    fullName.addEventListener("blur", validateName);
+    return validatePersonName(
+      fullName,
+      "Enter your full name.",
+      "Enter your full name using letters and spaces only. Use first and last name.",
+    );
   }
 
- 
+  function validatePhoneInput(input) {
+    if (!input) return true;
 
-  function validatePhone() {
-    if (!phone) return true;
+    normaliseUKPhone(input);
 
-    normaliseUKPhone(phone);
-
-    const value = phone.value.trim();
-
-    /*
-      Allows:
-      - +447123456789 mobile
-      - +441234567890 landline
-      - +442071234567 London-style landline
-      - +443xxxxxxxxx non-geographic
-      - +44800xxxxxxx / +44808xxxxxxx freephone-style
-    */
+    const value = input.value.trim();
     const ukPhonePattern =
-      /^\+44(7\d{9}|1\d{9}|2\d{9}|3\d{9}|800\d{6}|808\d{6})$/;
+      /^\+44(7\d{9}|1\d{9}|2\d{9}|3\d{9}|55\d{8}|56\d{8}|800\d{6}|808\d{6})$/;
 
     if (!value) {
-      showFieldError(phone, "Enter a phone number.");
+      showFieldError(input, "Enter a phone number.");
       return false;
     }
 
     if (!value.startsWith("+44")) {
-      showFieldError(phone, "Enter a UK phone number starting with +44.");
+      showFieldError(input, "Enter a UK phone number starting with +44.");
       return false;
     }
 
     if (!ukPhonePattern.test(value)) {
       showFieldError(
-        phone,
+        input,
         "Enter a valid UK phone number, for example +447123456789 or +441234567890.",
       );
       return false;
     }
 
-    showFieldSuccess(phone);
+    showFieldSuccess(input);
     return true;
   }
 
-  if (phone) {
-    phone.addEventListener("input", () => {
-      normaliseUKPhone(phone);
-      clearFieldState(phone);
-
-      const value = phone.value.trim();
-      const maxLength = getUKPhoneMaxLength(value);
-
-      if (value.length === maxLength) {
-        validatePhone();
-      }
-    });
-
-    phone.addEventListener("blur", validatePhone);
+  function validatePhone() {
+    return validatePhoneInput(phone);
   }
-
-
 
   function validateAddressLine1() {
     if (!line1) return true;
 
     const value = line1.value.trim();
-
     const addressPattern = /^[A-Za-z0-9\s,'./-]{5,}$/;
     const hasLetters = /[A-Za-z]{2,}/.test(value);
 
@@ -334,14 +344,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!city) return true;
 
     const value = city.value.trim();
-
-    /*
-      Allows:
-      - Bristol
-      - Weston-super-Mare
-      - King's Lynn
-      - Stoke on Trent
-    */
     const cityPattern = /^[A-Za-z\s'-]{2,}$/;
 
     if (!value) {
@@ -361,31 +363,31 @@ document.addEventListener("DOMContentLoaded", () => {
     return true;
   }
 
-  async function validatePostcode() {
-    if (!postcode) return true;
+  async function validatePostcodeInput(input) {
+    if (!input) return true;
 
-    formatUKPostcode(postcode);
+    formatUKPostcode(input);
 
-    const value = postcode.value.trim();
+    const value = input.value.trim();
 
     const ukPostcodeRegex =
       /^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$/;
 
     if (!value) {
-      showFieldError(postcode, "Enter a postcode.");
+      showFieldError(input, "Enter a postcode.");
       return false;
     }
 
     if (!ukPostcodeRegex.test(value)) {
       showFieldError(
-        postcode,
+        input,
         "Enter a valid UK postcode format, for example BS1 5TR or B66 3EX.",
       );
       return false;
     }
 
     try {
-      showFieldError(postcode, "Checking postcode...");
+      showFieldError(input, "Checking postcode...");
 
       const response = await fetch(
         `https://api.postcodes.io/postcodes/${encodeURIComponent(value)}`,
@@ -395,52 +397,125 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!response.ok || data.status !== 200 || !data.result) {
         showFieldError(
-          postcode,
+          input,
           "This postcode could not be found. Check the postcode and try again.",
         );
         return false;
       }
 
-      postcode.value = data.result.postcode;
+      input.value = data.result.postcode;
 
-      showFieldSuccess(postcode);
+      showFieldSuccess(input);
       return true;
     } catch (error) {
-      showFieldError(
-        postcode,
-        "Postcode validation is temporarily unavailable. Please try again.",
-      );
-      return false;
+      showFieldSuccess(input);
+      return true;
     }
   }
 
-  if (line1) {
-    line1.addEventListener("input", () => clearFieldState(line1));
-    line1.addEventListener("blur", validateAddressLine1);
+  async function validatePostcode() {
+    return validatePostcodeInput(postcode);
   }
 
-  if (line2) {
-    line2.addEventListener("input", () => clearFieldState(line2));
-    line2.addEventListener("blur", validateAddressLine2);
+  function validateFarmName() {
+    if (!farmName) return true;
+
+    normaliseBusinessName(farmName);
+
+    const value = farmName.value.trim();
+    const farmNamePattern = /^[A-Za-z0-9\s&'.,/-]{2,150}$/;
+    const hasLetters = /[A-Za-z]{2,}/.test(value);
+
+    if (!value) {
+      showFieldError(farmName, "Enter the business or farm name.");
+      return false;
+    }
+
+    if (!farmNamePattern.test(value)) {
+      showFieldError(
+        farmName,
+        "Business or farm name can only contain letters, numbers, spaces and common business punctuation.",
+      );
+      return false;
+    }
+
+    if (!hasLetters) {
+      showFieldError(
+        farmName,
+        "Business or farm name must include at least two letters.",
+      );
+      return false;
+    }
+
+    showFieldSuccess(farmName);
+    return true;
   }
 
-  if (city) {
-    city.addEventListener("input", () => clearFieldState(city));
-    city.addEventListener("blur", validateCity);
+  function validateProducerContactName() {
+    return validatePersonName(
+      producerContactName,
+      "Enter the business contact name.",
+      "Enter the business contact name using letters and spaces only. Use first and last name.",
+    );
   }
 
-  if (postcode) {
-    postcode.addEventListener("input", () => {
-      formatUKPostcode(postcode);
-      clearFieldState(postcode);
-    });
+  function validateProducerContactEmail() {
+    if (!producerContactEmail) return true;
 
-    postcode.addEventListener("blur", async () => {
-      await validatePostcode();
-    });
+    const value = producerContactEmail.value.trim().toLowerCase();
+    producerContactEmail.value = value;
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    if (!value) {
+      showFieldError(producerContactEmail, "Enter the business contact email.");
+      return false;
+    }
+
+    if (!emailPattern.test(value)) {
+      showFieldError(
+        producerContactEmail,
+        "Enter a valid email address, for example jane@gmail.com.",
+      );
+      return false;
+    }
+
+    showFieldSuccess(producerContactEmail);
+    return true;
   }
 
- 
+  function validateProducerContactPhone() {
+    return validatePhoneInput(producerContactPhone);
+  }
+
+  async function validateFarmPostcode() {
+    return validatePostcodeInput(farmPostcode);
+  }
+
+  function validateOrganicCertificationNumber() {
+    if (!organicCertificationNumber) return true;
+
+    const value = organicCertificationNumber.value.trim().toUpperCase();
+    organicCertificationNumber.value = value;
+
+    if (!value) {
+      clearFieldState(organicCertificationNumber);
+      return true;
+    }
+
+    const organicCertPattern = /^[A-Z0-9/-]{2,15}$/;
+
+    if (!organicCertPattern.test(value)) {
+      showFieldError(
+        organicCertificationNumber,
+        "Organic certification number must be 2-15 characters using letters, numbers, hyphens, or slashes.",
+      );
+      return false;
+    }
+
+    showFieldSuccess(organicCertificationNumber);
+    return true;
+  }
 
   function validateCurrentPassword() {
     if (!currentPassword) return true;
@@ -497,6 +572,136 @@ document.addEventListener("DOMContentLoaded", () => {
     return true;
   }
 
+  if (fullName) {
+    fullName.addEventListener("input", () => {
+      titleCaseName(fullName);
+
+      if (!fullName.value.trim()) {
+        clearFieldState(fullName);
+        return;
+      }
+
+      validateName();
+    });
+
+    fullName.addEventListener("blur", validateName);
+  }
+
+  if (phone) {
+    phone.addEventListener("input", () => {
+      normaliseUKPhone(phone);
+      clearFieldState(phone);
+
+      const value = phone.value.trim();
+      const maxLength = getUKPhoneMaxLength(value);
+
+      if (value.length === maxLength) {
+        validatePhone();
+      }
+    });
+
+    phone.addEventListener("blur", validatePhone);
+  }
+
+  if (line1) {
+    line1.addEventListener("input", () => clearFieldState(line1));
+    line1.addEventListener("blur", validateAddressLine1);
+  }
+
+  if (line2) {
+    line2.addEventListener("input", () => clearFieldState(line2));
+    line2.addEventListener("blur", validateAddressLine2);
+  }
+
+  if (city) {
+    city.addEventListener("input", () => clearFieldState(city));
+    city.addEventListener("blur", validateCity);
+  }
+
+  if (postcode) {
+    postcode.addEventListener("input", () => {
+      formatUKPostcode(postcode);
+      clearFieldState(postcode);
+    });
+
+    postcode.addEventListener("blur", async () => {
+      await validatePostcode();
+    });
+  }
+
+  if (farmName) {
+    farmName.addEventListener("input", () => {
+      normaliseBusinessName(farmName);
+      clearFieldState(farmName);
+    });
+
+    farmName.addEventListener("blur", validateFarmName);
+  }
+
+  if (producerContactName) {
+    producerContactName.addEventListener("input", () => {
+      titleCaseName(producerContactName);
+
+      if (!producerContactName.value.trim()) {
+        clearFieldState(producerContactName);
+        return;
+      }
+
+      validateProducerContactName();
+    });
+
+    producerContactName.addEventListener("blur", validateProducerContactName);
+  }
+
+  if (producerContactEmail) {
+    producerContactEmail.addEventListener("input", () =>
+      clearFieldState(producerContactEmail),
+    );
+
+    producerContactEmail.addEventListener("blur", validateProducerContactEmail);
+  }
+
+  if (producerContactPhone) {
+    producerContactPhone.addEventListener("input", () => {
+      normaliseUKPhone(producerContactPhone);
+      clearFieldState(producerContactPhone);
+
+      const value = producerContactPhone.value.trim();
+      const maxLength = getUKPhoneMaxLength(value);
+
+      if (value.length === maxLength) {
+        validateProducerContactPhone();
+      }
+    });
+
+    producerContactPhone.addEventListener("blur", validateProducerContactPhone);
+  }
+
+  if (farmPostcode) {
+    farmPostcode.addEventListener("input", () => {
+      formatUKPostcode(farmPostcode);
+      clearFieldState(farmPostcode);
+    });
+
+    farmPostcode.addEventListener("blur", async () => {
+      await validateFarmPostcode();
+    });
+  }
+
+  if (organicCertificationNumber) {
+    organicCertificationNumber.addEventListener("input", () => {
+      organicCertificationNumber.value =
+        organicCertificationNumber.value.toUpperCase();
+
+      clearFieldState(organicCertificationNumber);
+    });
+
+    organicCertificationNumber.addEventListener(
+      "blur",
+      validateOrganicCertificationNumber,
+    );
+  }
+
   if (currentPassword) {
     currentPassword.addEventListener("input", () =>
       clearFieldState(currentPassword),
@@ -521,7 +726,6 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmPassword.addEventListener("input", validatePasswordMatch);
     confirmPassword.addEventListener("blur", validatePasswordMatch);
   }
-
 
   document.querySelectorAll("[data-password-toggle]").forEach((button) => {
     const targetId = button.dataset.target;
@@ -550,7 +754,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-
   if (accountForm) {
     accountForm.addEventListener("submit", (event) => {
       const validName = validateName();
@@ -576,6 +779,32 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       HTMLFormElement.prototype.submit.call(addressForm);
+    });
+  }
+
+  if (producerBusinessForm) {
+    producerBusinessForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const validFarmName = validateFarmName();
+      const validContactName = validateProducerContactName();
+      const validContactEmail = validateProducerContactEmail();
+      const validContactPhone = validateProducerContactPhone();
+      const validFarmPostcode = await validateFarmPostcode();
+      const validOrganicCert = validateOrganicCertificationNumber();
+
+      if (
+        !validFarmName ||
+        !validContactName ||
+        !validContactEmail ||
+        !validContactPhone ||
+        !validFarmPostcode ||
+        !validOrganicCert
+      ) {
+        return;
+      }
+
+      HTMLFormElement.prototype.submit.call(producerBusinessForm);
     });
   }
 
