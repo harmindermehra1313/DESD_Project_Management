@@ -32,6 +32,7 @@
   white-space: nowrap;
 }
 
+/* Filters */
 .product-filter-panel {
   background: #ffffff;
   border: 1px solid #e4e7ec;
@@ -88,11 +89,19 @@
   color: #1d2939;
 }
 
-/* Responsive compact card grid */
+/* Product grid
+   Phone: 1 card
+   Small tablet: 2 cards
+   Tablet: 3 cards
+   Laptop/Desktop/large desktop: 4 cards
+*/
 .product-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
+  margin-inline: auto;
+  max-width: 1180px;
+  width: 100%;
 }
 
 /* Card */
@@ -297,7 +306,6 @@
   padding: 0.3rem 0.5rem;
 }
 
-
 .product-card-action {
   align-items: center;
   border-radius: 0.65rem;
@@ -305,12 +313,14 @@
   font-weight: 700;
   justify-content: center;
   min-height: 2.5rem;
+  width: 100%;
 }
 
 .product-card-action:disabled {
   cursor: not-allowed;
 }
 
+/* Empty state */
 .product-empty-state {
   background: #ffffff;
   border: 1px dashed #cbd5e1;
@@ -326,6 +336,7 @@
   font-weight: 750;
 }
 
+/* Pagination */
 .product-pagination-wrap {
   display: flex;
   justify-content: center;
@@ -368,35 +379,42 @@
 }
 
 .product-page-btn:disabled {
+  background: #eef2f6;
+  border-color: #d0d5dd;
+  color: #667085;
   cursor: not-allowed;
-  opacity: 0.75;
+  opacity: 1;
 }
 
-@media (max-width: 575.98px) {
-  .product-pagination {
-    border-radius: 1rem;
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .product-page-btn,
-  .product-page-current {
-    width: 100%;
-  }
-}
-
-@media (min-width: 1400px) {
+/* Small tablets: 2 cards */
+@media (min-width: 576px) {
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+/* Tablets: 3 cards */
+@media (min-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Laptops, desktops, large desktops: always 4 cards */
+@media (min-width: 992px) {
+  .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Header collapse */
 @media (max-width: 991.98px) {
   .product-list-header {
     flex-direction: column;
   }
 }
 
+/* Phones */
 @media (max-width: 575.98px) {
   .product-grid {
     grid-template-columns: 1fr;
@@ -411,11 +429,19 @@
     padding: 0.9rem;
   }
 
-  .product-card-title {
+  .product-card-title,
+  .product-card-description {
     min-height: auto;
   }
 
-  .product-card-description {
-    min-height: auto;
+  .product-pagination {
+    border-radius: 1rem;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .product-page-btn,
+  .product-page-current {
+    width: 100%;
   }
 }
