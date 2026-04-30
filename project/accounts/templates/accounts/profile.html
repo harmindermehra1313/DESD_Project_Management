@@ -10,17 +10,41 @@
                 <div>
                     <p class="profile-kicker mb-1">Account settings</p>
                     <h1 class="profile-title mb-1">My Profile</h1>
-                    <p class="profile-subtitle mb-0">Manage personal details, delivery address and account security.</p>
+                    <p class="profile-subtitle mb-0">
+                        Manage personal details,
+                        {% if is_producer_profile %}
+                            business profile
+                        {% else %}
+                            delivery address
+                        {% endif %}
+                        and account security.
+                    </p>
                 </div>
             </div>
             <!-- Messages -->
             {% if messages %}
-                <div class="mb-4">
+                <div class="profile-toast-stack" aria-live="polite" aria-atomic="true">
                     {% for message in messages %}
                         {% if message.tags == "error" %}
-                            <div class="alert alert-danger profile-alert mb-2">{{ message }}</div>
+                            <div class="alert alert-danger profile-alert profile-toast mb-2"
+                                 data-profile-toast
+                                 role="alert">
+                                <span>{{ message }}</span>
+                                <button type="button"
+                                        class="btn-close"
+                                        data-profile-toast-close
+                                        aria-label="Close"></button>
+                            </div>
                         {% else %}
-                            <div class="alert alert-{{ message.tags }} profile-alert mb-2">{{ message }}</div>
+                            <div class="alert alert-{{ message.tags }} profile-alert profile-toast mb-2"
+                                 data-profile-toast
+                                 role="alert">
+                                <span>{{ message }}</span>
+                                <button type="button"
+                                        class="btn-close"
+                                        data-profile-toast-close
+                                        aria-label="Close"></button>
+                            </div>
                         {% endif %}
                     {% endfor %}
                 </div>
@@ -42,6 +66,16 @@
                                 <span class="profile-summary-label">Account type</span>
                                 <span class="profile-summary-value">{{ profile_account_type }}</span>
                             </div>
+                            {% if is_producer_profile and producer_business_form %}
+                                <div class="profile-summary-item">
+                                    <span class="profile-summary-label">Business / farm</span>
+                                    <span class="profile-summary-value">{{ producer_business_form.instance.farm_name|default:"Not provided" }}</span>
+                                </div>
+                                <div class="profile-summary-item">
+                                    <span class="profile-summary-label">Business postcode</span>
+                                    <span class="profile-summary-value">{{ producer_business_form.instance.farm_postcode|default:"Not provided" }}</span>
+                                </div>
+                            {% endif %}
                             <div class="profile-summary-item">
                                 <span class="profile-summary-label">Member since</span>
                                 <span class="profile-summary-value">{{ request.user.created_at|date:"d M Y" }}</span>
@@ -63,17 +97,17 @@
                             {% csrf_token %}
                             <input type="hidden" name="form_type" value="account">
                             <div class="row g-3">
-                                <div class="col-12 col-md-6">
+                                <div class="col-12 col-md-6 profile-field-wrapper">
                                     <label class="form-label" for="{{ account_form.name.id_for_label }}">Full name</label>
                                     {{ account_form.name }}
                                     {% for error in account_form.name.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
                                 </div>
-                                <div class="col-12 col-md-6">
+                                <div class="col-12 col-md-6 profile-field-wrapper">
                                     <label class="form-label" for="{{ account_form.phone.id_for_label }}">Phone number</label>
                                     {{ account_form.phone }}
                                     {% for error in account_form.phone.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
                                 </div>
-                                <div class="col-12">
+                                <div class="col-12 profile-field-wrapper">
                                     <label class="form-label">Email address</label>
                                     <input type="email"
                                            class="form-control"
@@ -86,44 +120,132 @@
                             </div>
                         </form>
                     </section>
-                    <!-- Address -->
-                    <section class="profile-card mb-4">
-                        <div class="profile-card-header">
-                            <div>
-                                <h3 class="profile-card-title mb-1">Default address</h3>
-                                <p class="profile-card-text mb-0">This address can be used for delivery and billing defaults.</p>
-                            </div>
-                        </div>
-                        <form method="post" novalidate>
-                            {% csrf_token %}
-                            <input type="hidden" name="form_type" value="address">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label" for="{{ address_form.line1.id_for_label }}">Address line 1</label>
-                                    {{ address_form.line1 }}
-                                    {% for error in address_form.line1.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label" for="{{ address_form.line2.id_for_label }}">Address line 2</label>
-                                    {{ address_form.line2 }}
-                                    {% for error in address_form.line2.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label" for="{{ address_form.city.id_for_label }}">City</label>
-                                    {{ address_form.city }}
-                                    {% for error in address_form.city.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <label class="form-label" for="{{ address_form.postcode.id_for_label }}">Postcode</label>
-                                    {{ address_form.postcode }}
-                                    {% for error in address_form.postcode.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                    {% if is_producer_profile %}
+                        <!-- Producer Business Profile -->
+                        <section class="profile-card mb-4">
+                            <div class="profile-card-header">
+                                <div>
+                                    <h3 class="profile-card-title mb-1">Business profile</h3>
+                                    <p class="profile-card-text mb-0">Manage the producer business information shown for this account.</p>
                                 </div>
                             </div>
-                            <div class="profile-form-actions">
-                                <button type="submit" class="btn btn-primary">Save address</button>
+                            {% if producer_business_form %}
+                                <form method="post" novalidate>
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_type" value="producer_business">
+                                    <div class="row g-3">
+                                        <div class="col-12 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.farm_name.id_for_label }}">
+                                                Business / farm name
+                                            </label>
+                                            {{ producer_business_form.farm_name }}
+                                            {% for error in producer_business_form.farm_name.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.contact_name.id_for_label }}">
+                                                Business contact name
+                                            </label>
+                                            {{ producer_business_form.contact_name }}
+                                            {% for error in producer_business_form.contact_name.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.contact_email.id_for_label }}">
+                                                Business contact email
+                                            </label>
+                                            {{ producer_business_form.contact_email }}
+                                            {% for error in producer_business_form.contact_email.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.contact_phone.id_for_label }}">
+                                                Business contact phone
+                                            </label>
+                                            {{ producer_business_form.contact_phone }}
+                                            {% for error in producer_business_form.contact_phone.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.farm_postcode.id_for_label }}">
+                                                Business postcode
+                                            </label>
+                                            {{ producer_business_form.farm_postcode }}
+                                            {% for error in producer_business_form.farm_postcode.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.organic_certification_number.id_for_label }}">
+                                                Organic certification number
+                                            </label>
+                                            {{ producer_business_form.organic_certification_number }}
+                                            {% if producer_business_form.organic_certification_number.help_text %}
+                                                <div class="form-text">{{ producer_business_form.organic_certification_number.help_text }}</div>
+                                            {% endif %}
+                                            {% for error in producer_business_form.organic_certification_number.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="profile-form-actions">
+                                        <button type="submit" class="btn btn-primary">Save business profile</button>
+                                    </div>
+                                </form>
+                            {% else %}
+                                <div class="alert alert-warning profile-alert mb-0">Producer profile details are not available for this account.</div>
+                            {% endif %}
+                        </section>
+                    {% else %}
+                        <!-- Customer Address -->
+                        <section class="profile-card mb-4">
+                            <div class="profile-card-header">
+                                <div>
+                                    <h3 class="profile-card-title mb-1">Default address</h3>
+                                    <p class="profile-card-text mb-0">This address can be used for delivery and billing defaults.</p>
+                                </div>
                             </div>
-                        </form>
-                    </section>
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                <input type="hidden" name="form_type" value="address">
+                                <div class="row g-3">
+                                    <div class="col-12 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.line1.id_for_label }}">Address line 1</label>
+                                        {{ address_form.line1 }}
+                                        {% for error in address_form.line1.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                    <div class="col-12 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.line2.id_for_label }}">Address line 2</label>
+                                        {{ address_form.line2 }}
+                                        {% for error in address_form.line2.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                    <div class="col-12 col-md-6 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.city.id_for_label }}">City</label>
+                                        {{ address_form.city }}
+                                        {% for error in address_form.city.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                    <div class="col-12 col-md-6 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.postcode.id_for_label }}">Postcode</label>
+                                        {{ address_form.postcode }}
+                                        {% for error in address_form.postcode.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                </div>
+                                <div class="profile-form-actions">
+                                    <button type="submit" class="btn btn-primary">Save address</button>
+                                </div>
+                            </form>
+                        </section>
+                    {% endif %}
                     <!-- Password -->
                     <section class="profile-card">
                         <div class="profile-card-header">
@@ -142,7 +264,7 @@
                             {% endif %}
                             <div class="row g-3">
                                 <!-- Current Password -->
-                                <div class="col-12">
+                                <div class="col-12 profile-field-wrapper">
                                     <label class="form-label"
                                            for="{{ password_form.current_password.id_for_label }}">
                                         Current password
@@ -161,7 +283,7 @@
                                     {% for error in password_form.current_password.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
                                 </div>
                                 <!-- New Password -->
-                                <div class="col-12 col-md-6">
+                                <div class="col-12 col-md-6 profile-field-wrapper">
                                     <label class="form-label"
                                            for="{{ password_form.new_password.id_for_label }}">New password</label>
                                     <div class="input-group profile-password-field">
@@ -178,7 +300,7 @@
                                     {% for error in password_form.new_password.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
                                 </div>
                                 <!-- Confirm Password -->
-                                <div class="col-12 col-md-6">
+                                <div class="col-12 col-md-6 profile-field-wrapper">
                                     <label class="form-label"
                                            for="{{ password_form.confirm_password.id_for_label }}">
                                         Confirm new password

@@ -226,6 +226,36 @@
     box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.12);
 }
 
+.profile-toast-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: min(420px, calc(100vw - 2rem));
+  z-index: 1080;
+}
+
+.profile-toast {
+  align-items: center;
+  box-shadow: 0 1rem 2rem rgba(16, 35, 63, 0.15);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.profile-toast.is-hiding {
+  opacity: 0;
+  transform: translateY(-0.5rem);
+}
+
+.profile-toast .btn-close {
+  flex: 0 0 auto;
+}
+
 @media (max-width: 991.98px) {
     .profile-summary-card {
         position: static;
