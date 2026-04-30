@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import views_main
-from accounts.views.views_main import UnifiedRegistrationView
+from accounts.views.views_main import UnifiedRegistrationView, check_email_exists
 from accounts.views.producer_payments import (
     producer_payments_view,
     download_payment_report_view,
@@ -18,6 +18,8 @@ urlpatterns = [
     path("logout/", views_main.logout_view, name="logout"),
     path("api/register/", UnifiedRegistrationView.as_view(), name="api-register"),
     path("auth/firebase/", views_main.firebase_auth_view),
+    path("auth/check-email/", check_email_exists, name="check_email"),
+
     
     # Dashboard & Order Management
     path("producer_dashboard/", views_main.producer_dashboard, name="producer_dashboard"),
