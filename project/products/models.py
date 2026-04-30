@@ -211,6 +211,7 @@ class Inventory(models.Model):
     
     class BatchStatus(models.TextChoices):
         ACTIVE = "ACT", "Active"
+        EXPIRED = "EXP", "Expired"
         DELETED = "DEL", "Deleted"
 
     product = models.ForeignKey(
@@ -260,6 +261,7 @@ class Inventory(models.Model):
             return base_price * discount_factor
         else:
             return base_price
+        
     def is_expired(self) -> bool:
         return self.expiry_date < timezone.localdate()
 

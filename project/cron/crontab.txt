@@ -1,0 +1,2 @@
+0 6 * * * cd /code && python manage.py expire_batches
+0 7 * * * cd /code && python manage.py send_low_stock_emails
