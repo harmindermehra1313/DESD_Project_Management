@@ -617,6 +617,44 @@ async function loadOrders() {
     setErrorState(M.getLoadError(error));
   }
 }
+function renderProducerBadges(producerNames, maxVisible = 4) {
+  const names = ensureArray(producerNames).filter(Boolean);
+
+  if (!names.length) {
+    return `<span class="text-muted">-</span>`;
+  }
+
+  const visibleNames = names.slice(0, maxVisible);
+  const hiddenCount = Math.max(0, names.length - visibleNames.length);
+  const fullProducerList = names.join(", ");
+
+  return `
+    <div
+      class="order-history-producers-list"
+      title="${escapeHtml(fullProducerList)}"
+    >
+      ${visibleNames
+        .map(
+          (name) => `
+            <span class="badge rounded-pill text-bg-light border order-history-producer-badge">
+              ${escapeHtml(name)}
+            </span>
+          `,
+        )
+        .join("")}
+
+      ${
+        hiddenCount > 0
+          ? `
+            <span class="badge rounded-pill text-bg-light border order-history-producer-badge">
+              +${hiddenCount} more
+            </span>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
 
 function renderOrdersTable(orders) {
   const wrapper = document.getElementById("orderTableWrapper");
@@ -630,33 +668,36 @@ function renderOrdersTable(orders) {
     <tr>
       <td><strong>${escapeHtml(order.order_number)}</strong></td>
       <td>${formatDate(order.order_date)}</td>
-      <td>
-        ${(order.producer_names || [])
-          .map(
-            (name) => `
-          <span class="badge rounded-pill text-bg-light border me-1 mb-1">
-            ${escapeHtml(name)}
-          </span>
-        `,
-          )
-          .join("")}
+
+      <td class="order-history-producers-cell">
+        ${renderProducerBadges(order.producer_names)}
       </td>
+
       <td>${formatMoney(order.total)}</td>
+
       <td>
         <span class="badge ${getStatusBadgeClass(order.order_status)}">
           ${escapeHtml(order.order_status)}
         </span>
       </td>
-      <td class="text-end">
-        <button
-          type="button"
-          class="btn btn-sm btn-primary me-2"
-          data-action="view-details"
-          data-order-id="${escapeHtml(order.id)}"
-        >
-          ${M.viewDetailsButton}
-        </button>
-        ${getReorderButtonHtml(order.id, order.order_status, "btn-sm btn-primary")}
+
+      <td class="text-end order-history-actions-cell">
+        <div class="order-history-actions">
+          <button
+            type="button"
+            class="btn btn-sm btn-primary order-history-action-btn"
+            data-action="view-details"
+            data-order-id="${escapeHtml(order.id)}"
+          >
+            ${M.viewDetailsButton}
+          </button>
+
+          ${getReorderButtonHtml(
+            order.id,
+            order.order_status,
+            "btn-sm order-history-action-btn",
+          )}
+        </div>
       </td>
     </tr>
   `,
