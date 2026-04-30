@@ -884,7 +884,7 @@ def product_view(request, category_id):
     producer_filter = (request.GET.get("producer") or "").strip()
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
-    sort = (request.GET.get("sort") or "").strip()
+    sort = (request.GET.get("sort") or "newest").strip()
 
     live_product_filters = {
         "status": Product.Status.PUBLISHED,
@@ -944,9 +944,10 @@ def product_view(request, category_id):
         order_by = ("price", "id")
     elif sort == "price_high":
         order_by = ("-price", "id")
-    elif sort == "newest":
-        order_by = ("-created_at", "-id")
+    elif sort == "oldest":
+        order_by = ("created_at", "id")
     else:
+        sort = "newest"
         order_by = ("-created_at", "-id")
 
     products = (

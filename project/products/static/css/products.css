@@ -71,7 +71,8 @@
   color: #ffffff;
 }
 
-.product-primary-btn:hover {
+.product-primary-btn:hover,
+.product-primary-btn:focus {
   background: #2f4b67;
   border-color: #2f4b67;
   color: #ffffff;
@@ -83,7 +84,8 @@
   color: #344054;
 }
 
-.product-secondary-btn:hover {
+.product-secondary-btn:hover,
+.product-secondary-btn:focus {
   background: #f2f4f7;
   border-color: #c1c7d0;
   color: #1d2939;
@@ -306,7 +308,8 @@
   padding: 0.3rem 0.5rem;
 }
 
-.product-card-action {
+.product-card-action,
+.product-action-btn {
   align-items: center;
   border-radius: 0.65rem;
   display: inline-flex;
@@ -316,7 +319,8 @@
   width: 100%;
 }
 
-.product-card-action:disabled {
+.product-card-action:disabled,
+.product-action-btn:disabled {
   cursor: not-allowed;
 }
 
@@ -346,44 +350,53 @@
   align-items: center;
   background: #ffffff;
   border: 1px solid var(--alabaster-grey);
-  border-radius: 999px;
+  border-radius: 0.75rem;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
   display: inline-flex;
   gap: 0.5rem;
-  padding: 0.4rem;
+  padding: 0.5rem;
 }
 
-.product-page-btn {
-  align-items: center;
-  border-radius: 999px;
-  display: inline-flex;
-  font-weight: 700;
-  justify-content: center;
-  min-height: 2.35rem;
-  min-width: 5.5rem;
-  padding: 0.45rem 1rem;
-}
-
+.product-page-btn,
 .product-page-current {
   align-items: center;
-  background: var(--dusk-blue);
-  border: 1px solid var(--dusk-blue);
-  border-radius: 999px;
-  color: var(--text-light);
+  background: #385878;
+  border: 1px solid #385878;
+  border-radius: 0.5rem;
+  color: #ffffff;
   display: inline-flex;
   font-weight: 700;
   justify-content: center;
-  min-height: 2.35rem;
-  padding: 0.45rem 1rem;
+  min-height: 2.6rem;
+  min-width: 5.5rem;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
   white-space: nowrap;
 }
 
-.product-page-btn:disabled {
-  background: #eef2f6;
-  border-color: #d0d5dd;
-  color: #667085;
+.product-page-btn:hover,
+.product-page-btn:focus,
+.product-page-current:hover,
+.product-page-current:focus {
+  background: #2f4b67;
+  border-color: #2f4b67;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.product-page-current {
+  cursor: default;
+  min-width: 8.5rem;
+}
+
+.product-page-btn:disabled,
+.product-page-btn.disabled,
+.product-page-btn[aria-disabled="true"] {
+  background: #385878;
+  border-color: #385878;
+  color: #ffffff;
   cursor: not-allowed;
-  opacity: 1;
+  opacity: 0.55;
 }
 
 /* Small tablets: 2 cards */
@@ -435,7 +448,7 @@
   }
 
   .product-pagination {
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     flex-direction: column;
     width: 100%;
   }
