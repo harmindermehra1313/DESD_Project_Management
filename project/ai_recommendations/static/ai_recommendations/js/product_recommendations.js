@@ -110,7 +110,25 @@
 
     return card;
   }
+  async function trackCurrentProductDetailView() {
+    const page = document.querySelector("#productDetailPage");
 
+    if (!page) {
+      return;
+    }
+
+    const productId = page.dataset.productId;
+
+    if (!productId) {
+      return;
+    }
+
+    try {
+      await trackProductEvent(productId, "view", getCookie("csrftoken"));
+    } catch (error) {
+      // Tracking failure should not stop the product detail page.
+    }
+  }
   async function loadRecommendations(section) {
     const productId = section.dataset.productId;
     const grid = section.querySelector("[data-ai-recommendations-grid]");
@@ -123,12 +141,6 @@
     }
 
     try {
-      try {
-        await trackProductEvent(productId, "view", csrfToken);
-      } catch (error) {
-        // Tracking failure should not stop recommendation loading.
-      }
-
       const response = await fetch(
         `/ai-recommendations/products/${productId}/`,
         {
@@ -172,6 +184,8 @@
   };
 
   document.addEventListener("DOMContentLoaded", () => {
+    trackCurrentProductDetailView();
+
     const section = document.querySelector("[data-ai-recommendations]");
 
     if (section) {
