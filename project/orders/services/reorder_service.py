@@ -276,6 +276,7 @@ def _build_suggestion_candidates(
     product,
     original_producer_id: int,
     requested_quantity: int,
+    excluded_product_ids: set[int] | None = None,
 ) -> list[dict]:
     """
     Build live alternative candidates for one historical order item.
@@ -287,6 +288,7 @@ def _build_suggestion_candidates(
         source_product=product,
         original_producer_id=original_producer_id,
         limit=3,
+        excluded_product_ids=excluded_product_ids,
     )
 
     match_basis = _get_match_basis_for_product(product)
@@ -295,6 +297,11 @@ def _build_suggestion_candidates(
 
     for inventory in suggestion_inventories:
         suggested_product = inventory.product
+        recommendation_badge = getattr(
+            inventory,
+            "reorder_recommendation_badge",
+            "",
+        )
 
         if suggested_product.pk in seen_product_ids:
             continue
@@ -319,6 +326,7 @@ def _build_suggestion_candidates(
                 "inventory": preferred_inventory,
                 "available_quantity": preferred_inventory.remaining_quantity,
                 "match_basis": match_basis,
+                "recommendation_badge": recommendation_badge,
                 "serialized": {
                     "product_id": suggested_product.pk,
                     "product_name": suggested_product.name,
@@ -339,6 +347,7 @@ def _build_suggestion_candidates(
                         None,
                     ),
                     "match_basis": match_basis,
+                    "recommendation_badge": recommendation_badge,
                 },
             }
         )
@@ -625,6 +634,9 @@ def reorder_order(
     }
 
     skipped_count = 0
+    order_product_ids = {
+        item.product_id for item in order.items.all() if item.product_id
+    }
 
     for item in order.items.all():
         suggestion_candidates = _build_suggestion_candidates(
@@ -632,6 +644,7 @@ def reorder_order(
             product=item.product,
             original_producer_id=item.producer_id,
             requested_quantity=item.quantity,
+            excluded_product_ids=order_product_ids,
         )
         suggested_items = _serialise_suggested_items_from_candidates(
             suggestion_candidates
@@ -744,6 +757,10 @@ def reorder_order(
                 "current_price": current_unit_price,
                 "pricing": pricing,
                 "match_basis": selected_candidate["match_basis"],
+                "recommendation_badge": selected_candidate.get(
+                    "recommendation_badge",
+                    "",
+                ),
                 "suggested_items": suggested_items,
             }
         )

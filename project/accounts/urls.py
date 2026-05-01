@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import views_main
+from .views import profile_views
+from accounts.views.views_main import UnifiedRegistrationView
 from accounts.views.views_main import UnifiedRegistrationView, check_email_exists
 from accounts.views.producer_payments import (
     producer_payments_view,
@@ -27,7 +29,7 @@ urlpatterns = [
     path("cancel-subscription/<int:sub_id>/", views_main.cancel_subscription, name="cancel_subscription"),
     path("toggle-subscription/<int:sub_id>/", views_main.toggle_subscription, name="toggle_subscription"),
     
-    path("profile/", views_main.profile, name="profile"),
+    path("profile/", profile_views.profile, name="profile"),
     
     # Producer Payments
     path("producer/payments/", producer_payments_view, name="producer_payments"),

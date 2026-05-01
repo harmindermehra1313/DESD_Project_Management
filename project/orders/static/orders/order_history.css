@@ -1,3 +1,4 @@
+/* Reorder option inputs */
 .js-reorder-option-input:checked {
   background-color: var(--dusk-blue);
   border-color: var(--dusk-blue);
@@ -8,14 +9,145 @@
   box-shadow: 0 0 0 0.25rem rgba(55, 82, 111, 0.25);
 }
 
-@media (max-width: 720px) {
-  /* Page spacing */
+/* Main order history table */
+.main-table {
+  width: 100%;
+}
+
+.main-table th,
+.main-table td {
+  vertical-align: middle;
+}
+
+.main-table th {
+  white-space: nowrap;
+}
+
+/* Producer badges inside order table */
+.order-history-producers-cell {
+  min-width: 18rem;
+  max-width: 38rem;
+  white-space: normal;
+}
+
+.order-history-producers-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  min-width: 0;
+}
+
+.order-history-producer-badge {
+  max-width: 14rem;
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Order table action buttons */
+.order-history-actions-cell {
+  width: 8.5rem;
+  min-width: 8.5rem;
+}
+
+.order-history-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.order-history-action-btn {
+  width: 100%;
+  margin-right: 0 !important;
+  white-space: nowrap;
+}
+
+/* Order detail summary cards */
+.order-detail-summary > [class*="col-"] {
+  min-width: 0;
+}
+
+.order-detail-summary-card {
+  min-width: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.order-detail-summary-value {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.order-detail-order-number {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 0.95rem;
+}
+
+/* Order detail footer actions */
+#orderDetailContent
+  .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 {
+  min-width: 0;
+}
+
+#orderDetailContent
+  .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3
+  .d-flex.gap-2 {
+  flex-wrap: wrap;
+}
+
+#orderDetailContent
+  .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3
+  .btn,
+#orderDetailContent
+  .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3
+  a.btn {
+  white-space: nowrap;
+}
+
+/* Modal sizing */
+.modal-dialog {
+  max-width: min(1140px, calc(100% - 2rem));
+}
+
+.modal-content {
+  overflow: hidden;
+}
+
+.modal-body {
+  min-width: 0;
+}
+
+/* Pagination */
+#paginationInfo {
+  line-height: 1.4;
+}
+
+/* Mobile: 1-column cards and stacked controls */
+@media (max-width: 575.98px) {
   .container.py-4 {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
 
-  /* Filter actions */
+  .container.py-4 > .d-flex.justify-content-between.align-items-center {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.75rem;
+  }
+
   #orderFiltersForm .col-12.d-flex.gap-2 {
     flex-direction: column;
   }
@@ -24,7 +156,6 @@
     width: 100%;
   }
 
-  /* Order table: keep readable with horizontal scroll */
   #orderTableWrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -37,10 +168,22 @@
   .main-table th,
   .main-table td {
     white-space: nowrap;
-    vertical-align: middle;
   }
 
-  /* Action buttons inside table */
+  .order-history-producers-cell {
+    min-width: 18rem;
+    max-width: 18rem;
+    white-space: normal;
+  }
+
+  .order-history-producer-badge {
+    max-width: 12rem;
+  }
+
+  .order-history-actions-cell {
+    min-width: 8.5rem;
+  }
+
   .main-table td.text-end {
     min-width: 180px;
     white-space: normal;
@@ -56,21 +199,8 @@
     margin-top: 0.5rem;
   }
 
-  /* Pagination row */
-  #paginationInfo {
-    display: block;
-    width: 100%;
-    text-align: center;
-  }
-
-  #paginationInfo + div {
-    width: 100%;
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  #paginationInfo + div .btn {
-    flex: 1 1 0;
+  .main-table .order-history-actions .btn + .btn {
+    margin-top: 0 !important;
   }
 
   .card-body > .d-flex.justify-content-between.align-items-center.mt-3 {
@@ -79,13 +209,37 @@
     gap: 0.75rem;
   }
 
-  /* Modals */
-  .modal-dialog {
-    margin: 0.5rem;
+  #paginationInfo {
+    display: block;
+    width: 100%;
+    text-align: center;
   }
 
-  .modal-xl {
+  #paginationInfo + div {
+    display: flex;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  #paginationInfo + div .btn {
+    flex: 1 1 0;
+  }
+
+  .order-detail-summary-card {
+    padding: 0.875rem !important;
+  }
+
+  .order-detail-summary-value {
+    font-size: 0.95rem;
+  }
+
+  .order-detail-order-number {
+    font-size: 0.9rem;
+  }
+
+  .modal-dialog {
     max-width: calc(100% - 1rem);
+    margin: 0.5rem;
   }
 
   .modal-footer {
@@ -107,19 +261,74 @@
     margin-top: 0.5rem;
   }
 
-  /* Order detail footer actions */
-  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 {
+  #orderDetailContent
+    .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 {
     flex-direction: column;
     align-items: stretch !important;
   }
 
-  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 .d-flex.gap-2 {
+  #orderDetailContent
+    .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3
+    .d-flex.gap-2 {
     flex-direction: column;
     width: 100%;
   }
 
-  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 .btn,
-  #orderDetailContent .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3 a.btn {
+  #orderDetailContent
+    .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3
+    .btn,
+  #orderDetailContent
+    .border.rounded.p-3.d-flex.justify-content-between.align-items-center.flex-wrap.gap-3
+    a.btn {
     width: 100%;
+  }
+}
+
+/* Tablet: 2-column summary cards, table still scrolls safely */
+@media (min-width: 576px) and (max-width: 991.98px) {
+  #orderTableWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .main-table {
+    min-width: 820px;
+  }
+
+  .order-history-producers-cell {
+    min-width: 20rem;
+    max-width: 28rem;
+  }
+
+  .order-detail-summary-card {
+    min-height: 7rem;
+  }
+
+  .order-detail-summary-value {
+    font-size: 1rem;
+  }
+
+  .modal-dialog {
+    max-width: calc(100% - 2rem);
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+}
+
+/* Laptop and desktop: full table and 4-column summary cards */
+@media (min-width: 992px) {
+  .main-table {
+    table-layout: auto;
+  }
+
+  .order-detail-summary-card {
+    min-height: 7.25rem;
+  }
+
+  .order-history-producers-cell {
+    min-width: 22rem;
+    max-width: 38rem;
   }
 }
