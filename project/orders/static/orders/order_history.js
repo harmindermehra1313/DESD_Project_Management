@@ -728,29 +728,43 @@ function formatAddress(address) {
 
 function renderOrderSummary(order) {
   return `
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+    <div class="row g-3 mb-4 order-detail-summary">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.orderNumberLabel}</div>
-          <div class="fw-semibold">${escapeHtml(order.order_number)}</div>
+          <div
+            class="fw-semibold order-detail-summary-value order-detail-order-number"
+            title="${escapeHtml(order.order_number)}"
+          >
+            ${escapeHtml(order.order_number)}
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.orderDateLabel}</div>
-          <div class="fw-semibold">${formatDate(order.order_date)}</div>
+          <div class="fw-semibold order-detail-summary-value">
+            ${formatDate(order.order_date)}
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.statusLabel}</div>
-          <div class="fw-semibold">${escapeHtml(order.status || order.order_status || "-")}</div>
+          <div class="fw-semibold order-detail-summary-value">
+            ${escapeHtml(order.status || order.order_status || "-")}
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.paymentLabel}</div>
-          <div class="fw-semibold">${escapeHtml(order.payment_method_display || M.notAvailable)}</div>
+          <div class="fw-semibold order-detail-summary-value">
+            ${escapeHtml(order.payment_method_display || M.notAvailable)}
+          </div>
         </div>
       </div>
     </div>

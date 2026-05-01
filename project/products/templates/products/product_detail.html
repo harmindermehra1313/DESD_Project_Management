@@ -6,6 +6,8 @@
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'css/product_detail.css' %}">
   <link rel="stylesheet" href="{% static 'reviews/css/product_review.css' %}">
+  <link rel="stylesheet"
+        href="{% static 'ai_recommendations/css/product_recommendations.css' %}" />
 {% endblock %}
 {% block content %}
   <section class="py-4 py-lg-5">
@@ -112,6 +114,22 @@
               </div>
             </div>
           </div>
+          {% if user.is_authenticated %}
+            <section class="ai-recommendations d-none"
+                     data-ai-recommendations
+                     data-product-id="{{ product_id }}">
+              {% csrf_token %}
+              <div class="ai-recommendations__header">
+                <h2 class="ai-recommendations__title">Recommended for your next order</h2>
+                <p class="ai-recommendations__subtitle">
+                  Suggestions are based on recent views, basket activity, previous orders,
+                  product type similarity and marketplace behaviour.
+                </p>
+              </div>
+              <p class="ai-recommendations__status" data-ai-recommendations-status>Loading recommendations...</p>
+              <div class="ai-recommendations__grid" data-ai-recommendations-grid></div>
+            </section>
+          {% endif %}
           <div class="row mt-4">
             <div class="mt-4">
               <h3 class="product-section-title">Recipe Suggestions</h3>
@@ -130,4 +148,6 @@
     <script src="{% static 'js/product_detail_messages.js' %}"></script>
     <script src="{% static 'js/product_detail.js' %}"></script>
     <script src="{% static 'reviews/js/product_reviews.js' %}"></script>
+    <script src="{% static 'ai_recommendations/js/product_recommendations.js' %}"
+            defer></script>
   {% endblock %}

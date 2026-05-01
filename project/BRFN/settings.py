@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     'carts',
     # Task queue
     'django_q',
+    # ai
+    "ai_recommendations",
 ]
 
 MIDDLEWARE = [

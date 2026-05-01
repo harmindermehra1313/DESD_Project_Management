@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import views_main
+from .views import profile_views
+from accounts.views.views_main import UnifiedRegistrationView
 from accounts.views.views_main import UnifiedRegistrationView, check_email_exists
 from accounts.views import profile_views
 from accounts.views.producer_payments import (

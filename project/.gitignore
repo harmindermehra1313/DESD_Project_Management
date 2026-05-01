@@ -9,3 +9,5 @@ db.sqlite3
 firebase-key.json
 
 accounts/static/config/firebase_auth.json
+
+ai_recommendations/artifacts/

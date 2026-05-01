@@ -135,3 +135,18 @@ services:
     restart: always
     ports:
       - "8080:8080"
+  
+  recommender_trainer:
+    build: .
+    container_name: brfn_recommender_trainer
+    command: ["./train-recommender-if-needed.sh"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    environment:
+      FORCE_RETRAIN_RECOMMENDER: "0"
+    
+
+# volumes:
+#   postgres_data:
