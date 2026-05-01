@@ -7,15 +7,22 @@ from django.db.models import Sum
 class Category(models.Model):
     class FoodGroups(models.TextChoices):
         MEAT = "MT", "Meat"
-        DAIRY_AND_EGGS = "DAE", "Dairy and Eggs"
+        DAIRY = "DA", "Dairy"
+        EGGS = "EG", "Eggs"
         FRUIT = "FR", "Fruit"
         VEGETABLES = "VEG", "Vegetables"
-        SEASONAL = "SEA", "Seasonal"
+        BAKERY = "BAK", "Bakery"
+        PRESERVES = "PRE", "Preserves & Jams"
+        PICKLED = "PIC", "Pickled & Fermented"
+        SWEETENERS = "SWT", "Honey & Syrups"
+        BEVERAGES = "BEV", "Juices & Beverages"
+        SNACKS = "SNK", "Snacks & Confectionery"
+        ARTISAN = "ART", "Artisan Goods"
 
     name = models.CharField(max_length=100)
 
     food_groups = models.CharField(
-        max_length=20, choices=FoodGroups.choices, default=FoodGroups.SEASONAL
+        max_length=20, choices=FoodGroups.choices, default=FoodGroups.VEGETABLES
     )
 
     description = models.TextField(blank=True)
