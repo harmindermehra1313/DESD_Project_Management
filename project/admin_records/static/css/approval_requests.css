@@ -92,6 +92,19 @@
     font-weight: 500;
 }
 
+/* .btn-warning {
+    color: #fff;
+    --bs-btn-color: #ffffff;
+    width: 90%;
+} */
+.btn-warning, .btn-danger, .btn-success{
+    color: #fff;
+    --bs-btn-color: #ffffff;
+    width: 90%;
+}
+.btn-group-sm>.btn, .btn-sm {
+    margin: 5px;
+}
 /* Responsive table */
 @media (max-width: 768px) {
 
@@ -138,7 +151,11 @@
         padding: 10px 14px;
         margin: 10px;
     }
-
+    .btn-warning, .btn-danger, .btn-success{
+        color: #fff;
+        --bs-btn-color: #ffffff;
+        width: 50%;
+    }
 }
 
 /* ============================================================

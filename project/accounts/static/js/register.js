@@ -8,6 +8,13 @@
 // 5. Custom field validation (Full name, Phone, etc.)
 // 6. Form submission + API error popup
 // ------------------------------------------------------------
+function openForgotPasswordPopup() {
+    document.getElementById("forgotPasswordModal").style.display = "flex";
+}
+
+function closeForgotPasswordPopup() {
+    document.getElementById("forgotPasswordModal").style.display = "none";
+}
 
 document.addEventListener('DOMContentLoaded', function () {
   // ------------------------------------------------------------

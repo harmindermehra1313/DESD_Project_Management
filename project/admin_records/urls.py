@@ -22,5 +22,7 @@ urlpatterns = [
     path("products/<int:product_id>/reject/", views.reject_product, name="reject_product"),
     path("api/product/<int:product_id>/", views.product_details, name="product_details"),
 
+    path("action-required/<int:product_id>/", views.action_required, name="action_required"),
+
 ]
 

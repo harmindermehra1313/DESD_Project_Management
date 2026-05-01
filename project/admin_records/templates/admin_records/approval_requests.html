@@ -42,22 +42,10 @@
                         <td data-label="Category">{{ product.category.name }}</td>
 
                         <td data-label="Submitted">
-                            {{ product.submitted_at|date:"d M Y, H:i" }}
+                            {{ product.created_at|date:"d M Y, H:i" }}<br>
+                            <small class="text-muted">Updated: {{ product.updated_at|date:"d M Y, H:i" }}</small>
                         </td>
 
-                        <!-- <td data-label="Actions" onclick="event.stopPropagation();">
-                            <div class="approval-actions">
-                                <a href="{% url 'admin_records:approve_product' product.id %}"
-                                   class="approval-btn approval-btn-approve">
-                                    Approve
-                                </a>
-
-                                <a href="{% url 'admin_records:reject_product' product.id %}"
-                                   class="approval-btn approval-btn-reject">
-                                    Reject
-                                </a>
-                            </div>
-                        </td> -->
                         <td data-label="Actions" onclick="event.stopPropagation();">
                             <a href="{% url 'admin_records:approve_product' product.id %}"
                             class="btn btn-success btn-sm">
@@ -68,6 +56,12 @@
                                     onclick="console.log('Reject clicked for:', '{{ product.id }}'); openRejectModal('{{ product.id }}'); event.stopPropagation();">
                                 Reject
                             </button>
+
+                            <button class="btn btn-warning btn-sm"
+                                onclick="openActionRequiredModal('{{ product.id }}'); event.stopPropagation();">
+                            Action Required
+                        </button>
+
                         </td>
 
                     </tr>
@@ -144,7 +138,8 @@
             {{ p.farm_origin }}<br><br>
 
             <strong class="text-brand">Submitted At</strong><br>
-            {{ p.submitted_at|date:"d M Y, H:i" }}<br><br>
+            {{p.created_at|date:"d M Y, H:i" }}<br>
+            <small class="text-muted">Updated: {{ p.updated_at|date:"d M Y, H:i" }}</small><br><br>
 
         </div>
     </template>
@@ -189,6 +184,46 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="actionRequiredModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title text-dark">Action Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p class="mb-2">Please describe what action the producer needs to take.</p>
+
+                <textarea id="actionRequiredInput"
+                          class="form-control"
+                          rows="4"
+                          placeholder="Explain what needs to be fixed or updated..."></textarea>
+
+                <input type="hidden" id="actionRequiredProductId">
+
+                <div id="actionRequiredError" class="text-danger small mt-2 d-none"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="button"
+                        class="btn btn-warning"
+                        onclick="submitActionRequired()">
+                    Send
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 
 {% csrf_token %}
 {% block extra_js %}

@@ -1,3 +1,40 @@
+function openActionRequiredModal(productId) {
+    document.getElementById("actionRequiredProductId").value = productId;
+    document.getElementById("actionRequiredInput").value = "";
+    document.getElementById("actionRequiredError").classList.add("d-none");
+
+    let modal = new bootstrap.Modal(document.getElementById("actionRequiredModal"));
+    modal.show();
+}
+
+function submitActionRequired() {
+    const productId = document.getElementById("actionRequiredProductId").value;
+    const message = document.getElementById("actionRequiredInput").value.trim();
+
+    if (!message) {
+        document.getElementById("actionRequiredError").innerText = "Please enter a message.";
+        document.getElementById("actionRequiredError").classList.remove("d-none");
+        return;
+    }
+
+    fetch(`/admin_records/action-required/${productId}/`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert("Error sending action required message.");
+        }
+    });
+}
+
+
 function showProductDetails(id) {
     const template = document.getElementById(`product-template-${id}`);
 
@@ -104,3 +141,4 @@ async function submitRejectReason() {
         errorEl.classList.remove("d-none");
     }
 }
+
