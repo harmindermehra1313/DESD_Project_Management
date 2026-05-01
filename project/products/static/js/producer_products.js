@@ -186,9 +186,39 @@ function openEditModal() {
     alert.className = 'alert mt-3 d-none';
     alert.textContent = '';
 
+        // Determine product status
+    const status = row.getAttribute('data-status');
+
+    const sendBtn = document.getElementById('sendForApprovalBtn');
+    const saveBtn = document.getElementById('saveEditBtn');
+
+    // Hide both first
+    sendBtn.classList.add('d-none');
+    saveBtn.classList.add('d-none');
+
+    // Apply your rules
+    if (status === 'FLG') {
+        // Only flagged → Send For Approval
+        sendBtn.classList.remove('d-none');
+    }
+    else if (status === 'PUB' || status === 'HID') {
+        // Published or Hidden → Save
+        saveBtn.classList.remove('d-none');
+    }
+    else {
+        // Removed or Pending → disable editing
+        disableEditFields();
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
     modal.show();
 }
+
+function disableEditFields() {
+    document.querySelectorAll('#editProductForm input, #editProductForm select, #editProductForm textarea')
+        .forEach(el => el.disabled = true);
+}
+
 
 function updateDetailsTemplateAfterEdit(productId, data) {
     const template = document.getElementById(`details-template-${productId}`);
@@ -965,4 +995,43 @@ function showGlobalSuccess(message) {
     setTimeout(() => {
         alert.classList.add('d-none');
     }, 30000);
+}
+
+
+async function sendForApproval() {
+    if (!selectedProductId) return;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    try {
+        const response = await fetch(`/products/producer/products/${selectedProductId}/send-for-approval/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showGlobalSuccess("Product sent for approval!");
+
+            // Update row status in table
+            const row = document.getElementById(`row-${selectedProductId}`);
+            row.setAttribute('data-status', 'PND');
+            row.cells[7].textContent = "Pending Approval";
+
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('editProductModal')).hide();
+
+            // Reapply filters
+            applyAllFilters(false);
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Network error");
+    }
 }

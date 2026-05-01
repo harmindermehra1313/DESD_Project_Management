@@ -18,7 +18,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from admin_records import views as admin_views
+from django.views.generic import TemplateView
 
+
+    
 handler400 = "BRFN.view.custom_400"
 handler403 = "BRFN.view.custom_403"
 handler404 = "BRFN.view.custom_404"
@@ -41,5 +44,5 @@ urlpatterns = [
     # Cart Endpoint
     path("cart/", include(("carts.urls", "carts"), namespace="carts")),
     path("search/", admin_views.global_search, name="global_search"),
-    
+    path("cookie-policy/", TemplateView.as_view(template_name="cookie_policy.html"), name="cookie_policy"),
 ]

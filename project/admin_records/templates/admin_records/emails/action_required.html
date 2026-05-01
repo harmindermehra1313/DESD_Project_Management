@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Action Required for Your Product Listing</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px;">
+
+    <div style="max-width: 600px; margin: auto; background: white; border-radius: 10px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+
+        <h2 style="color: #d97706; margin-bottom: 10px;">
+            ⚠️ Action Required
+        </h2>
+
+        <p style="font-size: 15px; color: #444;">
+            Hello {{ producer_name }},
+        </p>
+
+        <p style="font-size: 15px; color: #444;">
+            Your product listing <strong>{{ product_name }}</strong> requires some changes before it can be approved.
+        </p>
+
+        <div style="background: #fff7e6; border-left: 4px solid #d97706; padding: 12px 15px; margin: 20px 0; border-radius: 6px;">
+            <strong>Admin Message:</strong><br>
+            <span style="color: #333;">{{ message }}</span>
+        </div>
+
+        <p style="font-size: 15px; color: #444;">
+            Please update your product accordingly and resubmit it for approval.
+        </p>
+
+        <p style="font-size: 14px; color: #888; margin-top: 30px;">
+            Thank you,<br>
+            <strong>BRFN Admin Team</strong>
+        </p>
+
+    </div>
+
+</body>
+</html>
