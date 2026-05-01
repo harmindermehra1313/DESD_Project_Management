@@ -120,9 +120,6 @@ services:
     restart: always
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
   
   recommender_trainer:
     build: .
@@ -134,9 +131,7 @@ services:
       - .env
     environment:
       FORCE_RETRAIN_RECOMMENDER: "0"
-    depends_on:
-      db:
-        condition: service_healthy
+    
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
