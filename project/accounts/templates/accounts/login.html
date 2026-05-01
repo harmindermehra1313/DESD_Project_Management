@@ -52,10 +52,15 @@
 
 
                 <!-- Remember me -->
-                <div class="form-check mb-3">
-                    <input id="remember" name="remember" type="checkbox" class="form-check-input">
-                    <label for="remember" class="form-check-label">Remember me</label>
+                <div class="remember-forgot-row mb-3">
+                    <div class="form-check">
+                        <input id="remember" name="remember" type="checkbox" class="form-check-input">
+                        <label for="remember" class="form-check-label">Remember me</label>
+                    </div>
+
+                    <a href="#" class="forgot-link" onclick="openForgotPasswordPopup()">Forgot Password?</a>
                 </div>
+
 
                 <!-- Submit -->
                 <button type="submit" class="btn btn-primary w-100">Sign In</button>
@@ -78,6 +83,22 @@
     </div>
 
 </div>
+<!-- Hidden POP WINDOw -->
+ <div id="forgotPasswordModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <h4>Reset Password</h4>
+
+        <p>Enter your email to receive a reset link.</p>
+
+        <input id="resetEmail" type="email" class="form-control" placeholder="you@example.com">
+
+        <div class="mt-3 d-flex justify-content-end">
+            <button class="btn btn-secondary me-2" onclick="closeForgotPasswordPopup()">Cancel</button>
+            <button class="btn btn-primary" onclick="sendResetEmail()">Send</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast" class="toast"></div>
 <script>
     window.CSRF_TOKEN = "{{ csrf_token }}";

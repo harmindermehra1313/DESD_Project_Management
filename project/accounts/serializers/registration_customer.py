@@ -8,6 +8,8 @@ from django.db import transaction
 from accounts.models import User, Customer, Address
 import re
 from firebase_admin import auth as firebase_auth
+from django_q.tasks import async_task
+
 
 class CustomerRegistrationSerializer(serializers.Serializer):
     # User fields
@@ -119,5 +121,6 @@ class CustomerRegistrationSerializer(serializers.Serializer):
             is_default_delivery=True,
             is_default_billing=True,
         )
-
+        
+        async_task("accounts.tasks.send_welcome_email", user)
         return customer

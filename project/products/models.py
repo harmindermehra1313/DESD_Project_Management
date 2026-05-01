@@ -149,7 +149,7 @@ class Product(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     status = models.CharField(
         max_length = 10,
@@ -157,7 +157,7 @@ class Product(models.Model):
         default = Status.PENDING
     )
 
-    moderated_at = models.DateTimeField(auto_now_add=True, null=True)
+    moderated_at = models.DateTimeField(auto_now=True, null=True)
 
     def clean(self):
         super().clean()
