@@ -65,7 +65,7 @@ INSTALLED_APPS = [
     'products',
     'orders',
     'payments',
-    'reviews',
+    'reviews.apps.ReviewsConfig',
     'community',
     'notifications',
     'admin_records',
@@ -111,16 +111,16 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 # Database
 
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST", "db"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-    }
-}
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.getenv("POSTGRES_DB"),
+#         "USER": os.getenv("POSTGRES_USER"),
+#         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+#         "HOST": os.getenv("POSTGRES_HOST", "db"),
+#         "PORT": os.getenv("POSTGRES_PORT", "5432"),
+#     }
+# }
 
 # DATABASES = {
 #     "default": {
@@ -136,6 +136,22 @@ DATABASES = {
 #         },
 #     }
 # }
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB"),
+        "USER": os.getenv("POSTGRES_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "OPTIONS": {
+            "sslmode": os.getenv("POSTGRES_SSLMODE", "require"),
+            "channel_binding": os.getenv("POSTGRES_CHANNEL_BINDING", "require"),
+        },
+        "CONN_MAX_AGE": 60,
+    }
+}
 
 
 AUTH_USER_MODEL = "accounts.User"
@@ -266,8 +282,35 @@ Q_CLUSTER = {
     'retry': 180,
     'queue_limit': 50,
     'bulk': 10,
-    'orm': 'default',           # uses the same Postgres DB as the broker
+    'orm': 'default',
 }
+
+# DRAMATIQ_BROKER = {
+#     "BROKER": "dramatiq.brokers.redis.RedisBroker",
+#     "OPTIONS": {
+#         "host": os.getenv("REDIS_HOST", "redis"),
+#         "port": 6379,
+#         "db": 0,
+#     },
+#     "MIDDLEWARE": [
+#         "dramatiq.middleware.AgeLimit",
+#         "dramatiq.middleware.TimeLimit",
+#         "dramatiq.middleware.Callbacks",
+#         "dramatiq.middleware.Retries",
+#     ]
+# }
+
+# DRAMATIQ_TASKS_DATABASE = "default"
+
+# DRAMATIQ_SCHEDULER = {
+#     "enabled": True,
+#     "tasks": [
+#         {
+#             "name": "check_low_stock",
+#             "cron": "*/1 * * * *",   # every minute
+#         },
+#     ],
+# }
 
 # Email backend
 # Prints emails to terminal instead of sending (useful for dev/testing):

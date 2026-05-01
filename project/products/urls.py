@@ -1,7 +1,8 @@
 # products/urls.py
 
 from django.urls import path
-from .views.views_main import add_product, product_view, producer_products, edit_producer_product, cancel_producer_product, ProductDetailView, product_detail_page
+from . import views
+from .views.views_main import add_product, product_view, producer_products, edit_producer_product, send_for_approval, cancel_producer_product, ProductDetailView, product_detail_page
 from .views import reductions, api_reductions, batch
 from community.views import api_product_recipes
 
@@ -18,6 +19,8 @@ urlpatterns = [
     path("producer/products/", producer_products, name="producer_products"),
 
     path("product/<int:product_id>/recipes/", api_product_recipes, name="product_recipes"),
+    path("producer/products/<int:pk>/send-for-approval/", send_for_approval,name="send_for_approval"),
+
 
 
     

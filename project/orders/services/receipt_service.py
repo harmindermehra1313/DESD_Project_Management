@@ -47,6 +47,19 @@ def _format_money(value: Decimal | None) -> str:
         return "0.00"
     return f"{value:.2f}"
 
+def _structured_validation_error(
+    *,
+    code: str,
+    message: str,
+    data: dict | None = None,
+) -> ValidationError:
+    return ValidationError(
+        {
+            "code": code,
+            "message": message,
+            "data": data or {},
+        }
+    )
 
 def _money(value: Decimal | None) -> str:
     return f"£{_format_money(value)}"
@@ -269,7 +282,14 @@ def get_receipt_data(*, user: User, order_id: int) -> dict:
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
     if order.status != Order.Status.COMPLETED:
-        raise ValidationError("Receipt is only available for completed orders.")
+        raise _structured_validation_error(
+        code="receipt_not_available",
+        message="Receipt is only available for completed orders.",
+        data={
+            "order_id": order.id,
+            "order_status": order.status,
+        },
+    )
 
     items = _build_receipt_items(order)
     producer_breakdown = _build_producer_breakdown(order)

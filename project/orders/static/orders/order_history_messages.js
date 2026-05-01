@@ -4,6 +4,16 @@
     return `${count} ${count === 1 ? singular : plural}`;
   }
 
+  function formatQuantity(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+      return value ?? "0";
+    }
+
+    return Number.isInteger(number) ? String(number) : String(number);
+  }
+
   window.OrderHistoryMessages = {
     dash: "-",
     notAvailable: "Not available",
@@ -25,7 +35,8 @@
     cancelButton: "Cancel",
     goToCartButton: "Go to Cart",
     reorderAllowedTooltip: "Preview reorder changes",
-    reorderBlockedTooltip: "Reorder is not available for pending or cancelled orders",
+    reorderBlockedTooltip:
+      "Reorder is not available for pending or cancelled orders",
     receiptBlockedTooltip: "Receipt is only available for completed orders",
     zeroOrders: "0 orders",
     orderNumberLabel: "Order Number",
@@ -51,7 +62,8 @@
     reviewItemsTitle: "Please review your items",
     reviewItemsBody:
       "Before adding items to the cart, check the products below. You can change quantities, choose alternative items where available, or skip anything you do not want.",
-    allAvailableSelectedSummary: "All available items have been selected for you.",
+    allAvailableSelectedSummary:
+      "All available items have been selected for you.",
     estimatedTotalLabel: "Estimated total",
     regularTotalLabel: "Regular total",
     originalBadge: "Original",
@@ -100,8 +112,7 @@
     addedLabel: "Added",
     requestedReasonLabel: "Reason",
     quantityAddedLabel: "Quantity added",
-    selectedAddedBody:
-      "Your selected items were added to the cart.",
+    selectedAddedBody: "Your selected items were added to the cart.",
     noItemsAddedBody: "No items were added to the cart.",
     resultUpdatesBody:
       "A few updates were made while processing your reorder. Review the details below.",
@@ -122,6 +133,22 @@
       "Surplus stock exists, but wholesale pricing is currently the better price.",
     surplusApplied: "Surplus discount is applied to this item.",
 
+    productFallback: "this item",
+    cartTitle: "Cart",
+
+    reorderQuantityLimitToast(productName, availableQuantity) {
+      const quantity = Number(availableQuantity);
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return `“${productName}” is no longer available.`;
+      }
+
+      return (
+        `Only ${quantity} ${quantity === 1 ? "item is" : "items are"} ` +
+        `available for “${productName}”. Change the quantity to ${quantity} or less.`
+      );
+    },
+
     pageOnly(page) {
       return `Page ${page}`;
     },
@@ -140,8 +167,7 @@
 
     startDateFuture: "Start date cannot be in the future.",
     endDateFuture: "End date cannot be in the future.",
-    startDateAfterEnd:
-      "Start date must be earlier than or equal to end date.",
+    startDateAfterEnd: "Start date must be earlier than or equal to end date.",
 
     needsReviewSummary(count) {
       return `${pluralize(count, "item", "items")} need review`;
@@ -226,31 +252,170 @@
       return `Requested: ${requested} · Added: ${added}`;
     },
 
-    availableWithChoiceBody:
-      "This item will not be added to the cart.",
+    availableWithChoiceBody: "This item will not be added to the cart.",
 
     resultBadge(count, label) {
       return `${count} ${label}`;
     },
 
+    getErrorPayload(error) {
+      return (
+        error?.payload ||
+        error?.data ||
+        error?.response?.data ||
+        error?.details ||
+        null
+      );
+    },
+
+    getStructuredError(error) {
+      const payload = this.getErrorPayload(error);
+
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      return payload.error || payload;
+    },
+
+    getStructuredErrorCode(error) {
+      return this.getStructuredError(error)?.code || "";
+    },
+
+    getStructuredErrorData(error) {
+      return this.getStructuredError(error)?.data || {};
+    },
+
+    getBackendMessage(error, fallback) {
+      const structuredError = this.getStructuredError(error);
+      return (
+        structuredError?.message ||
+        window.AppApiErrors.fromError(error, fallback)
+      );
+    },
+
+    getOrderFilterError(error, fallback) {
+      const code = this.getStructuredErrorCode(error);
+
+      if (code === "order_filter_start_date_future") {
+        return this.startDateFuture;
+      }
+
+      if (code === "order_filter_end_date_future") {
+        return this.endDateFuture;
+      }
+
+      if (code === "order_filter_invalid_date_range") {
+        return this.startDateAfterEnd;
+      }
+
+      if (code === "order_filter_invalid_date_format") {
+        return "Use the date format YYYY-MM-DD.";
+      }
+
+      if (code === "order_filter_invalid_integer") {
+        return "One filter value is invalid. Check the selected filters and try again.";
+      }
+
+      return this.getBackendMessage(error, fallback);
+    },
+
+    getReorderItemReason(item) {
+      const code = item?.reason_code || "";
+      const data = item?.reason_data || {};
+
+      if (code === "cart_stock_limit_exceeded") {
+        const productName =
+          data.product_name ||
+          item?.product_name ||
+          this.productFallback ||
+          "this item";
+
+        const quantityInCart = formatQuantity(data.quantity_in_cart ?? 0);
+        const requestedQuantity = formatQuantity(
+          data.requested_quantity ?? item?.requested_quantity ?? 0,
+        );
+        const requestedTotalQuantity = formatQuantity(
+          data.requested_total_quantity ?? 0,
+        );
+        const availableStock = formatQuantity(
+          data.available_stock ?? data.max_allowed_quantity ?? 0,
+        );
+        const maxAddableQuantity = Number(data.max_addable_quantity ?? 0);
+
+        if (maxAddableQuantity <= 0) {
+          return (
+            `“${productName}” is already in the cart with quantity ${quantityInCart}. ` +
+            `No more can be added because only ${availableStock} are available in total. ` +
+            `Please reduce the quantity in the cart before reordering.`
+          );
+        }
+
+        return (
+          `“${productName}” is already in the cart with quantity ${quantityInCart}. ` +
+          `Adding ${requestedQuantity} more would make the cart quantity ${requestedTotalQuantity}, ` +
+          `but only ${availableStock} are available in total. ` +
+          `Please reduce this reorder quantity to ${formatQuantity(maxAddableQuantity)} or update the cart first.`
+        );
+      }
+
+      if (code === "reorder_quantity_reduced") {
+        const requested = data.requested_quantity ?? item?.requested_quantity;
+        const added = data.added_quantity ?? item?.added_quantity;
+        return `Requested ${requested}, but only ${added} can be added now.`;
+      }
+
+      if (code === "reorder_item_unavailable") {
+        return "This item cannot be reordered right now.";
+      }
+
+      if (code === "reorder_cart_add_failed") {
+        return "This item could not be added to the cart.";
+      }
+
+      return item?.reason || this.unavailable;
+    },
+
     getLoadError(error) {
-      return window.AppApiErrors.fromError(error, this.loadFailed);
+      return this.getOrderFilterError(error, this.loadFailed);
     },
 
     getDetailLoadError(error) {
-      return window.AppApiErrors.fromError(error, this.detailLoadFailed);
+      return this.getBackendMessage(error, this.detailLoadFailed);
     },
 
     getPreviewError(error) {
-      const raw = window.AppApiErrors.fromError(error, this.previewFailed);
-      if (/cannot be reordered/i.test(raw)) return this.reorderNotAvailable;
-      return raw;
+      const code = this.getStructuredErrorCode(error);
+
+      if (code === "order_not_reorderable") {
+        return this.reorderNotAvailable;
+      }
+
+      if (
+        code === "invalid_reorder_selection_item" ||
+        code === "duplicate_reorder_selection_item"
+      ) {
+        return "The reorder selection is no longer valid. Refresh the planner and try again.";
+      }
+
+      return this.getBackendMessage(error, this.previewFailed);
     },
 
     getReorderError(error) {
-      const raw = window.AppApiErrors.fromError(error, this.reorderFailed);
-      if (/cannot be reordered/i.test(raw)) return this.reorderNotAvailable;
-      return raw;
+      const code = this.getStructuredErrorCode(error);
+
+      if (code === "order_not_reorderable") {
+        return this.reorderNotAvailable;
+      }
+
+      if (
+        code === "invalid_reorder_selection_item" ||
+        code === "duplicate_reorder_selection_item"
+      ) {
+        return "The reorder selection is no longer valid. Refresh the planner and try again.";
+      }
+
+      return this.getBackendMessage(error, this.reorderFailed);
     },
   };
 })();

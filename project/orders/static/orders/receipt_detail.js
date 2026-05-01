@@ -32,9 +32,7 @@ async function loadReceipt() {
     });
 
     if (!response.ok) {
-      throw new Error(
-        await parseErrorMessage(response, M.loadFailed),
-      );
+      throw await buildApiErrorFromResponse(response, M.loadFailed);
     }
 
     const receipt = await response.json();
@@ -67,8 +65,23 @@ function showReceiptLoading() {
   document.getElementById("receiptContent")?.classList.add("d-none");
 }
 
-async function parseErrorMessage(response, fallbackMessage) {
-  return window.AppApiErrors.fromResponse(response, fallbackMessage);
+async function buildApiErrorFromResponse(response, fallbackMessage) {
+  let payload = null;
+
+  try {
+    payload = await response.clone().json();
+  } catch {
+    payload = null;
+  }
+
+  const message = payload
+    ? window.AppApiErrors.fromPayload(payload, fallbackMessage)
+    : await window.AppApiErrors.fromResponse(response, fallbackMessage);
+
+  const error = new Error(message || fallbackMessage);
+  error.status = response.status;
+  error.payload = payload;
+  return error;
 }
 
 function escapeHtml(value) {

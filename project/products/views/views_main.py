@@ -335,7 +335,11 @@ def producer_products(request):
                 to_attr='product_wholesale_first',
             ),
         )
-        .annotate(total_stock=Sum('inventory_batches__remaining_quantity'))
+        .annotate(
+            total_stock=Sum(
+                'inventory_batches__remaining_quantity', 
+                filter=Q(inventory_batches__status="ACT"
+            )))
         .order_by("-created_at")
     )
 
@@ -586,6 +590,21 @@ class ProductDetailView(DetailView):
     # return redirect('products_list')
 
 # Harminder Edits
+
+def send_for_approval(request, pk):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    product = Product.objects.get(pk=pk)
+
+    # Only FLAGGED products can be sent for approval
+    if product.status != Product.Status.FLAGGED:
+        return JsonResponse({"error": "Only flagged products can be sent for approval"}, status=400)
+
+    product.status = Product.Status.PENDING
+    product.save()
+
+    return JsonResponse({"success": True})
 # def product_view(request, category_id):
 #     # All categories except organic
 #     categories = Category.objects.exclude(name__icontains="organic")

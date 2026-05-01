@@ -25,7 +25,13 @@ from BRFN.decorators import admin_required
 from orders.models import Order
 from accounts.models import User, Producer, Admin
 from products.models import Product
-
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.conf import settings
+from products.models import Product
+from notifications.models import Notification
+from django_q.tasks import async_task
+from admin_records.tasks import send_action_required_email, send_rejection_email
 
 COMMISSION_RATE = Decimal("0.05")
 PRODUCER_RATE = Decimal("0.95")
@@ -405,6 +411,36 @@ def reject_product(request, product_id):
         reason=reason,
     )
 
+    # -----------------------------
+    # SEND REJECTION EMAIL
+    # -----------------------------
+    producer_user = product.producer.user
+
+    # html_content = render_to_string(
+    #     "admin_records/emails/product_reject.html",
+    #     {
+    #         "producer_name": producer_user.name,
+    #         "product_name": product.name,
+    #         "reason": reason,
+    #         "admin_name": admin_obj.user.name,
+    #     }
+    # )
+
+    # email = EmailMultiAlternatives(
+    #     subject=f"Your product '{product.name}' has been rejected",
+    #     body="Your email client does not support HTML emails.",
+    #     from_email=settings.DEFAULT_FROM_EMAIL,
+    #     to=[producer_user.email],
+    # )
+    # email.attach_alternative(html_content, "text/html")
+    async_task(
+        "admin_records.tasks.send_rejection_email",
+        product.id,
+        reason,
+        admin_obj.user.name,
+    )
+
+
     return JsonResponse({"success": True})
 
 
@@ -418,7 +454,9 @@ def product_details(request, product_id):
         "producer_name": product.producer.user.name,
         "farm_name": product.producer.farm_name,
         "category": product.category.name,
-        "submitted_at": product.submitted_at.strftime("%d %b %Y, %H:%M"),
+        "submitted_at": product.created_at.strftime("%d %b %Y, %H:%M") if product.created_at else None,
+        "updated_at": product.updated_at.strftime("%d %b %Y, %H:%M") if product.updated_at else None,
+
         "organic_status": product.get_organic_certification_status_display(),
         "availability_status": product.get_availability_status_display(),
         "price": str(product.price),
@@ -427,3 +465,22 @@ def product_details(request, product_id):
     }
 
     return JsonResponse(data)
+
+
+# ------------ EMAILS
+
+
+def action_required(request, product_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid method"}, status=400)
+
+    data = json.loads(request.body)
+    message = data.get("message")
+
+    async_task(
+        "admin_records.tasks.send_action_required_email",
+        product_id,
+        message,
+    )
+
+    return JsonResponse({"success": True})

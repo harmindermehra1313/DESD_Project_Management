@@ -8,6 +8,9 @@ from BRFN.decorators import producer_required
 from datetime import date, timedelta
 from django.db.models import Sum
 from django.template.loader import render_to_string
+from notifications.services.notifications import NotificationService
+
+#TBC move notifications for low stock to background task
 
 @producer_required
 @require_POST
@@ -81,6 +84,8 @@ def add_batch(request, pk):
 
     total_stock = product.inventory_batches.aggregate(total=Sum('remaining_quantity'))['total'] or 0
 
+    trigger_low_stock_notification(product)
+
     return JsonResponse({
         "success": True,
         "batch": {
@@ -128,6 +133,8 @@ def reduce_batch(request, pk):
             total=Sum("remaining_quantity")
         )["total"] or 0
 
+        trigger_low_stock_notification(product)
+
         updated_html = render_to_string(
             "products/batch_list.html",
             {"product": product},
@@ -171,6 +178,8 @@ def delete_batch(request, pk):
             total=Sum("remaining_quantity")
         )["total"] or 0
 
+        trigger_low_stock_notification(product)
+
         updated_html = render_to_string(
             "products/batch_list.html",
             {"product": product},
@@ -185,3 +194,19 @@ def delete_batch(request, pk):
 
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)})
+    
+# TBC remove when background process works
+def trigger_low_stock_notification(product):
+    total_stock = product.inventory_batches.filter(status="ACT").aggregate(
+        total=Sum("remaining_quantity")
+    )["total"] or 0
+
+    if total_stock <= product.low_stock_threshold:
+        NotificationService.create_unique(
+            user=product.producer.user,
+            type="PA",
+            message=f"Low Stock Alert: { product.name } - only { total_stock } { product.get_unit_display() } remaining.",
+            product=product
+        )
+    else:
+        NotificationService.resolve_for_product(product, "PA")

@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
 from django.utils import timezone
-
+from django.db.models import Sum
 
 class Category(models.Model):
     class FoodGroups(models.TextChoices):
@@ -145,9 +145,11 @@ class Product(models.Model):
         default=Availability_status.OUT_OF_STOCK,
     )
 
+    low_stock_email_sent = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
-    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     status = models.CharField(
         max_length = 10,
@@ -155,7 +157,7 @@ class Product(models.Model):
         default = Status.PENDING
     )
 
-    moderated_at = models.DateTimeField(auto_now_add=True, null=True)
+    moderated_at = models.DateTimeField(auto_now=True, null=True)
 
     def clean(self):
         super().clean()
@@ -182,6 +184,15 @@ class Product(models.Model):
             return tier.unit_price
         else:
             return None
+    
+    # Get total stock from batches
+    @property
+    def computed_total_stock(self):
+        return (
+            self.inventory_batches.filter(status="ACT")
+            .aggregate(total=Sum("remaining_quantity"))["total"]
+            or 0
+        )
 
     def __str__(self):
         return self.name

@@ -176,7 +176,7 @@
                 <tr id="emptyStateRow">
                     <td colspan="9" class="text-center py-4 text-muted">
                         No products found.
-                        <a href="{% url 'add_product' %}" style="color: var(--prussian-blue);">Add your first product</a>.
+                        <a href="{% url 'products:add_product' %}" style="color: var(--prussian-blue);">Add your first product</a>.
                     </td>
                 </tr>
                 {% endfor %}
@@ -410,7 +410,10 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn save-btn" id="saveEditBtn" onclick="submitEditForm()">Save Changes</button>
+                <button type="button" class="btn btn-primary d-none" id="sendForApprovalBtn" onclick="sendForApproval()">
+                        Send For Approval
+                    </button>
+                <button type="button" class="btn save-btn d-none" id="saveEditBtn" onclick="submitEditForm()">Save Changes</button>
             </div>
         </div>
     </div>

@@ -117,6 +117,8 @@ urlpatterns = [
     path("jwt-test/", jwt_test, name="jwt_test"),
     path("cart/", include(("carts.api.urls", "carts"), namespace="carts_api")),
     path("orders/", include(("orders.api.urls", "orders"), namespace="orders_api")),
+    # review API
+    path("reviews/", include(("reviews.api.urls"), namespace="reviews_api")),
 ]
 
 urlpatterns += router.urls

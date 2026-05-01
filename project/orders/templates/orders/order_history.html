@@ -4,6 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'orders/order_history.css' %}">
+    <link rel="stylesheet" href="{% static 'css/toast.css' %}">
 {% endblock %}
 {% block content %}
     <div class="container py-4">
@@ -20,7 +21,9 @@
                         <label for="status" class="form-label">Status</label>
                         <select id="status" class="form-select">
                             <option value="">All</option>
-                            {% for value, label in order_status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -38,13 +41,6 @@
                         <select id="delivery_or_collection" class="form-select">
                             <option value="">All</option>
                             {% for value, label in fulfilment_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="recurring_only" class="form-label">Recurring only</label>
-                        <select id="recurring_only" class="form-select">
-                            <option value="">All</option>
-                            {% for value, label in recurring_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="col-12 d-flex gap-2">
@@ -136,6 +132,8 @@
 {% endblock %}
 {% block scripts %}
     {{ block.super }}
+    <script src="{% static 'carts/cart_api_messages.js' %}"></script>
+    <script type="module" src="{% static 'carts/cart.js' %}"></script>
     <script src="{% static 'orders/order_history_messages.js' %}"></script>
     <script src="{% static 'orders/order_history.js' %}"></script>
 {% endblock %}
