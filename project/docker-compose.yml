@@ -129,8 +129,6 @@ services:
       web:
         condition: service_started
 
-  
-
   adminer:
     image: adminer:latest
     container_name: brfn_adminer
