@@ -1,0 +1,95 @@
+.ai-recommendations {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #e4e4e4;
+  border-radius: 1rem;
+  background: #ffffff;
+}
+
+.ai-recommendations__header {
+  margin-bottom: 1rem;
+}
+
+.ai-recommendations__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.ai-recommendations__subtitle {
+  margin: 0.25rem 0 0;
+  color: #666666;
+  font-size: 0.95rem;
+}
+
+.ai-recommendations__status {
+  color: #666666;
+  font-size: 0.95rem;
+}
+
+.ai-recommendations__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.ai-rec-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e6e6e6;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.06);
+}
+
+.ai-rec-card__image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background: #f4f4f4;
+}
+
+.ai-rec-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem;
+}
+
+.ai-rec-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ai-rec-card__meta,
+.ai-rec-card__signals {
+  margin: 0;
+  color: #6b6b6b;
+  font-size: 0.85rem;
+}
+
+.ai-rec-card__price {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ai-rec-card__reason {
+  margin: 0;
+  color: #333333;
+  font-size: 0.9rem;
+}
+
+.ai-rec-card__button {
+  margin-top: auto;
+  width: 100%;
+}
+
+.ai-rec-card__producer {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+}
