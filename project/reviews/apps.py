@@ -9,7 +9,7 @@ class ReviewsConfig(AppConfig):
     def ready(self):
         if os.environ.get("RUN_MAIN") != "true":
             return
-        # from reviews.services.moderation_service import get_model
+        from reviews.services.moderation_service import get_model
         
         
 

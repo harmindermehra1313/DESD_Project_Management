@@ -115,10 +115,9 @@ services:
         condition: service_started
   
   cron:
-    build:
-      context: .
-      dockerfile: cron/Dockerfile
+    build: .
     container_name: brfn_cron
+    command: ["cron", "-f"]
     volumes:
       - .:/code
     env_file:
