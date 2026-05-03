@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.db import transaction
 from django.utils import timezone
 from django_q.tasks import async_task 
@@ -13,6 +13,8 @@ from carts.services import (
     CartOwner, cart_get_or_create_active, cart_mark_checked_out, _get_effective_unit_price
 )
 from notifications.models import TraceabilityRecord
+from notifications.models import Notification
+from notifications.services.notifications import NotificationService
 import logging
 logger = logging.getLogger(__name__)
 
@@ -290,6 +292,29 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                     address_line2=addr_line2,
                     city=addr_city,
                     postcode=addr_postcode,
+                )
+
+                # Give producers notifications about new orders
+                delivery_dt = datetime.strptime(delivery_date, "%Y-%m-%d")
+
+                if delivery_or_collection == "DEL":
+                    prep_deadline = delivery_dt - timedelta(hours=24)
+                    method_label = "Delivery"
+                else:
+                    prep_deadline = delivery_dt - timedelta(hours=12)
+                    method_label = "Collection"
+
+                message = (
+                    f"New order received #{order.unique_reference}.\n"
+                    f"{method_label} scheduled for {delivery_date} at {delivery_time or 'N/A'}.\n"
+                    f"Preparation deadline: {prep_deadline.strftime('%Y-%m-%d %H:%M')}."
+                )
+
+                NotificationService.create_unique(
+                    user=producer.user,
+                    type=Notification.Type.ORDER_UPDATE,
+                    message=message,
+                    order=order
                 )
 
                 # -----------------------------
