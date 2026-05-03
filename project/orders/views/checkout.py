@@ -489,7 +489,13 @@ def order_success(request, reference):
         # What the producer receives
         summary.payout_amount = summary.discounted_subtotal - summary.commission_total
 
+    # Show producer contact details for bulk
+    show_producer_contact = False
+    if order.user and order.user.role in ("BUSINESS", "COMMUNITY_GROUP"):
+        show_producer_contact = True
+
     return render(request, "orders/order_confirmed.html", {
         "order": order,
         "producer_summaries": producer_summaries,
+        "show_producer_contact": show_producer_contact,
     })
