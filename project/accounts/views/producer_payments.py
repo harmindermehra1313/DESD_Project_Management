@@ -231,7 +231,11 @@ def download_payment_report_view(request, week_id):
     upcoming_summaries = ProducerOrderSummary.objects.filter(
         producer=producer,
         delivery_date__range=[week_start, week_end],
-    ).exclude(status=ProducerOrderSummary.Status.COMPLETED)
+    ).exclude(
+        status__in=[
+        ProducerOrderSummary.Status.COMPLETED,
+        ProducerOrderSummary.Status.CANCELLED,
+    ])
 
     # Totals
     week_total = completed_summaries.aggregate(total=Sum("subtotal"))["total"] or 0
@@ -375,7 +379,11 @@ def download_payment_csv_view(request, week_id):
     upcoming_summaries = ProducerOrderSummary.objects.filter(
         producer=producer,
         delivery_date__range=[week_start, week_end],
-    ).exclude(status=ProducerOrderSummary.Status.COMPLETED)
+    ).exclude(
+        status__in=[
+        ProducerOrderSummary.Status.COMPLETED,
+        ProducerOrderSummary.Status.CANCELLED,
+    ])
 
     # Payment status logic
     completed_order_ids = completed_summaries.values_list("order_id", flat=True)
