@@ -192,7 +192,7 @@
             
                         <h3>Select Delivery or Collection</h3>
 
-                        <label>
+                        <!-- <label>
                             <input type="radio" 
                                 name="delivery_or_collection_{{ producer.id }}" 
                                 value="DEL" checked required>
@@ -203,6 +203,29 @@
                             <input type="radio" 
                                 name="delivery_or_collection_{{ producer.id }}" 
                                 value="COL" required>
+                            Collection
+                        </label> -->
+                        <label>
+                            <input type="radio"
+                                name="delivery_or_collection_{{ producer.id }}"
+                                value="DEL"
+                                {% if data.collection_only %}disabled{% else %}checked{% endif %}
+                                required>
+                            Delivery
+                        </label>
+
+                        {% if data.collection_only %}
+                            <p class="form-text form-text-danger">
+                                Delivery unavailable: one or more items expire within 72 hours.
+                            </p>
+                        {% endif %}
+
+                        <label>
+                            <input type="radio"
+                                name="delivery_or_collection_{{ producer.id }}"
+                                value="COL"
+                                {% if data.collection_only %}checked{% endif %}
+                                required>
                             Collection
                         </label>
 

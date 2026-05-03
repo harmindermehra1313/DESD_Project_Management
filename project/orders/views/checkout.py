@@ -354,6 +354,18 @@ def checkout(request):
 
         data["max_delivery_date"] = max_delivery_date
 
+        # Enforce collection only if expiry <= 72 hours
+        now = datetime.now().date()
+        expires_within_72h = False
+
+        if expiry_dates:
+            # earliest expiry minus today
+            days_until_expiry = (earliest_expiry - now).days
+            if days_until_expiry <= 3:
+                expires_within_72h = True
+
+        data["collection_only"] = expires_within_72h
+
     # Get original total before vat or discounts
     original_total = total + order_savings_total
 
