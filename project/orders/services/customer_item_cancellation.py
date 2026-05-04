@@ -11,6 +11,7 @@ from orders.models import (
 from orders.services.order_status import sync_order_status_from_producer_summaries
 from products.models import Inventory
 from payments.services import refund_cancelled_order_item
+from notifications.services.notifications import NotificationService
 
 
 class CustomerItemCancellationError(Exception):
@@ -185,6 +186,18 @@ def cancel_order_item_as_customer(
             cancelled_quantity=quantity_to_cancel,
             reason=reason,
         )
+
+        NotificationService.notify_order_item_cancelled(
+            order=order,
+            item=item,
+            cancelled_quantity=quantity_to_cancel,
+        )
+
+        if refund_result.get("refunded"):
+            NotificationService.notify_refund_processed(
+                order=order,
+                amount=refund_result.get("amount"),
+            )
 
         return {
             "order": order,

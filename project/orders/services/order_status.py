@@ -1,4 +1,5 @@
 from orders.models import Order, ProducerOrderSummary
+from notifications.services.notifications import NotificationService
 
 
 ORDER_STATUS_KEY_BY_CODE = {
@@ -171,12 +172,21 @@ def get_order_status_context(order):
 
 
 def sync_order_status_from_producer_summaries(order, save=True):
+    old_status = order.status
     status_code = derive_order_status_code(order)
 
-    if order.status != status_code:
+    if old_status != status_code:
         order.status = status_code
 
         if save:
             order.save(update_fields=["status"])
+
+        if status_code != Order.Status.CANCELLED:
+
+            NotificationService.notify_order_status_changed(
+                order=order,
+                old_status=old_status,
+                new_status=status_code,
+            )
 
     return order

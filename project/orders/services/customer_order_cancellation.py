@@ -14,6 +14,7 @@ from orders.services.order_status import (
     sync_order_status_from_producer_summaries,
 )
 from payments.services import refund_remaining_card_payment_for_order
+from notifications.services.notifications import NotificationService
 
 
 class CustomerCancellationError(Exception):
@@ -118,6 +119,14 @@ def cancel_order_as_customer(
             order=order,
             reason=reason,
         )
+
+        NotificationService.notify_order_cancelled(order)
+
+        if refund_result.get("refunded"):
+            NotificationService.notify_refund_processed(
+                order=order,
+                amount=refund_result.get("amount"),
+            )
 
         order.refund_result = refund_result
 
