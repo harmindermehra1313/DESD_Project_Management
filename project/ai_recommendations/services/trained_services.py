@@ -4,13 +4,16 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+import time
 from django.conf import settings
 from scipy import sparse
 from sklearn.metrics.pairwise import cosine_similarity
 
 from products.models import Product
 from .services import get_live_products_queryset
-
+from ai_admin.services import AITracker
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 @dataclass(frozen=True)
 class TrainedRecommendationResult:
@@ -75,6 +78,7 @@ def get_trained_recommendations_for_request(
 
 
 def get_trained_recommendations(user_id, current_product=None, limit=4):
+    start = time.time()
     artifacts = load_artifacts()
 
     tfidf_matrix = artifacts["tfidf_matrix"]
@@ -158,6 +162,30 @@ def get_trained_recommendations(user_id, current_product=None, limit=4):
         )
 
     results.sort(key=lambda result: result.score, reverse=True)
+
+    # Determine which component was used
+    if alpha == 0.0:
+        component_used = "TFIDF"
+    elif alpha == 0.7:
+        component_used = "HYB"
+    else:
+        component_used = "ALS"
+
+    # Log AI usage
+    user_obj = User.objects.filter(id=user_id).first()
+    AITracker.log_recommender(
+        user=user_obj,
+        component=component_used,
+        input_data={
+            "user_id": user_id,
+            "current_product": current_product.id if current_product else None,
+        },
+        output_data={
+            "recommendation_count": len(results[:limit])
+        },
+        start_time=start,
+        version="v1"
+    )
 
     if len(results) < limit:
         existing_product_ids = {result.product.id for result in results}

@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django_q',
     # ai
     "ai_recommendations",
+    "ai_admin",
 ]
 
 MIDDLEWARE = [

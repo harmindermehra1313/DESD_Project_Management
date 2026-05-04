@@ -1,12 +1,14 @@
 import math
 from collections import defaultdict
 from dataclasses import dataclass
+from time import time
 
 from django.db.models import Count, Exists, OuterRef, Q, Sum
 from django.utils import timezone
 
 from orders.models import Order, OrderItem
 from products.models import Inventory, Product
+from ai_admin.services import AITracker
 
 from ..models import ProductInteraction
 
@@ -97,6 +99,18 @@ def get_recommendations(user=None, session_key="", current_product=None, limit=4
     - deployment rules: only live, in-stock, unexpired products
     - explainability: reason and signal breakdown returned with each item
     """
+    start = time.time()
+
+    # Decide which component was used
+    interaction_count = ProductInteraction.objects.count()
+
+    if interaction_count < 200:
+        component_used = "TFIDF"
+    elif interaction_count < 2000:
+        component_used = "HYB"
+    else:
+        component_used = "ALS"
+    
     seed_events = _get_seed_events(
         user=user,
         session_key=session_key,
@@ -133,6 +147,21 @@ def get_recommendations(user=None, session_key="", current_product=None, limit=4
     ranked_results.sort(
         key=lambda result: (result.score, result.product.created_at),
         reverse=True,
+    )
+
+    # Log AI usage
+    AITracker.log_recommender(
+        user=user,
+        component=component_used,
+        input_data={
+            "current_product": current_product.pk if current_product else None,
+            "session_key": session_key,
+        },
+        output_data={
+            "recommendation_count": len(ranked_results[:limit])
+        },
+        start_time=start,
+        version="v1" # TBC allow more versions in future
     )
 
     return ranked_results[:limit]
