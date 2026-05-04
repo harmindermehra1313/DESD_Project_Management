@@ -100,12 +100,23 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
     producer = serializers.SerializerMethodField()
     review_action = serializers.SerializerMethodField()
 
+    status = serializers.SerializerMethodField()
+    status_key = serializers.SerializerMethodField()
+    cancelled_quantity = serializers.IntegerField(read_only=True)
+    active_quantity = serializers.SerializerMethodField()
+    can_customer_cancel_item = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         fields = [
             "id",
             "product_name",
             "quantity",
+            "active_quantity",
+            "cancelled_quantity",
+            "status",
+            "status_key",
+            "can_customer_cancel_item",
             "paid_unit_price",
             "producer",
             "review_action",
@@ -144,6 +155,38 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
             user_id=user_id,
             reviewed_product_ids=reviewed_product_ids,
         )
+
+    def get_status(self, obj: OrderItem) -> str:
+        return obj.get_status_display()
+
+    def get_status_key(self, obj: OrderItem) -> str:
+        return str(obj.status).lower()
+
+    def get_active_quantity(self, obj: OrderItem) -> int:
+        return max(obj.quantity - obj.cancelled_quantity, 0)
+
+    def get_can_customer_cancel_item(self, obj: OrderItem) -> bool:
+        if obj.status == OrderItem.Status.CANCELLED:
+            return False
+
+        order = obj.order
+
+        if order.status in {
+            Order.Status.CANCELLED,
+            Order.Status.COMPLETED,
+        }:
+            return False
+
+        producer_summary = (
+            order.producer_summaries.filter(producer_id=obj.producer_id)
+            .order_by("id")
+            .first()
+        )
+
+        if producer_summary is None:
+            return False
+
+        return producer_summary.status == ProducerOrderSummary.Status.PENDING
 
 
 class ProducerOrderSummarySerializer(serializers.ModelSerializer):

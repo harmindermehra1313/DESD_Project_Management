@@ -37,4 +37,12 @@ urlpatterns = [
         order_cancellation.cancel_customer_order,
         name="cancel_customer_order",
     ),
+    
+    # item cancellation endpoint
+    # example: http://localhost:8000/api/orders/customer/orders/5/items/10/cancel/
+    path(
+    "customer/orders/<int:order_id>/items/<int:item_id>/cancel/",
+    order_cancellation.cancel_customer_order_item,
+    name="cancel_customer_order_item",
+),
 ]

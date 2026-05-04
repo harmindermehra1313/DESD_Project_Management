@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from orders.models import Order, ProducerOrderSummary, ProducerOrderStatusHistory
-from orders.services.customer_cancellation import (
+from orders.services.customer_order_cancellation import (
     cancel_order_as_customer,
     CustomerCancellationError,
 )

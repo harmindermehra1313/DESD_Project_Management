@@ -114,6 +114,10 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "ACT", "Active"
+        PARTIALLY_CANCELLED = "PCAN", "Partially cancelled"
+        CANCELLED = "CAN", "Cancelled"
 
     order = models.ForeignKey(
         "orders.Order",
@@ -140,7 +144,33 @@ class OrderItem(models.Model):
     )
 
     quantity = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
 
+    cancelled_quantity = models.PositiveIntegerField(
+        default=0,
+    )
+
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_order_items",
+    )
+
+    cancellation_reason = models.TextField(
+        blank=True,
+        default="",
+    )
     original_unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
     commission_amount = models.DecimalField(
@@ -173,6 +203,10 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"Item #{self.pk} for order #{self.order.pk}"
+    
+    @property
+    def active_quantity(self):
+        return max(self.quantity - self.cancelled_quantity, 0)
 
 
 class ProducerOrderSummary(models.Model):

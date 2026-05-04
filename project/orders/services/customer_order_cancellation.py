@@ -2,7 +2,12 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from orders.models import Order, ProducerOrderSummary, ProducerOrderStatusHistory
+from orders.models import (
+    Order,
+    OrderItem,
+    ProducerOrderSummary,
+    ProducerOrderStatusHistory,
+)
 from products.models import Inventory
 from orders.services.order_status import (
     can_customer_cancel_order,
@@ -12,6 +17,7 @@ from orders.services.order_status import (
 
 class CustomerCancellationError(Exception):
     """Raised when a customer order cancellation is not allowed."""
+
     pass
 
 
@@ -24,11 +30,7 @@ def cancel_order_as_customer(
     reason = (reason or "").strip() or "Customer requested cancellation"
 
     with transaction.atomic():
-        order = (
-            Order.objects
-            .select_for_update(of=("self",))
-            .get(pk=order_id)
-        )
+        order = Order.objects.select_for_update(of=("self",)).get(pk=order_id)
 
         if order.user_id != customer.id:
             raise CustomerCancellationError(
@@ -36,25 +38,19 @@ def cancel_order_as_customer(
             )
 
         if order.status == Order.Status.CANCELLED:
-            raise CustomerCancellationError(
-                "This order has already been cancelled."
-            )
+            raise CustomerCancellationError("This order has already been cancelled.")
 
         if order.status == Order.Status.COMPLETED:
-            raise CustomerCancellationError(
-                "Completed orders cannot be cancelled."
-            )
+            raise CustomerCancellationError("Completed orders cannot be cancelled.")
 
         if not can_customer_cancel_order(order):
             raise CustomerCancellationError(
                 "This order cannot be cancelled automatically at its current status."
             )
 
-        producer_summaries = (
-            ProducerOrderSummary.objects
-            .select_for_update(of=("self",))
-            .filter(order=order)
-        )
+        producer_summaries = ProducerOrderSummary.objects.select_for_update(
+            of=("self",)
+        ).filter(order=order)
 
         if producer_summaries.exclude(
             status=ProducerOrderSummary.Status.PENDING
@@ -63,9 +59,31 @@ def cancel_order_as_customer(
                 "This order cannot be cancelled automatically because preparation has already started."
             )
 
-        for item in order.items.all():
-            Inventory.objects.filter(pk=item.inventory_id).update(
-                remaining_quantity=F("remaining_quantity") + item.quantity
+        for item in order.items.select_for_update(of=("self",)).all():
+            remaining_active_quantity = item.quantity - item.cancelled_quantity
+
+            if remaining_active_quantity > 0:
+                Inventory.objects.filter(pk=item.inventory_id).update(
+                    remaining_quantity=F("remaining_quantity")
+                    + remaining_active_quantity
+                )
+
+            item.cancelled_quantity = item.quantity
+            item.status = OrderItem.Status.CANCELLED
+
+            if item.cancelled_at is None:
+                item.cancelled_at = timezone.now()
+
+            item.cancelled_by = customer
+            item.cancellation_reason = reason
+            item.save(
+                update_fields=[
+                    "status",
+                    "cancelled_quantity",
+                    "cancelled_at",
+                    "cancelled_by",
+                    "cancellation_reason",
+                ]
             )
 
         for summary in producer_summaries:

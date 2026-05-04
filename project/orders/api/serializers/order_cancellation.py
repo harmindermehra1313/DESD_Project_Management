@@ -7,3 +7,10 @@ class CustomerOrderCancellationSerializer(serializers.Serializer):
         allow_blank=True,
         max_length=500,
     )
+    
+class CustomerOrderItemCancellationSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+    )

@@ -433,6 +433,42 @@ function getCustomerCancelButtonHtml(order) {
   `;
 }
 
+function isCustomerItemCancellationAllowed(item) {
+  return Boolean(item?.can_customer_cancel_item);
+}
+
+function getCustomerCancelItemButtonHtml(order, item) {
+  const orderId = order?.id || order?.order_id;
+  const itemId = item?.id;
+  const activeQuantity = Number(item?.active_quantity ?? item?.quantity ?? 0);
+  const allowed = isCustomerItemCancellationAllowed(item) && activeQuantity > 0;
+
+  if (!orderId || !itemId) {
+    return "";
+  }
+
+  const disabledAttr = allowed ? "" : "disabled";
+  const title = allowed
+    ? "Cancel this item before the producer starts preparing it."
+    : "Item cancellation is only available before the producer starts preparing it.";
+
+  return `
+    <button
+      type="button"
+      class="btn btn-sm btn-danger"
+      data-action="cancel-customer-order-item"
+      data-order-id="${escapeHtml(orderId)}"
+      data-item-id="${escapeHtml(itemId)}"
+      data-product-name="${escapeHtml(item.product_name || "this item")}"
+      data-active-quantity="${escapeHtml(activeQuantity)}"
+      ${disabledAttr}
+      title="${escapeHtml(title)}"
+    >
+      Cancel item
+    </button>
+  `;
+}
+
 function getReorderButtonHtml(orderId, status, extraClass = "") {
   const allowed = isReorderAllowed(status);
   const disabledAttr = allowed ? "" : "disabled";
@@ -924,7 +960,8 @@ function handleWriteReviewClick(button) {
   }
 }
 
-function renderItemsSection(items) {
+function renderItemsSection(order) {
+  const items = order?.items || [];
   return `
     <div class="mb-4">
       <h6 class="mb-3">${M.itemsHeading}</h6>
@@ -940,18 +977,49 @@ function renderItemsSection(items) {
             </tr>
           </thead>
           <tbody>
-            ${(items || [])
-              .map(
-                (item) => `
-              <tr>
-                <td>${escapeHtml(item.product_name)}</td>
-                <td>${escapeHtml(item.producer)}</td>
-                <td>${escapeHtml(item.quantity)}</td>
-                <td>${formatMoney(item.paid_unit_price)}</td>
-                <td class="text-end">${renderReviewActionCell(item)}</td>
-              </tr>
-            `,
-              )
+                        ${(items || [])
+              .map((item) => {
+                const activeQuantity = Number(item.active_quantity ?? item.quantity ?? 0);
+                const cancelledQuantity = Number(item.cancelled_quantity ?? 0);
+                const showCancelledInfo = cancelledQuantity > 0;
+
+                return `
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
+                      ${
+                        item.status
+                          ? `<div class="small text-muted">${escapeHtml(item.status)}</div>`
+                          : ""
+                      }
+                    </td>
+
+                    <td>${escapeHtml(item.producer)}</td>
+
+                    <td>
+                      <div>${escapeHtml(activeQuantity)}</div>
+                      ${
+                        showCancelledInfo
+                          ? `
+                            <div class="small text-muted">
+                              ${escapeHtml(cancelledQuantity)} cancelled from original ${escapeHtml(item.quantity)}
+                            </div>
+                          `
+                          : ""
+                      }
+                    </td>
+
+                    <td>${formatMoney(item.paid_unit_price)}</td>
+
+                    <td class="text-end">
+                      <div class="d-flex gap-2 justify-content-end flex-wrap">
+                        ${getCustomerCancelItemButtonHtml(order, item)}
+                        ${renderReviewActionCell(item)}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              })
               .join("")}
           </tbody>
         </table>
@@ -1131,7 +1199,7 @@ async function openOrderDetails(orderId) {
       content.innerHTML = `
         ${renderOrderSummary(order)}
         ${renderFulfilmentSection(order.producer_breakdown || [])}
-        ${renderItemsSection(order.items || [])}
+        ${renderItemsSection(order)}
         ${renderProducerSection(order.producer_breakdown || [])}
         ${renderOrderFooter(order)}
       `;

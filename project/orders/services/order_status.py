@@ -31,21 +31,39 @@ def get_order_summaries(order):
 
 def has_partial_cancellation(order):
     summaries = get_order_summaries(order)
+    items = list(order.items.all())
 
-    if not summaries:
-        return False
+    summary_partial = False
 
-    has_cancelled = any(
-        summary.status == ProducerOrderSummary.Status.CANCELLED
-        for summary in summaries
-    )
+    if summaries:
+        has_cancelled_summary = any(
+            summary.status == ProducerOrderSummary.Status.CANCELLED
+            for summary in summaries
+        )
 
-    has_active = any(
-        summary.status != ProducerOrderSummary.Status.CANCELLED
-        for summary in summaries
-    )
+        has_active_summary = any(
+            summary.status != ProducerOrderSummary.Status.CANCELLED
+            for summary in summaries
+        )
 
-    return has_cancelled and has_active
+        summary_partial = has_cancelled_summary and has_active_summary
+
+    item_partial = False
+
+    if items:
+        has_cancelled_quantity = any(
+            getattr(item, "cancelled_quantity", 0) > 0
+            for item in items
+        )
+
+        has_active_quantity = any(
+            getattr(item, "cancelled_quantity", 0) < item.quantity
+            for item in items
+        )
+
+        item_partial = has_cancelled_quantity and has_active_quantity
+
+    return summary_partial or item_partial
 
 
 def derive_order_status_code(order):
