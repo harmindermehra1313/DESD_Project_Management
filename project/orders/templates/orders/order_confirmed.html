@@ -45,6 +45,17 @@
                 {% if summary.postcode %} {{ summary.postcode }} {% endif %}
             </p>
 
+            {% if show_producer_contact %}
+                <div class="producer-contact">
+                    <h5>Producer Contact Details</h5>
+                    <p>
+                        <strong>Producer:</strong> {{ summary.producer.user.name }}<br>
+                        <strong>Email:</strong> {{ summary.producer.contact_email }}<br>
+                        <strong>Phone:</strong> {{ summary.producer.contact_phone }}
+                    </p>
+                </div>
+            {% endif %}
+
             <h5>Items from this producer</h5>
 
             <!-- <table class="item-table"> -->

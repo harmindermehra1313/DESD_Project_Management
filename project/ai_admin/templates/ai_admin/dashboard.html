@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}AI Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1" style="color: var(--prussian-blue); font-weight: 700;">
+                AI Admin Dashboard
+            </h1>
+            <p class="text-muted mb-0">
+                Monitor AI usage, manage model versions, and review system performance.
+            </p>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-4 mb-4">
+
+        <!-- Total AI Calls -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0" style="border-radius: var(--radius);">
+                <div class="card-body">
+                    <h6 class="text-muted">Total AI Calls</h6>
+                    <h2 class="fw-bold">{{ total_calls }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommender Calls -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0" style="border-radius: var(--radius);">
+                <div class="card-body">
+                    <h6 class="text-muted">Recommender Calls</h6>
+                    <h2 class="fw-bold">{{ recommender_calls }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Classifier Calls -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0" style="border-radius: var(--radius);">
+                <div class="card-body">
+                    <h6 class="text-muted">Classifier Calls</h6>
+                    <h2 class="fw-bold">{{ classifier_calls }}</h2>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-5">
+
+        <!-- Component Breakdown -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0" style="border-radius: var(--radius);">
+                <div class="card-body">
+                    <h5 class="mb-3">Recommender Component Breakdown</h5>
+                    <div class="d-flex justify-content-center">
+                        <canvas id="componentChart" class="chart-square"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Execution Time -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0" style="border-radius: var(--radius);">
+                <div class="card-body">
+                    <h5 class="mb-3">Average Execution Time (ms)</h5>
+                    <div class="d-flex justify-content-center">
+                        <canvas id="executionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Active Model + Upload -->
+    <div class="card shadow-sm border-0 mb-5" style="border-radius: var(--radius);">
+        <div class="card-body p-4">
+
+            <h4 class="mb-3">Classifier Model Management</h4>
+
+            <div class="row">
+                <div class="col-md-6">
+
+                    <h6 class="text-muted">Active Model</h6>
+
+                    {% if active_model %}
+                        <p class="mb-1">
+                            <strong>{{ active_model.name }}</strong> (v{{ active_model.version }})
+                        </p>
+                        <p class="text-muted small mb-3">
+                            Uploaded {{ active_model.uploaded_at|date:"d M Y, H:i" }}
+                        </p>
+                    {% else %}
+                        <p class="text-danger">No active model selected.</p>
+                    {% endif %}
+
+                </div>
+
+                <div class="col-md-6">
+
+                    <h6 class="text-muted">Upload New Model</h6>
+
+                    <form method="POST" enctype="multipart/form-data" action="{% url 'ai_admin:upload_model' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Model Name</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Version</label>
+                            <input type="text" name="version" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Model File (.pt, .pkl, etc.)</label>
+                            <input type="file" name="file" class="form-control" required>
+                        </div>
+
+                        <button class="btn btn-primary">Upload & Activate</button>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Recent Logs -->
+    <div class="card shadow-sm border-0" style="border-radius: var(--radius);">
+        <div class="card-body p-4">
+
+            <h4 class="mb-3">Recent AI Usage Logs</h4>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Model</th>
+                            <th>Component</th>
+                            <th>Version</th>
+                            <th>User</th>
+                            <th>Exec (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_logs %}
+                        <tr>
+                            <td>{{ log.created_at|date:"d M Y, H:i" }}</td>
+                            <td>{{ log.get_model_type_display }}</td>
+                            <td>{{ log.get_component_display }}</td>
+                            <td>{{ log.model_version }}</td>
+                            <td>{{ log.user }}</td>
+                            <td>{{ log.execution_time_ms|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                No logs yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    window.aiDashboardData = {
+        componentLabels: {{ component_labels|safe }},
+        componentValues: {{ component_values|safe }},
+        execLabels: {{ exec_labels|safe }},
+        execValues: {{ exec_values|safe }}
+    };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/ai_chart.js' %}"></script>
+
+{% endblock %}

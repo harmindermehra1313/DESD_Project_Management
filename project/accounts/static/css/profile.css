@@ -256,6 +256,12 @@
   flex: 0 0 auto;
 }
 
+.pagination .page-link:hover {
+    background-color: var(--brand);
+    color: #fff !important;
+    border-color: var(--brand);
+}
+
 @media (max-width: 991.98px) {
     .profile-summary-card {
         position: static;

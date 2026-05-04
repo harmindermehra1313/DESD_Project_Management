@@ -46,5 +46,6 @@ urlpatterns = [
     path("search/", admin_views.global_search, name="global_search"),
     # AI Recommendations Endpoint
     path("ai-recommendations/", include("ai_recommendations.urls")),
+    path("ai-admin/", include("ai_admin.urls")),
     path("cookie-policy/", TemplateView.as_view(template_name="cookie_policy.html"), name="cookie_policy"),
 ]
