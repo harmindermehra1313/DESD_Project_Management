@@ -7,7 +7,6 @@ from django.db.models import Sum
 from payments.models import Payment, PaymentRefund
 from payments.stripe_client import get_stripe
 
-
 stripe = get_stripe()
 
 MIN_ORDER = Decimal("1.00")
@@ -114,6 +113,22 @@ def update_payment_refund_status(payment):
     return payment
 
 
+def get_latest_payment_for_order(order):
+    return Payment.objects.filter(order=order).order_by("-created_at").first()
+
+
+def get_cash_payment_for_order(order):
+    return (
+        Payment.objects.filter(
+            order=order,
+            payment_method=Payment.Method.CASH,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+def get_status_value(status):
+    return status.value if hasattr(status, "value") else str(status)
+
 def build_refund_response(
     *,
     refunded,
@@ -136,7 +151,7 @@ def build_refund_response(
             {
                 "refund_id": refund_record.id,
                 "stripe_refund_id": refund_record.stripe_refund_id,
-                "status": refund_record.status,
+                "status": get_status_value(refund_record.status),
             }
         )
 
@@ -319,6 +334,16 @@ def create_customer_refund(
         payment = get_successful_card_payment_for_order(order)
 
         if payment is None:
+            cash_payment = get_cash_payment_for_order(order)
+
+            if cash_payment:
+                return build_refund_response(
+                    refunded=False,
+                    amount=Decimal("0.00"),
+                    reason="No online payment was taken, so no card refund is needed.",
+                    message="No card refund required for this cash order.",
+                )
+
             return build_refund_response(
                 refunded=False,
                 amount=Decimal("0.00"),
@@ -392,6 +417,16 @@ def refund_remaining_card_payment_for_order(*, order, reason):
         payment = get_successful_card_payment_for_order(order)
 
         if payment is None:
+            cash_payment = get_cash_payment_for_order(order)
+
+            if cash_payment:
+                return build_refund_response(
+                    refunded=False,
+                    amount=Decimal("0.00"),
+                    reason="No online payment was taken, so no card refund is needed.",
+                    message="No card refund required for this cash order.",
+                )
+
             return build_refund_response(
                 refunded=False,
                 amount=Decimal("0.00"),
@@ -419,7 +454,9 @@ def refund_remaining_card_payment_for_order(*, order, reason):
 
 def refund_cancelled_order_item(*, order, item, cancelled_quantity, reason):
     cancelled_quantity = int(cancelled_quantity)
-    amount = normalise_money(Decimal(item.final_unit_price) * Decimal(cancelled_quantity))
+    amount = normalise_money(
+        Decimal(item.final_unit_price) * Decimal(cancelled_quantity)
+    )
 
     return create_customer_refund(
         order=order,
