@@ -71,13 +71,14 @@ def derive_order_status_code(order):
     """
     Derives the customer-facing order status from producer summaries.
 
-    Important edge cases:
-    - One producer summary cancelled -> whole order cancelled.
-    - All producer summaries cancelled -> whole order cancelled.
-    - Some producer summaries cancelled but others active -> order remains active.
-    - All active producer summaries completed -> completed.
-    - All active collection summaries packaged -> ready for collection.
-    - Delivery orders do not become ready for collection.
+    Rules:
+    - All producer sections cancelled -> order cancelled.
+    - Some producer sections cancelled but others active -> order remains active.
+    - All active producer sections completed -> order completed.
+    - All active collection sections ready for collection -> ready for collection.
+    - Delivery sections do not make the parent order ready for collection.
+    - Delivery orders remain in progress after shipped unless a delivery-specific
+      parent order status is added later.
     """
 
     summaries = get_order_summaries(order)
@@ -120,7 +121,7 @@ def derive_order_status_code(order):
     if (
         unfinished_active_summaries
         and all(
-            summary.status == ProducerOrderSummary.Status.PACKAGED
+            summary.status == ProducerOrderSummary.Status.READY_FOR_COLLECTION
             for summary in unfinished_active_summaries
         )
         and all(
@@ -130,10 +131,20 @@ def derive_order_status_code(order):
     ):
         return Order.Status.READY_FOR_COLLECTION
 
+    if (
+        unfinished_active_summaries
+        and all(
+            summary.status == ProducerOrderSummary.Status.PACKAGED
+            for summary in unfinished_active_summaries
+        )
+    ):
+        return Order.Status.PACKAGED
+
     if any(
         status in {
             ProducerOrderSummary.Status.PREPARING,
             ProducerOrderSummary.Status.PACKAGED,
+            ProducerOrderSummary.Status.READY_FOR_COLLECTION,
             ProducerOrderSummary.Status.SHIPPED,
             ProducerOrderSummary.Status.COMPLETED,
         }

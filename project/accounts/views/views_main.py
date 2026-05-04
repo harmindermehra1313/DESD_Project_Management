@@ -51,6 +51,12 @@ from firebase_admin import auth as firebase_auth
 from accounts.serializers.registration_customer import CustomerRegistrationSerializer
 from accounts.serializers.registration_producer import ProducerRegistrationSerializer
 
+from orders.services.producer_order_status import (
+    ProducerOrderStatusError,
+    get_allowed_next_statuses,
+    update_producer_order_status,
+)
+
 
 # ---------------------------------------
 # Register URL
@@ -186,6 +192,14 @@ def producer_dashboard(request):
     # Calculate the 95% payout for each summary
     for summary in summaries:
         summary.payout_amount = float(summary.subtotal) * 0.95
+    
+        summary.allowed_next_statuses_json = json.dumps([
+            {
+                "value": status,
+                "label": ProducerOrderSummary.Status(status).label,
+            }
+            for status in get_allowed_next_statuses(summary)
+        ])
 
     # 2. Fetch Recurring Templates (all statuses, so the front-end filter works)
     recurring_qs = RecurringOrder.objects.filter(
@@ -292,60 +306,62 @@ def _sync_order_status(order):
 @login_required
 @require_POST
 def update_order_status(request, summary_id):
-    if request.user.role != 'PRODUCER':
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    if request.user.role != "PRODUCER" or not hasattr(request.user, "producer_profile"):
+        return JsonResponse({"error": "Unauthorized"}, status=403)
 
     try:
         data = json.loads(request.body)
-        new_status = data.get('status')
-        
-        valid_statuses = ['PEN', 'PRE', 'PAC', 'SHP', 'CAN', 'COM']
+        new_status = data.get("status")
+
+        valid_statuses = [
+            ProducerOrderSummary.Status.PENDING,
+            ProducerOrderSummary.Status.PREPARING,
+            ProducerOrderSummary.Status.PACKAGED,
+            ProducerOrderSummary.Status.READY_FOR_COLLECTION,
+            ProducerOrderSummary.Status.SHIPPED,
+            ProducerOrderSummary.Status.COMPLETED,
+        ]
+
         if new_status not in valid_statuses:
-            return JsonResponse({'error': 'Invalid status'}, status=400)
+            return JsonResponse({"error": "Invalid status"}, status=400)
 
-        # Ensure the producer only updates their own order summaries
-        summary = ProducerOrderSummary.objects.get(
-            id=summary_id, 
-            producer=request.user.producer_profile
+        result = update_producer_order_status(
+            summary_id=summary_id,
+            producer=request.user.producer_profile,
+            updated_by=request.user,
+            new_status=new_status,
+            note="Status updated via Producer Dashboard",
         )
-        
-        # 1. Capture the old status before updating
-        old_status = summary.status
-        
-        # 2. Only update and log if the status actually changed
-        if old_status != new_status:
-            summary.status = new_status
-            summary.save(update_fields=['status'])
 
-            # 3. Create the history record
-            ProducerOrderStatusHistory.objects.create(
-                producer_order_summary=summary,
-                old_status=old_status,
-                new_status=new_status,
-                updated_by=request.user,
-                note=f"Status updated via Producer Dashboard"
-            )
+        summary = result["summary"]
+        order = result["order"]
 
-            # 4. Directly update the parent Order status
-            SUMMARY_TO_ORDER = {
-                'PEN': Order.Status.PENDING,        # PEN → PEN
-                'PRE': Order.Status.IN_PROGRESS,    # PRE → IP
-                'PAC': Order.Status.PACKAGED,       # PAC → OFD
-                'SHP': Order.Status.COMPLETED,      # SHP → CMP
-                'COM': Order.Status.COMPLETED,      # COM → CMP
-                'CAN': Order.Status.CANCELLED,      # CAN → CAN
+        return JsonResponse(
+            {
+                "success": True,
+                "changed": result["changed"],
+                "producer_status": summary.status,
+                "producer_status_display": summary.get_status_display(),
+                "order_status": order.status,
+                "order_status_display": order.get_status_display(),
+                "allowed_next_statuses": [
+                    {
+                        "value": status,
+                        "label": ProducerOrderSummary.Status(status).label,
+                    }
+                    for status in get_allowed_next_statuses(summary)
+                ],
             }
-            mapped_status = SUMMARY_TO_ORDER.get(new_status)
-            if mapped_status and summary.order.status != mapped_status:
-                summary.order.status = mapped_status
-                summary.order.save(update_fields=['status'])
+        )
 
-        return JsonResponse({'success': True})
-        
     except ProducerOrderSummary.DoesNotExist:
-        return JsonResponse({'error': 'Order not found'}, status=404)
+        return JsonResponse({"error": "Order not found"}, status=404)
+
+    except ProducerOrderStatusError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
     except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
 
 @login_required

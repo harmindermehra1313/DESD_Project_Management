@@ -214,6 +214,7 @@ class ProducerOrderSummary(models.Model):
         PENDING = "PEN", "Pending"
         PREPARING = "PRE", "Preparing"
         PACKAGED = "PAC", "Packaged"
+        READY_FOR_COLLECTION = "RFC", "Ready for collection"
         SHIPPED = "SHP", "Shipped"
         CANCELLED = "CAN", "Cancelled"
         COMPLETED = "COM", "Completed"
