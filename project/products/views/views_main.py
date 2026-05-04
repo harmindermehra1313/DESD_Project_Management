@@ -500,13 +500,14 @@ def edit_producer_product(request, pk):
                 ).get("total")
                 or 0
             )
-            if stock_total < wholesale_min_quantity:
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price.",
-                    }
-                )
+            # Hannah removed this as why block changing wholesale quantity if current stock is low?
+            # if stock_total < wholesale_min_quantity:
+            #     return JsonResponse(
+            #         {
+            #             "success": False,
+            #             "error": f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price.",
+            #         }
+            #     )
 
         # Low stock threshold
         low_stock_raw = data.get("low_stock_threshold")

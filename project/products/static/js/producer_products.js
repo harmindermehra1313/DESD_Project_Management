@@ -984,6 +984,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Run initial filter to apply defaults (hides DIS/FLG/RMV on load)
     applyAllFilters(true);
+
+    // Check for notification redirect
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get("open_product");
+
+    if (openId) {
+        // Wait for filters + pagination to finish
+        setTimeout(() => {
+            applyAllFilters(false);
+
+            const row = document.getElementById(`row-${openId}`);
+            if (row) {
+                row.scrollIntoView({ behavior: "smooth", block: "center" });
+                showProductDetails(openId, row);
+            }
+        }, 50);
+    }
 });
 
 function showGlobalSuccess(message) {
