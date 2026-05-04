@@ -13,6 +13,7 @@ from orders.services.order_status import (
     can_customer_cancel_order,
     sync_order_status_from_producer_summaries,
 )
+from payments.services import refund_remaining_card_payment_for_order
 
 
 class CustomerCancellationError(Exception):
@@ -113,5 +114,11 @@ def cancel_order_as_customer(
                 "cancellation_reason",
             ]
         )
+        refund_result = refund_remaining_card_payment_for_order(
+            order=order,
+            reason=reason,
+        )
+
+        order.refund_result = refund_result
 
         return order

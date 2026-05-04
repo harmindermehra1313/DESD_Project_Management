@@ -16,7 +16,9 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
-  const cancelBtn = event.target.closest("[data-action='cancel-customer-order']");
+  const cancelBtn = event.target.closest(
+    "[data-action='cancel-customer-order']",
+  );
 
   if (!cancelBtn) {
     return;
@@ -78,7 +80,7 @@ async function submitCustomerOrderCancellation(button, orderId, reason) {
     const payload = await response.json();
 
     showCancellationFeedback(
-      payload.message || "Order cancelled successfully.",
+      buildCancellationSuccessMessage(payload, "Order cancelled successfully."),
       "success",
     );
 
@@ -112,12 +114,15 @@ async function handleCustomerOrderItemCancellation(button) {
   }
 
   if (!Number.isFinite(activeQuantity) || activeQuantity <= 0) {
-    showCancellationFeedback("This item has no active quantity left to cancel.", "danger");
+    showCancellationFeedback(
+      "This item has no active quantity left to cancel.",
+      "danger",
+    );
     return;
   }
 
   const confirmed = window.confirm(
-    `Cancel ${productName}?\n\nThis will cancel the whole item from this order.`
+    `Cancel ${productName}?\n\nThis will cancel the whole item from this order.`,
   );
 
   if (!confirmed) {
@@ -153,8 +158,6 @@ async function submitCustomerOrderItemCancellation(
     reason: reason || "",
   };
 
- 
-
   try {
     const response = await fetch(
       `${CUSTOMER_ORDER_CANCEL_API_BASE}${encodeURIComponent(orderId)}/items/${encodeURIComponent(itemId)}/cancel/`,
@@ -177,7 +180,7 @@ async function submitCustomerOrderItemCancellation(
     const data = await response.json();
 
     showCancellationFeedback(
-      data.message || "Order item cancelled successfully.",
+      buildCancellationSuccessMessage(payload, "Order cancelled successfully."),
       "success",
     );
 
@@ -197,6 +200,47 @@ async function submitCustomerOrderItemCancellation(
     button.disabled = false;
     button.textContent = originalText;
   }
+}
+
+function buildCancellationSuccessMessage(payload, fallbackMessage) {
+  const refund = payload?.refund;
+
+  if (!refund) {
+    return fallbackMessage;
+  }
+
+  if (refund.refunded === true) {
+    const amountText = formatRefundAmount(refund.amount);
+
+    if (amountText) {
+      return `${fallbackMessage} A refund of ${amountText} has been requested to the original payment method. Most card refunds appear within 5–10 business days, depending on the bank.`;
+    }
+
+    return `${fallbackMessage} A refund has been requested to the original payment method. Most card refunds appear within 5–10 business days, depending on the bank.`;
+  }
+
+  if (refund.reason) {
+    return `${fallbackMessage} Refund note: ${refund.reason}`;
+  }
+
+  return fallbackMessage;
+}
+
+function formatRefundAmount(value) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return "";
+  }
+
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  }).format(amount);
 }
 
 async function buildCancellationApiError(response) {
@@ -229,7 +273,7 @@ function showCancellationFeedback(message, variant = "warning") {
     window.CartAPI.showToast(message, {
       title: "Order cancellation",
       variant,
-      delay: 3500,
+      delay: 7000,
     });
     return;
   }

@@ -55,6 +55,7 @@ def cancel_customer_order(request, order_id):
         )
 
     status_context = get_order_status_context(order)
+    refund_result = getattr(order, "refund_result", None)
     return Response(
         {
             "success": True,
@@ -70,6 +71,7 @@ def cancel_customer_order(request, order_id):
                 "cancelled_by": order.cancelled_by_id,
                 "cancellation_reason": order.cancellation_reason,
             },
+            "refund": refund_result,
         },
         status=status.HTTP_200_OK,
     )
@@ -112,6 +114,7 @@ def cancel_customer_order_item(request, order_id, item_id):
     order = result["order"]
     item = result["item"]
     status_context = get_order_status_context(order)
+    
 
     return Response(
         {
@@ -137,6 +140,7 @@ def cancel_customer_order_item(request, order_id, item_id):
                 "cancellation_reason": item.cancellation_reason,
             },
             "cancelled_quantity": result["cancelled_quantity"],
+            "refund": result.get("refund"),
         },
         status=status.HTTP_200_OK,
     )

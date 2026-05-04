@@ -10,17 +10,18 @@ from orders.models import (
 )
 from orders.services.order_status import sync_order_status_from_producer_summaries
 from products.models import Inventory
+from payments.services import refund_cancelled_order_item
 
 
 class CustomerItemCancellationError(Exception):
     """Raised when a customer item cancellation is not allowed."""
+
     pass
 
 
 def _get_producer_summary_for_item(*, order, item):
     return (
-        ProducerOrderSummary.objects
-        .select_for_update(of=("self",))
+        ProducerOrderSummary.objects.select_for_update(of=("self",))
         .filter(
             order=order,
             producer_id=item.producer_id,
@@ -48,8 +49,7 @@ def _cancel_producer_summary_if_all_items_cancelled(
         )
 
     has_active_items_for_producer = (
-        OrderItem.objects
-        .filter(
+        OrderItem.objects.filter(
             order=order,
             producer_id=item.producer_id,
         )
@@ -100,11 +100,7 @@ def cancel_order_item_as_customer(
     reason = (reason or "").strip() or "Customer requested item cancellation"
 
     with transaction.atomic():
-        order = (
-            Order.objects
-            .select_for_update(of=("self",))
-            .get(pk=order_id)
-        )
+        order = Order.objects.select_for_update(of=("self",)).get(pk=order_id)
 
         if order.user_id != customer.id:
             raise CustomerItemCancellationError(
@@ -121,13 +117,9 @@ def cancel_order_item_as_customer(
                 "Completed orders cannot be cancelled. Please use the refund/support process."
             )
 
-        item = (
-            OrderItem.objects
-            .select_for_update(of=("self",))
-            .get(
-                pk=order_item_id,
-                order=order,
-            )
+        item = OrderItem.objects.select_for_update(of=("self",)).get(
+            pk=order_item_id,
+            order=order,
         )
 
         producer_summary = _get_producer_summary_for_item(
@@ -148,9 +140,7 @@ def cancel_order_item_as_customer(
         remaining_cancellable_quantity = item.quantity - item.cancelled_quantity
 
         if remaining_cancellable_quantity <= 0:
-            raise CustomerItemCancellationError(
-                "This item has already been cancelled."
-            )
+            raise CustomerItemCancellationError("This item has already been cancelled.")
 
         quantity_to_cancel = remaining_cancellable_quantity
 
@@ -189,10 +179,17 @@ def cancel_order_item_as_customer(
 
         sync_order_status_from_producer_summaries(order, save=True)
         order.refresh_from_db()
+        refund_result = refund_cancelled_order_item(
+            order=order,
+            item=item,
+            cancelled_quantity=quantity_to_cancel,
+            reason=reason,
+        )
 
         return {
             "order": order,
             "item": item,
             "producer_summary": producer_summary,
             "cancelled_quantity": quantity_to_cancel,
+            "refund": refund_result,
         }
