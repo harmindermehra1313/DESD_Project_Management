@@ -3,6 +3,7 @@ from .views import views_main
 from .views import profile_views
 from accounts.views.views_main import UnifiedRegistrationView
 from accounts.views.views_main import UnifiedRegistrationView, check_email_exists
+from accounts.views import profile_views
 from accounts.views.producer_payments import (
     producer_payments_view,
     download_payment_report_view,
@@ -30,6 +31,8 @@ urlpatterns = [
     path("toggle-subscription/<int:sub_id>/", views_main.toggle_subscription, name="toggle_subscription"),
     
     path("profile/", profile_views.profile, name="profile"),
+    path("profile/notifications/<int:pk>/read/", profile_views.customer_mark_notification_read, name="customer_mark_notification_read"),
+    path("profile/notifications/read-all/", profile_views.customer_mark_all_notifications_read, name="customer_mark_all_notifications_read"),
     
     # Producer Payments
     path("producer/payments/", producer_payments_view, name="producer_payments"),

@@ -113,6 +113,18 @@ services:
     depends_on:
       web:
         condition: service_started
+  
+  cron:
+    build: .
+    container_name: brfn_cron
+    command: ["cron", "-f"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    depends_on:
+      web:
+        condition: service_started
 
   adminer:
     image: adminer:latest

@@ -89,9 +89,7 @@ def moderate_review_content(*, title: str, text: str) -> ModerationResult:
         }
 
     except Exception:
-        logger.exception(
-            "Detoxify moderation failed. Review sent to manual moderation."
-        )
+        logging.exception("Error during content moderation")
         return ModerationResult(
             flagged=True,
             categories={"moderation_error": True},

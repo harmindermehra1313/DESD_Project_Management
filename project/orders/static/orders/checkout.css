@@ -475,3 +475,15 @@ label.required::after {
     border-color: #d9534f !important;
     outline-color: #d9534f !important;
 }
+
+.form-text-danger {
+    color: #dc3545 !important;
+}
+
+/* Grey out labels for disabled radio buttons */
+input[type="radio"]:disabled + label,
+label:has(input[type="radio"]:disabled) {
+    color: #6c757d; /* Bootstrap muted grey */
+    opacity: 0.6;
+    cursor: not-allowed;
+}

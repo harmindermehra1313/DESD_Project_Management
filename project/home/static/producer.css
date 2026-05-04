@@ -89,3 +89,9 @@
     background-color: var(--background-grey) !important;
     cursor: pointer;
 }
+
+.pagination .page-link:hover {
+    background-color: var(--brand);
+    color: #fff !important;
+    border-color: var(--brand);
+}

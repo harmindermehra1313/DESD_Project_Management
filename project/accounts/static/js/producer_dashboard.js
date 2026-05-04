@@ -6,7 +6,7 @@ let subCurrentPage = 1;
 const rowsPerPage = 10;
 
 // 1. Evaluates ID, Name, Dates, Checkboxes, AND Pagination
-function applyAllFilters(resetPage = true) {
+function applyAllFilters(resetPage = true, resetDetails = true) {
     if (resetPage) {
         currentPage = 1;
     }
@@ -73,21 +73,23 @@ function applyAllFilters(resetPage = true) {
     renderPagination(totalPages);
 
     // --- RESET DETAILS PANEL ---
-    selectedSummaryId = null;
-    document.querySelectorAll('.order-row').forEach(r => r.classList.remove('selected'));
-    document.querySelectorAll('.sub-row').forEach(r => r.classList.remove('selected'));
-    
-    const detailOrderId = document.getElementById('detailOrderId');
-    const detailsContent = document.getElementById('detailsContent');
-    
-    if (detailOrderId) detailOrderId.textContent = 'Select an order';
-    if (detailsContent) {
-        detailsContent.innerHTML = '<p class="text-muted mb-0">Click on a specific order or subscription from the tables above to view complete details.</p>';
-    }
-    
-    const updateBtn = document.getElementById('updateStatusBtn');
-    if (updateBtn) {
-        updateBtn.disabled = true;
+    if (resetDetails) {
+        selectedSummaryId = null;
+        document.querySelectorAll('.order-row').forEach(r => r.classList.remove('selected'));
+        document.querySelectorAll('.sub-row').forEach(r => r.classList.remove('selected'));
+        
+        const detailOrderId = document.getElementById('detailOrderId');
+        const detailsContent = document.getElementById('detailsContent');
+        
+        if (detailOrderId) detailOrderId.textContent = 'Select an order';
+        if (detailsContent) {
+            detailsContent.innerHTML = '<p class="text-muted mb-0">Click on a specific order or subscription from the tables above to view complete details.</p>';
+        }
+        
+        const updateBtn = document.getElementById('updateStatusBtn');
+        if (updateBtn) {
+            updateBtn.disabled = true;
+        }
     }
 }
 
@@ -402,4 +404,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     applyAllFilters(true);
     applySubFilters(true);
+
+    // Auto-open order from notification
+    const params = new URLSearchParams(window.location.search);
+    const openOrderId = params.get("open_order");
+
+    if (openOrderId) {
+        // Delay to ensure rows are rendered + filters applied
+        setTimeout(() => {
+            applyAllFilters(false, false);
+
+            const row = document.getElementById(`row-${openOrderId}`);
+            if (row) {
+                row.scrollIntoView({ behavior: "smooth", block: "center" });
+                showOrderDetails(openOrderId, row);
+            }
+        }, 50);
+    }    
 });
