@@ -15,6 +15,7 @@ from carts.services import (
 from notifications.models import TraceabilityRecord
 from notifications.models import Notification
 from notifications.services.notifications import NotificationService
+from orders.services.food_miles import calculate_food_miles
 import logging
 logger = logging.getLogger(__name__)
 
@@ -192,6 +193,12 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 total_discount += discount_amount
                 commission_total += commission_amount
 
+                # Get food miles
+                food_miles_value = calculate_food_miles(
+                    producer.farm_postcode,
+                    delivery_address.postcode
+                )
+
                 item = OrderItem.objects.create(
                     order=order,
                     inventory=inventory,
@@ -204,6 +211,7 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                     vat_rate=vat_rate,
                     commission_amount=commission_amount,
                     discount_amount=discount_amount,
+                    food_miles=food_miles_value,
                     preparation_deadline=timezone.now() + timezone.timedelta(hours=48),
                 )
 

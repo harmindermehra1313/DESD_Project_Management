@@ -11,6 +11,10 @@ from .models import Recipe, FarmStory, RecipeProduct
 from .forms import RecipeForm, FarmStoryForm
 from accounts.models import Producer
 from products.models import Product
+from django.db.models import Avg, Sum, F
+from products.models import Inventory
+from accounts.models import Producer
+from orders.models import ProducerOrderSummary, OrderItem
 
 
 def index(request):
@@ -410,3 +414,40 @@ def contact_us(request):
         "contact_address": "Coldharbour Lane, Bristol, BS16 1QY",
     }
     return render(request, "community/contact_us.html", context)
+
+
+def about(request):
+    # Count active producers
+    producer_count = Producer.objects.filter(user__is_active=True).count()
+
+    # Active inventory batches
+    active_batches = Inventory.objects.filter(
+        status=Inventory.BatchStatus.ACTIVE
+    ).count()
+
+    # Delivered items = per-producer fulfilment
+    delivered_items = OrderItem.objects.filter(
+        order__producer_summaries__producer=F("producer"),
+        order__producer_summaries__status__in=[
+            ProducerOrderSummary.Status.SHIPPED,
+            ProducerOrderSummary.Status.COMPLETED,
+        ]
+    )
+
+    avg_food_miles = delivered_items.aggregate(
+        avg=Avg("food_miles")
+    )["avg"]
+
+    total_food_miles = delivered_items.aggregate(
+        total=Sum("food_miles")
+    )["total"]
+
+    context = {
+        "producer_count": producer_count,
+        "active_batches": active_batches,
+        "avg_food_miles": round(avg_food_miles, 1) if avg_food_miles else None,
+        "total_food_miles": round(total_food_miles, 1) if total_food_miles else None,
+        "radius_limit": 20,
+    }
+
+    return render(request, "community/about_us.html", context)
