@@ -99,6 +99,23 @@ class Order(models.Model):
         choices = Status.choices,
         default = Status.PENDING
     )
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_orders",
+    )
+
+    cancellation_reason = models.TextField(
+        blank=True,
+        default="",
+    )
 
     # Handle guests
     guest_name = models.CharField(max_length=150, null=True, blank=True)
