@@ -100,7 +100,8 @@
                                           action="{% url 'accounts:customer_mark_all_notifications_read' %}">
                                         {% csrf_token %}
                                         <input type="hidden" name="page" value="{{ notifications.number }}">
-                                        <button class="btn btn-sm btn-outline-secondary"
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-secondary"
                                                 {% if unread_count == 0 %}disabled{% endif %}>
                                             Mark all as read
                                             {% if unread_count > 0 %}({{ unread_count }}){% endif %}
@@ -110,34 +111,35 @@
                                 {% if notifications %}
                                     <ul class="list-group list-group-flush">
                                         {% for note in notifications %}
-                                            <form method="POST"
-                                                  action="{% url 'accounts:customer_mark_notification_read' note.pk %}"
-                                                  class="w-100">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="page" value="{{ notifications.number }}">
-                                                <button type="submit"
-                                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-start py-3 w-100 text-start"
-                                                        style="border: none;
-                                                               background: none">
-                                                    <!-- Notification Type Badge -->
-                                                    <div class="ms-0 w-100">
-                                                        <span class="badge rounded-pill {% if note.type == 'RC' %} bg-danger {% elif note.type == 'OC' %} bg-danger {% elif note.type == 'RF' %} bg-warning text-dark {% elif note.type == 'OP' %} bg-success {% elif note.type == 'OU' %} bg-primary {% elif note.type == 'SYS' %} bg-secondary {% elif note.type == 'PRO' %} bg-success {% else %} bg-info {% endif %} ">
-                                                            {{ note.get_type_display }}
-                                                        </span>
-                                                        <div class="fw-semibold mt-2">{{ note.message }}</div>
-                                                        <div class="text-muted small mt-1">
-                                                            {{ note.created_at|date:"d M Y, H:i" }}
-                                                            {% if note.order %}• Order #{{ note.order.pk }}{% endif %}
-                                                            {% if note.product %}• Product: {{ note.product.name }}{% endif %}
-                                                        </div>
+                                            <li class="list-group-item d-flex justify-content-between align-items-start py-3 px-0">
+                                                <div class="ms-0 w-100">
+                                                    <span class="badge rounded-pill {% if note.type == 'RC' %} bg-danger {% elif note.type == 'OC' %} bg-danger {% elif note.type == 'RF' %} bg-warning text-dark {% elif note.type == 'OP' %} bg-success {% elif note.type == 'OU' %} bg-primary {% elif note.type == 'SYS' %} bg-secondary {% elif note.type == 'PRO' %} bg-success {% else %} bg-info {% endif %} ">
+                                                        {{ note.get_type_display }}
+                                                    </span>
+                                                    <div class="fw-semibold mt-2">{{ note.message }}</div>
+                                                    <div class="text-muted small mt-1">
+                                                        {{ note.created_at|date:"d M Y, H:i" }}
+                                                        {% if note.order %}
+                                                            • Order reference:
+                                                            {{ note.order.unique_reference|default:note.order.pk }}
+                                                        {% endif %}
+                                                        {% if note.product %}• Product: {{ note.product.name }}{% endif %}
                                                     </div>
+                                                </div>
+                                                <div class="ms-3 text-end flex-shrink-0">
                                                     {% if not note.read_at %}
-                                                        <span class="badge bg-danger rounded-pill me-3">New</span>
+                                                        <span class="badge bg-danger rounded-pill mb-2">New</span>
+                                                        <form method="POST"
+                                                              action="{% url 'accounts:customer_mark_notification_read' note.pk %}">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="page" value="{{ notifications.number }}">
+                                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Mark as read</button>
+                                                        </form>
                                                     {% else %}
-                                                        <span class="badge bg-light text-muted rounded-pill me-3">Read</span>
+                                                        <span class="badge bg-light text-muted rounded-pill">Read</span>
                                                     {% endif %}
-                                                </button>
-                                            </form>
+                                                </div>
+                                            </li>
                                         {% endfor %}
                                     </ul>
                                     {% if notifications.paginator.num_pages > 1 %}
@@ -190,7 +192,7 @@
                                 {% else %}
                                     <div class="text-center py-4 text-muted">
                                         <p class="mb-1">No notifications yet.</p>
-                                        <p class="small">You'll see order updates, delivery alerts, and recall notices here.</p>
+                                        <p class="small">Order updates, cancellation notices, refund updates, and recall notices will appear here.</p>
                                     </div>
                                 {% endif %}
                             </div>
