@@ -960,13 +960,119 @@ function handleWriteReviewClick(button) {
   }
 }
 
+function isOrderItemFullyCancelled(item) {
+  const originalQuantity = Number(item?.quantity ?? 0);
+  const cancelledQuantity = Number(item?.cancelled_quantity ?? 0);
+  const activeQuantity = Number(
+    item?.active_quantity ?? Math.max(originalQuantity - cancelledQuantity, 0),
+  );
+
+  const status = normaliseStatus(item?.status_key || item?.status || "");
+
+  return (
+    status === "can" ||
+    status === "cancelled" ||
+    (originalQuantity > 0 && cancelledQuantity >= originalQuantity) ||
+    (activeQuantity <= 0 && cancelledQuantity > 0)
+  );
+}
+
+function isOrderItemPartiallyCancelled(item) {
+  const originalQuantity = Number(item?.quantity ?? 0);
+  const cancelledQuantity = Number(item?.cancelled_quantity ?? 0);
+
+  return (
+    cancelledQuantity > 0 &&
+    originalQuantity > 0 &&
+    cancelledQuantity < originalQuantity
+  );
+}
+
+function getOrderItemRowClass(item) {
+  return isOrderItemFullyCancelled(item)
+    ? "order-detail-item-row order-detail-item-row-cancelled"
+    : "order-detail-item-row";
+}
+
+function renderOrderItemStatus(item) {
+  if (isOrderItemFullyCancelled(item)) {
+    return `
+      <div class="mt-1">
+        <span class="badge text-bg-secondary">Cancelled</span>
+      </div>
+    `;
+  }
+
+  if (isOrderItemPartiallyCancelled(item)) {
+    return `
+      <div class="mt-1">
+        <span class="badge text-bg-warning">Partially cancelled</span>
+      </div>
+    `;
+  }
+
+  if (item.status) {
+    return `<div class="small text-muted mt-1">${escapeHtml(item.status)}</div>`;
+  }
+
+  return "";
+}
+
+function renderOrderItemQuantityCell(item) {
+  const originalQuantity = Number(item?.quantity ?? 0);
+  const cancelledQuantity = Number(item?.cancelled_quantity ?? 0);
+  const activeQuantity = Number(
+    item?.active_quantity ?? Math.max(originalQuantity - cancelledQuantity, 0),
+  );
+
+  if (isOrderItemFullyCancelled(item)) {
+    return `
+      <div class="fw-semibold text-muted">Cancelled</div>
+      <div class="small text-muted">
+        Original quantity: ${escapeHtml(originalQuantity)}
+      </div>
+    `;
+  }
+
+  if (isOrderItemPartiallyCancelled(item)) {
+    return `
+      <div class="fw-semibold">${escapeHtml(activeQuantity)}</div>
+      <div class="small text-warning-emphasis">
+        ${escapeHtml(cancelledQuantity)} cancelled
+      </div>
+      <div class="small text-muted">
+        Original quantity: ${escapeHtml(originalQuantity)}
+      </div>
+    `;
+  }
+
+  return `<div class="fw-semibold">${escapeHtml(activeQuantity)}</div>`;
+}
+
+function renderOrderItemActions(order, item) {
+  if (isOrderItemFullyCancelled(item)) {
+    return `
+      <span class="badge text-bg-light border order-detail-item-disabled-badge">
+        No action available
+      </span>
+    `;
+  }
+
+  return `
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+      ${getCustomerCancelItemButtonHtml(order, item)}
+      ${renderReviewActionCell(item)}
+    </div>
+  `;
+}
 function renderItemsSection(order) {
   const items = order?.items || [];
+
   return `
     <div class="mb-4">
       <h6 class="mb-3">${M.itemsHeading}</h6>
       <div class="table-responsive">
-        <table class="table table-bordered align-middle">
+        <table class="table table-bordered align-middle order-detail-items-table">
           <thead class="table-light">
             <tr>
               <th>${M.productLabel}</th>
@@ -977,45 +1083,34 @@ function renderItemsSection(order) {
             </tr>
           </thead>
           <tbody>
-                        ${(items || [])
+            ${(items || [])
               .map((item) => {
-                const activeQuantity = Number(item.active_quantity ?? item.quantity ?? 0);
-                const cancelledQuantity = Number(item.cancelled_quantity ?? 0);
-                const showCancelledInfo = cancelledQuantity > 0;
+                const fullyCancelled = isOrderItemFullyCancelled(item);
 
                 return `
-                  <tr>
+                  <tr
+                    class="${escapeHtml(getOrderItemRowClass(item))}"
+                    ${fullyCancelled ? 'aria-disabled="true"' : ""}
+                  >
                     <td>
-                      <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
-                      ${
-                        item.status
-                          ? `<div class="small text-muted">${escapeHtml(item.status)}</div>`
-                          : ""
-                      }
+                      <div class="fw-semibold order-detail-item-product-name">
+                        ${escapeHtml(item.product_name)}
+                      </div>
+                      ${renderOrderItemStatus(item)}
                     </td>
 
                     <td>${escapeHtml(item.producer)}</td>
 
                     <td>
-                      <div>${escapeHtml(activeQuantity)}</div>
-                      ${
-                        showCancelledInfo
-                          ? `
-                            <div class="small text-muted">
-                              ${escapeHtml(cancelledQuantity)} cancelled from original ${escapeHtml(item.quantity)}
-                            </div>
-                          `
-                          : ""
-                      }
+                      ${renderOrderItemQuantityCell(item)}
                     </td>
 
-                    <td>${formatMoney(item.paid_unit_price)}</td>
+                    <td>
+                      ${formatMoney(item.paid_unit_price)}
+                    </td>
 
                     <td class="text-end">
-                      <div class="d-flex gap-2 justify-content-end flex-wrap">
-                        ${getCustomerCancelItemButtonHtml(order, item)}
-                        ${renderReviewActionCell(item)}
-                      </div>
+                      ${renderOrderItemActions(order, item)}
                     </td>
                   </tr>
                 `;

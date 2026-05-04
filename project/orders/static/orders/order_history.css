@@ -135,6 +135,31 @@
   line-height: 1.4;
 }
 
+/* Cancelled order-detail items */
+.order-detail-items-table .order-detail-item-row-cancelled {
+  background-color: #f8f9fa;
+}
+
+.order-detail-items-table .order-detail-item-row-cancelled td {
+  color: #6c757d;
+}
+
+.order-detail-items-table
+  .order-detail-item-row-cancelled
+  .order-detail-item-product-name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.order-detail-items-table .order-detail-item-row-cancelled .btn {
+  pointer-events: none;
+}
+
+.order-detail-item-disabled-badge {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* Mobile: 1-column cards and stacked controls */
 @media (max-width: 575.98px) {
   .container.py-4 {
