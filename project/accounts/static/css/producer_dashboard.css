@@ -111,3 +111,19 @@
     color: #b42318;
     border: 1px solid #fecdca;
 }
+
+.producer-help-box,
+.producer-instruction-box {
+    background-color: #f8fafc;
+    border: 1px solid #e4e7ec;
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.producer-instruction-box {
+    font-size: 0.9rem;
+}
+
+#confirmStatusName {
+    color: var(--prussian-blue);
+}

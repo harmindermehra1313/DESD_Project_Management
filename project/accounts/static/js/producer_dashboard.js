@@ -1,4 +1,14 @@
 let selectedSummaryId = null;
+let pendingStatusValue = null;
+let pendingStatusLabel = null;
+
+const STATUS_CONFIRMATION_HELP = {
+  PRE: "Use this when work has started on this producer's items.",
+  PAC: "Use this only when all items in this producer section have been packed.",
+  RFC: "Use this only when a collection order is packed and ready for the customer to collect.",
+  SHP: "Use this only when a delivery order has left the producer for delivery.",
+  COM: "Use this only when the producer section has been fully fulfilled.",
+};
 
 // Pagination variables
 let currentPage = 1;
@@ -43,10 +53,10 @@ function renderStatusActionMenu(allowedStatuses) {
 
   if (!allowedStatuses || allowedStatuses.length === 0) {
     menu.innerHTML = `
-            <li>
-                <span class="dropdown-item text-muted">No further status updates available</span>
-            </li>
-        `;
+      <li>
+        <span class="dropdown-item text-muted">No further status updates available</span>
+      </li>
+    `;
     updateBtn.disabled = true;
     return;
   }
@@ -55,19 +65,18 @@ function renderStatusActionMenu(allowedStatuses) {
     .map(
       (status) => `
         <li>
-            <button class="dropdown-item fw-bold"
-                    type="button"
-                    onclick="changeStatus('${status.value}')">
-                Mark as ${status.label}
-            </button>
+          <button class="dropdown-item fw-bold"
+                  type="button"
+                  onclick="openStatusConfirmModal('${status.value}', '${status.label}')">
+            ${getStatusActionText(status.value, status.label)}
+          </button>
         </li>
-    `,
+      `,
     )
     .join("");
 
   updateBtn.disabled = false;
 }
-
 // 1. Evaluates ID, Name, Dates, Checkboxes, AND Pagination
 function applyAllFilters(resetPage = true, resetDetails = true) {
   if (resetPage) {
@@ -156,13 +165,40 @@ function applyAllFilters(resetPage = true, resetDetails = true) {
 
     if (detailOrderId) detailOrderId.textContent = "Select an order";
     if (detailsContent) {
-      detailsContent.innerHTML =
-        '<p class="text-muted mb-0">Click on a specific order or subscription from the tables above to view complete details.</p>';
+      detailsContent.innerHTML = `
+    <p class="text-muted mb-3">
+      Click on a specific order or subscription from the tables above to view complete details.
+    </p>
+
+    <div class="producer-help-box">
+      <h6 class="fw-bold mb-2">How to use this page</h6>
+
+      <p class="mb-2">
+        This page shows orders that need action from this producer only.
+        Click an order row to see customer details, products, delivery or collection information, and the next available status update.
+      </p>
+
+      <ol class="mb-0 ps-3">
+        <li>Use <strong>Filter</strong> to find orders by status, order ID, customer name, or due date.</li>
+        <li>Click one order row to open its full details.</li>
+        <li>Use <strong>Change Status</strong> only when the order has really moved to the next stage.</li>
+        <li>A confirmation box will appear before the status is saved.</li>
+        <li>Status cannot be moved backwards. If a mistake is made, contact an admin.</li>
+      </ol>
+    </div>
+  `;
     }
 
     const updateBtn = document.getElementById("updateStatusBtn");
-    if (updateBtn) {
-      updateBtn.disabled = true;
+    if (updateBtn) updateBtn.disabled = true;
+
+    const statusActionMenu = document.getElementById("statusActionMenu");
+    if (statusActionMenu) {
+      statusActionMenu.innerHTML = `
+    <li>
+      <span class="dropdown-item text-muted">Select an order first</span>
+    </li>
+  `;
     }
   }
 }
@@ -211,27 +247,27 @@ function goToPage(pageNumber) {
 
 // 4. Clear all filters and reset view
 function clearFilters() {
-    document.getElementById('filterOrderId').value = '';
-    document.getElementById('filterCustomerName').value = '';
-    document.getElementById('filterDateFrom').value = '';
-    document.getElementById('filterDateTo').value = '';
+  document.getElementById("filterOrderId").value = "";
+  document.getElementById("filterCustomerName").value = "";
+  document.getElementById("filterDateFrom").value = "";
+  document.getElementById("filterDateTo").value = "";
 
-    const defaults = {
-        filterPen: true,
-        filterPre: true,
-        filterPac: true,
-        filterRfc: true,
-        filterShp: true,
-        filterCom: true,
-        filterCan: false
-    };
+  const defaults = {
+    filterPen: true,
+    filterPre: true,
+    filterPac: true,
+    filterRfc: true,
+    filterShp: true,
+    filterCom: true,
+    filterCan: false,
+  };
 
-    Object.entries(defaults).forEach(([id, checked]) => {
-        const input = document.getElementById(id);
-        if (input) input.checked = checked;
-    });
+  Object.entries(defaults).forEach(([id, checked]) => {
+    const input = document.getElementById(id);
+    if (input) input.checked = checked;
+  });
 
-    applyAllFilters(true);
+  applyAllFilters(true);
 }
 
 // 5. Highlight row and show details
@@ -280,60 +316,108 @@ function showSubscriptionDetails(subId, rowElement) {
   const updateBtn = document.getElementById("updateStatusBtn");
   if (updateBtn) updateBtn.disabled = true;
 }
+function getStatusActionText(statusValue, fallbackLabel) {
+  const actionText = {
+    PRE: "Start preparing",
+    PAC: "Items are packed",
+    RFC: "Ready for customer collection",
+    SHP: "Order has been shipped",
+    COM: "Order is completed",
+  };
+
+  return actionText[statusValue] || `Mark as ${fallbackLabel}`;
+}
+
+function openStatusConfirmModal(statusValue, statusLabel) {
+  pendingStatusValue = statusValue;
+  pendingStatusLabel = statusLabel;
+
+  const statusName = document.getElementById("confirmStatusName");
+  const statusHelp = document.getElementById("confirmStatusHelp");
+
+  if (statusName) {
+    statusName.textContent = statusLabel;
+  }
+
+  if (statusHelp) {
+    statusHelp.textContent =
+      STATUS_CONFIRMATION_HELP[statusValue] ||
+      "Only continue if this status is correct.";
+  }
+
+  const modalElement = document.getElementById("statusConfirmModal");
+  if (!modalElement) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.show();
+}
+
+function closeStatusConfirmModal() {
+  const modalElement = document.getElementById("statusConfirmModal");
+  if (!modalElement) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.hide();
+}
 
 // 7. Send AJAX update with the newly selected status
 async function changeStatus(newStatus) {
-    if (!selectedSummaryId) return;
+  if (!selectedSummaryId) return;
 
-    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (!csrfInput) {
-        alert("CSRF token not found.");
-        return;
+  const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+  if (!csrfInput) {
+    alert("CSRF token not found.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `/accounts/update-order-status/${selectedSummaryId}/`,
+      {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfInput.value,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.error || "Something went wrong updating the order.");
+      return;
     }
 
-    try {
-        const response = await fetch(`/accounts/update-order-status/${selectedSummaryId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfInput.value,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status: newStatus })
-        });
+    const row = document.getElementById(`row-${selectedSummaryId}`);
+    const producerStatus = data.producer_status;
+    const producerStatusDisplay = data.producer_status_display;
+    const statusInfo = getProducerStatusInfo(
+      producerStatus,
+      producerStatusDisplay,
+    );
 
-        const data = await response.json();
+    if (row) {
+      row.setAttribute("data-status", producerStatus);
+      row.setAttribute(
+        "data-allowed-statuses",
+        JSON.stringify(data.allowed_next_statuses || []),
+      );
 
-        if (!response.ok) {
-            alert(data.error || "Something went wrong updating the order.");
-            return;
-        }
-
-        const row = document.getElementById(`row-${selectedSummaryId}`);
-        const producerStatus = data.producer_status;
-        const producerStatusDisplay = data.producer_status_display;
-        const statusInfo = getProducerStatusInfo(producerStatus, producerStatusDisplay);
-
-        if (row) {
-            row.setAttribute('data-status', producerStatus);
-            row.setAttribute(
-                'data-allowed-statuses',
-                JSON.stringify(data.allowed_next_statuses || [])
-            );
-
-            const badge = row.querySelector('.status-badge');
-            if (badge) {
-                badge.textContent = producerStatusDisplay || statusInfo.text;
-                badge.className = `status-badge ${statusInfo.cls}`;
-            }
-        }
-
-        renderStatusActionMenu(data.allowed_next_statuses || []);
-        applyAllFilters(false, false);
-
-    } catch (error) {
-        console.error("Error updating status:", error);
-        alert("Network error occurred.");
+      const badge = row.querySelector(".status-badge");
+      if (badge) {
+        badge.textContent = producerStatusDisplay || statusInfo.text;
+        badge.className = `status-badge ${statusInfo.cls}`;
+      }
     }
+
+    renderStatusActionMenu(data.allowed_next_statuses || []);
+    applyAllFilters(false, false);
+  } catch (error) {
+    console.error("Error updating status:", error);
+    alert("Network error occurred.");
+  }
 }
 
 // 8. Send AJAX to Cancel Subscription
@@ -522,6 +606,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   applyAllFilters(true);
   applySubFilters(true);
+
+  const confirmStatusUpdateBtn = document.getElementById(
+    "confirmStatusUpdateBtn",
+  );
+
+  if (confirmStatusUpdateBtn) {
+    confirmStatusUpdateBtn.addEventListener("click", async () => {
+      if (!pendingStatusValue) return;
+
+      confirmStatusUpdateBtn.disabled = true;
+      confirmStatusUpdateBtn.textContent = "Updating...";
+
+      await changeStatus(pendingStatusValue);
+
+      confirmStatusUpdateBtn.disabled = false;
+      confirmStatusUpdateBtn.textContent = "Confirm update";
+
+      pendingStatusValue = null;
+      pendingStatusLabel = null;
+
+      closeStatusConfirmModal();
+    });
+  }
 
   // Auto-open order from notification
   const params = new URLSearchParams(window.location.search);
