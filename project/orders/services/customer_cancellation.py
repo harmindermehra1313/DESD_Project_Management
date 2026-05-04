@@ -4,6 +4,10 @@ from django.utils import timezone
 
 from orders.models import Order, ProducerOrderSummary, ProducerOrderStatusHistory
 from products.models import Inventory
+from orders.services.order_status import (
+    can_customer_cancel_order,
+    sync_order_status_from_producer_summaries,
+)
 
 
 class CustomerCancellationError(Exception):
@@ -35,14 +39,15 @@ def cancel_order_as_customer(
             raise CustomerCancellationError(
                 "This order has already been cancelled."
             )
-        if order.status != Order.Status.PENDING:
-            raise CustomerCancellationError(
-                "This order cannot be cancelled automatically at its current status."
-            )
 
         if order.status == Order.Status.COMPLETED:
             raise CustomerCancellationError(
                 "Completed orders cannot be cancelled."
+            )
+
+        if not can_customer_cancel_order(order):
+            raise CustomerCancellationError(
+                "This order cannot be cancelled automatically at its current status."
             )
 
         producer_summaries = (
@@ -77,7 +82,8 @@ def cancel_order_as_customer(
                 note=reason,
             )
 
-        order.status = Order.Status.CANCELLED
+        sync_order_status_from_producer_summaries(order, save=False)
+
         order.cancelled_at = timezone.now()
         order.cancelled_by = customer
         order.cancellation_reason = reason

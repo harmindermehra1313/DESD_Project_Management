@@ -400,10 +400,8 @@ function isReceiptAllowed(status) {
   return value.includes("completed");
 }
 
-function isCustomerCancellationAllowed(status) {
-  const value = normaliseStatus(status);
-
-  return value === "pen" || value.includes("pending");
+function isCustomerCancellationAllowed(order) {
+  return Boolean(order?.can_customer_cancel);
 }
 
 function getCustomerCancelButtonHtml(order) {
@@ -414,7 +412,7 @@ function getCustomerCancelButtonHtml(order) {
   }
 
   const status = order?.status || order?.order_status || "";
-  const allowed = isCustomerCancellationAllowed(status);
+  const allowed = isCustomerCancellationAllowed(order);
   const disabledAttr = allowed ? "" : "disabled";
   const title = allowed
     ? "Cancel this order before producers start preparing it."
@@ -802,6 +800,18 @@ function renderOrderSummary(order) {
           </div>
         </div>
       </div>
+
+      ${
+        order.status_note
+          ? `
+            <div class="col-12">
+              <div class="alert alert-warning mb-0">
+                ${escapeHtml(order.status_note)}
+              </div>
+            </div>
+          `
+          : ""
+      }
     </div>
   `;
 }
