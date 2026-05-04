@@ -400,6 +400,41 @@ function isReceiptAllowed(status) {
   return value.includes("completed");
 }
 
+function isCustomerCancellationAllowed(status) {
+  const value = normaliseStatus(status);
+
+  return value === "pen" || value.includes("pending");
+}
+
+function getCustomerCancelButtonHtml(order) {
+  const orderId = order?.id || order?.order_id;
+
+  if (!orderId) {
+    return "";
+  }
+
+  const status = order?.status || order?.order_status || "";
+  const allowed = isCustomerCancellationAllowed(status);
+  const disabledAttr = allowed ? "" : "disabled";
+  const title = allowed
+    ? "Cancel this order before producers start preparing it."
+    : "Cancellation is only available while the order is pending.";
+
+  return `
+    <button
+      type="button"
+      class="btn btn-danger"
+      data-action="cancel-customer-order"
+      data-order-id="${escapeHtml(orderId)}"
+      data-order-number="${escapeHtml(order.order_number || orderId)}"
+      ${disabledAttr}
+      title="${escapeHtml(title)}"
+    >
+      Cancel order
+    </button>
+  `;
+}
+
 function getReorderButtonHtml(orderId, status, extraClass = "") {
   const allowed = isReorderAllowed(status);
   const disabledAttr = allowed ? "" : "disabled";
@@ -1045,6 +1080,7 @@ function renderOrderFooter(order) {
       </div>
 
       <div class="d-flex gap-2">
+        ${getCustomerCancelButtonHtml(order)}
         ${getReorderButtonHtml(order.id, order.status)}
         ${getReceiptButtonHtml(order.id, order.status)}
       </div>
@@ -2752,3 +2788,7 @@ function getCookie(name) {
 
   return cookieValue;
 }
+window.OrderHistoryPage = {
+  loadOrders,
+  openOrderDetails,
+};
