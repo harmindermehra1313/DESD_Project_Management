@@ -37,14 +37,12 @@ from carts.services import (
     _get_effective_unit_price,
     cart_add_item_for_owner,
 )
-from orders.models import Order
+from orders.models import Order, OrderItem
 from orders.selectors import (
     get_order_detail_for_user,
     get_reorder_suggestion_inventories,
-    get_derived_order_status_key,
-    get_order_detail_for_user,
-    get_reorder_suggestion_inventories,
 )
+from orders.services.order_status import get_order_status_context
 from django.apps import apps
 
 User = get_user_model()
@@ -85,6 +83,10 @@ def _all_product_batches_deleted(*, product) -> bool:
     )
 
 
+def _is_cancelled_order_item(item) -> bool:
+    return item.status == OrderItem.Status.CANCELLED
+
+
 def _structured_validation_error(
     *,
     code: str,
@@ -97,6 +99,14 @@ def _structured_validation_error(
             "message": message,
             "data": data or {},
         }
+    )
+
+
+def _get_historical_unit_price(item):
+    return (
+        getattr(item, "final_unit_price", None)
+        or getattr(item, "original_unit_price", None)
+        or getattr(item, "unit_price", None)
     )
 
 
@@ -448,17 +458,12 @@ def _resolve_candidate_for_item(
     selection: dict | None,
     original_candidate: dict | None,
     suggestion_candidates: list[dict],
+    default_quantity: int,
 ) -> tuple[dict | None, str | None, int | None]:
-    """
-    Resolve which live candidate should be used for one order item.
-
-    Returns:
-        tuple[candidate | None, rejection_reason | None, requested_quantity | None]
-    """
     if selection is None:
         if original_candidate is None:
             return None, None, None
-        return original_candidate, None, item.quantity
+        return original_candidate, None, default_quantity
 
     action = selection["action"]
 
@@ -610,13 +615,16 @@ def reorder_order(
     """
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
-    if get_derived_order_status_key(order) != "completed":
+    status_context = get_order_status_context(order)
+
+    if status_context["status_key"] != "completed":
         raise _structured_validation_error(
             code="order_not_reorderable",
             message="This order cannot be reordered.",
             data={
                 "order_id": order.id,
-                "order_status": get_derived_order_status_key(order),
+                "order_status": status_context["status_key"],
+                "status_display": status_context["status_display"],
             },
         )
 
@@ -639,6 +647,10 @@ def reorder_order(
     }
 
     for item in order.items.all():
+        if _is_cancelled_order_item(item):
+            skipped_count += 1
+            continue
+
         suggestion_candidates = _build_suggestion_candidates(
             user=user,
             product=item.product,
@@ -671,6 +683,7 @@ def reorder_order(
                 selection=selection,
                 original_candidate=original_candidate,
                 suggestion_candidates=suggestion_candidates,
+                default_quantity=item.quantity,
             )
         )
 
@@ -721,13 +734,18 @@ def reorder_order(
         )
         current_unit_price = pricing["effective_unit_price"]
 
-        if item.original_unit_price != current_unit_price:
+        historical_unit_price = _get_historical_unit_price(item)
+
+        if (
+            historical_unit_price is not None
+            and historical_unit_price != current_unit_price
+        ):
             result["price_changed_items"].append(
                 {
                     "order_item_id": item.pk,
                     "product_id": selected_product.pk,
                     "product_name": selected_product.name,
-                    "original_price": item.original_unit_price,
+                    "original_price": historical_unit_price,
                     "current_price": current_unit_price,
                     "pricing_source": pricing["pricing_source"],
                     "surplus_active": pricing["surplus"]["is_active"],

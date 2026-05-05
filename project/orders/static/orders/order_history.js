@@ -390,9 +390,12 @@ function getStatusBadgeClass(status) {
   return "bg-secondary";
 }
 
-function isReorderAllowed(status) {
-  const value = normaliseStatus(status);
-  return value.includes("completed");
+function isReorderAllowed(order) {
+  const statusKey = String(
+    order?.order_status_key || order?.status_key || "",
+  ).toLowerCase();
+
+  return statusKey === "completed";
 }
 
 function isReceiptAllowed(status) {
@@ -469,10 +472,15 @@ function getCustomerCancelItemButtonHtml(order, item) {
   `;
 }
 
-function getReorderButtonHtml(orderId, status, extraClass = "") {
-  const allowed = isReorderAllowed(status);
+function getReorderButtonHtml(order, extraClass = "") {
+  const orderId = order?.id || order?.order_id;
+  const allowed = isReorderAllowed(order);
   const disabledAttr = allowed ? "" : "disabled";
   const title = allowed ? M.reorderAllowedTooltip : M.reorderBlockedTooltip;
+
+  if (!orderId) {
+    return "";
+  }
 
   return `
     <button
@@ -761,11 +769,7 @@ function renderOrdersTable(orders) {
             ${M.viewDetailsButton}
           </button>
 
-          ${getReorderButtonHtml(
-            order.id,
-            order.order_status,
-            "btn-sm order-history-action-btn",
-          )}
+          ${getReorderButtonHtml(order, "btn-sm order-history-action-btn")}
         </div>
       </td>
     </tr>
@@ -1254,7 +1258,7 @@ function renderOrderFooter(order) {
 
       <div class="d-flex gap-2">
         ${getCustomerCancelButtonHtml(order)}
-        ${getReorderButtonHtml(order.id, order.status)}
+        ${getReorderButtonHtml(order)}
         ${getReceiptButtonHtml(order.id, order.status)}
       </div>
     </div>
