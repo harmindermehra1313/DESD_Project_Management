@@ -4,465 +4,169 @@ from products.models import Category, ProductType
 
 
 PRODUCT_TYPE_RULES = {
+    # -----------------------------
+    # FRUIT
+    # -----------------------------
     Category.FoodGroups.FRUIT: {
         "Apple": [
-            "apple",
-            "apples",
-            "gala",
-            "royal gala",
-            "braeburn",
-            "bramley",
-            "cox",
-            "cox's orange pippin",
-            "granny smith",
-            "pink lady",
-            "russet",
-            "egremont russet",
-            "discovery apple",
+            "apple", "apples", "gala", "royal gala", "braeburn", "bramley",
+            "cox", "cox's orange pippin", "granny smith", "pink lady",
+            "russet", "egremont russet", "discovery apple",
         ],
         "Pear": [
-            "pear",
-            "pears",
-            "conference pear",
-            "conference pears",
-            "comice",
-            "concorde pear",
+            "pear", "pears", "conference pear", "conference pears",
+            "comice", "concorde pear",
         ],
-        "Strawberry": [
-            "strawberry",
-            "strawberries",
-        ],
-        "Raspberry": [
-            "raspberry",
-            "raspberries",
-        ],
-        "Blueberry": [
-            "blueberry",
-            "blueberries",
-        ],
-        "Blackberry": [
-            "blackberry",
-            "blackberries",
-        ],
-        "Gooseberry": [
-            "gooseberry",
-            "gooseberries",
-        ],
-        "Blackcurrant": [
-            "blackcurrant",
-            "blackcurrants",
-            "black currant",
-            "black currants",
-        ],
-        "Redcurrant": [
-            "redcurrant",
-            "redcurrants",
-            "red currant",
-            "red currants",
-        ],
-        "Rhubarb": [
-            "rhubarb",
-            "forced rhubarb",
-        ],
-        "Plum": [
-            "plum",
-            "plums",
-            "victoria plum",
-            "damson",
-            "damsons",
-            "greengage",
-            "greengages",
-        ],
-        "Cherry": [
-            "cherry",
-            "cherries",
-            "morello cherry",
-            "morello cherries",
-        ],
+        "Strawberry": ["strawberry", "strawberries"],
+        "Raspberry": ["raspberry", "raspberries"],
+        "Blueberry": ["blueberry", "blueberries"],
+        "Blackberry": ["blackberry", "blackberries"],
+        "Gooseberry": ["gooseberry", "gooseberries"],
+        "Blackcurrant": ["blackcurrant", "blackcurrants", "black currant", "black currants"],
+        "Redcurrant": ["redcurrant", "redcurrants", "red currant", "red currants"],
+        "Rhubarb": ["rhubarb", "forced rhubarb"],
+        "Plum": ["plum", "plums", "victoria plum", "damson", "damsons", "greengage", "greengages"],
+        "Cherry": ["cherry", "cherries", "morello cherry", "morello cherries"],
     },
 
+    # -----------------------------
+    # VEGETABLES
+    # -----------------------------
     Category.FoodGroups.VEGETABLES: {
         "Potato": [
-            "potato",
-            "potatoes",
-            "new potato",
-            "new potatoes",
-            "maris piper",
-            "king edward",
-            "charlotte potato",
-            "charlotte potatoes",
-            "jersey royal",
-            "jersey royals",
-            "desiree potato",
-            "desiree potatoes",
+            "potato", "potatoes", "new potato", "new potatoes", "maris piper",
+            "king edward", "charlotte potato", "charlotte potatoes",
+            "jersey royal", "jersey royals", "desiree potato", "desiree potatoes",
         ],
-        "Carrot": [
-            "carrot",
-            "carrots",
-            "chantenay",
-            "chantenay carrots",
-        ],
-        "Parsnip": [
-            "parsnip",
-            "parsnips",
-        ],
-        "Swede": [
-            "swede",
-            "swedes",
-        ],
-        "Turnip": [
-            "turnip",
-            "turnips",
-        ],
-        "Beetroot": [
-            "beetroot",
-            "beetroots",
-            "golden beetroot",
-            "chioggia beetroot",
-        ],
-        "Spring Onion": [
-            "spring onion",
-            "spring onions",
-            "salad onion",
-            "salad onions",
-        ],
-        "Onion": [
-            "onion",
-            "onions",
-            "red onion",
-            "red onions",
-            "white onion",
-            "white onions",
-            "brown onion",
-            "brown onions",
-        ],
-        "Leek": [
-            "leek",
-            "leeks",
-        ],
-        "Garlic": [
-            "garlic",
-            "garlic bulb",
-            "garlic bulbs",
-            "wild garlic",
-        ],
-        "Cabbage": [
-            "cabbage",
-            "cabbages",
-            "savoy cabbage",
-            "red cabbage",
-            "white cabbage",
-            "spring cabbage",
-        ],
-        "Spring Greens": [
-            "spring greens",
-            "greens",
-        ],
-        "Kale": [
-            "kale",
-            "curly kale",
-            "cavolo nero",
-        ],
-        "Spinach": [
-            "spinach",
-            "baby spinach",
-        ],
-        "Chard": [
-            "chard",
-            "rainbow chard",
-            "swiss chard",
-        ],
-        "Lettuce": [
-            "lettuce",
-            "lettuces",
-            "little gem",
-            "cos lettuce",
-            "romaine lettuce",
-            "butterhead lettuce",
-        ],
-        "Salad Leaves": [
-            "salad leaves",
-            "mixed leaves",
-            "rocket",
-            "watercress",
-            "mizuna",
-            "mustard leaves",
-        ],
-        "Broccoli": [
-            "broccoli",
-            "purple sprouting broccoli",
-            "tenderstem broccoli",
-        ],
-        "Cauliflower": [
-            "cauliflower",
-            "cauliflowers",
-        ],
-        "Brussels Sprout": [
-            "brussels sprout",
-            "brussels sprouts",
-            "sprout",
-            "sprouts",
-        ],
-        "Pea": [
-            "pea",
-            "peas",
-            "garden peas",
-            "mangetout",
-            "sugar snap",
-            "sugar snap peas",
-        ],
-        "Bean": [
-            "bean",
-            "beans",
-            "broad bean",
-            "broad beans",
-            "runner bean",
-            "runner beans",
-            "french bean",
-            "french beans",
-        ],
-        "Tomato": [
-            "tomato",
-            "tomatoes",
-            "cherry tomato",
-            "cherry tomatoes",
-            "heritage tomato",
-            "heritage tomatoes",
-        ],
-        "Cucumber": [
-            "cucumber",
-            "cucumbers",
-        ],
-        "Courgette": [
-            "courgette",
-            "courgettes",
-            "zucchini",
-        ],
-        "Aubergine": [
-            "aubergine",
-            "aubergines",
-            "eggplant",
-        ],
-        "Pepper": [
-            "pepper",
-            "peppers",
-            "sweet pepper",
-            "sweet peppers",
-            "bell pepper",
-            "bell peppers",
-            "red pepper",
-            "yellow pepper",
-            "green pepper",
-        ],
-        "Squash": [
-            "squash",
-            "butternut squash",
-            "crown prince squash",
-            "pumpkin",
-            "pumpkins",
-            "marrow",
-            "marrows",
-        ],
-        "Mushroom": [
-            "mushroom",
-            "mushrooms",
-            "chestnut mushroom",
-            "chestnut mushrooms",
-            "portobello",
-            "portobello mushrooms",
-            "field mushroom",
-            "field mushrooms",
-        ],
-        "Asparagus": [
-            "asparagus",
-            "asparagus spears",
-        ],
-        "Sweetcorn": [
-            "sweetcorn",
-            "sweet corn",
-            "corn on the cob",
-        ],
-        "Celery": [
-            "celery",
-        ],
-        "Fennel": [
-            "fennel",
-        ],
-        "Radish": [
-            "radish",
-            "radishes",
-        ],
+        "Carrot": ["carrot", "carrots", "chantenay", "chantenay carrots"],
+        "Parsnip": ["parsnip", "parsnips"],
+        "Swede": ["swede", "swedes"],
+        "Turnip": ["turnip", "turnips"],
+        "Beetroot": ["beetroot", "beetroots", "golden beetroot", "chioggia beetroot"],
+        "Spring Onion": ["spring onion", "spring onions", "salad onion", "salad onions"],
+        "Onion": ["onion", "onions", "red onion", "white onion", "brown onion"],
+        "Leek": ["leek", "leeks"],
+        "Garlic": ["garlic", "garlic bulb", "garlic bulbs", "wild garlic"],
+        "Cabbage": ["cabbage", "savoy cabbage", "red cabbage", "white cabbage", "spring cabbage"],
+        "Spring Greens": ["spring greens", "greens"],
+        "Kale": ["kale", "curly kale", "cavolo nero"],
+        "Spinach": ["spinach", "baby spinach"],
+        "Chard": ["chard", "rainbow chard", "swiss chard"],
+        "Lettuce": ["lettuce", "little gem", "cos lettuce", "romaine lettuce", "butterhead lettuce"],
+        "Salad Leaves": ["salad leaves", "mixed leaves", "rocket", "watercress", "mizuna", "mustard leaves"],
+        "Broccoli": ["broccoli", "purple sprouting broccoli", "tenderstem broccoli"],
+        "Cauliflower": ["cauliflower", "cauliflowers"],
+        "Brussels Sprout": ["brussels sprout", "brussels sprouts", "sprout", "sprouts"],
+        "Pea": ["pea", "peas", "garden peas", "mangetout", "sugar snap", "sugar snap peas"],
+        "Bean": ["bean", "beans", "broad bean", "runner bean", "french bean"],
+        "Tomato": ["tomato", "tomatoes", "cherry tomato", "heritage tomato"],
+        "Cucumber": ["cucumber", "cucumbers"],
+        "Courgette": ["courgette", "courgettes", "zucchini"],
+        "Aubergine": ["aubergine", "aubergines", "eggplant"],
+        "Pepper": ["pepper", "peppers", "bell pepper", "sweet pepper"],
+        "Squash": ["squash", "butternut squash", "crown prince squash", "pumpkin", "marrow"],
+        "Mushroom": ["mushroom", "mushrooms", "portobello", "chestnut mushroom"],
+        "Asparagus": ["asparagus", "asparagus spears"],
+        "Sweetcorn": ["sweetcorn", "sweet corn", "corn on the cob"],
+        "Celery": ["celery"],
+        "Fennel": ["fennel"],
+        "Radish": ["radish", "radishes"],
     },
 
+    # -----------------------------
+    # MEAT
+    # -----------------------------
     Category.FoodGroups.MEAT: {
-        "Chicken": [
-            "chicken",
-            "chicken breast",
-            "chicken breasts",
-            "chicken thigh",
-            "chicken thighs",
-            "drumstick",
-            "drumsticks",
-            "chicken wings",
-            "whole chicken",
-        ],
-        "Sausage": [
-            "sausage",
-            "sausages",
-            "pork sausage",
-            "pork sausages",
-            "chipolata",
-            "chipolatas",
-            "cumberland sausage",
-            "cumberland sausages",
-        ],
-        "Beef": [
-            "beef",
-            "beef mince",
-            "minced beef",
-            "steak",
-            "rump steak",
-            "sirloin",
-            "ribeye",
-            "brisket",
-            "braising steak",
-            "stewing steak",
-            "beef joint",
-        ],
-        "Lamb": [
-            "lamb",
-            "mutton",
-            "lamb mince",
-            "minced lamb",
-            "lamb chop",
-            "lamb chops",
-            "lamb shoulder",
-            "leg of lamb",
-            "lamb shank",
-        ],
-        "Pork": [
-            "pork",
-            "bacon",
-            "pork chop",
-            "pork chops",
-            "pork belly",
-            "pork shoulder",
-            "pork loin",
-            "gammon",
-            "ham",
-        ],
-        "Turkey": [
-            "turkey",
-            "turkey breast",
-            "turkey mince",
-            "minced turkey",
-            "turkey crown",
-        ],
-        "Duck": [
-            "duck",
-            "duck breast",
-            "duck leg",
-            "whole duck",
-        ],
-        "Venison": [
-            "venison",
-            "venison steak",
-            "venison mince",
-            "minced venison",
-        ],
-        "Game": [
-            "game",
-            "pheasant",
-            "partridge",
-            "rabbit",
-        ],
+        "Chicken": ["chicken", "chicken breast", "chicken thigh", "drumstick", "whole chicken"],
+        "Sausage": ["sausage", "sausages", "chipolata", "cumberland sausage"],
+        "Beef": ["beef", "beef mince", "steak", "rump steak", "sirloin", "ribeye", "brisket"],
+        "Lamb": ["lamb", "mutton", "lamb mince", "lamb chop", "lamb shoulder"],
+        "Pork": ["pork", "bacon", "pork chop", "pork belly", "gammon", "ham"],
+        "Turkey": ["turkey", "turkey breast", "turkey mince", "turkey crown"],
+        "Duck": ["duck", "duck breast", "duck leg", "whole duck"],
+        "Venison": ["venison", "venison steak", "venison mince"],
+        "Game": ["game", "pheasant", "partridge", "rabbit"],
     },
 
-    Category.FoodGroups.DAIRY_AND_EGGS: {
-        "Milk": [
-            "milk",
-            "whole milk",
-            "semi skimmed milk",
-            "semi-skimmed milk",
-            "skimmed milk",
-            "raw milk",
-        ],
-        "Egg": [
-            "egg",
-            "eggs",
-            "free range eggs",
-            "duck eggs",
-            "hen eggs",
-        ],
+    # -----------------------------
+    # DAIRY
+    # -----------------------------
+    Category.FoodGroups.DAIRY: {
+        "Milk": ["milk", "whole milk", "semi skimmed milk", "skimmed milk", "raw milk"],
         "Cheese": [
-            "cheese",
-            "cheddar",
-            "mature cheddar",
-            "extra mature cheddar",
-            "red leicester",
-            "wensleydale",
-            "double gloucester",
-            "stilton",
-            "blue cheese",
-            "brie",
-            "goat cheese",
-            "goats cheese",
-            "goat's cheese",
-            "soft cheese",
+            "cheese", "cheddar", "red leicester", "stilton", "brie",
+            "goat cheese", "soft cheese",
         ],
-        "Yoghurt": [
-            "yoghurt",
-            "yogurt",
-            "natural yoghurt",
-            "greek yoghurt",
-            "greek-style yoghurt",
-        ],
-        "Butter": [
-            "butter",
-            "salted butter",
-            "unsalted butter",
-        ],
-        "Cream": [
-            "cream",
-            "single cream",
-            "double cream",
-            "clotted cream",
-            "whipping cream",
-        ],
-        "Ice Cream": [
-            "ice cream",
-            "ice-cream",
-        ],
+        "Yoghurt": ["yoghurt", "yogurt", "greek yoghurt"],
+        "Butter": ["butter", "salted butter", "unsalted butter"],
+        "Cream": ["cream", "single cream", "double cream", "clotted cream"],
+        "Ice Cream": ["ice cream", "ice-cream"],
     },
 
-    Category.FoodGroups.SEASONAL: {
-        "Vegetable Box": [
-            "veg box",
-            "vegetable box",
-            "seasonal veg box",
-            "seasonal vegetable box",
-        ],
-        "Fruit Box": [
-            "fruit box",
-            "seasonal fruit box",
-        ],
-        "Mixed Produce Box": [
-            "produce box",
-            "mixed box",
-            "mixed produce",
-            "seasonal box",
-            "harvest box",
-        ],
-        "Salad Box": [
-            "salad box",
-            "summer salad box",
-        ],
-        "Soup Pack": [
-            "soup pack",
-            "soup mix",
-            "stew pack",
-            "stew mix",
-        ],
+    # -----------------------------
+    # EGGS
+    # -----------------------------
+    Category.FoodGroups.EGGS: {
+        "Egg": ["egg", "eggs", "duck eggs", "hen eggs", "free range eggs"],
+    },
+
+    # -----------------------------
+    # BAKERY
+    # -----------------------------
+    Category.FoodGroups.BAKERY: {
+        "Bread": ["bread", "sourdough", "wholemeal loaf", "white loaf"],
+        "Pastry": ["pastry", "croissant", "pain au chocolat"],
+        "Cake": ["cake", "sponge cake", "fruit cake"],
+    },
+
+    # -----------------------------
+    # PRESERVES
+    # -----------------------------
+    Category.FoodGroups.PRESERVES: {
+        "Jam": ["jam", "strawberry jam", "raspberry jam"],
+        "Chutney": ["chutney", "mango chutney"],
+        "Marmalade": ["marmalade"],
+    },
+
+    # -----------------------------
+    # PICKLED
+    # -----------------------------
+    Category.FoodGroups.PICKLED: {
+        "Pickle": ["pickle", "pickles"],
+        "Kimchi": ["kimchi"],
+        "Sauerkraut": ["sauerkraut"],
+    },
+
+    # -----------------------------
+    # SWEETENERS
+    # -----------------------------
+    Category.FoodGroups.SWEETENERS: {
+        "Honey": ["honey", "raw honey"],
+        "Syrup": ["syrup", "maple syrup"],
+    },
+
+    # -----------------------------
+    # BEVERAGES
+    # -----------------------------
+    Category.FoodGroups.BEVERAGES: {
+        "Juice": ["juice", "apple juice", "orange juice"],
+        "Cordial": ["cordial"],
+        "Smoothie": ["smoothie"],
+    },
+
+    # -----------------------------
+    # SNACKS
+    # -----------------------------
+    Category.FoodGroups.SNACKS: {
+        "Snack": ["snack", "crisps", "chips"],
+        "Confectionery": ["sweet", "fudge", "chocolate"],
+    },
+
+    # -----------------------------
+    # ARTISAN
+    # -----------------------------
+    Category.FoodGroups.ARTISAN: {
+        "Artisan Product": ["artisan", "handmade", "small batch"],
     },
 }
 

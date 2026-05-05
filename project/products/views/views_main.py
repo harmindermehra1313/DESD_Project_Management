@@ -514,13 +514,14 @@ def edit_producer_product(request, pk):
                 ).get("total")
                 or 0
             )
-            if stock_total < wholesale_min_quantity:
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price.",
-                    }
-                )
+            # Hannah removed this as why block changing wholesale quantity if current stock is low?
+            # if stock_total < wholesale_min_quantity:
+            #     return JsonResponse(
+            #         {
+            #             "success": False,
+            #             "error": f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price.",
+            #         }
+            #     )
 
         low_stock_raw = data.get("low_stock_threshold")
 
@@ -695,6 +696,11 @@ class ProductDetailView(DetailView):
 
         return ctx
 
+    # return redirect('products_list')
+
+
+# Harminder Edits
+
 
 def send_for_approval(request, pk):
     if request.method != "POST":
@@ -703,12 +709,179 @@ def send_for_approval(request, pk):
     product = Product.objects.get(pk=pk)
 
     if product.status != Product.Status.FLAGGED:
-        return JsonResponse({"error": "Only flagged products can be sent for approval"}, status=400)
+        return JsonResponse(
+            {"error": "Only flagged products can be sent for approval"}, status=400
+        )
 
     product.status = Product.Status.PENDING
     product.save()
 
     return JsonResponse({"success": True})
+
+
+# def product_view(request, category_id):
+#     # All categories except organic
+#     categories = Category.objects.exclude(name__icontains="organic")
+#     certified_organic = Category.objects.filter(name__icontains="organic")
+
+#     # ALL PRODUCTS PAGE
+#     if category_id == 0:
+#         selected_category = None
+#         products = Product.objects.filter(status="PUB")
+#         show_filters = True   # show category + producer filters
+
+#     # CATEGORY PAGE
+#     else:
+#         selected_category = get_object_or_404(Category, id=category_id)
+#         products = Product.objects.filter(status="PUB", category=selected_category)
+#         show_filters = False  # hide category + producer filters
+
+#     # Producer list for dropdown (only used when show_filters=True)
+#     producers = products.values_list("producer__farm_name", flat=True).distinct()
+
+#     # Helper: get earliest-expiring batch
+#     def get_active_batch(product):
+#         return product.inventory_batches.order_by("expiry_date").first()
+
+#     product_json = []
+#     for p in products:
+#         batch = get_active_batch(p)
+
+#         product_json.append({
+#             "id": p.id,
+#             "name": p.name,
+#             "description": p.description,
+#             "price": float(p.price),
+#             "image": p.image.url if p.image else "",
+#             "producer": p.producer.farm_name,
+#             "category": p.category.name,
+#             "stock": batch.remaining_quantity if batch else 0,
+#             "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
+#         })
+#     # Convert queryset → JSON for inline JS
+#     # product_json = [
+#     #     {
+#     #         "id": p.id,
+#     #         "name": p.name,
+#     #         "description": p.description,
+#     #         "price": float(p.price),
+#     #         "image": p.image.url if p.image else "",
+#     #         "producer": p.producer.farm_name,
+#     #         "category": p.category.name,  # required for filtering
+#     #         "stock": p.stock_quantity,
+#     #         "expiry": p.expiry_date.strftime("%Y-%m-%d"),
+#     #     }
+#     #     for p in products
+#     # ]
+
+#     return render(request, "products/product_view.html", {
+#         "categories": categories,
+#         "producers": producers,
+#         "products_json": json.dumps(product_json),  # safe JSON for inline JS
+#         "selected_category": selected_category,
+#         "show_filters": show_filters,
+#         'organic': certified_organic,
+#     })
+
+# Commented on 29/06/2026 - 18:26
+# def product_view(request, category_id):
+#     # All categories except organic
+#     categories = Category.objects.exclude(name__icontains="organic")
+#     certified_organic = Category.objects.filter(name__icontains="organic")
+
+#     # ALL PRODUCTS PAGE
+#     if category_id == 0:
+#         selected_category = None
+#         products = Product.objects.filter(status="PUB")
+#         show_filters = True
+
+#     # CATEGORY PAGE
+#     else:
+#         selected_category = get_object_or_404(Category, id=category_id)
+#         products = Product.objects.filter(status="PUB", category=selected_category)
+#         show_filters = False
+
+#     # Producer list for dropdown
+#     producers = products.values_list("producer__farm_name", flat=True).distinct()
+
+#     # Helper: earliest-expiring batch
+#     def get_active_batch(product):
+#         return product.inventory_batches.order_by("expiry_date").first()
+
+#     product_json = []
+
+#     for p in products:
+#         batch = get_active_batch(p)
+
+#         # -----------------------------
+#         # DISCOUNT LOGIC (Surplus)
+#         # -----------------------------
+#         original_price = float(p.price)
+
+#         if batch and batch.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
+#             discount_percent = float(batch.surplus_discount_percentage)
+#             discounted_price = float(original_price * (100 - discount_percent) / 100)
+#             has_discount = True
+#         else:
+#             discounted_price = original_price
+#             discount_percent = 0
+#             has_discount = False
+
+#         # -----------------------------
+#         # BADGES
+#         # -----------------------------
+
+#         # Organic badge
+#         organic = (p.organic_certification_status == Product.OrganicStatus.CERTIFIED)
+
+#         # Local badge (farm origin matches producer name)
+#         local = (p.farm_origin.lower() == p.producer.farm_name.lower())
+
+#         # Fresh Today badge (48-hour freshness window)
+#         if batch:
+#             days_old = (date.today() - batch.harvest_date).days
+#             fresh_today = days_old <= 1
+#         else:
+#             fresh_today = False
+
+#         # Low stock badge
+#         low_stock = (batch.remaining_quantity <= p.low_stock_threshold) if batch else False
+
+#         # -----------------------------
+#         # BUILD JSON ENTRY
+#         # -----------------------------
+#         product_json.append({
+#             "id": p.id,
+#             "name": p.name,
+#             "description": p.description or "",
+#             "price": discounted_price,
+#             "original_price": original_price,
+#             "has_discount": has_discount,
+#             "discount_percent": discount_percent,
+
+#             "organic": organic,
+#             "local": local,
+#             "fresh_today": fresh_today,
+#             "low_stock": low_stock,
+
+#             "image": p.image.url if p.image else "",
+#             "producer": p.producer.farm_name,
+#             "category": p.category.name,
+
+#             "stock": batch.remaining_quantity if batch else 0,
+#             "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
+#         })
+
+#     return render(request, "products/product_view.html", {
+#         "categories": categories,
+#         "producers": producers,
+#         "products_json": json.dumps(product_json),
+#         "selected_category": selected_category,
+#         "show_filters": show_filters,
+#         "organic": certified_organic,
+#     })
+
+# Updated on 30/06/2026 - 14:00 - Added search, filter, sort, pagination, wholesale visibility, and performance optimizations
 
 
 def _can_view_wholesale_prices(user):
@@ -726,6 +899,9 @@ def _can_view_wholesale_prices(user):
     }
 
 
+NO_ALLERGENS_FILTER = "__none__"
+
+
 def product_view(request, category_id):
     categories = Category.objects.exclude(name__icontains="organic")
     certified_organic = Category.objects.filter(name__icontains="organic")
@@ -736,6 +912,7 @@ def product_view(request, category_id):
     search_query = (request.GET.get("q") or "").strip()
     category_filter = (request.GET.get("category") or "").strip()
     producer_filter = (request.GET.get("producer") or "").strip()
+    allergen_filter = (request.GET.get("allergen") or "").strip()
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
     sort = (request.GET.get("sort") or "newest").strip()
@@ -831,6 +1008,22 @@ def product_view(request, category_id):
     if show_filters and producer_filter:
         products_qs = products_qs.filter(producer__farm_name=producer_filter)
 
+    real_allergen_codes = [
+        code
+        for code, _label in Allergen.Allergens.choices
+        if code != Allergen.Allergens.NONE
+    ]
+
+    if show_filters and allergen_filter == NO_ALLERGENS_FILTER:
+        products_qs = products_qs.exclude(
+            product_allergen__allergen__name__in=real_allergen_codes
+        ).distinct()
+
+    elif show_filters and allergen_filter in real_allergen_codes:
+        products_qs = products_qs.filter(
+            product_allergen__allergen__name=allergen_filter
+        ).distinct()
+
     try:
         if min_price:
             products_qs = products_qs.filter(price__gte=Decimal(min_price))
@@ -873,10 +1066,10 @@ def product_view(request, category_id):
                 queryset=WholesalePrice.objects.order_by("min_quantity"),
                 to_attr="wholesale_tiers",
             ),
+            "product_allergen__allergen",
         )
         .order_by(*order_by)
     )
-
     paginator = Paginator(products, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -935,6 +1128,14 @@ def product_view(request, category_id):
 
         days_old = (today - earliest_live_batch.harvest_date).days
         fresh_today = days_old <= 1
+        allergen_names = list(
+            dict.fromkeys(
+                product_allergen.allergen.get_name_display()
+                for product_allergen in p.product_allergen.all()
+                if product_allergen.allergen
+                and product_allergen.allergen.name != Allergen.Allergens.NONE
+            )
+        )
 
         product_json.append(
             {
@@ -954,7 +1155,9 @@ def product_view(request, category_id):
                 "wholesale_min_quantity": (
                     active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
+                "allergens": allergen_names,
                 "is_disabled": not p.is_currently_in_season, 
+                "disabled_reason": "Out of Season" if (p.is_seasonal and not p.is_currently_in_season) else "",
                 "is_seasonal": p.is_seasonal,
                 "in_season": p.is_currently_in_season,
                 "season_text": p.season_display_text,
@@ -976,6 +1179,9 @@ def product_view(request, category_id):
         {
             "categories": categories,
             "producers": producers,
+            "allergens": Allergen.objects.exclude(
+                name=Allergen.Allergens.NONE
+            ).order_by("name"),
             "products_json": json.dumps(product_json),
             "selected_category": selected_category,
             "show_filters": show_filters,
@@ -986,6 +1192,7 @@ def product_view(request, category_id):
                 "q": search_query,
                 "category": category_filter,
                 "producer": producer_filter,
+                "allergen": allergen_filter,
                 "min_price": min_price,
                 "max_price": max_price,
                 "sort": sort,
@@ -993,5 +1200,7 @@ def product_view(request, category_id):
         },
     )
 
+
+# Product Detail page
 def product_detail_page(request, product_id):
     return render(request, "products/product_detail.html", {"product_id": product_id})

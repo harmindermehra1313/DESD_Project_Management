@@ -20,3 +20,14 @@ def order_history_page(request):
             "recurring_choices": recurring_choices,
         },
     )
+    
+
+@login_required
+def receipt_detail_page(request, order_id):
+    return render(
+        request,
+        "orders/receipt_detail.html",
+        {
+            "order_id": order_id,
+        },
+    )

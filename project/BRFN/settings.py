@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django_q',
     # ai
     "ai_recommendations",
+    "ai_admin",
 ]
 
 MIDDLEWARE = [
@@ -102,6 +103,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 "BRFN.context_processors.product_categories",
+                "notifications.context_processors.unread_notification_count",
             ],
         },
     },
@@ -139,6 +141,7 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 #     }
 # }
 
+# Neon Database configuration with connection pooling and SSL settings
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

@@ -101,6 +101,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      PRELOAD_REVIEW_MODERATION: "1"
+      TRANSFORMERS_VERBOSITY: "error"
+      HF_HUB_VERBOSITY: "error"
 
   qcluster:
     build: .
@@ -113,6 +117,20 @@ services:
     depends_on:
       web:
         condition: service_started
+  
+  cron:
+    build: .
+    container_name: brfn_cron
+    command: ["cron", "-f"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    environment:
+      TZ: Europe/London
+    depends_on:
+      web:
+        condition: service_started
 
   adminer:
     image: adminer:latest
@@ -121,17 +139,6 @@ services:
     ports:
       - "8080:8080"
   
-  recommender_trainer:
-    build: .
-    container_name: brfn_recommender_trainer
-    command: ["./train-recommender-if-needed.sh"]
-    volumes:
-      - .:/code
-    env_file:
-      - .env
-    environment:
-      FORCE_RETRAIN_RECOMMENDER: "0"
-    
+  
 
-# volumes:
-#   postgres_data:
+

@@ -37,7 +37,7 @@
     reorderAllowedTooltip: "Preview reorder changes",
     reorderBlockedTooltip:
       "Reorder is not available for pending or cancelled orders",
-    receiptBlockedTooltip: "Receipt is only available for completed orders",
+   receiptBlockedTooltip: "Receipt is not available for cancelled orders",
     zeroOrders: "0 orders",
     orderNumberLabel: "Order Number",
     orderDateLabel: "Order Date",

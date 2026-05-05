@@ -2,6 +2,9 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.core.paginator import Paginator
+from notifications.models import Notification
+from notifications.services.notifications import NotificationService
 
 from ..forms import (
     AccountDetailsForm,
@@ -157,6 +160,22 @@ def profile(request):
         else:
             messages.error(request, "Invalid profile update request.")
 
+
+    # Get notifications for customers, but not producers (producers have a separate notifications dashboard)
+    notifications = None
+    unread_count = 0
+
+    if not is_producer:
+        notifications_qs = Notification.objects.filter(
+            user=user
+        ).order_by("-created_at")
+
+        paginator = Paginator(notifications_qs, 5)  # 5 per page
+        page_number = request.GET.get("page")
+        notifications = paginator.get_page(page_number)
+
+        unread_count = notifications_qs.filter(read_at__isnull=True).count()
+
     context = {
         "account_form": account_form,
         "address_form": address_form,
@@ -164,6 +183,25 @@ def profile(request):
         "password_form": password_form,
         "profile_account_type": get_profile_account_type_label(user),
         "is_producer_profile": is_producer,
+        "notifications": notifications,
+        "unread_count": unread_count,
     }
 
     return render(request, "accounts/profile.html", context)
+
+@login_required
+def customer_mark_notification_read(request, pk):
+    note = Notification.objects.filter(pk=pk, user=request.user).first()
+    if note:
+        NotificationService.mark_read(note)
+
+    # Stay on same page
+    page = request.POST.get("page", 1)
+    return redirect(f"/accounts/profile/?page={page}")
+
+@login_required
+def customer_mark_all_notifications_read(request):
+    NotificationService.mark_all_read(request.user)
+
+    page = request.POST.get("page", 1)
+    return redirect(f"/accounts/profile/?page={page}")

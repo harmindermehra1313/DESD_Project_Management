@@ -1,12 +1,11 @@
 from django.conf import settings
-from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 from django.db.models import Q
 
 
 class Review(models.Model):
-
     class Status(models.TextChoices):
         PUBLISHED = "PUB", "Published"
         HIDDEN = "HID", "Hidden"
@@ -48,7 +47,10 @@ class Review(models.Model):
     )
 
     rating = models.IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)]
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
     )
 
     title = models.CharField(max_length=255)
@@ -69,7 +71,6 @@ class Review(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -81,13 +82,14 @@ class Review(models.Model):
 
     def clean(self):
         super().clean()
+
         errors = {}
 
         self._validate_required_links(errors)
+        self._validate_text_fields(errors)
         self._validate_order_rules(errors)
         self._validate_order_item_rules(errors)
         self._validate_duplicate_review(errors)
-        self._validate_text_fields(errors)
 
         if errors:
             raise ValidationError(errors)
@@ -102,13 +104,24 @@ class Review(models.Model):
         if not self.product_id:
             errors["product"] = "A review must be linked to a product."
 
-    def _get_matching_producer_summary_for_order_item(self):
-        if not (self.order_item_id and self.order_id and self.order_item.producer_id):
-            return None
+        if not self.order_item_id:
+            errors["order_item"] = "A review must be linked to an order item."
 
-        return self.order.producer_summaries.filter(
-            producer_id=self.order_item.producer_id
-        ).first()
+    def _order_is_completed(self) -> bool:
+        if not self.order_id:
+            return False
+
+        return self.order.status == self.order.Status.COMPLETED
+
+    def _active_order_item_quantity(self) -> int:
+        if not self.order_item_id:
+            return 0
+
+        return max(
+            int(self.order_item.quantity or 0)
+            - int(getattr(self.order_item, "cancelled_quantity", 0) or 0),
+            0,
+        )
 
     def _validate_order_rules(self, errors):
         if not (self.order_id and self.customer_id and self.product_id):
@@ -116,41 +129,54 @@ class Review(models.Model):
 
         if self.order.user_id != self.customer.user_id:
             errors["customer"] = (
-                "You can only review products from your own shipped orders."
+                "Reviews can only be submitted for products from this customer's own orders."
             )
 
         if not self.order.items.filter(product_id=self.product_id).exists():
             errors["product"] = (
-                "You can only review products that were included in this order."
+                "Reviews can only be submitted for products that were included in this order."
+            )
+
+        if not self._order_is_completed():
+            errors["order"] = (
+                "Reviews can only be submitted after the order is completed."
             )
 
     def _validate_order_item_rules(self, errors):
-        if not (self.order_item_id and self.order_id and self.product_id and self.customer_id):
+        if not self.order_item_id:
             return
-    
+
+        if not (self.order_id and self.product_id and self.customer_id):
+            return
+
         if self.order_item.order_id != self.order_id:
             errors["order_item"] = (
                 "Selected order item does not belong to the selected order."
             )
-    
+
         if self.order_item.product_id != self.product_id:
             errors["product"] = (
                 "Selected order item does not match the reviewed product."
             )
-    
+
         if self.order_item.order.user_id != self.customer.user_id:
             errors["customer"] = (
-                "You can only review products from your own shipped orders."
+                "Reviews can only be submitted for products from this customer's own orders."
             )
-    
-        summary = self._get_matching_producer_summary_for_order_item()
-        if not summary or summary.status != summary.Status.SHIPPED:
+
+        if self.order_item.status == self.order_item.Status.CANCELLED:
+            errors["order_item"] = "Cancelled items cannot be reviewed."
+
+        if self._active_order_item_quantity() <= 0:
             errors["order_item"] = (
-                "Reviews can only be submitted for order items that have been shipped."
+                "Fully refunded or cancelled items cannot be reviewed."
             )
 
     def _validate_duplicate_review(self, errors):
         if not (self.customer_id and self.product_id):
+            return
+
+        if self.status == self.Status.REMOVED:
             return
 
         duplicate_exists = (
@@ -164,7 +190,7 @@ class Review(models.Model):
         )
 
         if duplicate_exists:
-            errors["product"] = "You have already reviewed this product."
+            errors["product"] = "This product has already been reviewed."
 
     def _validate_text_fields(self, errors):
         if self.title is not None:
@@ -203,7 +229,7 @@ class Review(models.Model):
             if full_name and full_name.strip():
                 return full_name.strip()
 
-            for attr in ("full_name", "username", "email"):
+            for attr in ("name", "full_name", "username", "email"):
                 value = getattr(user, attr, None)
                 if value:
                     return str(value).strip()
@@ -216,7 +242,6 @@ class Review(models.Model):
         return "Verified Customer"
 
     def public_review_data(self):
-
         return {
             "id": self.pk,
             "title": self.title,
@@ -244,19 +269,27 @@ class ReviewProducerResponse(models.Model):
         on_delete=models.CASCADE,
         related_name="producer_response",
     )
+
     responder = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="producer_review_responses",
     )
+
     text = models.TextField()
+
     status = models.CharField(
         max_length=3,
         choices=Status.choices,
         default=Status.PUBLISHED,
     )
-    moderated_at = models.DateTimeField(null=True, blank=True)
+
+    moderated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
     moderation_notes = models.TextField(blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

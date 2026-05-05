@@ -32,13 +32,13 @@ CATEGORY_SEEDS = [
     },
     {
         "name": "Dairy and Eggs",
-        "food_groups": Category.FoodGroups.DAIRY_AND_EGGS,
+        "food_groups": Category.FoodGroups.DAIRY,
         "description": "Milk, cheese, butter, yoghurt and eggs.",
         "vat": Decimal("0.00"),
     },
     {
         "name": "Seasonal",
-        "food_groups": Category.FoodGroups.SEASONAL,
+        "food_groups": Category.FoodGroups.PICKLED,
         "description": "Seasonal produce boxes and mixed packs.",
         "vat": Decimal("0.00"),
     },
