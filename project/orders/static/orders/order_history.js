@@ -846,8 +846,8 @@ function renderOrderSummary(order) {
           ? `
       <div class="col-12">
         <div class="alert alert-info mb-0">
-          Some items in this order were cancelled and refunded. Please check the item list below.
-        </div>
+  ${escapeHtml(order.status_note)}
+</div>
       </div>
     `
           : ""
@@ -1010,7 +1010,7 @@ function renderOrderItemStatus(item) {
   if (isOrderItemPartiallyCancelled(item)) {
     return `
       <div class="mt-1">
-        <span class="badge text-bg-warning">Partly refunded</span>
+        <span class="badge text-bg-warning">Partly cancelled</span>
       </div>
     `;
   }
@@ -1249,11 +1249,49 @@ function renderProducerSection(producerBreakdown) {
 }
 
 function renderOrderFooter(order) {
+  const displayTotal =
+    order.display_total_price ??
+    order.active_total_price ??
+    order.total_price;
+
+  const originalTotal =
+    order.original_total_price ??
+    order.total_price;
+
+  const cancelledTotal = Number(order.cancelled_total_price || 0);
+  const hasCancelledValue = cancelledTotal > 0;
+
+  const displayLabel =
+    order.display_total_label ||
+    M.totalPaidLabel;
+
   return `
     <div class="border rounded p-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
-        <div class="small text-muted">${M.totalPaidLabel}</div>
-        <div class="fs-5 fw-bold">${formatMoney(order.total_price)}</div>
+        <div class="small text-muted">${escapeHtml(displayLabel)}</div>
+        <div class="fs-5 fw-bold">${formatMoney(displayTotal)}</div>
+
+        ${
+          hasCancelledValue
+            ? `
+              <div class="small text-muted mt-1">
+                Original order total: ${formatMoney(originalTotal)}
+              </div>
+              <div class="small text-muted">
+                Cancelled value removed: ${formatMoney(cancelledTotal)}
+              </div>
+              ${
+                order.display_total_note
+                  ? `
+                    <div class="small text-muted">
+                      ${escapeHtml(order.display_total_note)}
+                    </div>
+                  `
+                  : ""
+              }
+            `
+            : ""
+        }
       </div>
 
       <div class="d-flex gap-2">
@@ -2812,8 +2850,7 @@ function renderPriceChangesSection(items) {
                     <div class="small text-muted mt-1">
                       ${M.producerLine(
                         escapeHtml(
-                          item.current_producer_name ||
-                          item.producer_name,
+                          item.current_producer_name || item.producer_name,
                         ),
                       )}
                     </div>
