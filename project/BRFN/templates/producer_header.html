@@ -70,8 +70,22 @@
           <div class="col-12 col-xl-8 mb-3 mb-xl-0">
             <ul class="navbar-nav flex-wrap align-items-center">
               <!-- Dashboard -->
-              <li class="nav-item mx-2">
+              <!-- <li class="nav-item mx-2">
                 <a class="nav-link custom-nav-link" href="{% url 'home:producer' %}">Dashboard</a>
+              </li> -->
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link d-flex align-items-center gap-1"
+                  href="{% url 'home:producer' %}">
+                  
+                  Dashboard
+
+                  {% if unread_notifications > 0 %}
+                    <span class="badge bg-danger text-white rounded-pill"
+                          style="font-size: 0.65rem; padding: 0.25em 0.45em;">
+                      {{ unread_notifications }}
+                    </span>
+                  {% endif %}
+                </a>
               </li>
               <!-- Products Dropdown -->
               <li class="nav-item dropdown mx-2">
