@@ -57,7 +57,7 @@
                                 <br>
                                 <small class="vat-note">
                                     {% if item.food_miles != None %}
-                                        {{ item.food_miles|floatformat:2 }} miles from this producer
+                                        <span style="background-color: #d4edda; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #155724;">{{ item.food_miles|floatformat:2 }} miles from this producer</span>
                                     {% elif not user.is_authenticated %}
                                         Log in to see your food miles
                                     {% else %}
@@ -160,10 +160,10 @@
 
                                     <td>
                                         {% if item.food_miles != None %}
-                                            {{ item.food_miles|floatformat:2 }} miles
+                                            <span style="background-color: #d4edda; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #155724;">{{ item.food_miles|floatformat:2 }} miles</span>
                                             <br>
                                             <small class="vat-note">
-                                                Counted once for this producer route
+                                                Food miles calculated once per farm
                                             </small>
                                         {% elif not user.is_authenticated %}
                                             <small class="vat-note">Log in to see your food miles</small>
@@ -299,7 +299,7 @@
                     <strong>Food miles total:</strong>
                     {% if user.is_authenticated %}
                         {% if data.food_miles_total != None %}
-                            {{ data.food_miles_total|floatformat:2 }} miles
+                            <span style="background-color: #d4edda; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #155724;">{{ data.food_miles_total|floatformat:2 }} miles</span>
                         {% else %}
                             Unavailable
                         {% endif %}
@@ -357,7 +357,7 @@
                             Total food miles:
                             {% if user.is_authenticated %}
                                 {% if cart.total_food_miles != None %}
-                                    {{ cart.total_food_miles|floatformat:2 }} miles
+                                    <span style="background-color: #d4edda; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #155724;">{{ cart.total_food_miles|floatformat:2 }} miles</span>
                                 {% else %}
                                     Unavailable
                                 {% endif %}

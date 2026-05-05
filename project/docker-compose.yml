@@ -114,20 +114,20 @@ services:
       web:
         condition: service_started
   
-  cron:
-    build:
-      context: .
-      dockerfile: cron/Dockerfile
-    container_name: brfn_cron
-    volumes:
-      - .:/code
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-      web:
-        condition: service_started
+#  cron:
+#    build:
+#      context: .
+#      dockerfile: cron/Dockerfile
+#    container_name: brfn_cron
+#    volumes:
+#      - .:/code
+#    env_file:
+#      - .env
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#      web:
+#        condition: service_started
 
   adminer:
     image: adminer:latest

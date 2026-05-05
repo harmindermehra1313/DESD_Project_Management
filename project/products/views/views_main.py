@@ -25,6 +25,7 @@ from rest_framework.response import Response
 from community.models import Recipe
 from django.core.paginator import Paginator
 from products.services.product_type_inference import get_or_create_inferred_product_type
+from ..serializers import ProductCreateSerializer
 
 
 @api_view(["GET"])
@@ -131,143 +132,35 @@ def is_producer_or_admin(user):
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
     if request.method == "POST":
-        name = request.POST.get("name")
-        price = request.POST.get("price")
-        availability_status = request.POST.get("availability_status")
-        harvest_date = request.POST.get("harvest_date")
-        expiry_date = request.POST.get("expiry_date")
-        expiry_type = request.POST.get("expiry_type", Inventory.ExpiryType.BEST_BEFORE)
-        organic_certification_status = request.POST.get(
-            "organic_certification_status",
-            Product.OrganicStatus.NOT_CERTIFIED,
-        )
-        unit_code = request.POST.get("unit")
-        stock_quantity = request.POST.get("stock_quantity")
-        wholesale_price_raw = (request.POST.get("wholesale_price") or "").strip()
-        wholesale_min_qty_raw = (
-            request.POST.get("wholesale_min_quantity") or ""
-        ).strip()
-        description = request.POST.get("description")
-        uploaded_image = request.FILES.get("image")
+        # Combine POST data and FILES for the serializer
+        data = request.POST.copy()
 
-        try:
-            base_price_value = Decimal(str(price))
-        except (TypeError, ValueError, InvalidOperation):
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Please enter a valid base price."),
-            )
+        # Format arrays for the serializer
+        data.setlist('allergen', request.POST.getlist('allergen'))
 
-        try:
-            stock_quantity_value = int(stock_quantity)
-        except (TypeError, ValueError):
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Please enter a valid stock quantity."),
-            )
+        # Handle empty optional number fields before serialization
+        if not data.get('wholesale_price'): data['wholesale_price'] = None
+        if not data.get('wholesale_min_quantity'): data['wholesale_min_quantity'] = None
 
-        if stock_quantity_value < 0:
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Stock quantity cannot be negative."),
-            )
+        serializer = ProductCreateSerializer(data=data)
 
-        wholesale_price = None
-        wholesale_min_quantity = 1
-        if wholesale_price_raw:
-            try:
-                wholesale_price = Decimal(wholesale_price_raw)
-            except (TypeError, ValueError, InvalidOperation):
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context("Please enter a valid wholesale price."),
-                )
+        # Combine with file uploads
+        if request.FILES:
+            serializer.initial_data['image'] = request.FILES.get('image')
 
-            if wholesale_price <= 0:
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context(
-                        "Wholesale price must be greater than 0."
-                    ),
-                )
+        if not serializer.is_valid():
+            # Extract first error message for the UI
+            error_msg = next(iter(serializer.errors.values()))[0]
+            return render(request, "products/add_product.html", _build_add_product_context(error_msg))
 
-            if wholesale_price > base_price_value:
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context(
-                        "Wholesale price cannot be higher than the base price."
-                    ),
-                )
+        validated_data = serializer.validated_data
 
-            if wholesale_min_qty_raw:
-                try:
-                    wholesale_min_quantity = int(wholesale_min_qty_raw)
-                except (TypeError, ValueError):
-                    return render(
-                        request,
-                        "products/add_product.html",
-                        _build_add_product_context(
-                            "Please enter a valid minimum wholesale quantity."
-                        ),
-                    )
-                if wholesale_min_quantity < 1:
-                    return render(
-                        request,
-                        "products/add_product.html",
-                        _build_add_product_context(
-                            "Minimum wholesale quantity must be at least 1."
-                        ),
-                    )
-
-            if stock_quantity_value < wholesale_min_quantity:
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context(
-                        f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price."
-                    ),
-                )
-
-        valid_expiry_types = {choice[0] for choice in Inventory.ExpiryType.choices}
-        if expiry_type not in valid_expiry_types:
-            expiry_type = Inventory.ExpiryType.BEST_BEFORE
-
-        valid_organic_statuses = {choice[0] for choice in Product.OrganicStatus.choices}
-        if organic_certification_status not in valid_organic_statuses:
-            organic_certification_status = Product.OrganicStatus.NOT_CERTIFIED
-
-        try:
-            harvest_dt = datetime.strptime(harvest_date, "%Y-%m-%dT%H:%M")
-            expiry_dt = datetime.strptime(expiry_date, "%Y-%m-%dT%H:%M")
-        except (TypeError, ValueError):
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context(
-                    "Please enter valid harvest and expiry dates."
-                ),
-            )
-
-        if harvest_dt > expiry_dt:
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Harvest date cannot be after expiry date."),
-            )
-
-        # expiry_date=expiry_date
-
-        category_id = request.POST.get("category")
-
+        # Process Category (Single category)
+        category_id = validated_data['category']
         category_obj = get_object_or_404(Category, id=category_id)
+
         product_type = get_or_create_inferred_product_type(
-            name=name,
+            name=validated_data['name'],
             category=category_obj,
         )
         default_image_path = _get_category_default_image(category_obj)
@@ -279,41 +172,42 @@ def add_product(request):
             producer=producer,
             category=category_obj,
             product_type=product_type,
-            name=name,
-            price=base_price_value,
-            availability_status=availability_status,
-            unit=unit_code,
-            organic_certification_status=organic_certification_status,
-            description=description,
-            image=uploaded_image,
+            name=validated_data['name'],
+            price=validated_data['price'],
+            availability_status=validated_data['availability_status'],
+            unit=validated_data['unit'],
+            organic_certification_status=validated_data['organic_certification_status'],
+            description=validated_data['description'],
+            image=validated_data.get('image'),
+            low_stock_threshold=validated_data.get('low_stock_threshold', 0),
+            storage_guidance=validated_data.get('storage_guidance', ''),
             farm_origin=farm_origin,
             status=Product.Status.PENDING,
         )
 
-        if not uploaded_image:
+        if not validated_data.get('image'):
             new_product.image.name = default_image_path
             new_product.save(update_fields=["image"])
 
         Inventory.objects.create(
             product=new_product,
-            original_quantity=stock_quantity_value,
-            remaining_quantity=stock_quantity_value,
-            harvest_date=harvest_dt.date(),
-            expiry_date=expiry_dt.date(),
-            expiry_type=expiry_type,
+            original_quantity=validated_data['stock_quantity'],
+            remaining_quantity=validated_data['stock_quantity'],
+            harvest_date=validated_data['harvest_date'],
+            expiry_date=validated_data['expiry_date'],
+            expiry_type=validated_data['expiry_type'],
             surplus_status="NONE",
             surplus_discount_percentage=0,
         )
 
-        if wholesale_price is not None:
+        if validated_data.get('wholesale_price'):
             WholesalePrice.objects.create(
                 product=new_product,
-                min_quantity=wholesale_min_quantity,
-                unit_price=wholesale_price,
+                min_quantity=validated_data['wholesale_min_quantity'],
+                unit_price=validated_data['wholesale_price'],
             )
 
-        allergen_ids = request.POST.getlist("allergen")
-        for a_code in allergen_ids:
+        for a_code in validated_data.get('allergen', []):
             allergen_obj, _ = Allergen.objects.get_or_create(name=a_code)
             ProductAllergen.objects.create(product=new_product, allergen=allergen_obj)
 
