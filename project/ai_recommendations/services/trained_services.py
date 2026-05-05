@@ -12,6 +12,8 @@ from products.models import Product
 from .services import get_live_products_queryset
 from ai_admin.services import AITracker
 from django.contrib.auth import get_user_model
+from functools import lru_cache
+
 User = get_user_model()
 
 @dataclass(frozen=True)
@@ -22,7 +24,7 @@ class TrainedRecommendationResult:
     signals: dict
 
 
-
+@lru_cache(maxsize=1)
 def load_artifacts():
     artifact_dir = Path(settings.BASE_DIR) / "ai_recommendations" / "artifacts"
 
@@ -58,7 +60,7 @@ def load_artifacts():
 
 
 def clear_artifact_cache():
-    pass
+    load_artifacts.cache_clear()
 
 
 def get_trained_recommendations_for_request(
