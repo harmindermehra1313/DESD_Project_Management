@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
 import joblib
@@ -23,7 +22,7 @@ class TrainedRecommendationResult:
     signals: dict
 
 
-@lru_cache(maxsize=1)
+
 def load_artifacts():
     artifact_dir = Path(settings.BASE_DIR) / "ai_recommendations" / "artifacts"
 
@@ -59,7 +58,7 @@ def load_artifacts():
 
 
 def clear_artifact_cache():
-    load_artifacts.cache_clear()
+    pass
 
 
 def get_trained_recommendations_for_request(
