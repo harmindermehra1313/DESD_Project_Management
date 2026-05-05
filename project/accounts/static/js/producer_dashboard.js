@@ -770,9 +770,25 @@ async function cancelProducerOrder(summaryId) {
     alert("Network error occurred.");
   }
 }
+
 async function cancelProducerOrderItem(itemId, productName, summaryId = null) {
+  const quantityInput = prompt(
+    `How many ${productName} item(s) need to be cancelled?\n\nExample: if 2 out of 3 expired, enter 2.`,
+  );
+
+  if (quantityInput === null) {
+    return;
+  }
+
+  const quantityToCancel = Number.parseInt(quantityInput.trim(), 10);
+
+  if (!Number.isInteger(quantityToCancel) || quantityToCancel <= 0) {
+    alert("Please enter a valid whole number greater than 0.");
+    return;
+  }
+
   const reason = prompt(
-    `Please enter the reason for cancelling ${productName}.\n\nOnly this item will be cancelled and the customer will be refunded for this item.`,
+    `Please enter the reason for cancelling ${quantityToCancel} of ${productName}.\n\nExample: 2 expired after stock check.`,
   );
 
   if (reason === null) {
@@ -787,7 +803,7 @@ async function cancelProducerOrderItem(itemId, productName, summaryId = null) {
   }
 
   const confirmCancel = confirm(
-    `Are you sure you want to cancel ${productName}?\n\nThe customer will be refunded for this item only. This cannot be undone.`,
+    `Are you sure you want to cancel ${quantityToCancel} of ${productName}?\n\nThe customer will be refunded for this cancelled quantity only. This cannot be undone.`,
   );
 
   if (!confirmCancel) {
@@ -810,7 +826,10 @@ async function cancelProducerOrderItem(itemId, productName, summaryId = null) {
           "X-CSRFToken": csrfInput.value,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ reason: cleanReason }),
+        body: JSON.stringify({
+          reason: cleanReason,
+          quantity_to_cancel: quantityToCancel,
+        }),
       },
     );
 
@@ -822,7 +841,8 @@ async function cancelProducerOrderItem(itemId, productName, summaryId = null) {
     }
 
     alert(
-      "Item cancelled successfully. Refund result: " +
+      `Cancelled quantity: ${data.cancelled_quantity || quantityToCancel}\n` +
+        "Refund result: " +
         (data.refund?.message || "Processed."),
     );
 
@@ -832,8 +852,6 @@ async function cancelProducerOrderItem(itemId, productName, summaryId = null) {
     alert("Network error occurred.");
   }
 }
-
-// 11. Initialize when the DOM loads
 // 11. Initialize when the DOM loads
 document.addEventListener("DOMContentLoaded", () => {
   const resetAndFilter = () => applyAllFilters(true);

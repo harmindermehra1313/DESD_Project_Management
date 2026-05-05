@@ -437,11 +437,13 @@ def cancel_producer_order_item(request, item_id):
     try:
         data = json.loads(request.body or "{}")
         reason = data.get("reason", "")
+        quantity_to_cancel = data.get("quantity_to_cancel")
 
         result = cancel_producer_order_item_as_producer(
             order_item_id=item_id,
             producer=request.user.producer_profile,
             cancelled_by=request.user,
+            quantity_to_cancel=quantity_to_cancel,
             reason=reason,
         )
 
@@ -466,6 +468,7 @@ def cancel_producer_order_item(request, item_id):
                 "order_status": order.status,
                 "order_status_display": order.get_status_display(),
                 "refund": result.get("refund"),
+                "cancelled_quantity": result.get("cancelled_quantity"),
             }
         )
 

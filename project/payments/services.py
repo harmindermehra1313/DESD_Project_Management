@@ -482,16 +482,28 @@ def get_cancelled_order_item_refund_amount(*, item, cancelled_quantity):
     return normalise_money(item_total + proportional_vat)
 
 
-def refund_cancelled_order_item(*, order, item, cancelled_quantity, reason):
+def refund_cancelled_order_item(
+    *,
+    order,
+    item,
+    cancelled_quantity,
+    reason,
+    cancellation_marker=None,
+):
     amount = get_cancelled_order_item_refund_amount(
         item=item,
         cancelled_quantity=cancelled_quantity,
     )
+
+    marker = cancellation_marker or f"cancelled-total-{item.cancelled_quantity}"
 
     return create_customer_refund(
         order=order,
         amount=amount,
         reason=reason,
         order_item=item,
-        idempotency_key=f"order-{order.id}-item-{item.id}-customer-refund",
+        idempotency_key=(
+            f"order-{order.id}-item-{item.id}-"
+            f"qty-{cancelled_quantity}-{marker}-customer-refund"
+        ),
     )

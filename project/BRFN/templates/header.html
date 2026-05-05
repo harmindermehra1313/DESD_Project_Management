@@ -30,33 +30,25 @@
         {% endif %}
         {% if user.is_authenticated %}
           <!-- <div class="dropdown"> -->
-            <!-- <a class="custom-account-icon dropdown-toggle"
+          <!-- <a class="custom-account-icon dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-person-circle"></i>
+            </a> -->
+          <div class="dropdown account-dropdown">
+            <a class="custom-account-icon dropdown-toggle position-relative"
                href="#"
                role="button"
                data-bs-toggle="dropdown"
                aria-expanded="false">
               <i class="bi bi-person-circle"></i>
-            </a> -->
-            <div class="dropdown account-dropdown">
-              <a class="custom-account-icon dropdown-toggle position-relative"
-                href="#"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false">
-
-                <i class="bi bi-person-circle"></i>
-
-                {% if unread_notifications > 0 %}
-                  <span class="notification-dot"></span>
-                {% endif %}
-              </a>
+              {% if unread_notifications > 0 %}<span class="notification-dot"></span>{% endif %}
+            </a>
             <ul class="dropdown-menu dropdown-menu-end custom-dropdown">
               <!-- <li>
                 <a class="dropdown-item" href="/accounts/profile/">Profile</a>
               </li> -->
               <li>
                 <a class="dropdown-item d-flex justify-content-between align-items-center"
-                  href="/accounts/profile/">
+                   href="/accounts/profile/">
                   Profile
                   {% if unread_notifications > 0 %}
                     <span class="badge bg-danger rounded-pill">{{ unread_notifications }}</span>
@@ -156,11 +148,11 @@
         <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
           <form class="d-flex custom-search w-100" onsubmit="return false;">
             <input id="globalSearchInput"
-                  class="form-control custom-search-input"
-                  placeholder="Search..."
-                  autocomplete="off">
+                   class="form-control custom-search-input"
+                   placeholder="Search..."
+                   autocomplete="off">
             <button class="btn custom-search-btn" type="button">Search</button>
-        </form>
+          </form>
         </div>
       </div>
     </div>
