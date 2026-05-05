@@ -29,6 +29,9 @@
     notSpecified: "Not specified",
     cartTitle: "Cart",
     checkoutPath: "/orders/checkout",
+    minimumQuantityTitle: "Quantity cannot be reduced",
+    surplusReasonLabel: "Reason for reduction",
+    surplusReasonFallback: "Surplus stock",
 
     getBlockedMessage(product) {
       if (product?.stock_message) {
@@ -60,6 +63,19 @@
 
     lineLabel(amount) {
       return `${this.lineLabelPrefix}: ${amount}`;
+    },
+    minimumQuantityMessage(name) {
+      return `“${name}” already has the minimum quantity of 1. Use Remove to delete it from your cart.`;
+    },
+
+    getSurplusReason(note) {
+      const reason = String(note ?? "").trim();
+
+      if (!reason || reason.toLowerCase() === "none") {
+        return this.surplusReasonFallback;
+      }
+
+      return reason;
     },
 
     removeConfirm(name) {

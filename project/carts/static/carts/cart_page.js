@@ -236,13 +236,12 @@ document.addEventListener("DOMContentLoaded", () => {
     ${
       isSurplus
         ? `<div class="small text-danger mt-1">
-             ${M.saveWithSurplus(money(surplusSavingsTotal))}
-           </div>
-           ${
-             hasMeaningfulNote(surplusNote)
-               ? `<div class="text-muted small">${surplusNote}</div>`
-               : ``
-           }`
+         <div>${M.saveWithSurplus(money(surplusSavingsTotal))}</div>
+         <div>
+           <span class="fw-semibold">${M.surplusReasonLabel}:</span>
+           ${M.getSurplusReason(surplusNote)}
+         </div>
+       </div>`
         : ``
     }
   `;
@@ -262,6 +261,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function clearRowFlash() {
       rowMsg.innerHTML = "";
+    }
+    function showCartToast(message, variant = "warning", delay = 3000) {
+      try {
+        if (window.CartAPI?.showToast) {
+          window.CartAPI.showToast(message, {
+            title: M.minimumQuantityTitle,
+            variant,
+            delay,
+          });
+          return;
+        }
+      } catch {
+        // Fall back to the row-level message if the toast container is unavailable.
+      }
+
+      flashRow(message, variant);
     }
 
     const qtyWrap = document.createElement("div");
@@ -336,13 +351,19 @@ document.addEventListener("DOMContentLoaded", () => {
       clearRowFlash();
 
       if (isBlocked) {
-        flashRow(getBlockedMessage(product), "warning");
+        flashRow(getBlockedMessage(product), "danger");
         return;
       }
 
-      const q = clampQty(newQty);
+      const rawQty = Number(String(newQty ?? "").trim());
 
-      
+      if (!Number.isFinite(rawQty) || rawQty < 1) {
+        qtyInput.value = "1";
+        showCartToast(M.minimumQuantityMessage(name), "danger", 3200);
+        return;
+      }
+
+      const q = Math.floor(rawQty);
 
       setDisabled(true);
       try {
@@ -368,9 +389,19 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    minus.addEventListener("click", () =>
-      commitQty(clampQty(qtyInput.value) - 1),
-    );
+    minus.addEventListener("click", () => {
+      const currentQty = clampQty(qtyInput.value);
+
+      if (currentQty <= 1) {
+        qtyInput.value = "1";
+        clearRowFlash();
+
+        showCartToast(M.minimumQuantityMessage(name), "danger", 3200);
+        return;
+      }
+
+      commitQty(currentQty - 1);
+    });
 
     plus.addEventListener("click", () =>
       commitQty(clampQty(qtyInput.value) + 1),
@@ -470,7 +501,11 @@ document.addEventListener("DOMContentLoaded", () => {
       actualSubtotal += lineActual;
       baseSubtotal += lineBase;
 
-      if (Number.isFinite(foodMiles) && Number.isFinite(producerId) && !countedProducerIds.has(producerId)) {
+      if (
+        Number.isFinite(foodMiles) &&
+        Number.isFinite(producerId) &&
+        !countedProducerIds.has(producerId)
+      ) {
         countedProducerIds.add(producerId);
         totalFoodMiles += foodMiles;
         hasFoodMiles = true;
@@ -505,7 +540,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (totalFoodMilesEl) {
       totalFoodMilesEl.textContent = hasFoodMiles
         ? `${totalFoodMiles.toFixed(2)} miles`
-        : (foodMilesLoginRequired ? "Log in to see your food miles" : "Unavailable");
+        : foodMilesLoginRequired
+          ? "Log in to see your food miles"
+          : "Unavailable";
     }
 
     // Inject “before wholesale” + “savings” rows into summary (professional look)
