@@ -33,6 +33,11 @@ urlpatterns = [
     path("profile/", profile_views.profile, name="profile"),
     path("profile/notifications/<int:pk>/read/", profile_views.customer_mark_notification_read, name="customer_mark_notification_read"),
     path("profile/notifications/read-all/", profile_views.customer_mark_all_notifications_read, name="customer_mark_all_notifications_read"),
+    path(
+    "cancel-producer-order/<int:summary_id>/",
+    views_main.cancel_producer_order,
+    name="cancel_producer_order",
+),
     
     # Producer Payments
     path("producer/payments/", producer_payments_view, name="producer_payments"),

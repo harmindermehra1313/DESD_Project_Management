@@ -435,6 +435,20 @@
                             {% endif %}
                             <div class="mt-3 pt-3 border-top">
                                 <strong>Current Producer Status:</strong>
+                                {% if summary.status != 'CAN' and summary.status != 'COM' and summary.status != 'SHP' %}
+                                    <div class="mt-3 pt-3 border-top">
+                                        <div class="alert alert-danger py-2 mb-3">
+                                            <strong>Cancel this producer order only if it cannot be fulfilled.</strong>
+                                            The customer will be refunded for this producer section.
+                                            This action cannot be undone.
+                                        </div>
+                                        <button type="button"
+                                                class="btn btn-danger btn-sm fw-bold"
+                                                onclick="cancelProducerOrder('{{ summary.id }}')">
+                                            Cancel producer order and refund customer
+                                        </button>
+                                    </div>
+                                {% endif %}
                                 <br>
                                 <span class="js-producer-status-display">{{ summary.get_status_display }}</span>
                                 <div class="producer-instruction-box mt-3">

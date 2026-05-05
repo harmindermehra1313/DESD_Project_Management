@@ -57,6 +57,10 @@ from orders.services.producer_order_status import (
     get_allowed_next_statuses,
     update_producer_order_status,
 )
+from orders.services.producer_order_cancellation import (
+    ProducerOrderCancellationError,
+    cancel_producer_order_as_producer,
+)
 
 from decimal import Decimal
 
@@ -192,19 +196,16 @@ def attach_producer_dashboard_item_values(summary):
         item.dashboard_active_quantity = dashboard_active_quantity
         item.dashboard_cancelled_quantity = cancelled_quantity
         item.dashboard_is_cancelled = (
-            item.status == OrderItem.Status.CANCELLED
-            or dashboard_active_quantity <= 0
+            item.status == OrderItem.Status.CANCELLED or dashboard_active_quantity <= 0
         )
         item.dashboard_is_partially_cancelled = (
-            cancelled_quantity > 0
-            and dashboard_active_quantity > 0
+            cancelled_quantity > 0 and dashboard_active_quantity > 0
         )
 
         if dashboard_active_quantity > 0:
             active_items.append(item)
-            active_subtotal += (
-                Decimal(item.final_unit_price)
-                * Decimal(dashboard_active_quantity)
+            active_subtotal += Decimal(item.final_unit_price) * Decimal(
+                dashboard_active_quantity
             )
 
         if cancelled_quantity > 0 or item.status == OrderItem.Status.CANCELLED:
@@ -248,18 +249,19 @@ def producer_dashboard(request):
     )
 
     # Calculate the 95% payout for each summary
-    # Calculate producer dashboard display values
-    # Calculate producer dashboard display values
+
     for summary in summaries:
         attach_producer_dashboard_item_values(summary)
-    
-        summary.allowed_next_statuses_json = json.dumps([
-            {
-                "value": status,
-                "label": ProducerOrderSummary.Status(status).label,
-            }
-            for status in get_allowed_next_statuses(summary)
-        ])
+
+        summary.allowed_next_statuses_json = json.dumps(
+            [
+                {
+                    "value": status,
+                    "label": ProducerOrderSummary.Status(status).label,
+                }
+                for status in get_allowed_next_statuses(summary)
+            ]
+        )
 
     # 2. Fetch Recurring Templates (all statuses, so the front-end filter works)
     recurring_qs = (
@@ -377,6 +379,49 @@ def _sync_order_status(order):
     if order.status != new_order_status:
         order.status = new_order_status
         order.save(update_fields=["status"])
+
+
+@login_required
+@require_POST
+def cancel_producer_order(request, summary_id):
+    if request.user.role != "PRODUCER" or not hasattr(request.user, "producer_profile"):
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        data = json.loads(request.body or "{}")
+        reason = data.get("reason", "")
+
+        result = cancel_producer_order_as_producer(
+            summary_id=summary_id,
+            producer=request.user.producer_profile,
+            cancelled_by=request.user,
+            reason=reason,
+        )
+
+        summary = result["summary"]
+        order = result["order"]
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Producer order cancelled successfully.",
+                "producer_status": summary.status,
+                "producer_status_display": summary.get_status_display(),
+                "order_status": order.status,
+                "order_status_display": order.get_status_display(),
+                "refund": result.get("refund"),
+                "allowed_next_statuses": [],
+            }
+        )
+
+    except ProducerOrderSummary.DoesNotExist:
+        return JsonResponse({"error": "Order not found"}, status=404)
+
+    except ProducerOrderCancellationError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
 
 @login_required

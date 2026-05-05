@@ -578,6 +578,63 @@ async function toggleSubscription(subId) {
   }
 }
 
+async function cancelProducerOrder(summaryId) {
+  const reason = prompt(
+    "Please enter the reason for cancelling this producer order.\n\nThis will cancel this producer section and refund the customer."
+  );
+
+  if (reason === null) {
+    return;
+  }
+
+  const cleanReason = reason.trim();
+
+  if (!cleanReason) {
+    alert("A cancellation reason is required.");
+    return;
+  }
+
+  const confirmCancel = confirm(
+    "Are you sure you want to cancel this producer order?\n\nThe customer will be refunded for this producer section. This cannot be undone."
+  );
+
+  if (!confirmCancel) {
+    return;
+  }
+
+  const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+
+  if (!csrfInput) {
+    alert("CSRF token not found.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/accounts/cancel-producer-order/${summaryId}/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfInput.value,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason: cleanReason }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.error || "Something went wrong cancelling the producer order.");
+      return;
+    }
+
+    alert("Producer order cancelled successfully. Refund result: " + (data.refund?.message || "Processed."));
+
+    window.location.reload();
+  } catch (error) {
+    console.error("Error cancelling producer order:", error);
+    alert("Network error occurred.");
+  }
+}
+
 // 11. Initialize when the DOM loads
 document.addEventListener("DOMContentLoaded", () => {
   const resetAndFilter = () => applyAllFilters(true);
