@@ -21,7 +21,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from orders.models import Order
+from orders.models import Order, ProducerOrderSummary
 from orders.selectors import get_order_detail_for_user
 
 from reportlab.lib import colors
@@ -202,48 +202,90 @@ def _vat_per_unit(item) -> Decimal:
     return Decimal(item.vat_amount or 0) / Decimal(item.quantity)
 
 
+def _line_values_for_quantity(item, quantity: int) -> dict:
+    quantity_decimal = Decimal(quantity)
+    unit_discount = max(
+        Decimal("0.00"),
+        Decimal(item.original_unit_price) - Decimal(item.final_unit_price),
+    )
+    vat_per_unit = _vat_per_unit(item)
+
+    line_subtotal = Decimal(item.original_unit_price) * quantity_decimal
+    line_discount = unit_discount * quantity_decimal
+    line_vat = vat_per_unit * quantity_decimal
+    line_total_ex_vat = Decimal(item.final_unit_price) * quantity_decimal
+    line_total = line_total_ex_vat + line_vat
+
+    return {
+        "unit_discount": unit_discount,
+        "vat_per_unit": vat_per_unit,
+        "line_subtotal": line_subtotal,
+        "line_discount": line_discount,
+        "line_vat": line_vat,
+        "line_total_ex_vat": line_total_ex_vat,
+        "line_total": line_total,
+    }
+
+
 def _build_receipt_items(order: Order) -> list[dict]:
     items_payload: list[dict] = []
 
     for item in order.items.all():
         active_quantity = _active_quantity(item)
-        cancelled_quantity = getattr(item, "cancelled_quantity", 0)
+        cancelled_quantity = max(getattr(item, "cancelled_quantity", 0), 0)
+        original_quantity = item.quantity
 
-        if active_quantity <= 0:
-            continue
-
-        unit_discount = max(
-            Decimal("0.00"),
-            item.original_unit_price - item.final_unit_price,
-        )
-
-        vat_per_unit = _vat_per_unit(item)
-
-        line_subtotal = item.original_unit_price * active_quantity
-        line_discount = unit_discount * active_quantity
-        line_vat = vat_per_unit * active_quantity
-        line_total = item.final_unit_price * active_quantity
+        active_values = _line_values_for_quantity(item, active_quantity)
+        cancelled_values = _line_values_for_quantity(item, cancelled_quantity)
 
         items_payload.append(
             {
                 "id": item.id,
                 "product_name": _get_product_name(item),
                 "producer_name": _get_producer_name_from_item(item),
+                # Existing public field kept as the chargeable/active quantity.
                 "quantity": active_quantity,
-                "original_quantity": item.quantity,
+                "active_quantity": active_quantity,
+                "original_quantity": original_quantity,
                 "cancelled_quantity": cancelled_quantity,
-                "unit_price": item.original_unit_price,
-                "discount_amount": unit_discount,
-                "vat_amount": vat_per_unit,
-                "final_unit_price": item.final_unit_price,
-                "line_subtotal": line_subtotal,
-                "line_discount": line_discount,
-                "line_vat": line_vat,
-                "line_total": line_total,
+                "refunded_quantity": cancelled_quantity,
+                "is_partially_cancelled": 0 < cancelled_quantity < original_quantity,
+                "is_fully_cancelled": active_quantity == 0 and cancelled_quantity > 0,
+                "unit_price": Decimal(item.original_unit_price),
+                "discount_amount": active_values["unit_discount"],
+                "vat_amount": active_values["vat_per_unit"],
+                "final_unit_price": Decimal(item.final_unit_price),
+                "line_subtotal": active_values["line_subtotal"],
+                "line_discount": active_values["line_discount"],
+                "line_vat": active_values["line_vat"],
+                "line_total_ex_vat": active_values["line_total_ex_vat"],
+                # Receipt row total is the amount charged for the active quantity, including VAT.
+                "line_total": active_values["line_total"],
+                "cancelled_refunded_subtotal": cancelled_values["line_total_ex_vat"],
+                "cancelled_refunded_vat": cancelled_values["line_vat"],
+                "cancelled_refunded_total": cancelled_values["line_total"],
             }
         )
 
     return items_payload
+
+
+def _items_for_producer(order: Order, producer_id: int | None) -> list:
+    return [
+        item
+        for item in order.items.all()
+        if item.producer_id == producer_id
+    ]
+
+
+def _cancelled_refunded_total_for_items(items: list) -> Decimal:
+    total = Decimal("0.00")
+
+    for item in items:
+        cancelled_quantity = max(getattr(item, "cancelled_quantity", 0), 0)
+        total += _line_values_for_quantity(item, cancelled_quantity)["line_total"]
+
+    return total
 
 
 def _build_producer_breakdown(order: Order) -> list[dict]:
@@ -251,6 +293,13 @@ def _build_producer_breakdown(order: Order) -> list[dict]:
 
     for summary in order.producer_summaries.all():
         address = _build_address_payload(summary)
+        summary_items = _items_for_producer(order, summary.producer_id)
+        active_quantity = sum(_active_quantity(item) for item in summary_items)
+        cancelled_quantity = sum(
+            max(getattr(item, "cancelled_quantity", 0), 0)
+            for item in summary_items
+        )
+        is_cancelled = summary.status == ProducerOrderSummary.Status.CANCELLED
 
         producer_payload.append(
             {
@@ -258,6 +307,11 @@ def _build_producer_breakdown(order: Order) -> list[dict]:
                 "producer_id": summary.producer_id,
                 "producer_name": _get_producer_name_from_summary(summary),
                 "status": summary.get_status_display(),
+                "status_code": summary.status,
+                "is_cancelled": is_cancelled,
+                "active_quantity": active_quantity,
+                "cancelled_quantity": cancelled_quantity,
+                "cancelled_refunded_total": _cancelled_refunded_total_for_items(summary_items),
                 "delivery_or_collection": summary.get_delivery_or_collection_display(),
                 "delivery_date": (
                     summary.delivery_date
@@ -324,7 +378,11 @@ def get_receipt_data(*, user: User, order_id: int) -> dict:
     subtotal = sum(item["line_subtotal"] for item in items)
     discount = sum(item["line_discount"] for item in items)
     vat = sum(item["line_vat"] for item in items)
-    final_total = sum(item["line_total"] + item["line_vat"] for item in items)
+    final_total = sum(item["line_total"] for item in items)
+    cancelled_refunded_total = sum(
+        item["cancelled_refunded_total"]
+        for item in items
+    )
 
     return {
         "id": order.id,
@@ -340,6 +398,7 @@ def get_receipt_data(*, user: User, order_id: int) -> dict:
             "discount": discount,
             "vat": vat,
             "final_total": final_total,
+            "cancelled_refunded_total": cancelled_refunded_total,
         },
     }
 
@@ -681,56 +740,68 @@ def build_receipt_pdf(*, user: User, order_id: int):
             Paragraph("<b>Product</b>", small_muted_style),
             Paragraph("<b>Producer</b>", small_muted_style),
             Paragraph("<b>Quantity</b>", small_muted_style),
-            Paragraph("<b>Original</b>", small_muted_style),
-            Paragraph("<b>Discount Per unit</b>", small_muted_style),
+            Paragraph("<b>Paid Unit</b>", small_muted_style),
             Paragraph("<b>VAT</b>", small_muted_style),
-            Paragraph("<b>Paid</b>", small_muted_style),
-            Paragraph("<b>Total</b>", small_muted_style),
+            Paragraph("<b>Row Total<br/>(inc. VAT)</b>", small_muted_style),
+            Paragraph("<b>Cancelled / Refunded</b>", small_muted_style),
         ]
     ]
 
     for item in receipt["items"]:
-        item_rows.append(
-            [
-                Paragraph(_safe_text(item["product_name"]), value_style),
-                Paragraph(_safe_text(item["producer_name"]), value_style),
-                Paragraph(str(item["quantity"]), value_style),
-                Paragraph(_money(item["unit_price"]), value_style),
-                Paragraph(_money(item["discount_amount"]), value_style),
-                Paragraph(_money(item["vat_amount"]), value_style),
-                Paragraph(_money(item["final_unit_price"]), value_style),
-                Paragraph(_money(item["line_total"]), value_style),
-            ]
+        quantity_text = (
+            f"Active: {item['active_quantity']}<br/>"
+            f"Original: {item['original_quantity']}"
         )
 
-        if item["line_discount"] and item["line_discount"] > 0:
-            item_rows.append(
-                [
-                    Paragraph(
-                        f"Saved {_money(item['line_discount'])} total",
-                        small_muted_style,
-                    ),
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                ]
+        if item["cancelled_quantity"] > 0:
+            quantity_text += f"<br/>Cancelled: {item['cancelled_quantity']}"
+
+        unit_paid_text = _money(item["final_unit_price"])
+
+        if item["discount_amount"] and item["discount_amount"] > 0:
+            unit_paid_text += (
+                f"<br/><font color='#666666'>"
+                f"Was {_money(item['unit_price'])}; "
+                f"saved {_money(item['discount_amount'])} each"
+                f"</font>"
             )
+
+        cancelled_text = "None"
+
+        if item["cancelled_quantity"] > 0:
+            cancelled_text = (
+                f"{item['cancelled_quantity']} item(s)<br/>"
+                f"{_money(item['cancelled_refunded_total'])} inc. VAT"
+            )
+
+        product_text = _safe_text(item["product_name"])
+        if item["is_fully_cancelled"]:
+            product_text += "<br/><font color='#666666'>Fully cancelled</font>"
+        elif item["is_partially_cancelled"]:
+            product_text += "<br/><font color='#666666'>Partially cancelled</font>"
+
+        item_rows.append(
+            [
+                Paragraph(product_text, value_style),
+                Paragraph(_safe_text(item["producer_name"]), value_style),
+                Paragraph(quantity_text, value_style),
+                Paragraph(unit_paid_text, value_style),
+                Paragraph(_money(item["line_vat"]), value_style),
+                Paragraph(_money(item["line_total"]), value_style),
+                Paragraph(cancelled_text, value_style),
+            ]
+        )
 
     items_table = Table(
         item_rows,
         colWidths=[
             34 * mm,
-            28 * mm,
-            16 * mm,
-            20 * mm,
-            20 * mm,
-            16 * mm,
-            20 * mm,
-            20 * mm,
+            27 * mm,
+            25 * mm,
+            24 * mm,
+            17 * mm,
+            25 * mm,
+            26 * mm,
         ],
         repeatRows=1,
     )
@@ -744,9 +815,8 @@ def build_receipt_pdf(*, user: User, order_id: int):
                 ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("SPAN", (0, 2), (-1, 2)),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
             ]
         )
     )
@@ -757,14 +827,46 @@ def build_receipt_pdf(*, user: User, order_id: int):
     story.append(Paragraph("Fulfilment Details", section_style))
 
     for producer in receipt["producer_breakdown"]:
+        heading = _safe_text(producer["producer_name"])
+
+        if producer["is_cancelled"]:
+            heading += " - CANCELLED"
+
         detail_rows = [
-            [Paragraph(f"<b>{_safe_text(producer['producer_name'])}</b>", value_style)],
+            [Paragraph(f"<b>{heading}</b>", value_style)],
             [
                 Paragraph(
-                    _safe_text(producer["delivery_or_collection"]), small_muted_style
+                    (
+                        f"Status: {_safe_text(producer['status'])}<br/>"
+                        f"Method: {_safe_text(producer['delivery_or_collection'])}"
+                    ),
+                    small_muted_style,
                 )
             ],
         ]
+
+        if producer["is_cancelled"]:
+            detail_rows.append(
+                [
+                    Paragraph(
+                        "This producer section was cancelled. Any cancelled/refunded "
+                        "items are shown in the items table above.",
+                        small_muted_style,
+                    )
+                ]
+            )
+
+        if producer["cancelled_quantity"] > 0:
+            detail_rows.append(
+                [
+                    Paragraph(
+                        "<b>Cancelled / refunded quantity</b><br/>"
+                        f"{producer['cancelled_quantity']} item(s), "
+                        f"{_money(producer['cancelled_refunded_total'])} inc. VAT",
+                        value_style,
+                    )
+                ]
+            )
 
         if producer["delivery_date"]:
             detail_rows.append(
@@ -840,10 +942,16 @@ def build_receipt_pdf(*, user: User, order_id: int):
         )
 
         card = Table(detail_rows, colWidths=[178 * mm])
+        card_background = (
+            colors.HexColor("#FAFAFA")
+            if producer["is_cancelled"]
+            else colors.white
+        )
         card.setStyle(
             TableStyle(
                 [
                     ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#D9D9D9")),
+                    ("BACKGROUND", (0, 0), (-1, -1), card_background),
                     ("TOPPADDING", (0, 0), (-1, -1), 7),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
                     ("LEFTPADDING", (0, 0), (-1, -1), 8),
@@ -860,7 +968,7 @@ def build_receipt_pdf(*, user: User, order_id: int):
 
     totals_rows = [
         [
-            Paragraph("Subtotal", value_style),
+            Paragraph("Subtotal before VAT", value_style),
             Paragraph(_money(receipt["totals"]["subtotal"]), value_style),
         ],
         [
@@ -868,11 +976,15 @@ def build_receipt_pdf(*, user: User, order_id: int):
             Paragraph(_money(receipt["totals"]["discount"]), value_style),
         ],
         [
-            Paragraph("VAT", value_style),
+            Paragraph("VAT on active items", value_style),
             Paragraph(_money(receipt["totals"]["vat"]), value_style),
         ],
         [
-            Paragraph("<b>Final Total</b>", label_style),
+            Paragraph("Cancelled / refunded value", value_style),
+            Paragraph(_money(receipt["totals"].get("cancelled_refunded_total", Decimal("0.00"))), value_style),
+        ],
+        [
+            Paragraph("<b>Final Total Paid (inc. VAT)</b>", label_style),
             Paragraph(_money(receipt["totals"]["final_total"]), total_style),
         ],
     ]
@@ -888,7 +1000,7 @@ def build_receipt_pdf(*, user: User, order_id: int):
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ("BACKGROUND", (0, 3), (-1, 3), colors.HexColor("#FAFAFA")),
+                ("BACKGROUND", (0, 4), (-1, 4), colors.HexColor("#FAFAFA")),
             ]
         )
     )
