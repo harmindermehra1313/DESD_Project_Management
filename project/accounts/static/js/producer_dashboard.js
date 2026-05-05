@@ -511,7 +511,7 @@ function formatRefundMessage(refund) {
 
   if (refund.refunded) {
     if (refund.simulated || lowerMessage.includes("demo")) {
-      return "The customer refund has been recorded successfully in demo mode.";
+      return "The customer will receive the refund soon.";
     }
 
     if (lowerMessage.includes("already processed")) {
@@ -966,11 +966,16 @@ function reloadAndReopenSummary(summaryId) {
   }
 
   const url = new URL(window.location.href);
+
   url.searchParams.set("open_order", summaryId);
   url.searchParams.set("producer_page", String(currentPage));
+
+  // Forces a fresh page request even when the same order is already open.
+  url.searchParams.set("_producer_refresh", String(Date.now()));
+
   url.hash = "producerDetailsCard";
 
-  window.location.assign(url.toString());
+  window.location.replace(url.toString());
 }
 
 function showSubscriptionDetails(subId, rowElement) {
