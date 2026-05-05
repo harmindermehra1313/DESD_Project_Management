@@ -1,4 +1,3 @@
-# added food miles - joe
 from decimal import Decimal
 from django.utils import timezone
 
@@ -60,6 +59,9 @@ class ProductListSerializer(serializers.ModelSerializer):
             "status",
             "producer",
             "category",
+            "is_seasonal",
+            "is_currently_in_season",
+            "season_display_text"
         )
 
 
@@ -93,7 +95,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     is_purchasable = serializers.SerializerMethodField()
     add_to_cart_button_label = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
-    # stories = serializers.SerializerMethodField()
     customer_postcode = serializers.SerializerMethodField()
     food_miles = serializers.SerializerMethodField()
     food_miles_login_required = serializers.SerializerMethodField()
@@ -135,6 +136,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "availability_start",
             "availability_end",
             "availability_status",
+            "is_seasonal",
+            "season_start",
+            "season_end",
+            "is_currently_in_season",
+            "season_display_text",
             "created_at",
             "updated_at",
             "status",
@@ -168,17 +174,13 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         )
 
     def _get_next_inventory_batch(self, obj):
-        """
-        Earliest non-deleted stock batch regardless of expiry.
-        Useful for determining whether remaining stock exists
-        but is already expired.
-        """
         return (
             self._get_active_batches(obj)
             .filter(remaining_quantity__gt=0)
             .order_by("expiry_date", "created_at")
             .first()
         )
+
     def get_recipes(self, obj):
         from community.models import Recipe
 
@@ -188,19 +190,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         ).order_by("-created_at")
 
         return RecipeInlineSerializer(qs, many=True).data
-
-
-
-    # def get_stories(self, obj):
-    #     from community.models import FarmStory
-
-    #     qs = FarmStory.objects.filter(
-    #         producer=obj.producer,
-    #         status=FarmStory.Status.PUBLISHED
-    #     ).order_by("-created_at")
-
-    #     return StoryInlineSerializer(qs, many=True).data
-
 
     def _has_only_expired_stock(self, obj):
         next_batch = self._get_next_inventory_batch(obj)
@@ -294,13 +283,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         
     def get_surplus_note(self, obj):
         active_inventory = self._get_active_inventory(obj)
-
         if not active_inventory:
             return None
-
         if not active_inventory.surplus_note:
             return None
-
         return active_inventory.surplus_note.strip()
     
     def get_surplus_discount_percentage(self, obj):
@@ -313,6 +299,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return self._get_remaining_quantity_value(obj)
 
     def get_availability_label(self, obj):
+        if obj.is_seasonal and not obj.is_currently_in_season:
+            return "Out of Season"
+            
         if self._all_batches_deleted(obj):
             return "Unavailable"
 
@@ -334,6 +323,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return "Available"
 
     def get_availability_badge_class(self, obj):
+        if obj.is_seasonal and not obj.is_currently_in_season:
+            return "text-bg-warning"
+
         if self._all_batches_deleted(obj):
             return "text-bg-secondary"
 
@@ -379,7 +371,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_is_purchasable(self, obj):
         return (
-            obj.status == Product.Status.PUBLISHED
+            obj.is_currently_in_season 
+            and obj.status == Product.Status.PUBLISHED
             and obj.availability_status == Product.Availability_status.AVAILABLE
             and not self._all_batches_deleted(obj)
             and bool(self.get_active_inventory_id(obj))
@@ -411,18 +404,15 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return bool(request and not request.user.is_authenticated)
 
 
-# Following serializers are being used by others
 class ProductInlineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ("id", "name", "image", "price", "unit")
 
-
 class InventorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Inventory
         fields = "__all__"
-
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -433,7 +423,3 @@ class RecipeInlineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ("id", "title", "image", "seasonal_tag", "created_at")
-# class StoryInlineSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = FarmStory
-#         fields = ("id", "title", "image", "created_at")

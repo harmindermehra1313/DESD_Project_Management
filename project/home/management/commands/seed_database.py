@@ -57,7 +57,7 @@ class Command(BaseCommand):
         self.DistanceRecord = apps.get_model("admin_records", "DistanceRecord")
 
         self.Review = apps.get_model("reviews", "Review")
-        self.ReviewResponse = apps.get_model("reviews", "ReviewResponse")
+        self.ReviewResponse = apps.get_model("reviews", "ReviewProducerResponse")
 
         self.stdout.write(self.style.MIGRATE_HEADING("Seeding database..."))
 
@@ -1140,13 +1140,19 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("  Recurring order created."))
         
     # Reviews
+    # Reviews
     def create_reviews(self):
+        # 1. Dynamically grab the product from the order item we KNOW is in the order
+        valid_product = self.order_item1.product
+        valid_producer_user = valid_product.producer.user
+
         self.review = self.Review.objects.create(
-            product=self.product1,
+            product=valid_product,
             customer=self.customer,
             order=self.order,
+            order_item=self.order_item1,  # Added to ensure strict validation passes
             rating=5,
-            title="Great carrots!",
+            title="Great product!",
             text="Really fresh and tasty.",
             anonymous=False,
             status="PUB",
@@ -1155,8 +1161,8 @@ class Command(BaseCommand):
 
         self.ReviewResponse.objects.create(
             review=self.review,
-            producer=self.producer,
-            response_text="Thank you for your feedback!",
+            responder=valid_producer_user, # Fixed field name to match model
+            text="Thank you for your feedback!", # Fixed field name to match model
             status="PUB",
             created_at=timezone.now(),
         )

@@ -11,13 +11,12 @@ from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Sum, Prefetch, Case, When, Value, IntegerField
+from django.db.models import Q, Sum, Prefetch, Case, When, Value, IntegerField, F
 from BRFN.decorators import admin_required, producer_required
 import json
 from notifications.services.notifications import NotificationService
 from notifications.models import Notification
 from admin_records.models import ModerationLog
-
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -148,6 +147,21 @@ def add_product(request):
         ).strip()
         description = request.POST.get("description")
         uploaded_image = request.FILES.get("image")
+        
+        # Extract Seasonal Inputs
+        is_seasonal = request.POST.get("is_seasonal") in ["true", "on", "True"]
+        season_start_raw = request.POST.get("season_start")
+        season_end_raw = request.POST.get("season_end")
+        
+        season_start_val = None
+        season_end_val = None
+        
+        if is_seasonal and season_start_raw and season_end_raw:
+            try:
+                season_start_val = int(season_start_raw)
+                season_end_val = int(season_end_raw)
+            except ValueError:
+                pass
 
         try:
             base_price_value = Decimal(str(price))
@@ -260,8 +274,6 @@ def add_product(request):
                 _build_add_product_context("Harvest date cannot be after expiry date."),
             )
 
-        # expiry_date=expiry_date
-
         category_id = request.POST.get("category")
 
         category_obj = get_object_or_404(Category, id=category_id)
@@ -287,6 +299,9 @@ def add_product(request):
             image=uploaded_image,
             farm_origin=farm_origin,
             status=Product.Status.PENDING,
+            is_seasonal=is_seasonal,
+            season_start=season_start_val,
+            season_end=season_end_val,
         )
 
         if not uploaded_image:
@@ -362,7 +377,6 @@ def producer_products(request):
         .order_by("-created_at")
     )
 
-    # Attach latest rejection log manually
     for p in products:
         p.latest_rejection = (
             ModerationLog.objects.filter(
@@ -508,7 +522,6 @@ def edit_producer_product(request, pk):
                     }
                 )
 
-        # Low stock threshold
         low_stock_raw = data.get("low_stock_threshold")
 
         try:
@@ -523,6 +536,15 @@ def edit_producer_product(request, pk):
                 }
             )
 
+        # Seasonal Fields Parsing
+        is_seasonal = data.get("is_seasonal", product.is_seasonal)
+        try:
+            season_start = int(data.get("season_start")) if data.get("season_start") else None
+            season_end = int(data.get("season_end")) if data.get("season_end") else None
+        except (ValueError, TypeError):
+            season_start = product.season_start
+            season_end = product.season_end
+
         product.name = name
         product.price = price
         product.unit = unit
@@ -532,6 +554,11 @@ def edit_producer_product(request, pk):
         product.description = data.get("description", product.description)
         product.category = category
         product.product_type = product_type
+        
+        product.is_seasonal = is_seasonal
+        product.season_start = season_start
+        product.season_end = season_end
+        
         product.save()
 
         if wholesale_price is not None:
@@ -544,7 +571,6 @@ def edit_producer_product(request, pk):
         else:
             product.product_wholesale.all().delete()
 
-        # Check stock vs threshold for notification
         stock_total = (
             product.inventory_batches.aggregate(total=Sum("remaining_quantity")).get(
                 "total"
@@ -590,6 +616,10 @@ def edit_producer_product(request, pk):
                     wholesale_min_quantity if wholesale_price is not None else ""
                 ),
                 "low_stock_threshold": product.low_stock_threshold,
+                "is_seasonal": product.is_seasonal,
+                "season_start": product.season_start,
+                "season_end": product.season_end,
+                "season_display_text": product.season_display_text,
             }
         )
 
@@ -624,20 +654,6 @@ def add_to_cart(request, product_id):
     return redirect("product_view", category_id=0)
 
 
-# products/views.py
-
-
-# class ProductListView(ListView):
-#     template_name = "products/index.html"
-#     context_object_name = "products"
-#     paginate_by = 24
-
-#     def get_queryset(self):
-#         return Product.objects.filter(status=Product.Status.PUBLISHED).order_by(
-#             "-created_at"
-#         )
-
-
 class ProductDetailView(DetailView):
     model = Product
     template_name = "products/product_detail.html"
@@ -661,12 +677,10 @@ class ProductDetailView(DetailView):
         ctx = super().get_context_data(**kwargs)
         p = self.object
 
-        # Expiry label (Use by vs Best before) - purely for display
         use_by_groups = {"MT", "DAE"}
         food_group = getattr(getattr(p, "category", None), "food_groups", None)
         ctx["expiry_label"] = "Use by" if food_group in use_by_groups else "Best before"
 
-        # Wholesale tiers for JS
         tiers = list(
             p.product_wholesale.order_by("min_quantity").values(
                 "min_quantity", "unit_price"
@@ -681,10 +695,6 @@ class ProductDetailView(DetailView):
 
         return ctx
 
-    # return redirect('products_list')
-
-
-# Harminder Edits
 
 def send_for_approval(request, pk):
     if request.method != "POST":
@@ -692,7 +702,6 @@ def send_for_approval(request, pk):
 
     product = Product.objects.get(pk=pk)
 
-    # Only FLAGGED products can be sent for approval
     if product.status != Product.Status.FLAGGED:
         return JsonResponse({"error": "Only flagged products can be sent for approval"}, status=400)
 
@@ -700,178 +709,9 @@ def send_for_approval(request, pk):
     product.save()
 
     return JsonResponse({"success": True})
-# def product_view(request, category_id):
-#     # All categories except organic
-#     categories = Category.objects.exclude(name__icontains="organic")
-#     certified_organic = Category.objects.filter(name__icontains="organic")
-
-#     # ALL PRODUCTS PAGE
-#     if category_id == 0:
-#         selected_category = None
-#         products = Product.objects.filter(status="PUB")
-#         show_filters = True   # show category + producer filters
-
-#     # CATEGORY PAGE
-#     else:
-#         selected_category = get_object_or_404(Category, id=category_id)
-#         products = Product.objects.filter(status="PUB", category=selected_category)
-#         show_filters = False  # hide category + producer filters
-
-#     # Producer list for dropdown (only used when show_filters=True)
-#     producers = products.values_list("producer__farm_name", flat=True).distinct()
-
-#     # Helper: get earliest-expiring batch
-#     def get_active_batch(product):
-#         return product.inventory_batches.order_by("expiry_date").first()
-
-#     product_json = []
-#     for p in products:
-#         batch = get_active_batch(p)
-
-#         product_json.append({
-#             "id": p.id,
-#             "name": p.name,
-#             "description": p.description,
-#             "price": float(p.price),
-#             "image": p.image.url if p.image else "",
-#             "producer": p.producer.farm_name,
-#             "category": p.category.name,
-#             "stock": batch.remaining_quantity if batch else 0,
-#             "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
-#         })
-#     # Convert queryset → JSON for inline JS
-#     # product_json = [
-#     #     {
-#     #         "id": p.id,
-#     #         "name": p.name,
-#     #         "description": p.description,
-#     #         "price": float(p.price),
-#     #         "image": p.image.url if p.image else "",
-#     #         "producer": p.producer.farm_name,
-#     #         "category": p.category.name,  # required for filtering
-#     #         "stock": p.stock_quantity,
-#     #         "expiry": p.expiry_date.strftime("%Y-%m-%d"),
-#     #     }
-#     #     for p in products
-#     # ]
-
-#     return render(request, "products/product_view.html", {
-#         "categories": categories,
-#         "producers": producers,
-#         "products_json": json.dumps(product_json),  # safe JSON for inline JS
-#         "selected_category": selected_category,
-#         "show_filters": show_filters,
-#         'organic': certified_organic,
-#     })
-
-# Commented on 29/06/2026 - 18:26
-# def product_view(request, category_id):
-#     # All categories except organic
-#     categories = Category.objects.exclude(name__icontains="organic")
-#     certified_organic = Category.objects.filter(name__icontains="organic")
-
-#     # ALL PRODUCTS PAGE
-#     if category_id == 0:
-#         selected_category = None
-#         products = Product.objects.filter(status="PUB")
-#         show_filters = True
-
-#     # CATEGORY PAGE
-#     else:
-#         selected_category = get_object_or_404(Category, id=category_id)
-#         products = Product.objects.filter(status="PUB", category=selected_category)
-#         show_filters = False
-
-#     # Producer list for dropdown
-#     producers = products.values_list("producer__farm_name", flat=True).distinct()
-
-#     # Helper: earliest-expiring batch
-#     def get_active_batch(product):
-#         return product.inventory_batches.order_by("expiry_date").first()
-
-#     product_json = []
-
-#     for p in products:
-#         batch = get_active_batch(p)
-
-#         # -----------------------------
-#         # DISCOUNT LOGIC (Surplus)
-#         # -----------------------------
-#         original_price = float(p.price)
-
-#         if batch and batch.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
-#             discount_percent = float(batch.surplus_discount_percentage)
-#             discounted_price = float(original_price * (100 - discount_percent) / 100)
-#             has_discount = True
-#         else:
-#             discounted_price = original_price
-#             discount_percent = 0
-#             has_discount = False
-
-#         # -----------------------------
-#         # BADGES
-#         # -----------------------------
-
-#         # Organic badge
-#         organic = (p.organic_certification_status == Product.OrganicStatus.CERTIFIED)
-
-#         # Local badge (farm origin matches producer name)
-#         local = (p.farm_origin.lower() == p.producer.farm_name.lower())
-
-#         # Fresh Today badge (48-hour freshness window)
-#         if batch:
-#             days_old = (date.today() - batch.harvest_date).days
-#             fresh_today = days_old <= 1
-#         else:
-#             fresh_today = False
-
-#         # Low stock badge
-#         low_stock = (batch.remaining_quantity <= p.low_stock_threshold) if batch else False
-
-#         # -----------------------------
-#         # BUILD JSON ENTRY
-#         # -----------------------------
-#         product_json.append({
-#             "id": p.id,
-#             "name": p.name,
-#             "description": p.description or "",
-#             "price": discounted_price,
-#             "original_price": original_price,
-#             "has_discount": has_discount,
-#             "discount_percent": discount_percent,
-
-#             "organic": organic,
-#             "local": local,
-#             "fresh_today": fresh_today,
-#             "low_stock": low_stock,
-
-#             "image": p.image.url if p.image else "",
-#             "producer": p.producer.farm_name,
-#             "category": p.category.name,
-
-#             "stock": batch.remaining_quantity if batch else 0,
-#             "expiry": batch.expiry_date.strftime("%Y-%m-%d") if batch else "",
-#         })
-
-#     return render(request, "products/product_view.html", {
-#         "categories": categories,
-#         "producers": producers,
-#         "products_json": json.dumps(product_json),
-#         "selected_category": selected_category,
-#         "show_filters": show_filters,
-#         "organic": certified_organic,
-#     })
-
-# Updated on 30/06/2026 - 14:00 - Added search, filter, sort, pagination, wholesale visibility, and performance optimizations
 
 
 def _can_view_wholesale_prices(user):
-    """
-    Return True when the logged-in customer is allowed to see wholesale pricing.
-
-    User.role is usually CUSTOMER for all customer accounts. The business or
-    community-group distinction is stored on Customer.organisation_type.
-    """
     if not user.is_authenticated:
         return False
 
@@ -908,16 +748,45 @@ def product_view(request, category_id):
         "inventory_batches__expiry_date__gte": today,
     }
 
+    # 1. Database-Level Seasonality Filter (Hide out-of-season products)
+    current_month = today.month
+    
+    # Condition 1: Not seasonal at all
+    is_not_seasonal = Q(is_seasonal=False) | Q(season_start__isnull=True) | Q(season_end__isnull=True)
+    
+    # Condition 2: Standard season (e.g., May to September -> 5 <= current <= 9)
+    # Fixed SyntaxError here by splitting the Q objects with an &
+    standard_season = Q(
+        is_seasonal=True,
+        season_start__lte=F('season_end')
+    ) & Q(
+        season_start__lte=current_month,
+        season_end__gte=current_month
+    )
+    
+    # Condition 3: Wrap-around season (e.g., Nov to Feb -> 11 <= current OR current <= 2)
+    wrap_season = Q(
+        is_seasonal=True,
+        season_start__gt=F('season_end')
+    ) & (Q(season_start__lte=current_month) | Q(season_end__gte=current_month))
+    
+    in_season_condition = is_not_seasonal | standard_season | wrap_season
+
+    # Base QuerySet with active filters + seasonality applied
+    base_qs = Product.objects.filter(**live_product_filters).filter(in_season_condition).distinct()
+
+    # 2. Handle Initial Category Page Selection
     if category_id == 0:
         selected_category = None
-        products_qs = Product.objects.filter(**live_product_filters).distinct()
+        products_qs = base_qs
         show_filters = True
     else:
         selected_category = get_object_or_404(Category, id=category_id)
-        products_qs = Product.objects.filter(
-            **live_product_filters,
-            category=selected_category,
-        ).distinct()
+        if selected_category.name.lower() == "seasonal produce":
+            # Show items explicitly in this category OR any seasonal item
+            products_qs = base_qs.filter(Q(category=selected_category) | Q(is_seasonal=True))
+        else:
+            products_qs = base_qs.filter(category=selected_category)
         show_filters = False
 
     producers = (
@@ -952,8 +821,12 @@ def product_view(request, category_id):
             )
         )
 
+    # 3. Handle Dropdown Category Filter Selection
     if show_filters and category_filter:
-        products_qs = products_qs.filter(category__name=category_filter)
+        if category_filter.lower() == "seasonal produce":
+            products_qs = products_qs.filter(Q(category__name=category_filter) | Q(is_seasonal=True))
+        else:
+            products_qs = products_qs.filter(category__name=category_filter)
 
     if show_filters and producer_filter:
         products_qs = products_qs.filter(producer__farm_name=producer_filter)
@@ -1081,8 +954,10 @@ def product_view(request, category_id):
                 "wholesale_min_quantity": (
                     active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
-                "is_disabled": False,
-                "disabled_reason": "",
+                "is_disabled": not p.is_currently_in_season, 
+                "is_seasonal": p.is_seasonal,
+                "in_season": p.is_currently_in_season,
+                "season_text": p.season_display_text,
                 "image": p.image.url if p.image else "",
                 "producer": producer_name,
                 "category": p.category.name,
@@ -1118,7 +993,5 @@ def product_view(request, category_id):
         },
     )
 
-
-# Pippal
 def product_detail_page(request, product_id):
     return render(request, "products/product_detail.html", {"product_id": product_id})

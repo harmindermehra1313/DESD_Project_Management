@@ -2,6 +2,7 @@
 # from django.core.mail import send_mail
 # from django.template.loader import render_to_string
 # from django.conf import settings
+# from django.utils import timezone
 # from .models import Product
 # from notifications.services.notifications import NotificationService
 
@@ -61,3 +62,31 @@
 #         [producer.contact_email],
 #         html_message=html_message,
 #     )
+
+
+
+
+#def remind_producers_of_upcoming_seasons():
+#    """
+#    Cron task: Runs daily to notify producers of items coming into season next month.
+#    Designed to be hooked into django-q2 / Dramatiq.
+#    """
+#    current_date = timezone.localdate()
+    
+    # Calculate next month securely using built-in math (avoids python-dateutil dependency)
+#    next_month = (current_date.month % 12) + 1
+    
+    # Find products that start their season next month
+#    upcoming_seasonal_products = Product.objects.filter(
+#        is_seasonal=True,
+#        season_start=next_month,
+#        status=Product.Status.PUBLISHED
+#    ).select_related('producer__user')
+#    
+#    for product in upcoming_seasonal_products:
+#        NotificationService.create_unique(
+#            user=product.producer.user,
+#            type="PRODUCT_ALERT",
+#            message=f"Reminder: {product.name} will be 'In Season' starting next month. Time to check your stock levels!",
+#            product=product
+#        )
