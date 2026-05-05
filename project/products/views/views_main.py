@@ -1026,10 +1026,10 @@ def product_view(request, category_id):
                 queryset=WholesalePrice.objects.order_by("min_quantity"),
                 to_attr="wholesale_tiers",
             ),
+            "product_allergen__allergen",
         )
         .order_by(*order_by)
     )
-
     paginator = Paginator(products, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -1088,6 +1088,14 @@ def product_view(request, category_id):
 
         days_old = (today - earliest_live_batch.harvest_date).days
         fresh_today = days_old <= 1
+        allergen_names = list(
+            dict.fromkeys(
+                product_allergen.allergen.get_name_display()
+                for product_allergen in p.product_allergen.all()
+                if product_allergen.allergen
+                and product_allergen.allergen.name != Allergen.Allergens.NONE
+            )
+        )
 
         product_json.append(
             {
@@ -1107,6 +1115,7 @@ def product_view(request, category_id):
                 "wholesale_min_quantity": (
                     active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
+                "allergens": allergen_names,
                 "is_disabled": False,
                 "disabled_reason": "",
                 "image": p.image.url if p.image else "",
