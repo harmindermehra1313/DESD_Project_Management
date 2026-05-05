@@ -42,7 +42,7 @@
         : this.deliveryAddressLabel;
     },
 
-        getErrorPayload(error) {
+    getErrorPayload(error) {
       return (
         error?.payload ||
         error?.data ||
@@ -64,14 +64,19 @@
 
     getBackendMessage(error, fallback) {
       const structuredError = this.getStructuredError(error);
-      return structuredError?.message || window.AppApiErrors.fromError(error, fallback);
+      return (
+        structuredError?.message ||
+        window.AppApiErrors.fromError(error, fallback)
+      );
     },
 
     getLoadError(error) {
       const structuredError = this.getStructuredError(error);
 
       if (structuredError?.code === "receipt_not_available") {
-        return "Receipt is only available after an order has been completed.";
+        return (
+          structuredError.message || "Receipt is not available for this order."
+        );
       }
 
       return this.getBackendMessage(error, this.loadFailed);

@@ -93,3 +93,37 @@
 .modal-header {
     border-bottom: 1px solid var(--alabaster-grey);
 }
+
+.status-ready {
+    background-color: #e8f4ff;
+    color: #175cd3;
+    border: 1px solid #b2ddff;
+}
+
+.status-completed {
+    background-color: #ecfdf3;
+    color: #027a48;
+    border: 1px solid #abefc6;
+}
+
+.status-cancelled {
+    background-color: #fdecea;
+    color: #b42318;
+    border: 1px solid #fecdca;
+}
+
+.producer-help-box,
+.producer-instruction-box {
+    background-color: #f8fafc;
+    border: 1px solid #e4e7ec;
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.producer-instruction-box {
+    font-size: 0.9rem;
+}
+
+#confirmStatusName {
+    color: var(--prussian-blue);
+}

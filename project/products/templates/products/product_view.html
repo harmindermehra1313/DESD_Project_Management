@@ -68,6 +68,24 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="col-md-2">
+                            <label for="allergenFilter" class="product-filter-label">Allergen</label>
+                            <select id="allergenFilter"
+                                    name="allergen"
+                                    class="form-select product-filter-control">
+                                <option value="">All allergens</option>
+                                <option value="__none__"
+                                        {% if filters.allergen == "__none__" %}selected{% endif %}>
+                                    No listed allergens
+                                </option>
+                                {% for allergen in allergens %}
+                                    <option value="{{ allergen.name }}"
+                                            {% if filters.allergen == allergen.name %}selected{% endif %}>
+                                        {{ allergen.get_name_display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     {% endif %}
                     <div class="col-md-2">
                         <label for="minPrice" class="product-filter-label">Min price</label>

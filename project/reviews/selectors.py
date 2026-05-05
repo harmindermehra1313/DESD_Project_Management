@@ -6,6 +6,7 @@ from reviews.models import Review
 from django.core.exceptions import PermissionDenied
 from orders.models import OrderItem
 from django.db.models.functions import Coalesce
+from orders.services.order_status import get_order_status_context
 
 
 def get_reviewed_product_ids_for_user_and_products(
@@ -24,86 +25,105 @@ def get_reviewed_product_ids_for_user_and_products(
     )
 
 
-def _get_matching_producer_summary_for_order_item(order_item):
-    """
-    Find the producer summary that belongs to this order item's producer.
-    Returns None if no matching summary exists.
-    """
-    if not getattr(order_item, "order", None) or not getattr(
-        order_item, "producer_id", None
-    ):
-        return None
-
-    return order_item.order.producer_summaries.filter(
-        producer_id=order_item.producer_id
-    ).first()
+def _active_quantity(order_item) -> int:
+    return max(
+        int(order_item.quantity or 0)
+        - int(getattr(order_item, "cancelled_quantity", 0) or 0),
+        0,
+    )
 
 
-def _is_order_item_shipped(order_item) -> bool:
-    summary = _get_matching_producer_summary_for_order_item(order_item)
-    if not summary:
-        return False
-
-    return summary.status == summary.Status.SHIPPED
+def _build_review_payload(order_item) -> dict:
+    return {
+        "order_id": order_item.order_id,
+        "order_item_id": order_item.id,
+        "product_id": order_item.product_id,
+    }
 
 
 def build_review_action_for_order_item(
     *, order_item, user_id: int, reviewed_product_ids: set[int]
 ) -> dict:
     """
-    Review rules stay in the reviews app.
-    Orders can call this to get a frontend-friendly payload.
+    Build the frontend review action for one order item.
+
+    Review eligibility rules:
+    - user must be signed in
+    - order item must belong to the signed-in customer
+    - derived main order status must be completed
+    - item must not be fully cancelled/refunded
+    - product must still exist on the order item
+    - product must not already have a review from this customer
     """
     if not user_id:
         return {
             "eligible": False,
             "already_reviewed": False,
             "label": "Review",
-            "reason": "You must be signed in to write a review.",
+            "reason": "Sign in to write a review.",
             "payload": None,
         }
 
+    payload = _build_review_payload(order_item)
     is_owner = order_item.order.user_id == user_id
-    is_shipped = _is_order_item_shipped(order_item)
+    active_quantity = _active_quantity(order_item)
+    status_context = get_order_status_context(order_item.order)
+
     already_reviewed = bool(
         order_item.product_id and order_item.product_id in reviewed_product_ids
     )
 
-    eligible = bool(
-        order_item.product_id and is_owner and is_shipped and not already_reviewed
-    )
-
     if already_reviewed:
-        label = "Reviewed"
-        reason = "You have already reviewed this product."
-    elif not is_owner:
-        label = "Review"
-        reason = "You can only review items from your own shipped orders."
-    elif not is_shipped:
-        label = "Review"
-        reason = "Review is available after this item is shipped."
-    else:
-        label = "Review"
-        reason = None
+        return {
+            "eligible": False,
+            "already_reviewed": True,
+            "label": "Reviewed",
+            "reason": "This product has already been reviewed.",
+            "payload": payload,
+        }
+
+    if not is_owner:
+        return {
+            "eligible": False,
+            "already_reviewed": False,
+            "label": "Review",
+            "reason": "Only items from this customer account can be reviewed.",
+            "payload": payload,
+        }
+
+    if not order_item.product_id:
+        return {
+            "eligible": False,
+            "already_reviewed": False,
+            "label": "Review",
+            "reason": "This product is no longer available for review.",
+            "payload": payload,
+        }
+
+    if status_context["status_key"] != "completed":
+        return {
+            "eligible": False,
+            "already_reviewed": False,
+            "label": "Review",
+            "reason": "Review is available after the order is completed.",
+            "payload": payload,
+        }
+
+    if order_item.status == OrderItem.Status.CANCELLED or active_quantity <= 0:
+        return {
+            "eligible": False,
+            "already_reviewed": False,
+            "label": "Review",
+            "reason": "Cancelled or fully refunded items cannot be reviewed.",
+            "payload": payload,
+        }
 
     return {
-        "eligible": eligible,
-        "already_reviewed": already_reviewed,
-        "label": label,
-        "reason": reason,
-        "payload": (
-            {
-                "order_id": order_item.order_id,
-                "order_item_id": order_item.id,
-                "product_id": order_item.product_id,
-            }
-            if eligible
-            else {
-                "order_id": order_item.order_id,
-                "order_item_id": order_item.id,
-                "product_id": order_item.product_id,
-            }
-        ),
+        "eligible": True,
+        "already_reviewed": False,
+        "label": "Review",
+        "reason": None,
+        "payload": payload,
     }
 
 
@@ -123,7 +143,7 @@ def get_reviewable_order_item_for_user(
 
     order_item = (
         OrderItem.objects.select_related("order", "product", "producer")
-        .prefetch_related("order__producer_summaries")
+        .prefetch_related("order__producer_summaries", "order__items")
         .get(pk=order_item_id)
     )
 
@@ -194,7 +214,7 @@ def get_published_review_summary_for_product(*, product_id: int) -> dict:
         ),
         "rating_breakdown": rating_breakdown,
     }
-    
+
 
 def get_producer_profile_for_user(user):
     """
@@ -252,17 +272,14 @@ def get_reviews_for_producer(*, producer):
 
 
 def get_producer_owned_review_or_404(*, review_id: int, producer):
-    return (
-        Review.objects.select_related(
-            "customer__user",
-            "product",
-            "product__producer",
-            "producer_response",
-            "producer_response__responder",
-        )
-        .get(
-            id=review_id,
-            product__producer=producer,
-            status=Review.Status.PUBLISHED,
-        )
+    return Review.objects.select_related(
+        "customer__user",
+        "product",
+        "product__producer",
+        "producer_response",
+        "producer_response__responder",
+    ).get(
+        id=review_id,
+        product__producer=producer,
+        status=Review.Status.PUBLISHED,
     )

@@ -17,11 +17,18 @@ from reviews.selectors import (
     build_review_action_for_order_item,
     get_reviewed_product_ids_for_user_and_products,
 )
+from orders.services.order_status import get_order_status_context
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source="unique_reference", read_only=True)
     order_status = serializers.SerializerMethodField()
+    order_status_code = serializers.SerializerMethodField()
+    order_status_key = serializers.SerializerMethodField()
+    is_partially_cancelled = serializers.SerializerMethodField()
+    can_customer_cancel = serializers.SerializerMethodField()
+    status_note = serializers.SerializerMethodField()
+
     total = serializers.DecimalField(
         source="total_price",
         max_digits=10,
@@ -38,11 +45,38 @@ class OrderHistorySerializer(serializers.ModelSerializer):
             "order_date",
             "total",
             "order_status",
+            "order_status_code",
+            "order_status_key",
+            "is_partially_cancelled",
+            "can_customer_cancel",
+            "status_note",
             "producer_names",
         ]
 
+    def _status_context(self, obj: Order) -> dict:
+        return get_order_status_context(obj)
+
     def get_order_status(self, obj: Order) -> str:
-        return get_derived_order_status_label(obj)
+        return self._status_context(obj)["status_display"]
+
+    def get_order_status_code(self, obj: Order) -> str:
+        return self._status_context(obj)["status_code"]
+
+    def get_order_status_key(self, obj: Order) -> str:
+        return self._status_context(obj)["status_key"]
+
+    def get_is_partially_cancelled(self, obj: Order) -> bool:
+        return self._status_context(obj)["is_partially_cancelled"]
+
+    def get_can_customer_cancel(self, obj: Order) -> bool:
+        return self._status_context(obj)["can_customer_cancel"]
+
+    def get_status_note(self, obj: Order) -> str:
+        if self._status_context(obj)["is_partially_cancelled"]:
+            return (
+                "Partially cancelled: one producer could not fulfil part of this order."
+            )
+        return ""
 
     def get_producer_names(self, obj: Order) -> list[str]:
         names: list[str] = []
@@ -66,12 +100,23 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
     producer = serializers.SerializerMethodField()
     review_action = serializers.SerializerMethodField()
 
+    status = serializers.SerializerMethodField()
+    status_key = serializers.SerializerMethodField()
+    cancelled_quantity = serializers.IntegerField(read_only=True)
+    active_quantity = serializers.SerializerMethodField()
+    can_customer_cancel_item = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         fields = [
             "id",
             "product_name",
             "quantity",
+            "active_quantity",
+            "cancelled_quantity",
+            "status",
+            "status_key",
+            "can_customer_cancel_item",
             "paid_unit_price",
             "producer",
             "review_action",
@@ -110,6 +155,38 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
             user_id=user_id,
             reviewed_product_ids=reviewed_product_ids,
         )
+
+    def get_status(self, obj: OrderItem) -> str:
+        return obj.get_status_display()
+
+    def get_status_key(self, obj: OrderItem) -> str:
+        return str(obj.status).lower()
+
+    def get_active_quantity(self, obj: OrderItem) -> int:
+        return max(obj.quantity - obj.cancelled_quantity, 0)
+
+    def get_can_customer_cancel_item(self, obj: OrderItem) -> bool:
+        if obj.status == OrderItem.Status.CANCELLED:
+            return False
+
+        order = obj.order
+
+        if order.status in {
+            Order.Status.CANCELLED,
+            Order.Status.COMPLETED,
+        }:
+            return False
+
+        producer_summary = (
+            order.producer_summaries.filter(producer_id=obj.producer_id)
+            .order_by("id")
+            .first()
+        )
+
+        if producer_summary is None:
+            return False
+
+        return producer_summary.status == ProducerOrderSummary.Status.PENDING
 
 
 class ProducerOrderSummarySerializer(serializers.ModelSerializer):
@@ -202,6 +279,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True,
     )
+    status_code = serializers.SerializerMethodField()
+    status_key = serializers.SerializerMethodField()
+    is_partially_cancelled = serializers.SerializerMethodField()
+    can_customer_cancel = serializers.SerializerMethodField()
+    status_note = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -210,6 +292,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "order_number",
             "order_date",
             "status",
+            "status_code",
+            "status_key",
+            "is_partially_cancelled",
+            "can_customer_cancel",
+            "status_note",
             "items",
             "producer_breakdown",
             "payment_method_display",
@@ -221,7 +308,9 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         user_id = getattr(getattr(request, "user", None), "id", None)
 
         product_ids = list(
-            obj.items.exclude(product_id__isnull=True).values_list("product_id", flat=True)
+            obj.items.exclude(product_id__isnull=True).values_list(
+                "product_id", flat=True
+            )
         )
 
         reviewed_product_ids = get_reviewed_product_ids_for_user_and_products(
@@ -240,8 +329,30 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         )
         return serializer.data
 
+    def _status_context(self, obj: Order) -> dict:
+        return get_order_status_context(obj)
+
     def get_status(self, obj: Order) -> str:
-        return get_derived_order_status_label(obj)
+        return self._status_context(obj)["status_display"]
+
+    def get_status_code(self, obj: Order) -> str:
+        return self._status_context(obj)["status_code"]
+
+    def get_status_key(self, obj: Order) -> str:
+        return self._status_context(obj)["status_key"]
+
+    def get_is_partially_cancelled(self, obj: Order) -> bool:
+        return self._status_context(obj)["is_partially_cancelled"]
+
+    def get_can_customer_cancel(self, obj: Order) -> bool:
+        return self._status_context(obj)["can_customer_cancel"]
+
+    def get_status_note(self, obj: Order) -> str:
+        if self._status_context(obj)["is_partially_cancelled"]:
+            return (
+                "Partially cancelled: one producer could not fulfil part of this order."
+            )
+        return ""
 
     def get_payment_method_display(self, obj: Order) -> str | None:
         payments = list(obj.payments.all().order_by("-created_at"))
@@ -320,6 +431,7 @@ class ReorderSuggestedItemSerializer(serializers.Serializer):
     match_basis = serializers.CharField()
     recommendation_badge = serializers.CharField(required=False, allow_blank=True)
 
+
 class ReorderUnavailableItemSerializer(serializers.Serializer):
     order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()
@@ -353,6 +465,13 @@ class ReorderPriceChangedItemSerializer(serializers.Serializer):
     pricing_source = serializers.CharField(required=False)
     surplus_active = serializers.BooleanField(required=False)
     wholesale_active_for_quantity = serializers.BooleanField(required=False)
+
+    producer_changed = serializers.BooleanField(required=False)
+    original_producer_id = serializers.IntegerField(required=False)
+    original_producer_name = serializers.CharField(required=False)
+    current_producer_id = serializers.IntegerField(required=False)
+    current_producer_name = serializers.CharField(required=False)
+    message = serializers.CharField(required=False)
 
 
 class ReorderAddedItemSerializer(serializers.Serializer):

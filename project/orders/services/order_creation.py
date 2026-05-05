@@ -394,6 +394,10 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                 ),
                 stripe_payment_intent=payment_intent_id,
             )
+            # Notifications for customers about successful order placement
+            if not order.is_guest and order.user:
+                NotificationService.notify_order_success(order)
+
 
             # Clear cart
             cart_mark_checked_out(cart=cart)
