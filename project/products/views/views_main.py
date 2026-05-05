@@ -687,6 +687,7 @@ class ProductDetailView(DetailView):
 
 # Harminder Edits
 
+
 def send_for_approval(request, pk):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
@@ -695,12 +696,16 @@ def send_for_approval(request, pk):
 
     # Only FLAGGED products can be sent for approval
     if product.status != Product.Status.FLAGGED:
-        return JsonResponse({"error": "Only flagged products can be sent for approval"}, status=400)
+        return JsonResponse(
+            {"error": "Only flagged products can be sent for approval"}, status=400
+        )
 
     product.status = Product.Status.PENDING
     product.save()
 
     return JsonResponse({"success": True})
+
+
 # def product_view(request, category_id):
 #     # All categories except organic
 #     categories = Category.objects.exclude(name__icontains="organic")
@@ -887,6 +892,9 @@ def _can_view_wholesale_prices(user):
     }
 
 
+NO_ALLERGENS_FILTER = "__none__"
+
+
 def product_view(request, category_id):
     categories = Category.objects.exclude(name__icontains="organic")
     certified_organic = Category.objects.filter(name__icontains="organic")
@@ -897,6 +905,7 @@ def product_view(request, category_id):
     search_query = (request.GET.get("q") or "").strip()
     category_filter = (request.GET.get("category") or "").strip()
     producer_filter = (request.GET.get("producer") or "").strip()
+    allergen_filter = (request.GET.get("allergen") or "").strip()
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
     sort = (request.GET.get("sort") or "newest").strip()
@@ -958,6 +967,22 @@ def product_view(request, category_id):
 
     if show_filters and producer_filter:
         products_qs = products_qs.filter(producer__farm_name=producer_filter)
+
+    real_allergen_codes = [
+        code
+        for code, _label in Allergen.Allergens.choices
+        if code != Allergen.Allergens.NONE
+    ]
+
+    if show_filters and allergen_filter == NO_ALLERGENS_FILTER:
+        products_qs = products_qs.exclude(
+            product_allergen__allergen__name__in=real_allergen_codes
+        ).distinct()
+
+    elif show_filters and allergen_filter in real_allergen_codes:
+        products_qs = products_qs.filter(
+            product_allergen__allergen__name=allergen_filter
+        ).distinct()
 
     try:
         if min_price:
@@ -1102,6 +1127,9 @@ def product_view(request, category_id):
         {
             "categories": categories,
             "producers": producers,
+            "allergens": Allergen.objects.exclude(
+                name=Allergen.Allergens.NONE
+            ).order_by("name"),
             "products_json": json.dumps(product_json),
             "selected_category": selected_category,
             "show_filters": show_filters,
@@ -1112,6 +1140,7 @@ def product_view(request, category_id):
                 "q": search_query,
                 "category": category_filter,
                 "producer": producer_filter,
+                "allergen": allergen_filter,
                 "min_price": min_price,
                 "max_price": max_price,
                 "sort": sort,
@@ -1120,6 +1149,6 @@ def product_view(request, category_id):
     )
 
 
-# Pippal
+# Product Detail page
 def product_detail_page(request, product_id):
     return render(request, "products/product_detail.html", {"product_id": product_id})
