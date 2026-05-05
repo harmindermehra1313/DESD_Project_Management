@@ -29,17 +29,39 @@
           <span class="welcome-text me-3">Welcome, Guest</span>
         {% endif %}
         {% if user.is_authenticated %}
-          <div class="dropdown">
-            <a class="custom-account-icon dropdown-toggle"
+          <!-- <div class="dropdown"> -->
+            <!-- <a class="custom-account-icon dropdown-toggle"
                href="#"
                role="button"
                data-bs-toggle="dropdown"
                aria-expanded="false">
               <i class="bi bi-person-circle"></i>
-            </a>
+            </a> -->
+            <div class="dropdown account-dropdown">
+              <a class="custom-account-icon dropdown-toggle position-relative"
+                href="#"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+
+                <i class="bi bi-person-circle"></i>
+
+                {% if unread_notifications > 0 %}
+                  <span class="notification-dot"></span>
+                {% endif %}
+              </a>
             <ul class="dropdown-menu dropdown-menu-end custom-dropdown">
-              <li>
+              <!-- <li>
                 <a class="dropdown-item" href="/accounts/profile/">Profile</a>
+              </li> -->
+              <li>
+                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                  href="/accounts/profile/">
+                  Profile
+                  {% if unread_notifications > 0 %}
+                    <span class="badge bg-danger rounded-pill">{{ unread_notifications }}</span>
+                  {% endif %}
+                </a>
               </li>
               <li>
                 <a class="dropdown-item" href="{% url 'orders:order-history-page' %}">My Orders</a>

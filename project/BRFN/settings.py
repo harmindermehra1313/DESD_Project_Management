@@ -103,6 +103,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 "BRFN.context_processors.product_categories",
+                "notifications.context_processors.unread_notification_count",
             ],
         },
     },
