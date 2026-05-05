@@ -319,7 +319,7 @@
                 </nav>
             </div>
         {% endif %}
-        <div class="details-card bg-white mb-5">
+        <div class="details-card bg-white mb-5" id="producerDetailsCard">
             <div class="details-header">
                 Further Details:
                 <span id="detailOrderId" class="text-muted fw-normal">Select an order</span>
@@ -412,7 +412,7 @@
                                         {% if summary.status != 'CAN' and summary.status != 'COM' and summary.status != 'SHP' %}
                                             <button type="button"
                                                     class="btn btn-outline-danger btn-sm"
-                                                    onclick="cancelProducerOrderItem('{{ item.id }}', '{{ item.product.name|escapejs }}')">
+                                                    onclick="cancelProducerOrderItem('{{ item.id }}', '{{ item.product.name|escapejs }}', '{{ summary.id }}')">
                                                 Cancel item
                                             </button>
                                         {% endif %}
@@ -684,6 +684,6 @@
             </div>
         </div>
         {% csrf_token %}
-        <script src="{% static 'js/producer_dashboard.js' %}?v=3.1"></script>
+        <script src="{% static 'js/producer_dashboard.js' %}?v=3.4"></script>
     </div>
 {% endblock %}

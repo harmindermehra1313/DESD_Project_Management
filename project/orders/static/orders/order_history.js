@@ -844,12 +844,12 @@ function renderOrderSummary(order) {
       ${
         order.status_note
           ? `
-            <div class="col-12">
-              <div class="alert alert-warning mb-0">
-                ${escapeHtml(order.status_note)}
-              </div>
-            </div>
-          `
+      <div class="col-12">
+        <div class="alert alert-info mb-0">
+          Some items in this order were cancelled and refunded. Please check the item list below.
+        </div>
+      </div>
+    `
           : ""
       }
     </div>
@@ -1010,7 +1010,7 @@ function renderOrderItemStatus(item) {
   if (isOrderItemPartiallyCancelled(item)) {
     return `
       <div class="mt-1">
-        <span class="badge text-bg-warning">Partially cancelled</span>
+        <span class="badge text-bg-warning">Partly refunded</span>
       </div>
     `;
   }

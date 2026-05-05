@@ -293,6 +293,156 @@ function showOrderDetails(summaryId, rowElement) {
   renderStatusActionMenu(parseAllowedStatuses(rowElement));
 }
 
+function getStatusFilterId(statusCode) {
+  return (
+    {
+      PEN: "filterPen",
+      PRE: "filterPre",
+      PAC: "filterPac",
+      RFC: "filterRfc",
+      SHP: "filterShp",
+      COM: "filterCom",
+      CAN: "filterCan",
+    }[statusCode] || null
+  );
+}
+
+function ensureStatusFilterChecked(statusCode) {
+  const filterId = getStatusFilterId(statusCode);
+
+  if (!filterId) {
+    return;
+  }
+
+  const input = document.getElementById(filterId);
+
+  if (input) {
+    input.checked = true;
+  }
+}
+
+function getCurrentOrderFilterValues() {
+  return {
+    orderIdSearch: document.getElementById("filterOrderId").value.toLowerCase(),
+    nameSearch: document
+      .getElementById("filterCustomerName")
+      .value.toLowerCase(),
+    fromDate: document.getElementById("filterDateFrom").value,
+    toDate: document.getElementById("filterDateTo").value,
+    checkedStatuses: Array.from(
+      document.querySelectorAll(".status-filter:checked"),
+    ).map((cb) => cb.value),
+  };
+}
+
+function rowMatchesCurrentOrderFilters(row) {
+  const filters = getCurrentOrderFilterValues();
+
+  const status = row.getAttribute("data-status");
+  const orderId = row.getAttribute("data-order-id") || "";
+  const customerName = row.getAttribute("data-customer-name") || "";
+  const dueDate = row.getAttribute("data-due-date") || "";
+
+  if (!filters.checkedStatuses.includes(status)) {
+    return false;
+  }
+
+  if (!orderId.includes(filters.orderIdSearch)) {
+    return false;
+  }
+
+  if (!customerName.includes(filters.nameSearch)) {
+    return false;
+  }
+
+  if (filters.fromDate !== "" && dueDate < filters.fromDate) {
+    return false;
+  }
+
+  if (filters.toDate !== "" && dueDate > filters.toDate) {
+    return false;
+  }
+
+  return true;
+}
+
+function getMatchingOrderRowsForCurrentFilters() {
+  return Array.from(document.querySelectorAll(".order-row")).filter(
+    rowMatchesCurrentOrderFilters,
+  );
+}
+
+function moveToPageContainingSummary(summaryId) {
+  const row = document.getElementById(`row-${summaryId}`);
+
+  if (!row) {
+    return false;
+  }
+
+  const matchingRows = getMatchingOrderRowsForCurrentFilters();
+  const rowIndex = matchingRows.indexOf(row);
+
+  if (rowIndex === -1) {
+    return false;
+  }
+
+  currentPage = Math.floor(rowIndex / rowsPerPage) + 1;
+  return true;
+}
+
+function getDetailsCardElement() {
+  return (
+    document.getElementById("producerDetailsCard") ||
+    document.querySelector(".details-card")
+  );
+}
+
+function openSummaryDetails(summaryId, scrollToDetails = false) {
+  if (!summaryId) {
+    return false;
+  }
+
+  const row = document.getElementById(`row-${summaryId}`);
+
+  if (!row) {
+    return false;
+  }
+
+  const rowStatus = row.getAttribute("data-status");
+
+  ensureStatusFilterChecked(rowStatus);
+  moveToPageContainingSummary(summaryId);
+  applyAllFilters(false, false);
+  showOrderDetails(summaryId, row);
+
+  if (scrollToDetails) {
+    const detailsCard = getDetailsCardElement();
+
+    if (detailsCard) {
+      detailsCard.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }
+
+  return true;
+}
+
+function reloadAndReopenSummary(summaryId) {
+  if (!summaryId) {
+    window.location.reload();
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("open_order", summaryId);
+  url.searchParams.set("producer_page", String(currentPage));
+  url.hash = "producerDetailsCard";
+
+  window.location.assign(url.toString());
+}
+
 // 6. Show Subscription Details
 function showSubscriptionDetails(subId, rowElement) {
   selectedSummaryId = null;
@@ -390,30 +540,8 @@ async function changeStatus(newStatus) {
       return;
     }
 
-    const row = document.getElementById(`row-${selectedSummaryId}`);
-    const producerStatus = data.producer_status;
-    const producerStatusDisplay = data.producer_status_display;
-    const statusInfo = getProducerStatusInfo(
-      producerStatus,
-      producerStatusDisplay,
-    );
-
-    if (row) {
-      row.setAttribute("data-status", producerStatus);
-      row.setAttribute(
-        "data-allowed-statuses",
-        JSON.stringify(data.allowed_next_statuses || []),
-      );
-
-      const badge = row.querySelector(".status-badge");
-      if (badge) {
-        badge.textContent = producerStatusDisplay || statusInfo.text;
-        badge.className = `status-badge ${statusInfo.cls}`;
-      }
-    }
-
-    renderStatusActionMenu(data.allowed_next_statuses || []);
-    applyAllFilters(false, false);
+    reloadAndReopenSummary(selectedSummaryId);
+    return;
   } catch (error) {
     console.error("Error updating status:", error);
     alert("Network error occurred.");
@@ -580,7 +708,7 @@ async function toggleSubscription(subId) {
 
 async function cancelProducerOrder(summaryId) {
   const reason = prompt(
-    "Please enter the reason for cancelling this producer order.\n\nThis will cancel this producer section and refund the customer."
+    "Please enter the reason for cancelling this producer order.\n\nThis will cancel this producer section and refund the customer.",
   );
 
   if (reason === null) {
@@ -595,7 +723,7 @@ async function cancelProducerOrder(summaryId) {
   }
 
   const confirmCancel = confirm(
-    "Are you sure you want to cancel this producer order?\n\nThe customer will be refunded for this producer section. This cannot be undone."
+    "Are you sure you want to cancel this producer order?\n\nThe customer will be refunded for this producer section. This cannot be undone.",
   );
 
   if (!confirmCancel) {
@@ -610,33 +738,41 @@ async function cancelProducerOrder(summaryId) {
   }
 
   try {
-    const response = await fetch(`/accounts/cancel-producer-order/${summaryId}/`, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": csrfInput.value,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `/accounts/cancel-producer-order/${summaryId}/`,
+      {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfInput.value,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: cleanReason }),
       },
-      body: JSON.stringify({ reason: cleanReason }),
-    });
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      alert(data.error || "Something went wrong cancelling the producer order.");
+      alert(
+        data.error || "Something went wrong cancelling the producer order.",
+      );
       return;
     }
 
-    alert("Producer order cancelled successfully. Refund result: " + (data.refund?.message || "Processed."));
+    alert(
+      "Producer order cancelled successfully. Refund result: " +
+        (data.refund?.message || "Processed."),
+    );
 
-    window.location.reload();
+    reloadAndReopenSummary(summaryId);
   } catch (error) {
     console.error("Error cancelling producer order:", error);
     alert("Network error occurred.");
   }
 }
-async function cancelProducerOrderItem(itemId, productName) {
+async function cancelProducerOrderItem(itemId, productName, summaryId = null) {
   const reason = prompt(
-    `Please enter the reason for cancelling ${productName}.\n\nOnly this item will be cancelled and the customer will be refunded for this item.`
+    `Please enter the reason for cancelling ${productName}.\n\nOnly this item will be cancelled and the customer will be refunded for this item.`,
   );
 
   if (reason === null) {
@@ -651,7 +787,7 @@ async function cancelProducerOrderItem(itemId, productName) {
   }
 
   const confirmCancel = confirm(
-    `Are you sure you want to cancel ${productName}?\n\nThe customer will be refunded for this item only. This cannot be undone.`
+    `Are you sure you want to cancel ${productName}?\n\nThe customer will be refunded for this item only. This cannot be undone.`,
   );
 
   if (!confirmCancel) {
@@ -666,14 +802,17 @@ async function cancelProducerOrderItem(itemId, productName) {
   }
 
   try {
-    const response = await fetch(`/accounts/cancel-producer-order-item/${itemId}/`, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": csrfInput.value,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `/accounts/cancel-producer-order-item/${itemId}/`,
+      {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfInput.value,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: cleanReason }),
       },
-      body: JSON.stringify({ reason: cleanReason }),
-    });
+    );
 
     const data = await response.json();
 
@@ -684,10 +823,10 @@ async function cancelProducerOrderItem(itemId, productName) {
 
     alert(
       "Item cancelled successfully. Refund result: " +
-      (data.refund?.message || "Processed.")
+        (data.refund?.message || "Processed."),
     );
 
-    window.location.reload();
+    reloadAndReopenSummary(summaryId || selectedSummaryId);
   } catch (error) {
     console.error("Error cancelling producer order item:", error);
     alert("Network error occurred.");
@@ -695,18 +834,22 @@ async function cancelProducerOrderItem(itemId, productName) {
 }
 
 // 11. Initialize when the DOM loads
+// 11. Initialize when the DOM loads
 document.addEventListener("DOMContentLoaded", () => {
   const resetAndFilter = () => applyAllFilters(true);
 
   document
     .getElementById("filterOrderId")
     .addEventListener("input", resetAndFilter);
+
   document
     .getElementById("filterCustomerName")
     .addEventListener("input", resetAndFilter);
+
   document
     .getElementById("filterDateFrom")
     .addEventListener("change", resetAndFilter);
+
   document
     .getElementById("filterDateTo")
     .addEventListener("change", resetAndFilter);
@@ -715,12 +858,19 @@ document.addEventListener("DOMContentLoaded", () => {
     cb.addEventListener("change", resetAndFilter);
   });
 
-  // Subscription status filter listeners
   document.querySelectorAll(".sub-status-filter").forEach((cb) => {
     cb.addEventListener("change", () => applySubFilters(true));
   });
 
-  applyAllFilters(true);
+  const params = new URLSearchParams(window.location.search);
+  const openOrderId = params.get("open_order");
+  const savedProducerPage = Number(params.get("producer_page"));
+
+  if (Number.isFinite(savedProducerPage) && savedProducerPage > 0) {
+    currentPage = savedProducerPage;
+  }
+
+  applyAllFilters(false);
   applySubFilters(true);
 
   const confirmStatusUpdateBtn = document.getElementById(
@@ -746,20 +896,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Auto-open order from notification
-  const params = new URLSearchParams(window.location.search);
-  const openOrderId = params.get("open_order");
-
   if (openOrderId) {
-    // Delay to ensure rows are rendered + filters applied
     setTimeout(() => {
-      applyAllFilters(false, false);
-
-      const row = document.getElementById(`row-${openOrderId}`);
-      if (row) {
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-        showOrderDetails(openOrderId, row);
-      }
-    }, 50);
+      openSummaryDetails(openOrderId, true);
+    }, 80);
   }
 });
