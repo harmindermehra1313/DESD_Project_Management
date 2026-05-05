@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
 import joblib
 import numpy as np
+import time
 import time
 from django.conf import settings
 from scipy import sparse
@@ -13,6 +13,8 @@ from products.models import Product
 from .services import get_live_products_queryset
 from ai_admin.services import AITracker
 from django.contrib.auth import get_user_model
+from functools import lru_cache
+
 User = get_user_model()
 
 @dataclass(frozen=True)

@@ -101,6 +101,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      PRELOAD_REVIEW_MODERATION: "1"
+      TRANSFORMERS_VERBOSITY: "error"
+      HF_HUB_VERBOSITY: "error"
 
   qcluster:
     build: .
@@ -122,6 +126,8 @@ services:
       - .:/code
     env_file:
       - .env
+    environment:
+      TZ: Europe/London
     depends_on:
       web:
         condition: service_started
@@ -133,17 +139,6 @@ services:
     ports:
       - "8080:8080"
   
-  recommender_trainer:
-    build: .
-    container_name: brfn_recommender_trainer
-    command: ["./train-recommender-if-needed.sh"]
-    volumes:
-      - .:/code
-    env_file:
-      - .env
-    environment:
-      FORCE_RETRAIN_RECOMMENDER: "0"
-    
+  
 
-# volumes:
-#   postgres_data:
+

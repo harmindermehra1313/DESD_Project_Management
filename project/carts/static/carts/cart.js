@@ -1,6 +1,5 @@
 // carts/static/carts/cart.js
 
-
 const API_ROOT = "/api";
 const M = window.CartApiMessages;
 
@@ -74,7 +73,6 @@ export async function getCart() {
 }
 
 export async function addToCart({ inventoryId, quantity = 1 } = {}) {
-
   if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
     throw new Error(M.invalidInventoryId);
   }
@@ -93,7 +91,8 @@ export async function addToCart({ inventoryId, quantity = 1 } = {}) {
   document.dispatchEvent(
     new CustomEvent("cart:updated", { detail: { action: "add" } }),
   );
-  await getCartBadgeCount().catch(() => {});
+
+
   return data;
 }
 
@@ -114,7 +113,7 @@ export async function setItemQuantity({ inventoryId, quantity } = {}) {
   document.dispatchEvent(
     new CustomEvent("cart:updated", { detail: { action: "set_qty" } }),
   );
-  await getCartBadgeCount().catch(() => {});
+
   return res.status === 204 ? null : data;
 }
 
@@ -127,7 +126,6 @@ export async function removeItem({ inventoryId } = {}) {
   document.dispatchEvent(
     new CustomEvent("cart:updated", { detail: { action: "remove" } }),
   );
-  await getCartBadgeCount().catch(() => {});
   return { ok: true };
 }
 

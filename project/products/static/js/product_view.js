@@ -79,9 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (product.surplus_active) {
       badges.push(buildBadge("Surplus", "product-card-badge--danger"));
-    } else if (product.wholesale_active) {
+    }
+
+    if (product.wholesale_active) {
       badges.push(buildBadge("Wholesale", "product-card-badge--warning"));
-    } else if (product.low_stock) {
+    }
+
+    if (product.low_stock) {
       badges.push(buildBadge("Low stock", "product-card-badge--danger"));
     }
 
@@ -89,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
       badges.push(buildBadge("Organic", "product-card-badge--soft"));
     }
 
-    return badges.slice(0, 3).join("");
+    return badges.join("");
   }
 
   function buildImageHTML(product) {
@@ -162,9 +166,28 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  function buildActionHTML(product) {
-  if (product.is_disabled) {
+  function buildAllergensHTML(product) {
+    const allergens = Array.isArray(product.allergens)
+      ? product.allergens.filter(Boolean)
+      : [];
+
+    const allergenText = allergens.length
+      ? allergens.join(", ")
+      : "No listed allergens";
+
     return `
+    <div class="product-card-meta-row">
+      <span class="product-card-meta-label">Allergens</span>
+      <span class="product-card-meta-value">
+        ${escapeHTML(allergenText)}
+      </span>
+    </div>
+  `;
+  }
+
+  function buildActionHTML(product) {
+    if (product.is_disabled) {
+      return `
       <button
         class="btn btn-primary product-action-btn w-100 mt-auto"
         disabled
@@ -172,9 +195,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ${escapeHTML(product.disabled_reason || "Unavailable")}
       </button>
     `;
-  }
+    }
 
-  return `
+    return `
     <a
       href="/products/${escapeHTML(product.id)}/"
       class="btn btn-primary product-action-btn w-100 mt-auto"
@@ -182,7 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
       View details
     </a>
   `;
-}
+  }
 
   function renderProducts(list) {
     const grid = document.getElementById("productGrid");
@@ -198,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="product-empty-state">
           <h2 class="h5 mb-2">No products found</h2>
           <p class="mb-0">
-            Try changing the search, category, producer, or price filters.
+            Try changing the search, category, producer, allergen, or price filters.
           </p>
         </div>
       `;
@@ -244,6 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
               </div>
 
               ${buildStockHTML(product)}
+${buildAllergensHTML(product)}
             </div>
 
             <div class="product-card-footer">

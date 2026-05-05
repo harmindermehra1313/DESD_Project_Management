@@ -1,3 +1,186 @@
+/* Order history filters */
+.order-filter-card {
+  border: 1px solid rgba(55, 82, 111, 0.14);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.order-filter-card-body {
+  padding: 1.25rem;
+}
+
+.order-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.order-filter-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #172033;
+}
+
+.order-filter-subtitle {
+  color: #6c757d;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.order-filter-form {
+  margin: 0;
+}
+
+.order-filter-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(12rem, 1.15fr)
+    minmax(12rem, 1fr)
+    minmax(12rem, 1fr)
+    minmax(12rem, 1fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.order-filter-field {
+  min-width: 0;
+}
+
+.order-filter-field .form-label {
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: #172033;
+}
+
+#orderFiltersForm .form-select,
+#orderFiltersForm .form-control {
+  min-height: 3rem;
+  border-color: #d8dee4;
+  border-radius: 0.75rem;
+  box-shadow: none;
+}
+
+#orderFiltersForm .form-select:focus,
+#orderFiltersForm .form-control:focus {
+  border-color: var(--dusk-blue);
+  box-shadow: 0 0 0 0.2rem rgba(55, 82, 111, 0.16);
+}
+
+#orderFiltersForm .form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.12);
+}
+
+.order-filter-field .form-text {
+  max-width: 22rem;
+  margin-top: 0.45rem;
+  color: #56616f;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.order-filter-note {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  margin-top: 0.1rem;
+  border: 1px solid #e5ebf2;
+  border-radius: 0.85rem;
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.order-filter-note::before {
+  content: "i";
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.05rem;
+  border-radius: 999px;
+  background: rgba(55, 82, 111, 0.12);
+  color: var(--dusk-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.order-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid #edf1f5;
+}
+
+.order-filter-actions .btn {
+  min-width: 8rem;
+  min-height: 2.875rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+/* Filter layout: tablet */
+@media (max-width: 991.98px) {
+  .order-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .order-filter-field .form-text {
+    max-width: none;
+  }
+}
+
+/* Filter layout: mobile */
+@media (max-width: 575.98px) {
+  .order-filter-card-body {
+    padding: 1rem;
+  }
+
+  .order-filter-header {
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .order-filter-title {
+    font-size: 1rem;
+  }
+
+  .order-filter-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .order-filter-grid {
+    grid-template-columns: 1fr;
+    gap: 0.95rem;
+  }
+
+  .order-filter-note {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.88rem;
+  }
+
+  .order-filter-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-filter-actions .btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
 /* Reorder option inputs */
 .js-reorder-option-input:checked {
   background-color: var(--dusk-blue);
@@ -133,6 +316,31 @@
 /* Pagination */
 #paginationInfo {
   line-height: 1.4;
+}
+
+/* Cancelled order-detail items */
+.order-detail-items-table .order-detail-item-row-cancelled {
+  background-color: #f8f9fa;
+}
+
+.order-detail-items-table .order-detail-item-row-cancelled td {
+  color: #6c757d;
+}
+
+.order-detail-items-table
+  .order-detail-item-row-cancelled
+  .order-detail-item-product-name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.order-detail-items-table .order-detail-item-row-cancelled .btn {
+  pointer-events: none;
+}
+
+.order-detail-item-disabled-badge {
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Mobile: 1-column cards and stacked controls */

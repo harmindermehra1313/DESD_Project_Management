@@ -141,6 +141,7 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 #     }
 # }
 
+# Neon Database configuration with connection pooling and SSL settings
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

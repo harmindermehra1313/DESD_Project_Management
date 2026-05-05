@@ -22,6 +22,8 @@ class ReceiptItemSerializer(serializers.Serializer):
     product_name = serializers.CharField()
     producer_name = serializers.CharField()
     quantity = serializers.IntegerField()
+    original_quantity = serializers.IntegerField(required=False)
+    cancelled_quantity = serializers.IntegerField(required=False)
     unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
     discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     vat_amount = serializers.DecimalField(max_digits=10, decimal_places=2)

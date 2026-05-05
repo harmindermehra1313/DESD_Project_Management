@@ -14,6 +14,7 @@ class Payment(models.Model):
         PENDING = "PEN", "Pending"
         SUCCESS = "SUC", "Success"
         FAILED = "FAI", "Failed"
+        PARTIALLY_REFUNDED = "PREF", "Partially refunded"
         REFUNDED = "REF", "Refunded"
 
     order = models.ForeignKey(
@@ -55,6 +56,72 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment #{self.pk} for Order #{self.order.pk} ({self.payment_status})"
+
+
+class PaymentRefund(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "PEN", "Pending"
+        SUCCEEDED = "SUC", "Succeeded"
+        FAILED = "FAI", "Failed"
+
+    payment = models.ForeignKey(
+        "payments.Payment",
+        on_delete=models.CASCADE,
+        related_name="refunds",
+    )
+
+    order = models.ForeignKey(
+        "orders.Order",
+        on_delete=models.CASCADE,
+        related_name="payment_refunds",
+    )
+
+    order_item = models.ForeignKey(
+        "orders.OrderItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_refunds",
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    stripe_refund_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    idempotency_key = models.CharField(
+        max_length=255,
+        unique=True,
+    )
+
+    reason = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    error_message = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Refund #{self.pk} for Payment #{self.payment_id} ({self.status})"
 
 
 class ProducerSettlement(models.Model):
