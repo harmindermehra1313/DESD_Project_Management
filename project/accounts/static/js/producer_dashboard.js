@@ -258,8 +258,8 @@ function clearFilters() {
     filterPac: true,
     filterRfc: true,
     filterShp: true,
-    filterCom: true,
-    filterCan: false,
+    filterCom: false,
+    filterCan: true,
   };
 
   Object.entries(defaults).forEach(([id, checked]) => {

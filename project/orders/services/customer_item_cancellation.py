@@ -9,15 +9,83 @@ from orders.models import (
     ProducerOrderStatusHistory,
 )
 from orders.services.order_status import sync_order_status_from_producer_summaries
+from orders.services.receipt_service import _money
 from products.models import Inventory
 from payments.services import refund_cancelled_order_item
 from notifications.services.notifications import NotificationService
+from decimal import Decimal, ROUND_HALF_UP
 
 
 class CustomerItemCancellationError(Exception):
     """Raised when a customer item cancellation is not allowed."""
 
     pass
+
+COMMISSION_RATE = Decimal("0.05")
+
+
+def _money(amount):
+    return Decimal(amount).quantize(
+        Decimal("0.01"),
+        rounding=ROUND_HALF_UP,
+    )
+
+
+def _active_quantity(item):
+    return max(item.quantity - item.cancelled_quantity, 0)
+
+
+def _recalculate_producer_summary_totals(producer_summary):
+    """
+    Recalculate producer-facing totals after item cancellation.
+
+    Cancelled item quantities should not count towards:
+    - producer subtotal
+    - commission
+    - payout
+    - producer VAT total
+    """
+
+    items = OrderItem.objects.select_for_update(of=("self",)).filter(
+        order=producer_summary.order,
+        producer=producer_summary.producer,
+    )
+
+    active_subtotal = Decimal("0.00")
+    active_vat_total = Decimal("0.00")
+
+    for item in items:
+        active_qty = Decimal(_active_quantity(item))
+
+        if active_qty <= 0:
+            continue
+
+        unit_price = Decimal(item.final_unit_price)
+        vat_rate = Decimal(item.vat_rate or 0)
+
+        active_subtotal += unit_price * active_qty
+        active_vat_total += unit_price * active_qty * (vat_rate / Decimal("100"))
+
+    active_commission_total = active_subtotal * COMMISSION_RATE
+    active_payout_amount = active_subtotal - active_commission_total
+
+    producer_summary.subtotal = _money(active_subtotal)
+    producer_summary.vat_total = _money(active_vat_total)
+    producer_summary.commission_total = _money(active_commission_total)
+    producer_summary.payout_amount = _money(active_payout_amount)
+
+    producer_summary.save(
+        update_fields=[
+            "subtotal",
+            "vat_total",
+            "commission_total",
+            "payout_amount",
+        ]
+    )
+
+    return producer_summary
+
+
 
 
 def _get_producer_summary_for_item(*, order, item):
@@ -177,6 +245,7 @@ def cancel_order_item_as_customer(
             customer=customer,
             reason=reason,
         )
+        producer_summary = _recalculate_producer_summary_totals(producer_summary)
 
         sync_order_status_from_producer_summaries(order, save=True)
         order.refresh_from_db()
