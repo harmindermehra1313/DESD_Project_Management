@@ -634,6 +634,65 @@ async function cancelProducerOrder(summaryId) {
     alert("Network error occurred.");
   }
 }
+async function cancelProducerOrderItem(itemId, productName) {
+  const reason = prompt(
+    `Please enter the reason for cancelling ${productName}.\n\nOnly this item will be cancelled and the customer will be refunded for this item.`
+  );
+
+  if (reason === null) {
+    return;
+  }
+
+  const cleanReason = reason.trim();
+
+  if (!cleanReason) {
+    alert("A cancellation reason is required.");
+    return;
+  }
+
+  const confirmCancel = confirm(
+    `Are you sure you want to cancel ${productName}?\n\nThe customer will be refunded for this item only. This cannot be undone.`
+  );
+
+  if (!confirmCancel) {
+    return;
+  }
+
+  const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+
+  if (!csrfInput) {
+    alert("CSRF token not found.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/accounts/cancel-producer-order-item/${itemId}/`, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfInput.value,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason: cleanReason }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.error || "Something went wrong cancelling this item.");
+      return;
+    }
+
+    alert(
+      "Item cancelled successfully. Refund result: " +
+      (data.refund?.message || "Processed.")
+    );
+
+    window.location.reload();
+  } catch (error) {
+    console.error("Error cancelling producer order item:", error);
+    alert("Network error occurred.");
+  }
+}
 
 // 11. Initialize when the DOM loads
 document.addEventListener("DOMContentLoaded", () => {

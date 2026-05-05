@@ -202,9 +202,13 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="status-badge {% if summary.status == 'PEN' %}status-pending {% elif summary.status == 'PRE' %}status-preparing {% elif summary.status == 'PAC' %}status-packaged {% elif summary.status == 'RFC' %}status-ready {% elif summary.status == 'SHP' %}status-shipped {% elif summary.status == 'COM' %}status-completed {% elif summary.status == 'CAN' %}status-cancelled {% endif %} ">
+                                <span class="status-badge {% if summary.status == 'PEN' %}status-pending {% elif summary.status == 'PRE' %}status-preparing {% elif summary.status == 'PAC' %}status-packaged {% elif summary.status == 'RFC' %}status-ready {% elif summary.status == 'SHP' %}status-shipped {% elif summary.status == 'COM' %}status-completed {% elif summary.status == 'CAN' %}status-cancelled {% endif %}">
                                     {{ summary.get_status_display }}
                                 </span>
+                                {% if summary.has_cancelled_items and summary.status != 'CAN' %}
+                                    <br>
+                                    <span class="badge bg-warning text-dark mt-1">Partially cancelled</span>
+                                {% endif %}
                             </td>
                         </tr>
                     {% empty %}
@@ -300,7 +304,7 @@
                                     <td>{{ sub.items|length }} items</td>
                                     <td class="text-muted">{{ sub.created_at|date:"d/m/Y" }}</td>
                                     <td>
-                                        <span class="status-badge sub-status-badge {% if sub.status == 'ACTIVE' %}status-packaged {% elif sub.status == 'PAUSED' %}status-pending {% else %}status-cancelled{% endif %} ">
+                                        <span class="status-badge sub-status-badge {% if sub.status == 'ACTIVE' %}status-packaged {% elif sub.status == 'PAUSED' %}status-pending {% else %}status-cancelled{% endif %}">
                                             {{ sub.status_display }}
                                         </span>
                                     </td>
@@ -400,9 +404,18 @@
                             <strong>Active items to prepare:</strong>
                             <ul class="list-unstyled mb-3">
                                 {% for item in summary.active_items %}
-                                    <li>
-                                        {{ item.dashboard_active_quantity }}x {{ item.product.name }}
-                                        ({{ item.product.get_unit_display }})
+                                    <li class="d-flex justify-content-between align-items-center gap-2 py-1">
+                                        <span>
+                                            {{ item.dashboard_active_quantity }}x {{ item.product.name }}
+                                            ({{ item.product.get_unit_display }})
+                                        </span>
+                                        {% if summary.status != 'CAN' and summary.status != 'COM' and summary.status != 'SHP' %}
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-sm"
+                                                    onclick="cancelProducerOrderItem('{{ item.id }}', '{{ item.product.name|escapejs }}')">
+                                                Cancel item
+                                            </button>
+                                        {% endif %}
                                     </li>
                                 {% empty %}
                                     <li class="text-muted">No active items to prepare.</li>
@@ -435,10 +448,23 @@
                             {% endif %}
                             <div class="mt-3 pt-3 border-top">
                                 <strong>Current Producer Status:</strong>
+                                <br>
+                                <span class="js-producer-status-display">{{ summary.get_status_display }}</span>
+                                <div class="producer-instruction-box mt-3">
+                                    <strong>What to do next:</strong>
+                                    <ul class="mb-0 mt-2 ps-3">
+                                        <li>Check the active item list carefully.</li>
+                                        <li>Do not prepare cancelled items.</li>
+                                        <li>Check whether this is a delivery or collection order.</li>
+                                        <li>Only change the status when this producer section has really reached the next stage.</li>
+                                        <li>The system will only show the next allowed status.</li>
+                                        <li>If the wrong status is selected by mistake, contact an admin. Do not try to fix it by changing another order.</li>
+                                    </ul>
+                                </div>
                                 {% if summary.status != 'CAN' and summary.status != 'COM' and summary.status != 'SHP' %}
                                     <div class="mt-3 pt-3 border-top">
                                         <div class="alert alert-danger py-2 mb-3">
-                                            <strong>Cancel this producer order only if it cannot be fulfilled.</strong>
+                                            <strong>Cancel this producer order only if the whole producer section cannot be fulfilled.</strong>
                                             The customer will be refunded for this producer section.
                                             This action cannot be undone.
                                         </div>
@@ -449,18 +475,6 @@
                                         </button>
                                     </div>
                                 {% endif %}
-                                <br>
-                                <span class="js-producer-status-display">{{ summary.get_status_display }}</span>
-                                <div class="producer-instruction-box mt-3">
-                                    <strong>What to do next:</strong>
-                                    <ul class="mb-0 mt-2 ps-3">
-                                        <li>Check the item list carefully.</li>
-                                        <li>Check whether this is a delivery or collection order.</li>
-                                        <li>Only change the status when this producer section has really reached the next stage.</li>
-                                        <li>The system will only show the next allowed status.</li>
-                                        <li>If the wrong status is selected by mistake, contact an admin. Do not try to fix it by changing another order.</li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -646,9 +660,20 @@
                                 <strong>Completed:</strong> customer has collected the order.
                             </li>
                         </ol>
-                        <h6 class="fw-bold mt-3">7. Mistakes</h6>
+                        <h6 class="fw-bold mt-3">7. Cancelling one item</h6>
+                        <p>
+                            Use <strong>Cancel item</strong> only when one specific item cannot be fulfilled.
+                            The customer will be refunded for that item only.
+                            The rest of the order can still continue.
+                        </p>
+                        <h6 class="fw-bold mt-3">8. Cancelling the whole producer order</h6>
+                        <p>
+                            Use <strong>Cancel producer order and refund customer</strong> only when none of this producer's active items can be fulfilled.
+                            This cancels this producer section and refunds the customer for this producer section.
+                        </p>
+                        <h6 class="fw-bold mt-3">9. Mistakes</h6>
                         <p class="mb-0">
-                            If a status is updated by mistake, contact an admin.
+                            If a status is updated or an item is cancelled by mistake, contact an admin.
                             Status should not be moved backwards because the order history must stay accurate.
                         </p>
                     </div>
@@ -659,5 +684,6 @@
             </div>
         </div>
         {% csrf_token %}
-        <script src="{% static 'js/producer_dashboard.js' %}?v=3.0"></script>
-    {% endblock %}
+        <script src="{% static 'js/producer_dashboard.js' %}?v=3.1"></script>
+    </div>
+{% endblock %}

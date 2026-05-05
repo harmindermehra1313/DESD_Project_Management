@@ -62,6 +62,11 @@ from orders.services.producer_order_cancellation import (
     cancel_producer_order_as_producer,
 )
 
+from orders.services.producer_item_cancellation import (
+    ProducerItemCancellationError,
+    cancel_producer_order_item_as_producer,
+)
+
 from decimal import Decimal
 
 
@@ -423,6 +428,55 @@ def cancel_producer_order(request, summary_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+@login_required
+@require_POST
+def cancel_producer_order_item(request, item_id):
+    if request.user.role != "PRODUCER" or not hasattr(request.user, "producer_profile"):
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        data = json.loads(request.body or "{}")
+        reason = data.get("reason", "")
+
+        result = cancel_producer_order_item_as_producer(
+            order_item_id=item_id,
+            producer=request.user.producer_profile,
+            cancelled_by=request.user,
+            reason=reason,
+        )
+
+        item = result["item"]
+        summary = result["producer_summary"]
+        order = result["order"]
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Producer order item cancelled successfully.",
+                "item": {
+                    "id": item.id,
+                    "status": item.status,
+                    "status_display": item.get_status_display(),
+                    "quantity": item.quantity,
+                    "cancelled_quantity": item.cancelled_quantity,
+                    "active_quantity": item.active_quantity,
+                },
+                "producer_status": summary.status,
+                "producer_status_display": summary.get_status_display(),
+                "order_status": order.status,
+                "order_status_display": order.get_status_display(),
+                "refund": result.get("refund"),
+            }
+        )
+
+    except OrderItem.DoesNotExist:
+        return JsonResponse({"error": "Order item not found"}, status=404)
+
+    except ProducerItemCancellationError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
 @login_required
 @require_POST
