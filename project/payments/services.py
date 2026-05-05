@@ -452,10 +452,40 @@ def refund_remaining_card_payment_for_order(*, order, reason):
     )
 
 
-def refund_cancelled_order_item(*, order, item, cancelled_quantity, reason):
+def get_cancelled_order_item_refund_amount(*, item, cancelled_quantity):
+    """
+    Calculate the customer refund amount for a cancelled order item quantity.
+
+    The refund includes:
+    - final unit price for the cancelled quantity
+    - proportional VAT for the cancelled quantity
+    """
+
     cancelled_quantity = int(cancelled_quantity)
-    amount = normalise_money(
-        Decimal(item.final_unit_price) * Decimal(cancelled_quantity)
+
+    if cancelled_quantity <= 0:
+        return Decimal("0.00")
+
+    if item.quantity <= 0:
+        return Decimal("0.00")
+
+    cancelled_quantity_decimal = Decimal(cancelled_quantity)
+
+    item_total = Decimal(item.final_unit_price) * cancelled_quantity_decimal
+
+    proportional_vat = (
+        Decimal(item.vat_amount or 0)
+        / Decimal(item.quantity)
+        * cancelled_quantity_decimal
+    )
+
+    return normalise_money(item_total + proportional_vat)
+
+
+def refund_cancelled_order_item(*, order, item, cancelled_quantity, reason):
+    amount = get_cancelled_order_item_refund_amount(
+        item=item,
+        cancelled_quantity=cancelled_quantity,
     )
 
     return create_customer_refund(
