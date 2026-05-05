@@ -110,6 +110,42 @@ def _get_historical_unit_price(item):
     )
 
 
+def _format_unit_price(value) -> str:
+    if value is None:
+        return "unknown price"
+    return f"£{value:.2f}"
+
+
+def _build_price_change_message(
+    *,
+    product_name,
+    original_price,
+    current_price,
+    original_producer_name,
+    current_producer_name,
+    producer_changed,
+    pricing_source,
+):
+    message = (
+        f"Unit price updated for {product_name}: "
+        f"{_format_unit_price(original_price)} → {_format_unit_price(current_price)}."
+    )
+
+    if producer_changed:
+        message += (
+            f" This is because the replacement item is supplied by "
+            f"{current_producer_name} instead of {original_producer_name}."
+        )
+    elif pricing_source == "surplus":
+        message += " This is because the current item has surplus pricing."
+    elif pricing_source == "wholesale":
+        message += " This is because the current quantity uses wholesale pricing."
+    else:
+        message += " This is because the current unit price is different from the previous order."
+
+    return message
+
+
 def _reason_payload(
     *,
     code: str,
@@ -736,6 +772,10 @@ def reorder_order(
 
         historical_unit_price = _get_historical_unit_price(item)
 
+        producer_changed = selected_product.producer_id != item.producer_id
+        original_producer_name = item.producer.farm_name
+        current_producer_name = selected_product.producer.farm_name
+
         if (
             historical_unit_price is not None
             and historical_unit_price != current_unit_price
@@ -752,6 +792,20 @@ def reorder_order(
                     "wholesale_active_for_quantity": pricing["wholesale"][
                         "active_for_quantity"
                     ],
+                    "producer_changed": producer_changed,
+                    "original_producer_id": item.producer_id,
+                    "original_producer_name": original_producer_name,
+                    "current_producer_id": selected_product.producer_id,
+                    "current_producer_name": current_producer_name,
+                    "message": _build_price_change_message(
+                        product_name=selected_product.name,
+                        original_price=historical_unit_price,
+                        current_price=current_unit_price,
+                        original_producer_name=original_producer_name,
+                        current_producer_name=current_producer_name,
+                        producer_changed=producer_changed,
+                        pricing_source=pricing["pricing_source"],
+                    ),
                 }
             )
 

@@ -1,9 +1,8 @@
 from django.urls import path
 from . import views
 from orders.views.checkout import checkout_save, checkout_cod, stripe_return
-from .views.order_history import order_history_page
+from .views.order_history import order_history_page, receipt_detail_page
 from .views.list_recurring import list_recurring_page, customer_toggle_subscription, customer_cancel_subscription
-from .views.receipts import receipt_detail_page
 
 app_name = "orders"
 
@@ -21,5 +20,10 @@ urlpatterns = [
     path("subscription/<int:sub_id>/toggle/", customer_toggle_subscription, name="customer-toggle-subscription"),
     path("subscription/<int:sub_id>/cancel/", customer_cancel_subscription, name="customer-cancel-subscription"),
     # Recept Page
-    path("receipt/<int:order_id>/", receipt_detail_page, name="receipt-detail-page"),
+  
+   path(
+    "receipt/<int:order_id>/",
+    receipt_detail_page,
+    name="receipt-detail-page",
+),
 ]

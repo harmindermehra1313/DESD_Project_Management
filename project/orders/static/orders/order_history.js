@@ -400,7 +400,7 @@ function isReorderAllowed(order) {
 
 function isReceiptAllowed(status) {
   const value = normaliseStatus(status);
-  return value.includes("completed");
+  return !value.includes("cancel");
 }
 
 function isCustomerCancellationAllowed(order) {
@@ -2758,7 +2758,40 @@ function renderQuantityAdjustmentsSection(items) {
     </div>
   `;
 }
+function getPriceUpdateMessage(item) {
+  if (item?.message) {
+    return item.message;
+  }
 
+  const productName = item?.product_name || M.productFallback || "this item";
+  const originalPrice = formatMoney(item?.original_price);
+  const currentPrice = formatMoney(item?.current_price);
+
+  let message = `Unit price updated for ${productName}: ${originalPrice} → ${currentPrice}.`;
+
+  if (item?.producer_changed) {
+    const currentProducer =
+      item.current_producer_name || "a different producer";
+    const originalProducer = item.original_producer_name || "";
+
+    message += ` This is because the selected replacement is supplied by ${currentProducer}`;
+
+    if (originalProducer) {
+      message += ` instead of ${originalProducer}`;
+    }
+
+    message += ".";
+  } else if (item?.pricing_source === "surplus") {
+    message += " This is because surplus pricing is currently applied.";
+  } else if (item?.pricing_source === "wholesale") {
+    message += " This is because wholesale pricing is currently applied.";
+  } else {
+    message +=
+      " This is because the current unit price is different from the previous order.";
+  }
+
+  return message;
+}
 function renderPriceChangesSection(items) {
   if (!items || !items.length) {
     return "";
@@ -2774,18 +2807,22 @@ function renderPriceChangesSection(items) {
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
 
               ${
-                item.producer_name
+                item.current_producer_name || item.producer_name
                   ? `
                     <div class="small text-muted mt-1">
-                      ${M.producerLine(escapeHtml(item.producer_name))}
+                      ${M.producerLine(
+                        escapeHtml(
+                          item.current_producer_name ||
+                          item.producer_name,
+                        ),
+                      )}
                     </div>
                   `
                   : ""
               }
 
               <div class="small text-primary mt-2">
-                ${formatMoney(item.original_price)} →
-                ${formatMoney(item.current_price)}
+                ${escapeHtml(getPriceUpdateMessage(item))}
               </div>
             </div>
           `,

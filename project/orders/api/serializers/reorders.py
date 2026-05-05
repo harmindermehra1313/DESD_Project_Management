@@ -466,6 +466,13 @@ class ReorderPriceChangedItemSerializer(serializers.Serializer):
     surplus_active = serializers.BooleanField(required=False)
     wholesale_active_for_quantity = serializers.BooleanField(required=False)
 
+    producer_changed = serializers.BooleanField(required=False)
+    original_producer_id = serializers.IntegerField(required=False)
+    original_producer_name = serializers.CharField(required=False)
+    current_producer_id = serializers.IntegerField(required=False)
+    current_producer_name = serializers.CharField(required=False)
+    message = serializers.CharField(required=False)
+
 
 class ReorderAddedItemSerializer(serializers.Serializer):
     order_item_id = serializers.IntegerField(required=False)
