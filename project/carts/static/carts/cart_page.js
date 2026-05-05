@@ -610,7 +610,13 @@ document.addEventListener("DOMContentLoaded", () => {
     setEmpty(true);
   });
 
-  document.addEventListener("cart:updated", () => {
+  document.addEventListener("cart:updated", (event) => {
+    const action = event?.detail?.action;
+
+    if (action === "set_qty" || action === "remove") {
+      return;
+    }
+
     refresh().catch(() => {});
   });
 });
