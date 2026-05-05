@@ -140,8 +140,8 @@
                         <th>Due Date</th>
                         <th>Type</th>
                         <th>Items</th>
-                        <th>Total Value</th>
-                        <th>Payout (95%)</th>
+                        <th>Current Value</th>
+                        <th>Current Payout (95%)</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -175,30 +175,27 @@
                             <td>{{ summary.delivery_date|date:"d/m/Y" }}</td>
                             <td>{{ summary.get_delivery_or_collection_display }}</td>
                             <td>
-                                {% if summary.status == 'CAN' %}
-                                    0 active
-                                    <br>
-                                    <span class="text-muted small">{{ summary.cancelled_item_count }} cancelled</span>
+                                {% if summary.dashboard_is_fully_cancelled %}
+                                    <div class="fw-bold text-danger">{{ summary.dashboard_item_status_label }}</div>
                                 {% else %}
-                                    {{ summary.active_item_count }} active item{{ summary.active_item_count|pluralize }}
-                                    {% if summary.cancelled_item_count %}
-                                        <br>
-                                        <span class="text-muted small">{{ summary.cancelled_item_count }} cancelled</span>
-                                    {% endif %}
+                                    <div class="fw-bold">{{ summary.dashboard_item_status_label }}</div>
+                                {% endif %}
+                                <div class="text-muted small">{{ summary.dashboard_item_status_help }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">£{{ summary.display_subtotal|floatformat:2 }}</div>
+                                {% if summary.dashboard_is_fully_cancelled %}
+                                    <div class="text-muted small">Original: £{{ summary.original_subtotal|floatformat:2 }}</div>
+                                {% elif summary.has_cancelled_items %}
+                                    <div class="text-muted small">{{ summary.dashboard_value_help }}</div>
                                 {% endif %}
                             </td>
                             <td>
-                                £{{ summary.display_subtotal|floatformat:2 }}
-                                {% if summary.has_cancelled_items %}
-                                    <br>
-                                    <span class="text-muted small">after cancellation</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                £{{ summary.display_payout_amount|floatformat:2 }}
-                                {% if summary.has_cancelled_items %}
-                                    <br>
-                                    <span class="text-muted small">after cancellation</span>
+                                <div class="fw-bold">£{{ summary.display_payout_amount|floatformat:2 }}</div>
+                                {% if summary.dashboard_is_fully_cancelled %}
+                                    <div class="text-danger small">No payout due</div>
+                                {% elif summary.has_cancelled_items %}
+                                    <div class="text-muted small">{{ summary.dashboard_payout_help }}</div>
                                 {% endif %}
                             </td>
                             <td>
@@ -438,6 +435,7 @@
                                                 ({{ item.product.get_unit_display }})
                                             </s>
                                             <span class="badge bg-secondary ms-1">Cancelled</span>
+                                            <span class="text-muted small ms-1">{{ item.dashboard_quantity_summary }}</span>
                                         </li>
                                     {% endfor %}
                                 </ul>
@@ -843,6 +841,6 @@
             </div>
         </div>
         {% csrf_token %}
-        <script src="{% static 'js/producer_dashboard.js' %}?v=3.7"></script>
+        <script src="{% static 'js/producer_dashboard.js' %}?v=3.8"></script>
     </div>
 {% endblock %}

@@ -67,8 +67,7 @@ from orders.services.producer_item_cancellation import (
     cancel_producer_order_item_as_producer,
 )
 
-from decimal import Decimal
-
+from decimal import Decimal, ROUND_HALF_UP
 
 # ---------------------------------------
 # Register URL
@@ -184,45 +183,160 @@ def profile(request):
 
 
 # ---------------------------------------
-# Producer URL
+# Producer Dashboard URL
 # ---------------------------------------
+PRODUCER_PAYOUT_RATE = Decimal("0.95")
+
+
+def _dashboard_money(amount):
+    return Decimal(amount or 0).quantize(
+        Decimal("0.01"),
+        rounding=ROUND_HALF_UP,
+    )
+
+
+def _dashboard_int(value):
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _quantity_label(quantity):
+    quantity = _dashboard_int(quantity)
+    return "1 unit" if quantity == 1 else f"{quantity} units"
+
+
 def attach_producer_dashboard_item_values(summary):
     items = list(getattr(summary.order, "my_items", []))
 
     active_items = []
     cancelled_items = []
 
+    original_subtotal = Decimal("0.00")
     active_subtotal = Decimal("0.00")
+    cancelled_subtotal = Decimal("0.00")
+
+    total_quantity = 0
+    active_quantity_total = 0
+    cancelled_quantity_total = 0
+
+    active_line_count = 0
+    cancelled_line_count = 0
+
+    summary_is_cancelled = summary.status == ProducerOrderSummary.Status.CANCELLED
 
     for item in items:
-        cancelled_quantity = getattr(item, "cancelled_quantity", 0) or 0
-        dashboard_active_quantity = max(item.quantity - cancelled_quantity, 0)
+        quantity = max(_dashboard_int(getattr(item, "quantity", 0)), 0)
+        stored_cancelled_quantity = max(
+            _dashboard_int(getattr(item, "cancelled_quantity", 0)),
+            0,
+        )
+
+        unit_price = Decimal(getattr(item, "final_unit_price", 0) or 0)
+
+        original_subtotal += unit_price * Decimal(quantity)
+        total_quantity += quantity
+
+        # Defensive display rule:
+        # If the producer section or the item is cancelled, show the whole item
+        # quantity as cancelled even if older data has cancelled_quantity = 0.
+        if summary_is_cancelled or item.status == OrderItem.Status.CANCELLED:
+            dashboard_cancelled_quantity = quantity
+        else:
+            dashboard_cancelled_quantity = min(stored_cancelled_quantity, quantity)
+
+        dashboard_active_quantity = max(quantity - dashboard_cancelled_quantity, 0)
 
         item.dashboard_active_quantity = dashboard_active_quantity
-        item.dashboard_cancelled_quantity = cancelled_quantity
-        item.dashboard_is_cancelled = (
-            item.status == OrderItem.Status.CANCELLED or dashboard_active_quantity <= 0
-        )
+        item.dashboard_cancelled_quantity = dashboard_cancelled_quantity
+
+        item.dashboard_is_cancelled = dashboard_active_quantity <= 0
         item.dashboard_is_partially_cancelled = (
-            cancelled_quantity > 0 and dashboard_active_quantity > 0
+            dashboard_cancelled_quantity > 0 and dashboard_active_quantity > 0
         )
+
+        if item.dashboard_is_cancelled:
+            item.dashboard_quantity_summary = (
+                f"{_quantity_label(dashboard_cancelled_quantity)} cancelled"
+            )
+        elif item.dashboard_is_partially_cancelled:
+            item.dashboard_quantity_summary = (
+                f"{_quantity_label(dashboard_active_quantity)} active, "
+                f"{_quantity_label(dashboard_cancelled_quantity)} cancelled"
+            )
+        else:
+            item.dashboard_quantity_summary = (
+                f"{_quantity_label(dashboard_active_quantity)} active"
+            )
 
         if dashboard_active_quantity > 0:
             active_items.append(item)
-            active_subtotal += Decimal(item.final_unit_price) * Decimal(
-                dashboard_active_quantity
-            )
+            active_line_count += 1
+            active_quantity_total += dashboard_active_quantity
+            active_subtotal += unit_price * Decimal(dashboard_active_quantity)
 
-        if cancelled_quantity > 0 or item.status == OrderItem.Status.CANCELLED:
+        if dashboard_cancelled_quantity > 0:
             cancelled_items.append(item)
+            cancelled_line_count += 1
+            cancelled_quantity_total += dashboard_cancelled_quantity
+            cancelled_subtotal += unit_price * Decimal(dashboard_cancelled_quantity)
+
+    dashboard_is_fully_cancelled = (
+        summary_is_cancelled
+        or (total_quantity > 0 and active_quantity_total == 0)
+    )
 
     summary.active_items = active_items
     summary.cancelled_items = cancelled_items
-    summary.active_item_count = len(active_items)
-    summary.cancelled_item_count = len(cancelled_items)
-    summary.has_cancelled_items = summary.cancelled_item_count > 0
-    summary.display_subtotal = active_subtotal
-    summary.display_payout_amount = active_subtotal * Decimal("0.95")
+
+    summary.active_item_count = active_line_count
+    summary.cancelled_item_count = cancelled_line_count
+    summary.total_item_count = len(items)
+
+    summary.active_quantity_total = active_quantity_total
+    summary.cancelled_quantity_total = cancelled_quantity_total
+    summary.total_quantity = total_quantity
+
+    summary.has_cancelled_items = cancelled_quantity_total > 0
+    summary.dashboard_is_fully_cancelled = dashboard_is_fully_cancelled
+
+    summary.original_subtotal = _dashboard_money(original_subtotal)
+    summary.cancelled_subtotal = _dashboard_money(cancelled_subtotal)
+
+    if dashboard_is_fully_cancelled:
+        summary.display_subtotal = Decimal("0.00")
+        summary.display_payout_amount = Decimal("0.00")
+        summary.dashboard_item_status_label = "All items cancelled"
+
+        if cancelled_quantity_total > 0:
+            summary.dashboard_item_status_help = (
+                f"{_quantity_label(cancelled_quantity_total)} cancelled"
+            )
+        else:
+            summary.dashboard_item_status_help = "No active items"
+
+        summary.dashboard_value_help = "Original value before cancellation"
+        summary.dashboard_payout_help = "No payout due"
+    else:
+        summary.display_subtotal = _dashboard_money(active_subtotal)
+        summary.display_payout_amount = _dashboard_money(
+            active_subtotal * PRODUCER_PAYOUT_RATE
+        )
+
+        summary.dashboard_item_status_label = (
+            f"{_quantity_label(active_quantity_total)} active"
+        )
+
+        if cancelled_quantity_total > 0:
+            summary.dashboard_item_status_help = (
+                f"{_quantity_label(cancelled_quantity_total)} cancelled"
+            )
+        else:
+            summary.dashboard_item_status_help = "No cancelled items"
+
+        summary.dashboard_value_help = "Current value after cancellations"
+        summary.dashboard_payout_help = "Current producer payout"
 
 
 @login_required

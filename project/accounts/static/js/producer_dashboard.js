@@ -498,53 +498,193 @@ function showTextInputModal({
 }
 
 /* ============================================================
-   Producer-friendly refund wording
+   Producer-friendly payment and refund wording
 ============================================================ */
+
+function getRefundTextBlob(refund) {
+  if (!refund) return "";
+
+  return [
+    refund.payment_method,
+    refund.payment_type,
+    refund.payment_provider,
+    refund.payment_status,
+    refund.refund_status,
+    refund.status,
+    refund.message,
+    refund.reason,
+    refund.error,
+    refund.detail,
+  ]
+    .filter((value) => value !== undefined && value !== null)
+    .map((value) => String(value).toLowerCase())
+    .join(" ");
+}
+
+function isCashRefundContext(refund) {
+  const text = getRefundTextBlob(refund);
+
+  return (
+    refund?.is_cash_order === true ||
+    refund?.cash_order === true ||
+    refund?.payment_method === "CASH" ||
+    refund?.payment_method === "cash" ||
+    refund?.payment_type === "CASH" ||
+    refund?.payment_type === "cash" ||
+    text.includes("cash order") ||
+    text.includes("cash payment") ||
+    text.includes("not paid online") ||
+    text.includes("no online payment") ||
+    text.includes("offline payment")
+  );
+}
+
+function isCardRefundContext(refund) {
+  const text = getRefundTextBlob(refund);
+
+  return (
+    refund?.is_card_order === true ||
+    refund?.card_order === true ||
+    refund?.payment_method === "CARD" ||
+    refund?.payment_method === "card" ||
+    refund?.payment_type === "CARD" ||
+    refund?.payment_type === "card" ||
+    text.includes("card order") ||
+    text.includes("card payment") ||
+    text.includes("stripe") ||
+    text.includes("payment provider") ||
+    text.includes("online payment") ||
+    text.includes("payment intent")
+  );
+}
+
+function isDemoRefundContext(refund) {
+  const text = getRefundTextBlob(refund);
+
+  return (
+    refund?.simulated === true ||
+    refund?.demo === true ||
+    refund?.demo_mode === true ||
+    text.includes("demo") ||
+    text.includes("simulated") ||
+    text.includes("locally")
+  );
+}
+
+function isAlreadyRefundedContext(refund) {
+  const text = getRefundTextBlob(refund);
+
+  return (
+    refund?.already_refunded === true ||
+    refund?.already_processed === true ||
+    text.includes("already processed") ||
+    text.includes("already refunded") ||
+    text.includes("fully refunded")
+  );
+}
+
+function isNoSuccessfulCardPaymentContext(refund) {
+  const text = getRefundTextBlob(refund);
+
+  return (
+    refund?.no_successful_payment === true ||
+    refund?.no_successful_card_payment === true ||
+    text.includes("no successful card payment") ||
+    text.includes("no successful payment") ||
+    text.includes("payment was not successful") ||
+    text.includes("payment failed")
+  );
+}
+
+function isRefundedContext(refund) {
+  return (
+    refund?.refunded === true ||
+    refund?.refund_created === true ||
+    refund?.refund_requested === true ||
+    refund?.status === "refunded" ||
+    refund?.status === "success" ||
+    refund?.refund_status === "refunded" ||
+    refund?.refund_status === "success"
+  );
+}
+
+function getPaymentContextLabel(refund) {
+  if (isCashRefundContext(refund)) {
+    return "Cash order";
+  }
+
+  if (isCardRefundContext(refund)) {
+    return "Card order";
+  }
+
+  return "Payment update";
+}
 
 function formatRefundMessage(refund) {
   if (!refund) {
-    return "Refund details were not returned by the system.";
+    return "The cancellation was recorded, but payment adjustment details were not returned by the system.";
   }
 
-  const rawMessage = String(refund.message || refund.reason || "");
-  const lowerMessage = rawMessage.toLowerCase();
+  const rawMessage = String(refund.message || refund.reason || "").trim();
 
-  if (refund.refunded) {
-    if (refund.simulated || lowerMessage.includes("demo")) {
-      return "The customer will receive the refund soon.";
-    }
-
-    if (lowerMessage.includes("already processed")) {
-      return "The customer refund had already been processed.";
-    }
-
-    if (lowerMessage.includes("stripe refund requested")) {
-      return "The customer refund request has been sent to the payment provider.";
-    }
-
-    return "The customer refund has been processed successfully.";
+  if (isCashRefundContext(refund)) {
+    return "No card refund was needed because this was a cash order.";
   }
 
-  if (
-    lowerMessage.includes("no online payment") ||
-    lowerMessage.includes("cash order")
-  ) {
-    return "No card refund was needed because this order was not paid online.";
+  if (isAlreadyRefundedContext(refund)) {
+    return "The customer refund had already been processed.";
   }
 
-  if (lowerMessage.includes("no successful card payment")) {
+  if (isNoSuccessfulCardPaymentContext(refund)) {
     return "No successful card payment was found, so no automatic card refund was made.";
   }
 
-  if (lowerMessage.includes("fully refunded")) {
-    return "This payment has already been fully refunded.";
+  if (isRefundedContext(refund)) {
+    return "The customer will receive the refund soon.";
+  }
+
+  if (isCardRefundContext(refund)) {
+    return "The cancellation was recorded. Check the payment record if a card refund is still expected.";
   }
 
   if (rawMessage) {
     return rawMessage;
   }
 
-  return "No automatic card refund was made.";
+  return "The cancellation was recorded. No automatic card refund update was returned.";
+}
+
+function getCancellationCompletionMessage(refund, context = "item") {
+  const itemText =
+    context === "producer_order"
+      ? "This producer section has been cancelled."
+      : "The item quantity has been cancelled.";
+
+  if (isCashRefundContext(refund)) {
+    return `${itemText} No card refund was needed because this was a cash order.`;
+  }
+
+  if (isRefundedContext(refund) || isAlreadyRefundedContext(refund)) {
+    return `${itemText} The customer will receive the refund soon.`;
+  }
+
+  if (isNoSuccessfulCardPaymentContext(refund)) {
+    return `${itemText} No successful card payment was found, so no automatic card refund was made.`;
+  }
+
+  return `${itemText} The cancellation has been recorded.`;
+}
+
+function getRefundAmountLabel(refund) {
+  if (isCashRefundContext(refund)) {
+    return "Cancelled cash amount";
+  }
+
+  if (isCardRefundContext(refund) || isRefundedContext(refund)) {
+    return "Refund amount";
+  }
+
+  return "Payment adjustment amount";
 }
 
 function getRefundAmountText(refund) {
@@ -552,7 +692,25 @@ function getRefundAmountText(refund) {
     return null;
   }
 
-  return `£${Number(refund.amount).toFixed(2)}`;
+  const numericAmount = Number(refund.amount);
+
+  if (Number.isNaN(numericAmount)) {
+    return String(refund.amount);
+  }
+
+  return `£${numericAmount.toFixed(2)}`;
+}
+
+function getRefundDetails(refund) {
+  const refundAmountText = getRefundAmountText(refund);
+
+  return [
+    { label: "Payment type", value: getPaymentContextLabel(refund) },
+    refundAmountText
+      ? { label: getRefundAmountLabel(refund), value: refundAmountText }
+      : null,
+    { label: "Payment update", value: formatRefundMessage(refund) },
+  ];
 }
 
 /* ============================================================
@@ -1388,7 +1546,7 @@ async function cancelProducerOrder(summaryId) {
   const reason = await showTextInputModal({
     title: "Cancel producer order",
     message:
-      "Use this only when this producer section cannot be fulfilled. The customer will be refunded for this producer section.",
+      "Use this only when this producer section cannot be fulfilled. The system will handle any card refund or cash-order adjustment that applies.",
     label: "Reason for cancellation",
     placeholder: "Example: unable to fulfil this producer order after stock check.",
     confirmText: "Review cancellation",
@@ -1399,14 +1557,15 @@ async function cancelProducerOrder(summaryId) {
   const confirmed = await showConfirmModal({
     title: "Final cancellation check",
     message:
-      "This will cancel this producer section and start the customer refund process.",
+      "This will cancel this producer section and update the customer payment record where needed.",
     details: [
       { label: "Reason", value: reason },
       "Only this producer section will be cancelled.",
+      "Card orders may need a refund. Cash orders do not need a card refund.",
       "This action cannot be undone by the producer dashboard.",
     ],
     variant: "danger",
-    confirmText: "Confirm cancellation and refund",
+    confirmText: "Confirm cancellation",
     cancelText: "Go back",
     confirmButtonClass: "btn-danger",
   });
@@ -1447,17 +1606,11 @@ async function cancelProducerOrder(summaryId) {
       return;
     }
 
-    const refundAmountText = getRefundAmountText(data.refund);
-
     await showMessageModal({
       title: "Producer order cancelled",
-      message:
-        "This producer section has been cancelled and the customer refund has been handled by the system.",
+      message: getCancellationCompletionMessage(data.refund, "producer_order"),
       details: [
-        refundAmountText
-          ? { label: "Refund amount", value: refundAmountText }
-          : null,
-        { label: "Refund update", value: formatRefundMessage(data.refund) },
+        ...getRefundDetails(data.refund),
         "The page will refresh and reopen this order.",
       ],
       variant: "success",
@@ -1663,7 +1816,7 @@ async function confirmCancelQuantity() {
     confirmButton,
     true,
     "Cancelling...",
-    "Confirm cancellation and refund",
+    "Confirm cancellation",
   );
 
   try {
@@ -1713,20 +1866,14 @@ async function confirmCancelQuantity() {
       0,
     );
 
-    const refundAmountText = getRefundAmountText(data.refund);
-
     await showMessageModal({
       title: "Cancellation processed",
-      message:
-        "The item quantity has been cancelled and the customer refund has been handled by the system.",
+      message: getCancellationCompletionMessage(data.refund, "item"),
       details: [
         { label: "Product", value: pendingCancelProductName || "Product" },
         { label: "Cancelled quantity", value: cancelledQuantity },
         { label: "Quantity still to prepare", value: remainingQuantity },
-        refundAmountText
-          ? { label: "Refund amount", value: refundAmountText }
-          : null,
-        { label: "Refund update", value: formatRefundMessage(data.refund) },
+        ...getRefundDetails(data.refund),
         "The page will refresh and reopen this order.",
       ],
       variant: "success",
@@ -1748,7 +1895,7 @@ async function confirmCancelQuantity() {
       confirmButton,
       false,
       "Cancelling...",
-      "Confirm cancellation and refund",
+      "Confirm cancellation",
     );
   }
 }
@@ -1815,6 +1962,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const confirmCancelQuantityButton = document.getElementById(
+    "confirmCancelQuantityBtn",
+  );
+
+  if (confirmCancelQuantityButton) {
+    confirmCancelQuantityButton.textContent = "Confirm cancellation";
+  }
+
   addListenerIfExists(
     "reviewCancelQuantityBtn",
     "click",
@@ -1833,3 +1988,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 80);
   }
 });
+
