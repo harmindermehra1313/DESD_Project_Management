@@ -30,31 +30,100 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
-  const orderId = cancelBtn.dataset.orderId;
-  const orderNumber = cancelBtn.dataset.orderNumber || `#${orderId}`;
+  await handleCustomerOrderCancellation(cancelBtn);
+});
+
+async function handleCustomerOrderCancellation(button) {
+  const orderId = button.dataset.orderId;
+  const orderNumber = button.dataset.orderNumber || `#${orderId}`;
 
   if (!orderId) {
-    showCancellationFeedback("Order ID is missing.", "danger");
+    await showCancellationModal({
+      title: "Cancellation unavailable",
+      message: "Order ID is missing.",
+      variant: "danger",
+    });
     return;
   }
 
-  const reason = window.prompt(
-    `Cancel order ${orderNumber}?\n\nEnter a reason, or leave blank to use the default reason.`,
-    "",
-  );
+  const result = await showCancellationReasonModal({
+    title: `Cancel order ${orderNumber}`,
+    intro:
+      "Please confirm that this order should be cancelled. A reason can be added for the order record.",
+    warning:
+      "This action will cancel the order and update the order history.",
+    reasonLabel: "Cancellation reason",
+    reasonPlaceholder: "Optional. Leave blank to use the default reason.",
+    confirmText: "Cancel order",
+  });
 
-  if (reason === null) {
+  if (!result.confirmed) {
     return;
   }
 
-  await submitCustomerOrderCancellation(cancelBtn, orderId, reason);
-});
+  await submitCustomerOrderCancellation(button, orderId, result.reason);
+}
+
+async function handleCustomerOrderItemCancellation(button) {
+  const orderId = button.dataset.orderId;
+  const itemId = button.dataset.itemId;
+  const productName = button.dataset.productName || "this item";
+  const activeQuantity = Number(button.dataset.activeQuantity || 0);
+
+  if (!orderId || !itemId) {
+    await showCancellationModal({
+      title: "Cancellation unavailable",
+      message: "Order item details are missing.",
+      variant: "danger",
+    });
+    return;
+  }
+
+  if (!Number.isFinite(activeQuantity) || activeQuantity <= 0) {
+    await showCancellationModal({
+      title: "Cancellation unavailable",
+      message: "This item has no active quantity left to cancel.",
+      variant: "danger",
+    });
+    return;
+  }
+
+  const result = await showCancellationReasonModal({
+    title: `Cancel ${productName}`,
+    intro:
+      "Please confirm that the remaining active quantity for this item should be cancelled.",
+    warning:
+      "This will cancel the active quantity for this item only. Other active items in the order will stay unchanged.",
+    reasonLabel: "Cancellation reason",
+    reasonPlaceholder: "Optional. Leave blank to use the default reason.",
+    confirmText: "Cancel item",
+    details: [
+      {
+        label: "Item",
+        value: productName,
+      },
+      {
+        label: "Active quantity",
+        value: `${activeQuantity}`,
+      },
+    ],
+  });
+
+  if (!result.confirmed) {
+    return;
+  }
+
+  await submitCustomerOrderItemCancellation(button, {
+    orderId,
+    itemId,
+    reason: result.reason,
+  });
+}
 
 async function submitCustomerOrderCancellation(button, orderId, reason) {
   const originalText = button.textContent;
 
-  button.disabled = true;
-  button.textContent = "Cancelling...";
+  setButtonLoading(button, "Cancelling...");
 
   try {
     const response = await fetch(
@@ -79,70 +148,26 @@ async function submitCustomerOrderCancellation(button, orderId, reason) {
 
     const payload = await response.json();
 
-    showCancellationFeedback(
-      buildCancellationSuccessMessage(payload, "Order cancelled successfully."),
-      "success",
-    );
+    await refreshOrderHistoryState(orderId);
 
-    if (window.OrderHistoryPage?.loadOrders) {
-      await window.OrderHistoryPage.loadOrders();
-    }
-
-    if (window.OrderHistoryPage?.openOrderDetails) {
-      await window.OrderHistoryPage.openOrderDetails(orderId);
-    }
+    await showCancellationModal({
+      title: "Order cancelled",
+      message: buildCancellationSuccessMessage(
+        payload,
+        "Order cancelled successfully.",
+      ),
+      variant: "success",
+    });
   } catch (error) {
-    showCancellationFeedback(
-      error.message || "Order cancellation failed.",
-      "danger",
-    );
-
     button.disabled = false;
     button.textContent = originalText;
+
+    await showCancellationModal({
+      title: "Order cancellation failed",
+      message: error.message || "Order cancellation failed.",
+      variant: "danger",
+    });
   }
-}
-
-async function handleCustomerOrderItemCancellation(button) {
-  const orderId = button.dataset.orderId;
-  const itemId = button.dataset.itemId;
-  const productName = button.dataset.productName || "this item";
-  const activeQuantity = Number(button.dataset.activeQuantity || 0);
-
-  if (!orderId || !itemId) {
-    showCancellationFeedback("Order item details are missing.", "danger");
-    return;
-  }
-
-  if (!Number.isFinite(activeQuantity) || activeQuantity <= 0) {
-    showCancellationFeedback(
-      "This item has no active quantity left to cancel.",
-      "danger",
-    );
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `Cancel ${productName}?\n\nThis will cancel the whole item from this order.`,
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  const reason = window.prompt(
-    `Reason for cancelling ${productName}?\n\nLeave blank to use the default reason.`,
-    "",
-  );
-
-  if (reason === null) {
-    return;
-  }
-
-  await submitCustomerOrderItemCancellation(button, {
-    orderId,
-    itemId,
-    reason,
-  });
 }
 
 async function submitCustomerOrderItemCancellation(
@@ -151,12 +176,7 @@ async function submitCustomerOrderItemCancellation(
 ) {
   const originalText = button.textContent;
 
-  button.disabled = true;
-  button.textContent = "Cancelling...";
-
-  const payload = {
-    reason: reason || "",
-  };
+  setButtonLoading(button, "Cancelling...");
 
   try {
     const response = await fetch(
@@ -169,7 +189,9 @@ async function submitCustomerOrderItemCancellation(
           "X-Requested-With": "XMLHttpRequest",
         },
         credentials: "same-origin",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          reason: reason || "",
+        }),
       },
     );
 
@@ -177,29 +199,43 @@ async function submitCustomerOrderItemCancellation(
       throw await buildCancellationApiError(response);
     }
 
-    const data = await response.json();
+    const payload = await response.json();
 
-    showCancellationFeedback(
-      buildCancellationSuccessMessage(payload, "Order cancelled successfully."),
-      "success",
-    );
+    await refreshOrderHistoryState(orderId);
 
-    if (window.OrderHistoryPage?.loadOrders) {
-      await window.OrderHistoryPage.loadOrders();
-    }
-
-    if (window.OrderHistoryPage?.openOrderDetails) {
-      await window.OrderHistoryPage.openOrderDetails(orderId);
-    }
+    await showCancellationModal({
+      title: "Item cancelled",
+      message: buildCancellationSuccessMessage(
+        payload,
+        "Order item cancelled successfully.",
+      ),
+      variant: "success",
+    });
   } catch (error) {
-    showCancellationFeedback(
-      error.message || "Order item cancellation failed.",
-      "danger",
-    );
-
     button.disabled = false;
     button.textContent = originalText;
+
+    await showCancellationModal({
+      title: "Item cancellation failed",
+      message: error.message || "Order item cancellation failed.",
+      variant: "danger",
+    });
   }
+}
+
+async function refreshOrderHistoryState(orderId) {
+  if (window.OrderHistoryPage?.loadOrders) {
+    await window.OrderHistoryPage.loadOrders();
+  }
+
+  if (window.OrderHistoryPage?.openOrderDetails) {
+    await window.OrderHistoryPage.openOrderDetails(orderId);
+  }
+}
+
+function setButtonLoading(button, loadingText) {
+  button.disabled = true;
+  button.textContent = loadingText;
 }
 
 function buildCancellationSuccessMessage(payload, fallbackMessage) {
@@ -220,7 +256,7 @@ function buildCancellationSuccessMessage(payload, fallbackMessage) {
   }
 
   if (refund.reason) {
-    return `${fallbackMessage} Refund note: ${refund.reason}`;
+    return `${fallbackMessage} ${refund.reason}`;
   }
 
   return fallbackMessage;
@@ -264,34 +300,281 @@ async function buildCancellationApiError(response) {
   return error;
 }
 
-function showCancellationFeedback(message, variant = "warning") {
-  if (!message) {
-    return;
-  }
-
-  if (typeof window.CartAPI?.showToast === "function") {
-    window.CartAPI.showToast(message, {
-      title: "Order cancellation",
-      variant,
-      delay: 7000,
+function showCancellationReasonModal({
+  title,
+  intro,
+  warning,
+  reasonLabel,
+  reasonPlaceholder,
+  confirmText,
+  details = [],
+}) {
+  return new Promise((resolve) => {
+    const modalElement = createBaseModal({
+      title,
+      sizeClass: "modal-dialog-centered",
     });
+
+    const body = modalElement.querySelector(".modal-body");
+    const footer = modalElement.querySelector(".modal-footer");
+
+    if (intro) {
+      const introText = document.createElement("p");
+      introText.className = "mb-3";
+      introText.textContent = intro;
+      body.appendChild(introText);
+    }
+
+    if (details.length > 0) {
+      const detailList = document.createElement("dl");
+      detailList.className = "row small bg-light border rounded-3 p-3 mb-3";
+
+      details.forEach((detail) => {
+        const term = document.createElement("dt");
+        term.className = "col-sm-4 text-muted";
+        term.textContent = detail.label;
+
+        const description = document.createElement("dd");
+        description.className = "col-sm-8 mb-2";
+        description.textContent = detail.value;
+
+        detailList.appendChild(term);
+        detailList.appendChild(description);
+      });
+
+      body.appendChild(detailList);
+    }
+
+    if (warning) {
+      const warningBox = document.createElement("div");
+      warningBox.className = "alert alert-warning mb-3";
+      warningBox.setAttribute("role", "alert");
+      warningBox.textContent = warning;
+      body.appendChild(warningBox);
+    }
+
+    const reasonWrapper = document.createElement("div");
+    reasonWrapper.className = "mb-0";
+
+    const reasonInputId = `cancellationReason-${Date.now()}`;
+
+    const label = document.createElement("label");
+    label.className = "form-label fw-semibold";
+    label.setAttribute("for", reasonInputId);
+    label.textContent = reasonLabel || "Cancellation reason";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "form-control";
+    textarea.id = reasonInputId;
+    textarea.rows = 4;
+    textarea.placeholder =
+      reasonPlaceholder || "Optional. Leave blank to use the default reason.";
+
+    const helpText = document.createElement("div");
+    helpText.className = "form-text";
+    helpText.textContent =
+      "This note will be stored with the cancellation record.";
+
+    reasonWrapper.appendChild(label);
+    reasonWrapper.appendChild(textarea);
+    reasonWrapper.appendChild(helpText);
+    body.appendChild(reasonWrapper);
+
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "btn btn-outline-secondary";
+    closeButton.dataset.bsDismiss = "modal";
+    closeButton.textContent = "Keep order";
+
+    const confirmButton = document.createElement("button");
+    confirmButton.type = "button";
+    confirmButton.className = "btn btn-danger";
+    confirmButton.textContent = confirmText || "Confirm cancellation";
+
+    footer.appendChild(closeButton);
+    footer.appendChild(confirmButton);
+
+    openBootstrapModal(modalElement, {
+      onShown: () => {
+        textarea.focus();
+      },
+      onHiddenWithoutAction: () => {
+        resolve({
+          confirmed: false,
+          reason: "",
+        });
+      },
+    });
+
+    confirmButton.addEventListener("click", () => {
+      resolve({
+        confirmed: true,
+        reason: textarea.value.trim(),
+      });
+
+      closeBootstrapModal(modalElement);
+    });
+  });
+}
+
+function showCancellationModal({ title, message, variant = "warning" }) {
+  return new Promise((resolve) => {
+    const modalElement = createBaseModal({
+      title,
+      sizeClass: "modal-dialog-centered",
+    });
+
+    const body = modalElement.querySelector(".modal-body");
+    const footer = modalElement.querySelector(".modal-footer");
+
+    const alert = document.createElement("div");
+    alert.className = `alert alert-${normaliseBootstrapVariant(variant)} mb-0`;
+    alert.setAttribute("role", "alert");
+    alert.textContent = message;
+    body.appendChild(alert);
+
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "btn btn-primary";
+    closeButton.dataset.bsDismiss = "modal";
+    closeButton.textContent = "OK";
+    footer.appendChild(closeButton);
+
+    openBootstrapModal(modalElement, {
+      onHiddenWithoutAction: resolve,
+    });
+  });
+}
+
+function createBaseModal({ title, sizeClass = "modal-dialog-centered" }) {
+  const modalId = `cancellationModal-${Date.now()}-${Math.floor(
+    Math.random() * 100000,
+  )}`;
+
+  const modalElement = document.createElement("div");
+  modalElement.className = "modal fade";
+  modalElement.id = modalId;
+  modalElement.tabIndex = -1;
+  modalElement.setAttribute("aria-hidden", "true");
+
+  const dialog = document.createElement("div");
+  dialog.className = `modal-dialog ${sizeClass}`;
+
+  const content = document.createElement("div");
+  content.className = "modal-content border-0 shadow";
+
+  const header = document.createElement("div");
+  header.className = "modal-header";
+
+  const heading = document.createElement("h5");
+  heading.className = "modal-title";
+  heading.textContent = title || "Order cancellation";
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "btn-close";
+  closeButton.dataset.bsDismiss = "modal";
+  closeButton.setAttribute("aria-label", "Close");
+
+  const body = document.createElement("div");
+  body.className = "modal-body";
+
+  const footer = document.createElement("div");
+  footer.className = "modal-footer";
+
+  header.appendChild(heading);
+  header.appendChild(closeButton);
+
+  content.appendChild(header);
+  content.appendChild(body);
+  content.appendChild(footer);
+
+  dialog.appendChild(content);
+  modalElement.appendChild(dialog);
+
+  document.body.appendChild(modalElement);
+
+  return modalElement;
+}
+
+function openBootstrapModal(
+  modalElement,
+  { onShown = null, onHiddenWithoutAction = null } = {},
+) {
+  const ModalConstructor = window.bootstrap?.Modal;
+
+  if (!ModalConstructor) {
+    throw new Error(
+      "Bootstrap Modal is unavailable. Make sure Bootstrap JavaScript is loaded before order_cancellation.js.",
+    );
+  }
+
+  const modalInstance = ModalConstructor.getOrCreateInstance(modalElement, {
+    backdrop: "static",
+    keyboard: false,
+  });
+
+  let closedProgrammatically = false;
+
+  modalElement.addEventListener(
+    "shown.bs.modal",
+    () => {
+      if (typeof onShown === "function") {
+        onShown();
+      }
+    },
+    { once: true },
+  );
+
+  modalElement.addEventListener(
+    "hidden.bs.modal",
+    () => {
+      modalInstance.dispose();
+      modalElement.remove();
+
+      if (!closedProgrammatically && typeof onHiddenWithoutAction === "function") {
+        onHiddenWithoutAction();
+      }
+    },
+    { once: true },
+  );
+
+  modalElement.addEventListener("cancellation-modal:close", () => {
+    closedProgrammatically = true;
+  });
+
+  modalInstance.show();
+}
+
+function closeBootstrapModal(modalElement) {
+  const modalInstance = window.bootstrap?.Modal.getInstance(modalElement);
+
+  if (!modalInstance) {
+    modalElement.remove();
     return;
   }
 
-  const errorBox = document.getElementById("orderDetailError");
+  modalElement.dispatchEvent(new CustomEvent("cancellation-modal:close"));
+  modalInstance.hide();
+}
 
-  if (errorBox) {
-    errorBox.textContent = message;
-    errorBox.classList.remove("d-none");
+function normaliseBootstrapVariant(variant) {
+  const allowedVariants = new Set([
+    "primary",
+    "secondary",
+    "success",
+    "danger",
+    "warning",
+    "info",
+    "light",
+    "dark",
+  ]);
 
-    if (variant === "success") {
-      errorBox.classList.remove("alert-danger");
-      errorBox.classList.add("alert-success");
-    } else {
-      errorBox.classList.remove("alert-success");
-      errorBox.classList.add("alert-danger");
-    }
+  if (allowedVariants.has(variant)) {
+    return variant;
   }
+
+  return "warning";
 }
 
 function getCookie(name) {

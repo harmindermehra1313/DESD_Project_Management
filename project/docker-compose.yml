@@ -138,6 +138,22 @@ services:
     restart: always
     ports:
       - "8080:8080"
+
+# *** STRIPE CLI IS FOR LOCAL DEV ONLY, DO NOT USE IN PRODUCTION ***
+# Use docker compose logs stripe_cli to see the logs and confirm that the webhook events are being forwarded correctly. 
+  stripe_cli:
+    image: stripe/stripe-cli:latest
+    container_name: brfn_stripe_cli
+    depends_on:
+      - web
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_DEVICE_NAME: brfn-docker-dev
+    command: >
+      listen
+      --events payment_intent.succeeded,payment_intent.payment_failed,charge.refunded
+      --forward-to http://web:8000/payments/webhook/
+    restart: unless-stopped
   
   
 
