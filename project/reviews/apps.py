@@ -34,8 +34,16 @@ class ReviewsConfig(AppConfig):
             if _model_preloaded:
                 return
 
-            from reviews.services.moderation_service import get_model
+            try:
+                from reviews.services.moderation_service import get_model
 
-            get_model()
-            _model_preloaded = True
-            logger.info("Review moderation model preloaded successfully.")
+                get_model()
+                _model_preloaded = True
+                logger.info("Review moderation model preloaded successfully.")
+
+            except Exception:
+                logger.exception(
+                    "Review moderation model preload failed. "
+                    "The application will continue running. "
+                    "Affected content will be sent to flagged moderation."
+                )
