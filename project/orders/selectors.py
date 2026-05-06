@@ -114,7 +114,6 @@ def get_derived_order_status_label(order: Order) -> str:
     """
     return get_order_status_context(order)["status_display"]
 
-
 def _get_order_history_base_queryset() -> QuerySet[Order]:
     """
     Build the shared optimised queryset for order history and order detail retrieval.
