@@ -1,5 +1,8 @@
 <!-- Harminder Producer Header -->
-<header class="custom-header">
+<header class="custom-header"
+        data-notifications-header
+        data-notifications-url="{% url 'notifications:notification_panel_json' %}"
+        data-notifications-interval="10000">
   <!-- ================= ROW 1 ================= -->
   <div class="container-fluid header-row-1">
     <div class="row align-items-center">
@@ -14,7 +17,16 @@
       </div>
       <!-- CENTER: Dashboard Label -->
       <div class="col-4 d-flex justify-content-center">
-        <span class="admin-badge">Producer Dashboard</span>
+        <a href="{% url 'home:producer' %}"
+           class="admin-badge text-white text-decoration-none d-inline-flex align-items-center gap-2">
+          Producer Dashboard
+          <span class="badge bg-danger text-white rounded-pill {% if unread_notifications == 0 %}d-none{% endif %}"
+                style="font-size: 0.65rem;
+                       padding: 0.25em 0.45em"
+                data-notifications-count-badge>
+            <span data-notifications-count>{{ unread_notifications }}</span>
+          </span>
+        </a>
       </div>
       <!-- RIGHT: Welcome + Account Dropdown -->
       <div class="col-4 d-flex justify-content-end align-items-center">
@@ -81,16 +93,14 @@
               </li> -->
               <li class="nav-item mx-2">
                 <a class="nav-link custom-nav-link d-flex align-items-center gap-1"
-                  href="{% url 'home:producer' %}">
-                  
+                   href="{% url 'home:producer' %}">
                   Dashboard
-
-                  {% if unread_notifications > 0 %}
-                    <span class="badge bg-danger text-white rounded-pill"
-                          style="font-size: 0.65rem; padding: 0.25em 0.45em;">
-                      {{ unread_notifications }}
-                    </span>
-                  {% endif %}
+                  <span class="badge bg-danger text-white rounded-pill {% if unread_notifications == 0 %}d-none{% endif %}"
+                        style="font-size: 0.65rem;
+                               padding: 0.25em 0.45em"
+                        data-notifications-count-badge>
+                    <span data-notifications-count>{{ unread_notifications }}</span>
+                  </span>
                 </a>
               </li>
               <!-- Products Dropdown -->

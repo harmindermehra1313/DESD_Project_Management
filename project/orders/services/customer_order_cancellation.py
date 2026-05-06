@@ -50,16 +50,18 @@ def cancel_order_as_customer(
                 "This order cannot be cancelled automatically at its current status."
             )
 
-        producer_summaries = ProducerOrderSummary.objects.select_for_update(
+        producer_summaries_qs = ProducerOrderSummary.objects.select_for_update(
             of=("self",)
         ).filter(order=order)
 
-        if producer_summaries.exclude(
+        if producer_summaries_qs.exclude(
             status=ProducerOrderSummary.Status.PENDING
         ).exists():
             raise CustomerCancellationError(
                 "This order cannot be cancelled automatically because preparation has already started."
             )
+
+        producer_summaries = list(producer_summaries_qs.select_related("producer"))
 
         for item in order.items.select_for_update(of=("self",)).all():
             remaining_active_quantity = item.quantity - item.cancelled_quantity
@@ -121,6 +123,12 @@ def cancel_order_as_customer(
         )
 
         NotificationService.notify_order_cancelled(order)
+
+        for summary in producer_summaries:
+            NotificationService.notify_producer_order_cancelled_by_customer(
+                order=order,
+                producer_summary=summary,
+            )
 
         if refund_result.get("refunded"):
             NotificationService.notify_refund_processed(
