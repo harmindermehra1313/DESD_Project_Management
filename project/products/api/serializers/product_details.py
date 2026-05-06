@@ -83,6 +83,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     surplus_discount_percentage = serializers.SerializerMethodField()
     surplus_note = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
+    discount_reason = serializers.SerializerMethodField()
 
     expiry_date = serializers.SerializerMethodField()
     expiry_type = serializers.SerializerMethodField()
@@ -114,6 +115,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "surplus_active",
             "surplus_discount_percentage",
             "surplus_note",
+            "discount_reason",
             "remaining_quantity",
             "expiry_date",
             "expiry_type",
@@ -217,13 +219,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             return obj.price
 
         base_price = obj.price
-        if (
-            active_inventory.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE
-            and active_inventory.surplus_discount_percentage is not None
-        ):
-            discount_factor = (
-                Decimal("100") - active_inventory.surplus_discount_percentage
-            ) / Decimal("100")
+        discount_pct = active_inventory.current_discount_percentage
+        
+        if discount_pct > 0:
+            discount_factor = (Decimal("100") - discount_pct) / Decimal("100")
             return (base_price * discount_factor).quantize(Decimal("0.01"))
 
         return base_price
@@ -276,10 +275,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_surplus_active(self, obj):
         active_inventory = self._get_active_inventory(obj)
-        return bool(
-            active_inventory
-            and active_inventory.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE
-        )
+        return bool(active_inventory and active_inventory.current_discount_percentage > 0)
         
     def get_surplus_note(self, obj):
         active_inventory = self._get_active_inventory(obj)
@@ -293,7 +289,13 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         active_inventory = self._get_active_inventory(obj)
         if not active_inventory:
             return None
-        return active_inventory.surplus_discount_percentage
+        return active_inventory.current_discount_percentage
+        
+    def get_discount_reason(self, obj):
+        active_inventory = self._get_active_inventory(obj)
+        if not active_inventory:
+            return None
+        return active_inventory.current_discount_reason
 
     def get_remaining_quantity(self, obj):
         return self._get_remaining_quantity_value(obj)

@@ -301,19 +301,46 @@ class Inventory(models.Model):
 
     status = models.CharField(max_length=20, choices=BatchStatus.choices, default=BatchStatus.ACTIVE)
 
-    # Return the discounted price if surplus is active else normal price
+    # Check if the batch expires tomorrow or today
+    @property
+    def is_expiring_soon(self) -> bool:
+        if self.is_expired():
+            return False
+        
+        days_to_expiry = (self.expiry_date - timezone.localdate()).days
+        # If it expires today (0 days) or tomorrow (1 day), it is expiring soon (< 24 to 48 hours depending on time of day)
+        return 0 <= days_to_expiry <= 1
+
+    @property
+    def current_discount_percentage(self):
+        surplus_pct = self.surplus_discount_percentage if self.surplus_status == self.SurplusStatus.SURPLUS_ACTIVE and self.surplus_discount_percentage else Decimal("0")
+        expire_pct = Decimal("25.00") if self.is_expiring_soon else Decimal("0")
+        
+        # Return the better discount for the customer
+        return max(surplus_pct, expire_pct)
+
+    @property
+    def current_discount_reason(self):
+        surplus_pct = self.surplus_discount_percentage if self.surplus_status == self.SurplusStatus.SURPLUS_ACTIVE and self.surplus_discount_percentage else Decimal("0")
+        expire_pct = Decimal("25.00") if self.is_expiring_soon else Decimal("0")
+        
+        if expire_pct > 0 and expire_pct >= surplus_pct:
+            return "Expires soon"
+        if surplus_pct > 0:
+            return "Surplus"
+        return None
+
+    # Return the discounted price based on the best available active discount
     def get_discounted_price(self):
         base_price = self.product.price
+        discount_pct = self.current_discount_percentage
 
-        if self.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
-            discount_factor = (
-                Decimal("100") - self.surplus_discount_percentage
-            ) / Decimal("100")
+        if discount_pct > 0:
+            discount_factor = (Decimal("100") - discount_pct) / Decimal("100")
             return base_price * discount_factor
         else:
             return base_price
             
-        
     def is_expired(self) -> bool:
         return self.expiry_date < timezone.localdate()
 

@@ -13,6 +13,7 @@ const STATUS_CONFIRMATION_HELP = {
 // Pagination variables
 let currentPage = 1;
 let subCurrentPage = 1;
+let historyCurrentPage = 1;
 const rowsPerPage = 10;
 
 const PRODUCER_STATUS_MAP = {
@@ -484,6 +485,7 @@ function openStatusConfirmModal(statusValue, statusLabel) {
 
   const statusName = document.getElementById("confirmStatusName");
   const statusHelp = document.getElementById("confirmStatusHelp");
+  const noteField = document.getElementById("statusUpdateNote");
 
   if (statusName) {
     statusName.textContent = statusLabel;
@@ -493,6 +495,10 @@ function openStatusConfirmModal(statusValue, statusLabel) {
     statusHelp.textContent =
       STATUS_CONFIRMATION_HELP[statusValue] ||
       "Only continue if this status is correct.";
+  }
+
+  if (noteField) {
+    noteField.value = ""; // Clear previous notes
   }
 
   const modalElement = document.getElementById("statusConfirmModal");
@@ -511,7 +517,8 @@ function closeStatusConfirmModal() {
 }
 
 // 7. Send AJAX update with the newly selected status
-async function changeStatus(newStatus) {
+// 7. Send AJAX update with the newly selected status
+async function changeStatus(newStatus, note = "") {
   if (!selectedSummaryId) return;
 
   const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
@@ -529,7 +536,7 @@ async function changeStatus(newStatus) {
           "X-CSRFToken": csrfInput.value,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, note: note }),
       },
     );
 
@@ -662,6 +669,63 @@ function clearSubFilters() {
   document.getElementById("subFilterPaused").checked = true;
   document.getElementById("subFilterCancelled").checked = false;
   applySubFilters(true);
+}
+
+// 9.5 History Table Pagination
+function applyHistoryPagination() {
+  const rows = Array.from(document.querySelectorAll(".history-row"));
+  const totalRows = rows.length;
+  const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+  if (historyCurrentPage > totalPages) historyCurrentPage = totalPages;
+
+  const startIndex = (historyCurrentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+
+  rows.forEach((row, index) => {
+    row.style.display = index >= startIndex && index < endIndex ? "" : "none";
+  });
+
+  renderHistoryPagination(totalPages);
+}
+
+function renderHistoryPagination(totalPages) {
+  const container = document.getElementById("historyPaginationContainer");
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = '<ul class="pagination mb-0 shadow-sm">';
+
+  html += `<li class="page-item ${historyCurrentPage === 1 ? "disabled" : ""}">
+                <button class="page-link" onclick="goToHistoryPage(${historyCurrentPage - 1})" style="color: var(--brand);">Previous</button>
+             </li>`;
+
+  for (let i = 1; i <= totalPages; i++) {
+    const activeClass = historyCurrentPage === i ? "active" : "";
+    const activeStyle =
+      historyCurrentPage === i
+        ? "background-color: #3a4b53; border-color: #3a4b53; color: #fff;"
+        : "color: var(--brand);";
+    html += `<li class="page-item ${activeClass}">
+                    <button class="page-link" onclick="goToHistoryPage(${i})" style="${activeStyle}">${i}</button>
+                 </li>`;
+  }
+
+  html += `<li class="page-item ${historyCurrentPage === totalPages ? "disabled" : ""}">
+                <button class="page-link" onclick="goToHistoryPage(${historyCurrentPage + 1})" style="color: var(--brand);">Next</button>
+             </li>`;
+
+  html += "</ul>";
+  container.innerHTML = html;
+}
+
+function goToHistoryPage(pageNumber) {
+  historyCurrentPage = pageNumber;
+  applyHistoryPagination();
 }
 
 // 10. Pause / Resume Subscription
@@ -872,6 +936,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   applyAllFilters(false);
   applySubFilters(true);
+  applyHistoryPagination();
 
   const confirmStatusUpdateBtn = document.getElementById(
     "confirmStatusUpdateBtn",
@@ -881,10 +946,13 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmStatusUpdateBtn.addEventListener("click", async () => {
       if (!pendingStatusValue) return;
 
+      const noteField = document.getElementById("statusUpdateNote");
+      const noteValue = noteField ? noteField.value.trim() : "";
+
       confirmStatusUpdateBtn.disabled = true;
       confirmStatusUpdateBtn.textContent = "Updating...";
 
-      await changeStatus(pendingStatusValue);
+      await changeStatus(pendingStatusValue, noteValue);
 
       confirmStatusUpdateBtn.disabled = false;
       confirmStatusUpdateBtn.textContent = "Confirm update";

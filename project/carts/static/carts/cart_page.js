@@ -146,24 +146,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const baseUnitPrice = toNum(product.base_unit_price ?? 0, 0);
 
-    const surplusStatus = String(product.surplus_status ?? "");
-    const surplusPercent = toNum(product.surplus_discount_percentage ?? 0, 0);
-    const surplusNote = String(product.surplus_note ?? "");
+    const unitIsDiscounted = baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
 
-    const expectedSurplusUnit = computeSurplusUnitPrice(
-      baseUnitPrice,
-      surplusPercent,
-    );
-
-    const unitIsDiscounted =
-      baseUnitPrice > 0 && unitPrice > 0 && unitPrice < baseUnitPrice;
-
-    const isSurplus =
-      surplusStatus === "SA" &&
-      expectedSurplusUnit !== null &&
-      approxEqual(unitPrice, expectedSurplusUnit);
+    const discountReason = product.discount_reason || "";
+    const isExpiringSoon = discountReason === "Expires soon";
+    const isManualSurplus = discountReason === "Surplus" || String(product.surplus_status) === "SA";
+    
+    // Group them as "Surplus" for the red UI calculations, but we will label them differently
+    const isSurplus = isExpiringSoon || isManualSurplus; 
 
     const isWholesale = unitIsDiscounted && !isSurplus;
+
+    const surplusNote = isExpiringSoon 
+      ? "This item expires soon and has been reduced by 25%." 
+      : String(product.surplus_note ?? "");
 
     const wholesaleSavingsTotal = isWholesale
       ? (baseUnitPrice - unitPrice) * qty

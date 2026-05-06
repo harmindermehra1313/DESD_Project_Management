@@ -86,8 +86,10 @@ document.addEventListener("DOMContentLoaded", () => {
       badges.push(buildBadge("In Season", "product-card-badge--success"));
     }
 
-    // Add other existing badges
-    if (product.surplus_active) {
+    // Add Discount/Surplus badges
+    if (product.discount_reason === "Expires soon") {
+      badges.push(buildBadge("Expires soon", "product-card-badge--danger"));
+    } else if (product.surplus_active) {
       badges.push(buildBadge("Surplus", "product-card-badge--danger"));
     }
 
@@ -299,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
               
               ${seasonalTextHtml}
               ${buildStockHTML(product)}
-${buildAllergensHTML(product)}
+              ${buildAllergensHTML(product)}
             </div>
 
             <div class="product-card-footer">

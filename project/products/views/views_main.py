@@ -1111,13 +1111,20 @@ def product_view(request, category_id):
 
         original_price = float(p.price)
 
-        if is_surplus_active:
-            discounted_price = float(surplus_batch.get_discounted_price())
-            discount_percent = float(surplus_batch.surplus_discount_percentage)
+        # Unified Discount Logic
+        discount_pct = float(earliest_live_batch.current_discount_percentage) if hasattr(earliest_live_batch, "current_discount_percentage") else 0.0
+
+        if discount_pct > 0:
+            is_surplus_active = True
+            discounted_price = float(earliest_live_batch.get_discounted_price())
+            discount_percent = discount_pct
+            discount_reason = earliest_live_batch.current_discount_reason
             has_discount = True
         else:
+            is_surplus_active = False
             discounted_price = original_price
             discount_percent = 0
+            discount_reason = None
             has_discount = False
 
         organic = p.organic_certification_status == Product.OrganicStatus.CERTIFIED
@@ -1146,6 +1153,7 @@ def product_view(request, category_id):
                 "original_price": original_price,
                 "has_discount": has_discount,
                 "discount_percent": discount_percent,
+                "discount_reason": discount_reason,
                 "organic": organic,
                 "local": local,
                 "fresh_today": fresh_today,
@@ -1156,7 +1164,7 @@ def product_view(request, category_id):
                     active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
                 "allergens": allergen_names,
-                "is_disabled": not p.is_currently_in_season, 
+                "is_disabled": not p.is_currently_in_season,
                 "disabled_reason": "Out of Season" if (p.is_seasonal and not p.is_currently_in_season) else "",
                 "is_seasonal": p.is_seasonal,
                 "in_season": p.is_currently_in_season,
