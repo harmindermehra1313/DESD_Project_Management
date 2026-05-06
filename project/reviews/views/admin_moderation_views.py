@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.models import Admin
 from reviews.models import Review, ReviewProducerResponse
-
+from notifications.services.notifications import NotificationService
 
 ADMIN_NOTE_MAX_LENGTH = 500
 ACTIONS_REQUIRING_NOTE = {"remove"}
@@ -64,9 +64,7 @@ def _build_admin_note(*, existing_notes, action_label, admin_user, admin_note):
         or "Admin"
     )
 
-    new_admin_note = (
-        f"[{timestamp}] Admin moderation: {action_label} by {admin_label}."
-    )
+    new_admin_note = f"[{timestamp}] Admin moderation: {action_label} by {admin_label}."
 
     cleaned_admin_note = (admin_note or "").strip()
     if cleaned_admin_note:
@@ -296,9 +294,7 @@ def admin_review_moderation(request):
         reviews = reviews.filter(status=selected_review_status)
 
     if selected_response_status is not None:
-        producer_responses = producer_responses.filter(
-            status=selected_response_status
-        )
+        producer_responses = producer_responses.filter(status=selected_response_status)
 
     reviews, producer_responses = _apply_search_filters(
         reviews=reviews,
@@ -433,6 +429,8 @@ def admin_moderate_review(request, review_id):
     except ValidationError as exc:
         messages.error(request, f"Review could not be moderated: {exc}")
         return _redirect_back(request)
+    if target_status != Review.Status.FLAGGED:
+        NotificationService.resolve_admin_review_flagged_notifications(review)
 
     messages.success(request, success_message)
     return _redirect_back(request)
@@ -521,6 +519,9 @@ def admin_moderate_producer_response(request, response_id):
     except ValidationError as exc:
         messages.error(request, f"Producer response could not be moderated: {exc}")
         return _redirect_back(request)
-
+    if target_status != ReviewProducerResponse.Status.FLAGGED:
+        NotificationService.resolve_admin_producer_response_flagged_notifications(
+            response
+        )
     messages.success(request, success_message)
     return _redirect_back(request)

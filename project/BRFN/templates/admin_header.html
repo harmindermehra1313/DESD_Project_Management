@@ -1,5 +1,8 @@
 <!-- Harminder Admin Header -->
-<header class="custom-header">
+<header class="custom-header"
+        data-notifications-header
+        data-notifications-url="{% url 'admin_records:review_notification_panel_json' %}"
+        data-notifications-interval="10000">
   <!-- ================= ROW 1 ================= -->
   <div class="container-fluid header-row-1">
     <div class="row align-items-center">
@@ -65,7 +68,16 @@
             <ul class="navbar-nav flex-wrap align-items-center">
               <!-- Admin Dashboard -->
               <li class="nav-item mx-2">
-                <a class="nav-link custom-nav-link" href="/dashboard/">Dashboard</a>
+                <a class="nav-link custom-nav-link d-flex align-items-center gap-1"
+                   href="/dashboard/">
+                  Dashboard
+                  <span class="badge bg-danger text-white rounded-pill {% if not unread_notifications %}d-none{% endif %}"
+                        style="font-size: 0.65rem;
+                               padding: 0.25em 0.45em"
+                        data-notifications-count-badge>
+                    <span data-notifications-count>{{ unread_notifications|default:0 }}</span>
+                  </span>
+                </a>
               </li>
               <!-- Records -->
               <li class="nav-item mx-2">

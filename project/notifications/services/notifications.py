@@ -4,7 +4,8 @@ from django.utils import timezone
 
 from notifications.models import Notification
 from orders.models import ProducerOrderSummary
-
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 class NotificationService:
     """
@@ -480,3 +481,134 @@ class NotificationService:
             product=product,
             message=message,
         )
+    
+    @staticmethod
+    def _get_admin_users():
+        """
+        Returns active staff users who should receive admin dashboard notifications.
+        """
+        User = get_user_model()
+
+        return User.objects.filter(
+            is_active=True,
+            is_staff=True,
+        )
+
+    @staticmethod
+    def create_for_admins(type, message, product=None, order=None):
+        """
+        Creates a fresh notification for every active staff user.
+
+        Important:
+        Moderation events should create fresh notifications because the same
+        review or producer response can become flagged again after a previous
+        moderation decision.
+        """
+        notifications = []
+
+        for admin_user in NotificationService._get_admin_users():
+            notifications.append(
+                Notification.objects.create(
+                    user=admin_user,
+                    type=type,
+                    message=message,
+                    product=product,
+                    order=order,
+                )
+            )
+
+        return notifications
+
+    @staticmethod
+    def _get_review_flagged_message(review):
+        product = getattr(review, "product", None)
+        product_name = getattr(product, "name", "a product")
+
+        return f"Customer review #{review.id} for {product_name} was flagged for moderation."
+
+    @staticmethod
+    def _get_legacy_review_flagged_message(review):
+        product = getattr(review, "product", None)
+        product_name = getattr(product, "name", "a product")
+
+        return f"Customer review for {product_name} was flagged for moderation."
+
+    @staticmethod
+    def _get_producer_response_flagged_message(response):
+        review = getattr(response, "review", None)
+        product = getattr(review, "product", None)
+        product_name = getattr(product, "name", "a product")
+
+        return f"Producer response #{response.id} for {product_name} was flagged for moderation."
+
+    @staticmethod
+    def _get_legacy_producer_response_flagged_message(response):
+        review = getattr(response, "review", None)
+        product = getattr(review, "product", None)
+        product_name = getattr(product, "name", "a product")
+
+        return f"Producer response for {product_name} was flagged for moderation."
+
+    @staticmethod
+    def notify_admin_review_flagged(review):
+        """
+        Creates a fresh admin notification when a customer review is flagged.
+        """
+        product = getattr(review, "product", None)
+
+        return NotificationService.create_for_admins(
+            type=Notification.Type.REVIEW_FLAGGED,
+            product=product,
+            message=NotificationService._get_review_flagged_message(review),
+        )
+
+    @staticmethod
+    def notify_admin_producer_response_flagged(response):
+        """
+        Creates a fresh admin notification when a producer response is flagged.
+        """
+        review = getattr(response, "review", None)
+        product = getattr(review, "product", None)
+
+        return NotificationService.create_for_admins(
+            type=Notification.Type.REVIEW_FLAGGED,
+            product=product,
+            message=NotificationService._get_producer_response_flagged_message(response),
+        )
+
+    @staticmethod
+    def resolve_admin_review_flagged_notifications(review):
+        """
+        Resolves unresolved admin notifications for one moderated customer review.
+        Includes the previous legacy message format so existing notifications
+        can still be resolved.
+        """
+        product = getattr(review, "product", None)
+
+        return Notification.objects.filter(
+            type=Notification.Type.REVIEW_FLAGGED,
+            product=product,
+            resolved_at__isnull=True,
+        ).filter(
+            Q(message=NotificationService._get_review_flagged_message(review))
+            | Q(message=NotificationService._get_legacy_review_flagged_message(review))
+        ).update(resolved_at=timezone.now())
+
+    @staticmethod
+    def resolve_admin_producer_response_flagged_notifications(response):
+        """
+        Resolves unresolved admin notifications for one moderated producer response.
+        Includes the previous legacy message format so existing notifications
+        can still be resolved.
+        """
+        review = getattr(response, "review", None)
+        product = getattr(review, "product", None)
+
+        return Notification.objects.filter(
+            type=Notification.Type.REVIEW_FLAGGED,
+            product=product,
+            resolved_at__isnull=True,
+        ).filter(
+            Q(message=NotificationService._get_producer_response_flagged_message(response))
+            | Q(message=NotificationService._get_legacy_producer_response_flagged_message(response))
+        ).update(resolved_at=timezone.now())

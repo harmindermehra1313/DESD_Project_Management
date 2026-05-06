@@ -349,6 +349,115 @@
     font-weight: 800;
     min-width: 110px;
 }
+/* Font consistency with producer/admin dashboard pages */
+.review-moderation-page {
+    font-family: inherit;
+    color: var(--prussian-blue);
+}
+
+.review-moderation-page h1,
+.review-moderation-page h2,
+.review-moderation-page h3,
+.review-moderation-page h4,
+.review-moderation-page h5,
+.review-moderation-page h6,
+.review-moderation-page p,
+.review-moderation-page label,
+.review-moderation-page input,
+.review-moderation-page select,
+.review-moderation-page textarea,
+.review-moderation-page button,
+.review-moderation-page .btn,
+.review-moderation-page .badge,
+.review-moderation-page .form-control,
+.review-moderation-page .form-select {
+    font-family: inherit;
+}
+
+.moderation-title {
+    color: var(--prussian-blue);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.moderation-kicker {
+    color: var(--brand);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.moderation-subtitle,
+.section-subtitle,
+.item-meta,
+.field-help,
+.page-state {
+    color: #6c757d;
+    font-size: 0.95rem;
+}
+
+.section-title {
+    color: var(--prussian-blue);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.item-title {
+    color: var(--prussian-blue);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.item-text {
+    color: #333;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.moderation-details dt {
+    color: #6c757d;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.moderation-details dd {
+    color: var(--prussian-blue);
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.action-panel-header h4 {
+    color: var(--prussian-blue);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.action-panel-header p {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.moderation-notes strong {
+    color: var(--prussian-blue);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.moderation-notes p {
+    color: #333;
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.empty-state {
+    color: #6c757d;
+    font-size: 0.95rem;
+}
 
 @media (max-width: 992px) {
     .moderation-card {
