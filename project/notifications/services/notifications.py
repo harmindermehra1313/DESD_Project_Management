@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 
 from notifications.models import Notification
+from orders.models import ProducerOrderSummary
 
 
 class NotificationService:
@@ -230,6 +231,77 @@ class NotificationService:
                 f"from {old_label} to {new_label}."
             ),
         )
+
+    @staticmethod
+    def notify_order_items_producer_status_changed(
+        *,
+        order,
+        producer_summary,
+        items,
+        new_status,
+    ):
+        """
+        Creates customer notifications for each active item affected by a producer
+        fulfilment status change.
+
+        Example:
+        - 2 × Apples from Producer A in Order #123 has been shipped.
+        """
+
+        user = NotificationService._get_order_user(order)
+
+        if not user:
+            return []
+
+        order_reference = NotificationService._get_order_reference(order)
+
+        producer = getattr(producer_summary, "producer", None)
+        producer_name = (
+            getattr(producer, "business_name", None)
+            or getattr(producer, "name", None)
+            or str(producer)
+            or "the producer"
+        )
+
+        status_message_by_code = {
+            ProducerOrderSummary.Status.PACKAGED: "packed",
+            ProducerOrderSummary.Status.READY_FOR_COLLECTION: "marked ready for collection",
+            ProducerOrderSummary.Status.SHIPPED: "shipped",
+            ProducerOrderSummary.Status.COMPLETED: "completed",
+        }
+
+        status_label = status_message_by_code.get(new_status, str(new_status).lower())
+
+        notifications = []
+
+        for item in items:
+            product = getattr(item, "product", None)
+            product_name = getattr(product, "name", "an item")
+
+            active_quantity = max(
+                getattr(item, "quantity", 0) - getattr(item, "cancelled_quantity", 0),
+                0,
+            )
+
+            if active_quantity <= 0:
+                continue
+
+            quantity_text = f"{active_quantity} × {product_name}"
+
+            notifications.append(
+                NotificationService.create(
+                    user=user,
+                    type=Notification.Type.ORDER_UPDATE,
+                    order=order,
+                    product=product,
+                    message=(
+                        f"{quantity_text} from {producer_name} in "
+                        f"Order #{order_reference} has been {status_label}."
+                    ),
+                )
+            )
+
+        return notifications
 
     @staticmethod
     def notify_refund_processed(order, amount):

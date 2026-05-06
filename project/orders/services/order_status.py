@@ -27,9 +27,9 @@ TERMINAL_ORDER_STATUSES = {
 }
 
 
-COLLECTION_READY_STATUSES = {
-    ProducerOrderSummary.Status.PACKAGED,
-    ProducerOrderSummary.Status.READY_FOR_COLLECTION,
+OLD_DETAILED_PARENT_STATUSES = {
+    Order.Status.PACKAGED,
+    Order.Status.READY_FOR_COLLECTION,
 }
 
 
@@ -108,42 +108,18 @@ def _get_active_summaries(order):
     ]
 
 
-def _all_active_summaries_are_collection(active_summaries):
-    return all(
-        summary.delivery_or_collection == Order.DeliveryOrCollection.COLLECTION
-        for summary in active_summaries
-    )
-
-
-def _all_unfinished_collection_summaries_are_ready(active_summaries):
-    unfinished_active_summaries = [
-        summary
-        for summary in active_summaries
-        if summary.status != ProducerOrderSummary.Status.COMPLETED
-    ]
-
-    if not unfinished_active_summaries:
-        return False
-
-    return all(
-        summary.status in COLLECTION_READY_STATUSES
-        for summary in unfinished_active_summaries
-    )
-
-
 def _derive_raw_order_status_code(order):
     """
-    Derives the customer-facing order status from producer summaries.
+    Derives the customer-facing parent order status from producer summaries.
 
-    Policy alignment:
+    Main order status is deliberately simple:
     - all producer sections cancelled -> Cancelled
     - all active producer sections pending -> Pending
-    - any producer section preparing/packaged/shipped -> In progress
-    - all active collection sections ready/packaged -> Ready for collection
-    - delivery sections do not make the parent order Ready for collection
-    - delivery orders remain In progress until Completed unless a delivery-specific
-      parent status is added later
+    - any active producer section being fulfilled -> In progress
     - all active producer sections completed -> Completed
+
+    Detailed fulfilment statuses such as Packaged, Ready for collection, and
+    Shipped should be shown at producer/item level, not as the main order badge.
     """
 
     summaries = get_order_summaries(order)
@@ -170,12 +146,6 @@ def _derive_raw_order_status_code(order):
     if active_statuses == {ProducerOrderSummary.Status.COMPLETED}:
         return Order.Status.COMPLETED
 
-    if (
-        _all_active_summaries_are_collection(active_summaries)
-        and _all_unfinished_collection_summaries_are_ready(active_summaries)
-    ):
-        return Order.Status.READY_FOR_COLLECTION
-
     if any(status in ACTIVE_PROGRESS_STATUSES for status in active_statuses):
         return Order.Status.IN_PROGRESS
 
@@ -184,10 +154,11 @@ def _derive_raw_order_status_code(order):
 
 def _prevent_customer_status_regression(order, derived_status):
     """
-    Prevents misleading customer-facing backwards movement.
+    Prevents normal backwards movement, but allows old detailed parent statuses
+    to be corrected back to In progress.
 
-    This protects existing orders that may already have been set to Packaged by
-    older logic. New delivery orders should now remain In progress until Completed.
+    This is needed because older logic may already have saved Packaged or Ready
+    for collection on the parent Order.status.
     """
 
     current_status = order.status
@@ -197,6 +168,12 @@ def _prevent_customer_status_regression(order, derived_status):
 
     if derived_status == Order.Status.CANCELLED:
         return Order.Status.CANCELLED
+
+    if (
+        current_status in OLD_DETAILED_PARENT_STATUSES
+        and derived_status == Order.Status.IN_PROGRESS
+    ):
+        return derived_status
 
     current_rank = ORDER_STATUS_PROGRESS_RANK.get(current_status)
     derived_rank = ORDER_STATUS_PROGRESS_RANK.get(derived_status)
@@ -242,6 +219,18 @@ def get_order_status_context(order):
     }
 
 
+def _is_corrective_parent_status_simplification(old_status, new_status):
+    """
+    Avoid sending confusing notifications when old parent-level Packaged or
+    Ready for collection statuses are corrected back to In progress.
+    """
+
+    return (
+        old_status in OLD_DETAILED_PARENT_STATUSES
+        and new_status == Order.Status.IN_PROGRESS
+    )
+
+
 def sync_order_status_from_producer_summaries(order, save=True):
     old_status = order.status
     status_code = derive_order_status_code(order)
@@ -252,7 +241,15 @@ def sync_order_status_from_producer_summaries(order, save=True):
         if save:
             order.save(update_fields=["status"])
 
-        if status_code != Order.Status.CANCELLED:
+        should_notify = (
+            status_code != Order.Status.CANCELLED
+            and not _is_corrective_parent_status_simplification(
+                old_status,
+                status_code,
+            )
+        )
+
+        if should_notify:
             NotificationService.notify_order_status_changed(
                 order=order,
                 old_status=old_status,

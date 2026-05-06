@@ -2,10 +2,12 @@ from django.db import transaction
 
 from orders.models import (
     Order,
+    OrderItem,
     ProducerOrderSummary,
     ProducerOrderStatusHistory,
 )
 from orders.services.order_status import sync_order_status_from_producer_summaries
+from notifications.services.notifications import NotificationService
 
 
 class ProducerOrderStatusError(Exception):
@@ -50,6 +52,14 @@ COLLECTION_TRANSITIONS = {
 }
 
 
+ITEM_NOTIFICATION_STATUSES = {
+    ProducerOrderSummary.Status.PACKAGED,
+    ProducerOrderSummary.Status.READY_FOR_COLLECTION,
+    ProducerOrderSummary.Status.SHIPPED,
+    ProducerOrderSummary.Status.COMPLETED,
+}
+
+
 def get_allowed_next_statuses(summary):
     if summary.status in {
         ProducerOrderSummary.Status.CANCELLED,
@@ -90,6 +100,18 @@ def validate_next_status(summary, new_status):
         )
 
 
+def _get_active_items_for_summary(summary):
+    return list(
+        OrderItem.objects.select_related("product", "producer")
+        .filter(
+            order=summary.order,
+            producer=summary.producer,
+        )
+        .exclude(status=OrderItem.Status.CANCELLED)
+        .order_by("id")
+    )
+
+
 def update_producer_order_status(
     *,
     summary_id,
@@ -107,6 +129,7 @@ def update_producer_order_status(
     - Delivery and collection have different valid flows.
     - Cancellation is excluded from this workflow.
     - Parent order status is recalculated after the producer status changes.
+    - Customer receives item-level notifications for useful fulfilment milestones.
     """
 
     note = (note or "").strip() or "Status updated via Producer Dashboard"
@@ -114,7 +137,7 @@ def update_producer_order_status(
     with transaction.atomic():
         summary = (
             ProducerOrderSummary.objects.select_for_update(of=("self",))
-            .select_related("order")
+            .select_related("order", "producer")
             .get(
                 id=summary_id,
                 producer=producer,
@@ -157,6 +180,16 @@ def update_producer_order_status(
             updated_by=updated_by,
             note=note,
         )
+
+        active_items = _get_active_items_for_summary(summary)
+
+        if new_status in ITEM_NOTIFICATION_STATUSES:
+            NotificationService.notify_order_items_producer_status_changed(
+                order=order,
+                producer_summary=summary,
+                items=active_items,
+                new_status=new_status,
+            )
 
         sync_order_status_from_producer_summaries(order, save=True)
         order.refresh_from_db()
