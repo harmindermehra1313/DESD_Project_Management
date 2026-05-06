@@ -1,0 +1,120 @@
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+    <h4 class="mb-0 d-flex align-items-center"
+        style="color: var(--prussian-blue);
+               font-weight: 600">
+        <i class="bi bi-bell-fill me-2 dashboard-icon"></i>
+        Notification Centre
+    </h4>
+    <div class="d-flex flex-column flex-sm-row gap-2">
+        <form method="post"
+              action="{% url 'admin_records:mark_all_admin_notifications_read' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ notification_return_url }}">
+            <button type="submit"
+                    class="btn btn-sm btn-outline-secondary"
+                    {% if unread_notifications == 0 %}disabled{% endif %}>
+                Mark all as read
+                {% if unread_notifications > 0 %}({{ unread_notifications }}){% endif %}
+            </button>
+        </form>
+        <a href="{% url 'reviews:admin_review_moderation' %}?review_status=flagged&response_status=flagged"
+           class="btn btn-sm btn-outline-danger">Open Review Moderation</a>
+    </div>
+</div>
+{% if page_obj.object_list %}
+    <ul class="list-group list-group-flush">
+        {% for notification in page_obj %}
+            <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 py-3 dashboard-list-item">
+                <div class="ms-0 w-100">
+                    <span class="badge rounded-pill dashboard-type-badge {% if notification.type == 'review_flagged' %} bg-danger {% elif notification.type == 'order_cancelled' %} bg-danger {% elif notification.type == 'refund' %} bg-warning text-dark {% elif notification.type == 'order_placed' %} bg-success {% elif notification.type == 'order_update' %} bg-primary {% elif notification.type == 'system_alert' %} bg-secondary {% else %} bg-info {% endif %} ">
+                        {{ notification.get_type_display }}
+                    </span>
+                    {% if not notification.read_at %}
+                        <span class="badge bg-danger rounded-pill ms-1">New</span>
+                    {% else %}
+                        <span class="badge bg-light text-muted rounded-pill ms-1">Read</span>
+                    {% endif %}
+                    {% if notification.resolved_at %}
+                        <span class="badge bg-success rounded-pill ms-1">Resolved</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark rounded-pill ms-1">Unresolved</span>
+                    {% endif %}
+                    <div class="fw-semibold mt-2">{{ notification.message }}</div>
+                    <div class="text-muted small mt-1">
+                        {{ notification.created_at|date:"d M Y, H:i" }}
+                        {% if notification.product %}• Product: <strong>{{ notification.product.name }}</strong>{% endif %}
+                        {% if notification.order %}
+                            • Order:
+                            <strong>#{{ notification.order.unique_reference|default:notification.order.id }}</strong>
+                        {% endif %}
+                        {% if notification.user %}• Admin: {{ notification.user }}{% endif %}
+                    </div>
+                </div>
+                <div class="text-md-end flex-shrink-0">
+                    {% if not notification.read_at %}
+                        <form method="post"
+                              action="{% url 'admin_records:mark_admin_notification_read' notification.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ notification_return_url }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Mark as read</button>
+                        </form>
+                    {% else %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Already read</button>
+                    {% endif %}
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+    {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="mt-3" aria-label="Notification pagination">
+            <ul class="pagination pagination-sm justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?page={{ page_obj.previous_page_number }}&type={{ notification_type }}&status={{ status }}"
+                           style="color: var(--brand);
+                                  border-color: var(--brand)">Previous</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link" style="color: #aaa; border-color: #ddd;">Previous</span>
+                    </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <li class="page-item active">
+                            <span class="page-link"
+                                  style="background-color: var(--prussian-blue);
+                                         border-color: var(--prussian-blue);
+                                         color: #fff">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link"
+                               href="?page={{ num }}&type={{ notification_type }}&status={{ status }}"
+                               style="color: var(--brand);
+                                      border-color: var(--brand)">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?page={{ page_obj.next_page_number }}&type={{ notification_type }}&status={{ status }}"
+                           style="color: var(--brand);
+                                  border-color: var(--brand)">Next</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link" style="color: #aaa; border-color: #ddd;">Next</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="text-center py-4 text-muted">
+        <p class="mb-1">No notifications found.</p>
+        <p class="small mb-0">Admin notifications will appear here when platform events require attention.</p>
+    </div>
+{% endif %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}My Reviews{% endblock %}
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'reviews/css/product_review.css' %}">
+{% endblock %}
+{% block content %}
+    <main id="producerReviewsPage"
+          class="container py-4"
+          data-api-url="/api/reviews/producer/reviews/"
+          data-reply-base-url="/reviews/producer/reviews/">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+            <div>
+                <p class="text-muted mb-1">Producer profile</p>
+                <h1 class="h3 mb-1">My reviews</h1>
+                <p class="text-muted mb-0">Customer reviews for {{ producer }} are shown from newest activity to oldest.</p>
+            </div>
+        </div>
+        <div id="producerReviewsError"
+             class="alert alert-danger d-none"
+             role="alert"></div>
+        <section id="producerReviewsList" class="d-grid gap-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">Loading reviews...</div>
+            </div>
+        </section>
+    </main>
+{% endblock %}
+{% block scripts %}
+    {{ block.super }}
+    <script src="{% static 'reviews/js/producer_reviews.js' %}"></script>
+{% endblock %}

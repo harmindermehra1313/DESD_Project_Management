@@ -1,0 +1,124 @@
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+from api.views.accounts import jwt_test
+
+from api.views.accounts import (
+    UserViewSet,
+    AddressViewSet,
+    ProducerViewSet,
+    AdminViewSet,
+    CustomerViewSet,
+)
+from api.views.admin_records import (
+    SecurityLogViewSet,
+    AdminPostViewSet,
+    ModerationLogViewSet,
+    DistanceRecordViewSet,
+)
+from api.views.community import (
+    RecipeViewSet,
+    RecipeProductViewSet,
+    FarmStoryViewSet,
+    FavouriteRecipeViewSet,
+)
+from api.views.notifications import (
+    NotificationViewSet,
+    RecallNoticeViewSet,
+    RecallNotificationViewSet,
+    TraceabilityRecordViewSet,
+)
+from api.views.orders import (
+    OrderViewSet,
+    OrderItemViewSet,
+    ProducerOrderSummaryViewSet,
+    ProducerOrderStatusHistoryViewSet,
+    RecurringOrderViewSet,
+    RecurringOrderItemViewSet,
+)
+from api.views.payments import (
+    PaymentViewSet,
+    ProducerSettlementViewSet,
+    SettlementLineItemViewSet,
+)
+from products.api.views.product_details import (
+    CategoryViewSet,
+    ProductViewSet,
+    WholesalePriceViewSet,
+    AllergenViewSet,
+    ProductAllergenViewSet,
+)
+
+
+
+
+from django.urls import path, include
+
+app_name = "api"
+
+router = DefaultRouter()
+
+# Accounts
+router.register("users", UserViewSet)
+router.register("addresses", AddressViewSet, basename="address")
+router.register("producers", ProducerViewSet)
+router.register("admins", AdminViewSet)
+router.register("customers", CustomerViewSet)
+
+# Admin records
+router.register("security-logs", SecurityLogViewSet)
+router.register("admin-posts", AdminPostViewSet)
+router.register("moderation-logs", ModerationLogViewSet)
+router.register("distance-records", DistanceRecordViewSet)
+
+# Community
+router.register("recipes", RecipeViewSet)
+router.register("recipe-products", RecipeProductViewSet)
+router.register("farm-stories", FarmStoryViewSet)
+router.register("favourite-recipes", FavouriteRecipeViewSet)
+
+# Notifications
+router.register("notifications", NotificationViewSet)
+router.register("recall-notices", RecallNoticeViewSet)
+router.register("recall-notifications", RecallNotificationViewSet)
+router.register("traceability-records", TraceabilityRecordViewSet)
+
+# Orders
+router.register("orders", OrderViewSet)
+router.register("order-items", OrderItemViewSet)
+router.register("producer-order-summaries", ProducerOrderSummaryViewSet)
+router.register("producer-order-status-history", ProducerOrderStatusHistoryViewSet)
+router.register("recurring-orders", RecurringOrderViewSet)
+router.register("recurring-order-items", RecurringOrderItemViewSet)
+
+# Payments
+router.register("payments", PaymentViewSet)
+router.register("producer-settlements", ProducerSettlementViewSet)
+router.register("settlement-line-items", SettlementLineItemViewSet)
+
+# Products
+router.register("categories", CategoryViewSet)
+router.register("products", ProductViewSet)
+router.register("wholesale-prices", WholesalePriceViewSet)
+router.register("allergens", AllergenViewSet)
+router.register("product-allergens", ProductAllergenViewSet)
+
+
+
+
+# urlpatterns = router.urls
+
+
+urlpatterns = [
+    path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("jwt-test/", jwt_test, name="jwt_test"),
+    path("cart/", include(("carts.api.urls", "carts"), namespace="carts_api")),
+    path("orders/", include(("orders.api.urls", "orders"), namespace="orders_api")),
+    # review API
+    path("reviews/", include(("reviews.api.urls"), namespace="reviews_api")),
+]
+
+urlpatterns += router.urls

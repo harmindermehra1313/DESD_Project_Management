@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Manage Content{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="dp-wrapper">
+
+    <div class="dp-layout">
+
+        <!-- LEFT SIDE — TABLE -->
+        <div class="dp-table-area">
+            <h2 class="dp-section-title">Your Recipes</h2>
+
+            <table class="dp-table">
+              <thead>
+                  <tr>
+                      <th>Image</th>
+                      <th>Title</th>
+                      <th>Season</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                  </tr>
+              </thead>
+              <tbody id="dpRecipesTableBody"></tbody>
+          </table>
+          <p id="dpNoRecipes" class="dp-empty" style="display:none;">No recipes yet.</p>
+          <div id="dpRecipePagination" class="dp-pagination"></div>
+
+            <div class="dp-actions">
+                <a href="{% url 'community:recipe_create' %}" class="dp-btn-primary">Create Recipe</a>
+            </div>
+
+            <hr class="dp-divider">
+
+            <h2 class="dp-section-title">Your Farm Stories</h2>
+
+           <table class="dp-table">
+                <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+                <tbody id="dpStoriesTableBody"></tbody>
+            </table>
+
+            <p id="dpNoStories" class="dp-empty" style="display:none;">No stories yet.</p>
+
+            <div id="dpStoryPagination" class="dp-pagination"></div>
+
+            <div class="dp-actions">
+                <a href="{% url 'community:farm_story_create' %}" class="dp-btn-primary">Create Story</a>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDE — PREVIEW PANEL -->
+        <div class="dp-preview-area">
+            <div class="dp-preview-placeholder">
+                Select a recipe or story to preview
+            </div>
+
+            <div class="dp-preview-card" id="dpPreviewCard" style="display:none;">
+                <img id="dpPreviewImage" class="dp-preview-img">
+                <p id="dpPreviewType" class="dp-preview-type"></p>
+                <h3 id="dpPreviewTitle" class="dp-preview-title"></h3>
+                <p id="dpPreviewMeta" class="dp-preview-meta"></p>
+                <p id="dpPreviewDescription" class="dp-preview-description"></p>
+                <p id="dpPreviewStatus" class="dp-preview-status"></p>
+                <div class="dp-preview-section" data-section="ingredients">
+                    <h4>Ingredients</h4>
+                    <ul id="dpPreviewIngredients"></ul>
+                </div>
+
+                <div class="dp-preview-section" data-section="instructions">
+                    <h4>Instructions</h4>
+                    <ol id="dpPreviewInstructions"></ol>
+                </div>
+
+                <div class="dp-preview-section" data-section="linked">
+                    <h4>Linked Products</h4>
+                    <ul id="dpPreviewLinkedProducts"></ul>
+                </div>
+
+
+
+                <div class="dp-preview-buttons">
+                    <a id="dpEditBtn" class="dp-btn-primary">Edit</a>
+                    <a id="dpDeleteBtn" class="dp-btn-danger">Delete</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

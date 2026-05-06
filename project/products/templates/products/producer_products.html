@@ -1,0 +1,569 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}My Product Listings{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/producer_products.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 dashboard-container">
+    <h2 class="mb-4" style="color: var(--prussian-blue); font-weight: bold;">My Product Listings</h2>
+    
+    <div id="globalSuccessAlert" class="alert alert-success d-none" role="alert"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 id="pageTitle" class="mb-0">Products</h5>
+
+        <div class="d-flex gap-2">
+
+            <!-- Filter Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown"
+                    data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                    Filter
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-3 shadow-sm" aria-labelledby="filterDropdown"
+                    style="width: 300px; z-index: 1050;">
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Availability</label>
+                        <div class="form-check">
+                            <input class="form-check-input avail-filter" type="checkbox" value="AV" id="filterAV" checked>
+                            <label class="form-check-label" for="filterAV">Available</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input avail-filter" type="checkbox" value="OOS" id="filterOOS" checked>
+                            <label class="form-check-label" for="filterOOS">Out of Stock</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input avail-filter" type="checkbox" value="DIS" id="filterDIS">
+                            <label class="form-check-label" for="filterDIS">Discontinued</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Listing Status</label>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PUB" id="filterPUB" checked>
+                            <label class="form-check-label" for="filterPUB">Published</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="HID" id="filterHID" checked>
+                            <label class="form-check-label" for="filterHID">Hidden</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="FLG" id="filterFLG">
+                            <label class="form-check-label" for="filterFLG">Flagged</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="RMV" id="filterRMV">
+                            <label class="form-check-label" for="filterRMV">Removed</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input status-filter" type="checkbox" value="PND" id="filterPND" checked>
+                            <label class="form-check-label" for="filterPND">Pending Approval</label>
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="filterProductName" class="form-label small fw-bold text-muted mb-1">Product Name</label>
+                        <input type="text" class="form-control form-control-sm" id="filterProductName" placeholder="Search by name...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="filterCategory" class="form-label small fw-bold text-muted mb-1">Category</label>
+                        <select class="form-select form-select-sm" id="filterCategory">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                            <option value="{{ category.name|lower }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" type="button"
+                        onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <!-- Edit Product Button -->
+            <button class="btn" type="button" id="editProductBtn" disabled onclick="openEditModal()">
+                Edit Product
+            </button>
+
+            <!-- New Batch Button -->
+            <button class="btn" type="button" id="batchProductBtn" disabled onclick="openBatchModal()">
+                New Batch
+            </button>
+
+            <!-- Cancel Listing Button -->
+            <button class="btn btn-outline-danger" type="button" id="cancelProductBtn" disabled onclick="openCancelModal()">
+                Cancel Listing
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Product Table -->
+    <div class="table-responsive mb-4 shadow-sm" style="border-radius: var(--radius); overflow: hidden;">
+        <table class="table table-hover mb-0 order-table align-middle text-center">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Unit</th>
+                    <th>Stock</th>
+                    <th>Availability</th>
+                    <th>Listing Status</th>
+                    <th>Listed On</th>
+                </tr>
+            </thead>
+            <tbody id="productTableBody">
+                {% for product in products %}
+                {% with wholesale_tier=product.product_wholesale_first.0 %}
+                <tr class="order-row" id="row-{{ product.pk }}"
+                    data-product-id="{{ product.pk }}"
+                    data-availability="{{ product.availability_status }}"
+                    data-status="{{ product.status }}"
+                    data-product-name="{{ product.name|lower }}"
+                    data-category="{{ product.category.name|lower }}"
+                    data-edit-name="{{ product.name }}"
+                    data-edit-price="{{ product.price }}"
+                    data-edit-unit="{{ product.unit }}"
+                    data-edit-category-id="{{ product.category.pk }}"
+                    data-edit-availability="{{ product.availability_status }}"
+                    data-edit-organic="{{ product.organic_certification_status }}"
+                    data-edit-low-stock="{{ product.low_stock_threshold }}"
+                    data-edit-description="{{ product.description|default:'' }}"
+                    data-edit-wholesale-price="{% if wholesale_tier %}{{ wholesale_tier.unit_price }}{% endif %}"
+                    data-edit-wholesale-min-qty="{% if wholesale_tier %}{{ wholesale_tier.min_quantity }}{% endif %}"
+                    onclick="showProductDetails('{{ product.pk }}', this)">
+
+                    <td>#{{ product.pk }}</td>
+                    <td class="text-start fw-semibold">{{ product.name }}</td>
+                    <td>{{ product.category.name }}</td>
+                    <td>£{{ product.price }}</td>
+                    <td>{{ product.get_unit_display }}</td>
+                    <td>
+                        {{ product.total_stock|default:"0" }}
+
+                        {% if product.total_stock is not None and product.total_stock <= product.low_stock_threshold %}
+                            <span class="text-danger ms-1 low-stock-icon" title="Low stock">
+                                ⚠
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <span class="status-badge avail-{{ product.availability_status|lower }}">
+                            {{ product.get_availability_status_display }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="status-badge listing-{{ product.status|lower }}">
+                            {{ product.get_status_display }}
+                        </span>
+                    </td>
+
+                    <td>{{ product.created_at|date:"d/m/Y" }}</td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr id="emptyStateRow">
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        No products found.
+                        <a href="{% url 'products:add_product' %}" style="color: var(--prussian-blue);">Add your first product</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <nav id="paginationContainer" class="d-flex justify-content-center mb-5" aria-label="Product pagination"></nav>
+
+    <!-- Details Panel -->
+    <div class="details-card bg-white mb-5">
+        <div class="details-header">
+            Product Details: <span id="detailProductName" class="text-muted fw-normal">Select a product</span>
+        </div>
+        <div class="details-body" id="detailsContent">
+            <p class="text-muted mb-0">Click on a product row above to view its full details including description, allergens, and inventory batches.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Detail Templates -->
+<div id="hidden-templates" style="display: none;">
+    {% for product in products %}
+    <template id="details-template-{{ product.pk }}">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <strong>Product Info:</strong><br>
+                <span class="text-muted small">Name:</span> <span class="js-detail-name">{{ product.name }}</span><br>
+                <span class="text-muted small">Category:</span> <span class="js-detail-category">{{ product.category.name }}</span><br>
+                <span class="text-muted small">Price:</span> <span class="js-detail-price">£{{ product.price }} per {{ product.get_unit_display }}</span><br>
+                {% with wholesale_tier=product.product_wholesale_first.0 %}
+                <span class="text-muted small">Wholesale:</span>
+                {% if wholesale_tier %}
+                <span class="js-detail-wholesale">£{{ wholesale_tier.unit_price }} per {{ product.get_unit_display }} (min {{ wholesale_tier.min_quantity }} units)</span><br>
+                {% else %}
+                <span class="js-detail-wholesale">Not set</span><br>
+                {% endif %}
+                {% endwith %}
+                <span class="text-muted small">Farm Origin:</span> {{ product.farm_origin }}<br>
+                <span class="text-muted small">Organic:</span> <span class="js-detail-organic">{{ product.get_organic_certification_status_display }}</span><br>
+                
+                <span class="text-muted small">Unit:</span> {{ product.get_unit_display }}<br>
+
+                <span class="text-muted small">Low Stock Threshold:</span>
+                <span class="js-detail-low-stock">{{ product.low_stock_threshold }} units</span><br>
+
+                {% if product.total_stock <= product.low_stock_threshold %}
+                    <div class="text-danger small fw-semibold mt-1 low-stock-warning">
+                        ⚠ Low Stock Alert: only {{ product.total_stock }} {{ product.get_unit_display }} remaining
+                    </div>
+                {% endif %}
+
+                <strong>Description:</strong><br>
+                <span class="fst-italic js-detail-description">{{ product.description|default:"No description provided." }}</span>
+                {% if product.latest_rejection %}
+                <br><br>
+                <div class="p-2 border border-danger rounded bg-light">
+                    <strong class="text-danger">Rejection Reason:</strong><br>
+                    <span class="text-muted small">
+                        {{ product.latest_rejection.reason }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+                <strong>Allergens:</strong><br>
+                <ul class="list-unstyled mb-3">
+                    {% for pa in product.product_allergen.all %}
+                    <li>{{ pa.allergen.get_name_display }}</li>
+                    {% empty %}
+                    <li class="text-muted">None declared.</li>
+                    {% endfor %}
+                </ul>
+
+                <strong>Inventory Batches:</strong><br>
+
+                <ul class="list-unstyled js-inventory-list">
+                    <div id="batchItemsContainer">
+
+                    <!-- Active batches -->
+                    {% for batch in product.active_batches %}
+                    <li class="d-flex justify-content-between align-items-center mb-1 batch-item" data-batch-id="{{ batch.id }}" data-remaining="{{ batch.remaining_quantity }}" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
+                        <div>
+                            <span class="text-muted small">Stock:</span>
+                            {{ batch.remaining_quantity }} / {{ batch.original_quantity }} -
+                            <span class="text-muted small">{{ batch.get_expiry_type_display }}:</span>
+                            {{ batch.expiry_date|date:"d/m/Y" }}
+                        </div>
+
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary"
+                                    onclick="openReduceBatchModal({{ batch.id }})"
+                                    {% if batch.remaining_quantity == 0 %}disabled{% endif %}>
+                                Reduce Stock
+                            </button>
+
+                            <button class="btn btn-outline-danger"
+                                    onclick="openDeleteBatchModal({{ batch.id }})">
+                                Delete Batch
+                            </button>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="text-muted">No inventory batches recorded.</li>
+                    {% endfor %}
+                    </div>
+
+                    <div class="mb-2">
+                        <label><input type="checkbox" id="toggleExpired"> Show expired</label>
+                        <label class="ms-3"><input type="checkbox" id="toggleDeleted"> Show deleted</label>
+
+                        <div id="noExpiredMsg" class="text-muted small mt-1 d-none">
+                            No expired batches.
+                        </div>
+                        <div id="noDeletedMsg" class="text-muted small mt-1 d-none">
+                            No deleted batches.
+                        </div>
+                    </div>
+
+                    <!-- Expired batches -->
+                    {% for batch in product.expired_batches %}
+                        <li class="batch-item expired-batch text-warning fst-italic mb-1"
+                            data-batch-status="expired" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
+                            <div>
+                                <strong>Expired:</strong>
+                                {{ batch.remaining_quantity }} / {{ batch.original_quantity }} -
+                                {{ batch.expiry_date|date:"d/m/Y" }}
+                            </div>
+                        </li>
+                    {% endfor %}
+
+                    <!-- Deleted batches -->
+                    <div id="deletedItemsContainer">
+                    {% for batch in product.deleted_batches %}
+                        <li class="batch-item deleted-batch text-muted fst-italic mb-1"
+                            data-batch-status="deleted" data-expiry="{{ batch.expiry_date|date:'Y-m-d' }}">
+                            <div>
+                                <strong>Deleted batch:</strong>
+                                {{ batch.original_quantity }} units
+                                (expired {{ batch.expiry_date|date:"d/m/Y" }})
+                            </div>
+                        </li>
+                    {% endfor %}
+                    </div>
+                </ul>
+            </div>
+        </div>
+    </template>
+    {% endfor %}
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProductModalLabel" style="color: var(--prussian-blue);">Edit Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProductForm" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="editName" class="form-label fw-semibold">Product Name</label>
+                            <input type="text" class="form-control" id="editName" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editPrice" class="form-label fw-semibold">Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">£</span>
+                                <input type="number" class="form-control" id="editPrice" name="price" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editUnit" class="form-label fw-semibold">Unit</label>
+                            <select class="form-select" id="editUnit" name="unit">
+                                {% for value, label in units %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editCategory" class="form-label fw-semibold">Category</label>
+                            <select class="form-select" id="editCategory" name="category_id">
+                                {% for category in categories %}
+                                <option value="{{ category.pk }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editAvailability" class="form-label fw-semibold">Availability</label>
+                            <select class="form-select" id="editAvailability" name="availability_status">
+                                <option value="AV">Available</option>
+                                <option value="OOS">Out of Stock</option>
+                                <option value="DIS">Discontinued</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editOrganic" class="form-label fw-semibold">Organic Certification</label>
+                            <select class="form-select" id="editOrganic" name="organic_certification_status">
+                                <option value="NOT_CERTIFIED">Not Certified</option>
+                                <option value="CERTIFIED">Certified Organic</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="editDescription" class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editWholesalePrice" class="form-label fw-semibold">Wholesale Price (Optional)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">£</span>
+                                <input type="number" class="form-control" id="editWholesalePrice" name="wholesale_price" step="0.01" min="0" placeholder="Leave blank to remove">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editWholesaleMinQty" class="form-label fw-semibold">Min Wholesale Quantity</label>
+                            <input type="number" class="form-control" id="editWholesaleMinQty" name="wholesale_min_quantity" min="2" placeholder="20">
+                            <small class="text-muted">Minimum units a buyer must order to get wholesale price.</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="editLowStock" class="form-label fw-semibold">Low Stock Threshold</label>
+                            <input type="number" class="form-control" id="editLowStock" name="low_stock_threshold" min="0" max="9999" placeholder="Leave blank to remain unchanged">
+                            <small class="text-muted">Alert level for low stock warnings.</small>
+                        </div>
+
+                    </div>
+                    <div id="editFormAlert" class="alert mt-3 d-none" role="alert"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary d-none" id="sendForApprovalBtn" onclick="sendForApproval()">
+                        Send For Approval
+                    </button>
+                <button type="button" class="btn save-btn d-none" id="saveEditBtn" onclick="submitEditForm()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Batch Modal -->
+<div class="modal fade" id="batchProductModal" tabindex="-1" aria-labelledby="batchProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="batchProductModalLabel" style="color: var(--prussian-blue);">Add New Batch</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="batchProductForm" novalidate>
+                    <div class="row g-3">
+
+                        <!-- Quantity -->
+                        <div class="col-md-6">
+                            <label for="batchQuantity" class="form-label fw-semibold">Quantity</label>
+                            <input type="number" class="form-control" id="batchQuantity" name="original_quantity"
+                                min="1" max="9999" required>
+                            <div class="invalid-feedback">Quantity must be between 1 and 9999.</div>
+                        </div>
+
+                        <!-- Harvest Date -->
+                        <div class="col-md-6">
+                            <label for="batchHarvest" class="form-label fw-semibold">Harvest Date</label>
+                            <input type="date" class="form-control" id="batchHarvest" name="harvest_date" required>
+                            <div class="invalid-feedback">Harvest date must be within the last 30 days and not in the future.</div>
+                        </div>
+
+                        <!-- Expiry Date -->
+                        <div class="col-md-6">
+                            <label for="batchExpiry" class="form-label fw-semibold">Expiry Date</label>
+                            <input type="date" class="form-control" id="batchExpiry" name="expiry_date" required>
+                            <div class="invalid-feedback">Expiry date must be today or later, and after the harvest date.</div>
+                        </div>
+
+                        <!-- Expiry Type (Radio Buttons) -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold d-block">Expiry Type</label>
+
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="expiry_type" id="expiryBestBefore" value="BB" checked>
+                                <label class="form-check-label" for="expiryBestBefore">Best Before</label>
+                            </div>
+
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="expiry_type" id="expiryUseBy" value="UB">
+                                <label class="form-check-label" for="expiryUseBy">Use By</label>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="batchFormAlert" class="alert mt-3 d-none" role="alert"></div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn save-btn" id="saveBatchBtn" onclick="submitBatchForm()">Add Batch</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reduce Batch Modal -->
+<div class="modal fade" id="reduceBatchModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Reduce Batch Quantity</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <label class="form-label small fw-bold text-muted">Amount to reduce</label>
+        <input type="number" id="reduceAmount" class="form-control" min="1">
+        <small id="reduceBatchRange" class="text-muted"></small>
+
+        <div id="reduceBatchAlert" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitReduceBatch()">Confirm</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Delete Batch Modal -->
+<div class="modal fade" id="deleteBatchModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Delete Batch</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="small text-muted">
+          Are you sure you want to delete this batch?  
+          This will remove its remaining stock.
+        </p>
+
+        <div id="deleteBatchAlert" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="submitDeleteBatch()">Delete</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div class="modal fade" id="cancelProductModal" tabindex="-1" aria-labelledby="cancelProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger" id="cancelProductModalLabel">Cancel Listing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel the listing for <strong id="cancelProductName"></strong>?</p>
+                <p class="text-muted small mb-0">This will mark the product as <strong>Discontinued</strong> and hide it from buyers. You can re-activate it by editing the product and changing the availability status.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">No, Keep Listing</button>
+                <button type="button" class="btn btn-danger" onclick="confirmCancelProduct()">Yes, Cancel Listing</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add New Product Link -->
+<div class="text-center my-4">
+    <a href="{% url 'products:add_product' %}" class="btn btn-primary">+ Add New Product</a>
+</div>
+
+{% csrf_token %}
+
+<script src="{% static 'js/producer_products.js' %}"></script>
+{% endblock %}

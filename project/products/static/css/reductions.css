@@ -1,0 +1,160 @@
+:root {
+    --brand: var(--ink-black);
+    --accent: var(--headback);
+    --muted: var(--lavender-grey);
+    --brand-rgb: 13, 27, 42;
+    --muted-rgb: 119, 141, 169;
+    --accent-rgb: 57, 163, 150;
+    --radius: 8px;
+}
+
+/* ============================
+   SURPLUS MANAGEMENT CARDS
+============================ */
+
+.surplus-card {
+    background: #ffffff;
+    border: 1px solid var(--muted);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+    transition: box-shadow .2s ease, transform .2s ease;
+    padding: 1.5rem;
+}
+
+/* .surplus-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.10);
+} */
+
+/* Section titles */
+.section-title {
+    font-weight: 700;
+    color: var(--brand);
+    margin-bottom: 1rem;
+}
+
+/* ============================
+   SURPLUS TABS — BRAND STYLING
+============================ */
+
+.surplus-tabs {
+    background: var(--background-header-row2);
+    padding: 14px 20px;
+    border-radius: 50px; /* makes the whole bar oval */
+    border: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Base tab appearance */
+.surplus-tabs .nav-link {
+    color: var(--brand);
+    background: var(--background-header-row2);
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 22px;
+    font-weight: 600;
+    transition: all 0.25s ease;
+}
+
+/* Hover state */
+.surplus-tabs .nav-link:hover {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    transform: translateY(-1px);
+}
+
+/* Active tab*/
+.surplus-tabs .nav-link.active {
+    background: var(--prussian-blue);
+    color: var(--text-light);
+    font-weight: 700;
+    transform: translateY(-1px);
+}
+
+/* Focus state for accessibility */
+.surplus-tabs .nav-link:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.15);
+}
+
+/* ============================
+   FORM ELEMENTS
+============================ */
+
+.surplus-card .form-control,
+.surplus-card .form-select {
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    border: 1px solid rgba(var(--muted-rgb), 0.4);
+    transition: border-color .2s ease, box-shadow .2s ease;
+    font-size: 1rem;
+    color: var(--brand);
+}
+
+.surplus-card .form-control:focus,
+.surplus-card .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+}
+
+.custom-form-label {
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 0.4rem;
+}
+
+/* Highlight invalid fields */
+.is-invalid {
+    border-color: #d9534f !important;
+    box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.25) !important;
+}
+
+.reduction-btn {
+    background-color: var(--accent);
+    border: 1px solid var(--accent);
+    color: #fff;
+    font-weight: 600;
+    padding: 0.75rem 1.4rem;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+.reduction-btn:hover:not(:disabled) {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.reduction-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(30%);
+}
+
+/* ============================
+   LIST GROUPS (Expired Products)
+============================ */
+
+.surplus-card .list-group-item {
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+    border: 1px solid rgba(var(--muted-rgb), 0.3);
+    padding: 0.75rem 1rem;
+}
+
+/* ============================
+   TAB CONTENT ANIMATION
+============================ */
+
+.tab-pane {
+    animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}

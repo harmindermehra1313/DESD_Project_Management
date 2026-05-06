@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/producer_profile.css' %}">
+
+<div class="container py-4 producer-page">
+
+  <!-- Producer Header -->
+  <div class="producer-card shadow-sm rounded-4 p-4 bg-white mb-4">
+    <h1 class="producer-name mb-2">{{ producer.farm_name }}</h1>
+
+    <p class="text-muted mb-3">
+      {{ producer.farm_description }}
+    </p>
+
+    <div class="d-flex flex-wrap gap-2">
+      <span class="badge bg-primary">{{ producer.farm_postcode }}</span>
+
+      {% if producer.organic_certification_number %}
+        <span class="badge bg-success">Certified Organic</span>
+      {% else %}
+        <span class="badge bg-secondary">Not Certified</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Stories Section -->
+  <div class="section-block mb-5">
+    <h3 class="section-title">Farm Stories</h3>
+
+    {% if stories %}
+      <div class="row g-4">
+        {% for s in stories %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <a href="/community/stories/{{ s.id }}/" class="story-card text-decoration-none">
+              <div class="card h-100 shadow-sm border-0 rounded-4">
+                <img src="{{ s.image.url }}" class="card-img-top story-img" alt="{{ s.title }}">
+                <div class="card-body">
+                  <h5 class="fw-bold">{{ s.title }}</h5>
+                  <p class="text-muted small">{{ s.created_at|date:"d M Y" }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">No stories published yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Recipes Section -->
+  <div class="section-block mb-5">
+    <h3 class="section-title">Recipes</h3>
+
+    {% if recipes %}
+      <div class="row g-4">
+        {% for r in recipes %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <a href="/community/recipes/{{ r.id }}/" class="recipe-card text-decoration-none">
+              <div class="card h-100 shadow-sm border-0 rounded-4">
+                <img src="{{ r.image.url }}" class="card-img-top recipe-img" alt="{{ r.title }}">
+                <div class="card-body">
+                  <h5 class="fw-bold">{{ r.title }}</h5>
+                  <p class="text-muted small">{{ r.created_at|date:"d M Y" }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted">No recipes published yet.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

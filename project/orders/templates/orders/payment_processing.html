@@ -1,0 +1,43 @@
+{% block content %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'orders/processing.css' %}">
+{% endblock %}
+
+<div class="processing-wrapper">
+    <div class="processing-card">
+        <div class="spinner"></div>
+        <h2>Processing your payment…</h2>
+        <p>Please give us time to finalise your order and do not refresh the page.</p>
+        <p>This usually takes a few seconds.</p>
+    </div>
+</div>
+
+<script>
+    const intent = "{{ payment_intent }}";
+    let timedOut = false;
+
+    // Hard timeout after 15 seconds
+    const timeoutTimer = setTimeout(() => {
+        timedOut = true;
+        window.location.href = "{% url 'orders:checkout' %}?timeout=1&pi=" + intent;
+    }, 15000);
+
+    // Poll Stripe status every 2 seconds
+    const pollTimer = setInterval(async () => {
+        if (timedOut) return;
+
+        const response = await fetch(
+            "{% url 'orders:stripe_return' %}?payment_intent=" + intent + "&ajax=1"
+        );
+        const data = await response.json();
+
+        if (data.status === "succeeded") {
+            clearInterval(pollTimer);
+            clearTimeout(timeoutTimer);
+            window.location.href = data.redirect_url;  // your success page
+        }
+    }, 2000);
+</script>
+{% endblock %}

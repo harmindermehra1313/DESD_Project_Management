@@ -1,0 +1,119 @@
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 9999;
+}
+.modal-box {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 350px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.login-container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 5rem 1rem;
+}
+
+.login-card {
+    border-radius: 10px;
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+.login-divider {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid var(--ink-black);
+    line-height: 0.1em;
+    margin: 20px 0;
+}
+
+.login-divider span {
+    background: #fff;
+    padding: 0 10px;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.btn-primary{
+    border-color: var(--dusk-blue);
+    background-color: var(--dusk-blue);
+}
+
+.btn-primary:hover{
+    border-color: var(--ink-black);
+    background-color: var(--ink-black);
+}
+
+.btn-outline-secondary {
+    background-color: #fff;
+    border-color: #6c757d;
+}
+.btn-outline-secondary:hover {
+    background-color: var(--ink-black);
+    border-color:var(--ink-black);
+    color: #fff;
+}
+
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);   /* centers it horizontally */
+    min-width: 280px;
+    max-width: 90%;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    font-weight: 500;
+    display: none;
+    z-index: 9999;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.toast.success {
+    background-color: #28a745; /* green */
+}
+
+.toast.error {
+    background-color: #dc3545; /* red */
+}
+
+.remember-forgot-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.forgot-link {
+    font-size: 0.9rem;
+    text-decoration: none;
+    color: var(--dusk-blue);
+    font-weight: 500;
+}
+
+.forgot-link:hover {
+    text-decoration: underline;
+    color: var(--ink-black);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}

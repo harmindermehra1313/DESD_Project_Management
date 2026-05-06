@@ -1,0 +1,150 @@
+/* ============================================
+   GLOBAL VARIABLES (COLORS + FONTS)
+   ============================================ */
+:root {
+    /* Deep Atmospheric Palette */
+    --headback:#39a396;
+    --ink-black: #0d1b2a;        /* Ultra-dark blue-black */
+    --prussian-blue: #1b263b;    /* Deep academic blue */
+    --dusk-blue: #37526f;        /* Twilight blue */
+    --lavender-grey: #778da9;    /* Muted purple-grey */
+    --alabaster-grey: #e0e1dd;   /* Soft light grey */
+    --dark-green: #4CAF50;       /* Darkish green */
+    --background-grey: #f6f7f9;  /* Background grey for forms */
+    --background-header-row2: #e2e5ec; /*Background drak grey for Header row 2*/
+
+    /* Text Colors */
+    --text-dark: #333;
+    --text-light: #fff;
+
+    /* Below used for old css */
+    --brand: var(--ink-black);
+    --accent: var(--headback);
+    --muted: var(--lavender-grey);
+    --radius: 8px;
+    --gap: 12px;
+
+    /* Fonts */
+    --font-main: system-ui, Arial, sans-serif;
+    --font-brand: 'Montserrat', sans-serif;
+    --font-welcome: 'Cookie', cursive;
+}
+
+/* ============================================
+   DEFAULT SETTINGS
+   ============================================ */
+body {
+    font-family: var(--font-main);
+    margin: 0px;
+}
+
+a {
+    text-decoration: none;
+}
+
+.title {
+    font-weight: bold;
+    color: var(--prussian-blue);
+}
+
+/* Main buttons */
+
+.btn-primary {
+    border-color: var(--dusk-blue);
+    background-color: var(--dusk-blue);
+    color: var(--text-light);
+}
+
+.btn-primary:hover {
+    border-color: var(--ink-black);
+    background-color: var(--ink-black);
+    color: var(--text-light);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+}
+
+/* Secondary buttons */
+.btn-outline-secondary {
+    background-color: #fff;
+    border-color: #6c757d;
+}
+.btn-outline-secondary:hover {
+    background-color: var(--ink-black);
+    border-color:var(--ink-black);
+    color: #fff;
+}
+
+
+/* Cards */
+.card {
+    border-radius: 10px;
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+.card-divider {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid var(--ink-black);
+    line-height: 0.1em;
+    margin: 20px 0;
+}
+
+/* Tables */
+.main-table th {
+    background-color: var(--prussian-blue);
+    color: #ffffff;
+    font-weight: 600;
+    border-bottom: none;
+}
+
+.table.main-table {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--alabaster-grey);
+}
+
+.order-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.order-row:hover {
+    background-color: #f8f9fa;
+}
+
+.order-row.selected {
+    background-color: #e9ecef;
+    border-left: 4px solid var(--dusk-blue);
+}
+
+/* Header */
+.account-dropdown .notification-dot {
+    position: absolute;
+    top: 0;
+    left: 75%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: #dc3545; /* Bootstrap danger */
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.cart-badge {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    transform: translate(-40%, -40%);
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 0.65rem;
+    font-weight: bold;
+}
+
+/* Bootstrap for cancellation buttons and badges! */
+/* opacity 0.5rem for disabled buttons */

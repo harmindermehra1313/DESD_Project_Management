@@ -1,0 +1,84 @@
+{# added food miles - joe #}
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Cart{% endblock %}
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'carts/cart.css' %}">
+{% endblock %}
+{% block content %}
+  <section class="cart-shell py-4 py-lg-5">
+    <div class="container">
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+        <div>
+          <div class="text-muted small mb-1">Shop / Cart</div>
+          <h1 class="h3 mb-0 title">Your cart</h1>
+        </div>
+        <a class="btn btn-primary"
+           href="{% url 'products:product_view' category_id=0 %}">
+          <i class="bi bi-arrow-left"></i>
+          Continue shopping
+        </a>
+      </div>
+      <div id="cartMsg" class="mb-3" aria-live="polite"></div>
+      <div class="row g-4">
+        <div class="col-lg-8 cart-items-wrap">
+          <div class="card cart-card p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h2 class="h5 mb-0">Items</h2>
+              <span class="text-muted small">Review quantities before checkout</span>
+            </div>
+            <div id="cartItems"
+                 data-placeholder-img="{% static 'img/default-product.png' %}"></div>
+            <div id="cartEmpty"
+                 class="d-none border rounded p-4 text-center cart-empty-state">
+              <p class="mb-2 fw-semibold">Your cart is empty.</p>
+              <a class="btn btn-primary" href="/products/category/0/">Browse products</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 cart-summary-wrap">
+          <div class="card cart-card cart-summary-card p-3 p-md-4 cart-summary-sticky">
+            <h2 class="h5 mb-3">Summary</h2>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Distinct items</span>
+              <span id="distinctItems" class="fw-semibold">0</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Total quantity</span>
+              <span id="totalQty" class="fw-semibold">0</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Subtotal</span>
+              <span id="subtotal" class="fw-semibold">£0.00</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span>Total food miles</span>
+              <span id="totalFoodMiles" class="fw-semibold">
+                {% if user.is_authenticated %}
+                  0.00 miles
+                {% else %}
+                  Log in to see your food miles
+                {% endif %}
+              </span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fw-semibold mb-3">
+              <span>Total</span>
+              <span id="total">£0.00</span>
+            </div>
+            <button id="checkoutBtn" class="btn btn-primary w-100 btn-lg" type="button">
+              <i class="bi bi-lock-fill me-1"></i>
+              Secure checkout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'carts/cart_page_messages.js' %}"></script>
+  <script src="{% static 'carts/cart_page.js' %}"></script>
+{% endblock %}

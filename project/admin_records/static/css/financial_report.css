@@ -1,0 +1,222 @@
+
+
+/* ============================================================
+   FINANCIAL REPORTS PAGE — BRFN ADMIN
+   Uses global variables defined in :root
+   ============================================================ */
+
+/* Page container */
+.admin-report-container {
+    max-width: 1300px;
+    background: var(--background-grey);
+    padding: 1.5rem;
+    border-radius: 10px;
+}
+
+/* ============================================================
+   SUMMARY CARDS
+   ============================================================ */
+
+.summary-card {
+    border-radius: 0.5rem;
+    border: 1px solid var(--alabaster-grey);
+    padding: 0.75rem 1rem;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--lavender-grey);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.summary-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--ink-black);
+}
+
+.fan-btn{
+    padding-right: 10px;
+}
+/* ============================================================
+   TABLE STYLING
+   ============================================================ */
+
+.admin-report-table {
+    width: 100%;
+    border: 1px solid var(--alabaster-grey);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* Table header */
+.admin-report-table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-light);
+    background-color: var(--prussian-blue);
+    padding: 10px;
+    font-weight: 600;
+    /* white-space: nowrap; */
+    vertical-align: top;
+    overflow-wrap: break-word;
+}
+
+/* Table body */
+.admin-report-table td {
+    font-size: 0.85rem;
+    padding: 10px;
+    color: var(--text-dark);
+    vertical-align: top;
+    font-weight: 500;
+}
+.admin-report-table {
+    table-layout: fixed;   /* Forces column widths to apply */
+    width: 100%;
+}
+.admin-report-table td {
+    overflow-wrap: break-word;
+}
+.text-end{
+    overflow-wrap: break-word;
+}
+
+/* Column widths */
+.admin-report-table th:nth-child(1),
+.admin-report-table td:nth-child(1) {
+    width: 80px;   /* Order ID */
+}
+
+.admin-report-table th:nth-child(2),
+.admin-report-table td:nth-child(2) {
+    width: 160px;  /* Reference */
+}
+
+.admin-report-table th:nth-child(3),
+.admin-report-table td:nth-child(3) {
+    width: 150px;  /* Date */
+}
+
+.admin-report-table th:nth-child(4),
+.admin-report-table td:nth-child(4) {
+    width: 120px;  /* Status */
+}
+
+.admin-report-table th:nth-child(5),
+.admin-report-table td:nth-child(5) {
+    width: 120px;  /* Order total */
+}
+
+.admin-report-table th:nth-child(6),
+.admin-report-table td:nth-child(6) {
+    width: 130px;  /* Commission calc */
+}
+
+.admin-report-table th:nth-child(7),
+.admin-report-table td:nth-child(7) {
+    width: 115px;  /* Commission recorded */
+}
+
+.admin-report-table th:nth-child(8),
+.admin-report-table td:nth-child(8) {
+    width: 115px;  /* Producer payout */
+}
+
+.admin-report-table th:nth-child(9),
+.admin-report-table td:nth-child(9) {
+    width: 230px;  /* Producer breakdown */
+}
+/* Row striping */
+.admin-report-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+/* Hover effect */
+.admin-report-table tbody tr:hover {
+    background: var(--background-header-row2);
+}
+
+/* Producer breakdown list */
+.admin-report-table ul {
+    padding-left: 18px;
+    margin-bottom: 0;
+}
+
+.admin-report-table li {
+    margin-bottom: 4px;
+    color: var(--dusk-blue);
+    line-height: 1.3;
+}
+
+/* Status colors */
+.status-completed {
+    color: var(--dark-green);
+    font-weight: 600;
+}
+
+.status-cancelled {
+    color: #b30000;
+    font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE TABLE (mobile-friendly)
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+    /* Turn off fixed layout */
+    .admin-report-table {
+        table-layout: auto !important;
+    }
+
+    /* Remove all column widths */
+    .admin-report-table th,
+    .admin-report-table td {
+        width: auto !important;
+    }
+
+    .admin-report-table thead {
+        display: none;
+    }
+
+    .admin-report-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--alabaster-grey);
+        border-radius: 8px;
+        padding: 0.75rem;
+        background: #fff;
+    }
+
+    .admin-report-table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 0.9rem;
+    }
+
+    .admin-report-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dusk-blue);
+        margin-right: 10px;
+    }
+
+    /* Producer breakdown stays readable */
+    .admin-report-table ul {
+        padding-left: 0;
+    }
+
+    .admin-report-table li {
+        margin-left: 0;
+        padding-left: 0;
+    }
+}

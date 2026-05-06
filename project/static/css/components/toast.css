@@ -1,0 +1,90 @@
+#toast-container {
+  position: fixed !important;
+  top: 5rem !important;
+  right: 1rem !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 2000 !important;
+  pointer-events: none;
+}
+
+#toast-container .toast {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 360px;
+  border-radius: 12px;
+  overflow: hidden;
+  opacity: 1 !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+
+  --bs-toast-bg: #ffffff;
+  --bs-toast-color: var(--text-dark);
+  --bs-toast-border-color: var(--alabaster-grey);
+  --bs-toast-header-bg: var(--prussian-blue);
+  --bs-toast-header-color: var(--text-light);
+  --bs-toast-header-border-color: transparent;
+
+  background-color: var(--bs-toast-bg) !important;
+  color: var(--bs-toast-color) !important;
+  border: 1px solid var(--bs-toast-border-color) !important;
+}
+
+#toast-container .toast-header {
+  background: var(--bs-toast-header-bg) !important;
+  color: var(--bs-toast-header-color) !important;
+  border-bottom: none !important;
+  padding: 0.75rem 0.9rem;
+}
+
+#toast-container .toast-body {
+  background: var(--bs-toast-bg) !important;
+  color: var(--bs-toast-color) !important;
+  padding: 0.85rem 0.9rem;
+}
+
+#toast-container .btn-close {
+  filter: invert(1);
+  opacity: 0.9;
+}
+
+#toast-container .btn-close:hover {
+  opacity: 1;
+}
+
+/* success toast */
+#toast-container .toast.text-bg-success,
+#toast-container .toast.bg-success,
+#toast-container .toast.toast-success {
+  --bs-toast-bg: #1b4332;
+  --bs-toast-color: #ffffff;
+  --bs-toast-border-color: #143126;
+  --bs-toast-header-bg: #0f2d22;
+  --bs-toast-header-color: #ffffff;
+}
+
+/* danger / failed toast */
+#toast-container .toast.text-bg-danger,
+#toast-container .toast.bg-danger,
+#toast-container .toast.toast-danger,
+#toast-container .toast.text-bg-error,
+#toast-container .toast.toast-error {
+ --bs-toast-bg: #7f1d1d;
+--bs-toast-color: #ffffff;
+--bs-toast-border-color: #5f1515;
+--bs-toast-header-bg: #450a0a;
+--bs-toast-header-color: #ffffff;
+}
+
+@media (max-width: 575.98px) {
+  #toast-container {
+    top: 4.5rem !important;
+    right: 0.75rem !important;
+    left: 0.75rem !important;
+  }
+
+  #toast-container .toast {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+}

@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+    <link rel="stylesheet" href="{% static 'css/profile.css' %}">
+    <div class="profile-page">
+        <div class="container py-5">
+            <!-- Page Header -->
+            <div class="profile-header mb-4">
+                <div>
+                    <p class="profile-kicker mb-1">Account settings</p>
+                    <h1 class="profile-title mb-1">My Profile</h1>
+                    <p class="profile-subtitle mb-0">
+                        Manage personal details,
+                        {% if is_producer_profile %}
+                            business profile
+                        {% else %}
+                            delivery address
+                        {% endif %}
+                        and account security.
+                    </p>
+                </div>
+            </div>
+            <!-- Messages -->
+            {% if messages %}
+                <div class="profile-toast-stack" aria-live="polite" aria-atomic="true">
+                    {% for message in messages %}
+                        {% if message.tags == "error" %}
+                            <div class="alert alert-danger profile-alert profile-toast mb-2"
+                                 data-profile-toast
+                                 role="alert">
+                                <span>{{ message }}</span>
+                                <button type="button"
+                                        class="btn-close"
+                                        data-profile-toast-close
+                                        aria-label="Close"></button>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-{{ message.tags }} profile-alert profile-toast mb-2"
+                                 data-profile-toast
+                                 role="alert">
+                                <span>{{ message }}</span>
+                                <button type="button"
+                                        class="btn-close"
+                                        data-profile-toast-close
+                                        aria-label="Close"></button>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="row g-4">
+                <!-- Left Summary Panel -->
+                <div class="col-12 col-lg-4">
+                    <aside class="profile-summary-card">
+                        <div class="profile-avatar">{{ request.user.name|slice:":1"|upper }}</div>
+                        <h2 class="profile-name mb-1">{{ request.user.name }}</h2>
+                        <p class="profile-email mb-3">{{ request.user.email }}</p>
+                        <div class="profile-role-badge mb-4">{{ profile_account_type }}</div>
+                        <div class="profile-summary-list">
+                            <div class="profile-summary-item">
+                                <span class="profile-summary-label">Phone</span>
+                                <span class="profile-summary-value">{{ request.user.phone|default:"Not provided" }}</span>
+                            </div>
+                            <div class="profile-summary-item">
+                                <span class="profile-summary-label">Account type</span>
+                                <span class="profile-summary-value">{{ profile_account_type }}</span>
+                            </div>
+                            {% if is_producer_profile and producer_business_form %}
+                                <div class="profile-summary-item">
+                                    <span class="profile-summary-label">Business / farm</span>
+                                    <span class="profile-summary-value">{{ producer_business_form.instance.farm_name|default:"Not provided" }}</span>
+                                </div>
+                                <div class="profile-summary-item">
+                                    <span class="profile-summary-label">Business postcode</span>
+                                    <span class="profile-summary-value">{{ producer_business_form.instance.farm_postcode|default:"Not provided" }}</span>
+                                </div>
+                            {% endif %}
+                            <div class="profile-summary-item">
+                                <span class="profile-summary-label">Member since</span>
+                                <span class="profile-summary-value">{{ request.user.created_at|date:"d M Y" }}</span>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+                <!-- Right Content -->
+                <div class="col-12 col-lg-8">
+                    {% if not is_producer_profile %}
+                        <div class="card border-0 shadow-sm mb-4"
+                             id="profile-notifications"
+                             style="border-radius: var(--radius)">
+                            <div class="card-body p-3 p-md-4"
+                                 data-notifications-auto-panel
+                                 data-notifications-url="{% url 'notifications:notification_panel_json' %}"
+                                 data-notifications-page="{{ notifications.number|default:1 }}"
+                                 data-notifications-interval="10000">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                                    <h4 class="mb-0 d-flex align-items-center"
+                                        style="color: var(--prussian-blue);
+                                               font-weight: 600">
+                                        <i class="bi bi-bell-fill me-2 dashboard-icon"></i>
+                                        Notifications
+                                    </h4>
+                                    <form method="POST"
+                                          action="{% url 'accounts:customer_mark_all_notifications_read' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden"
+                                               name="notifications_page"
+                                               value="{{ notifications.number|default:1 }}">
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-secondary"
+                                                {% if unread_count == 0 %}disabled{% endif %}>
+                                            Mark all as read
+                                            {% if unread_count > 0 %}({{ unread_count }}){% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                                {% if notifications and notifications.object_list %}
+                                    <ul class="list-group list-group-flush">
+                                        {% for note in notifications %}
+                                            <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 py-3 px-0">
+                                                <div class="ms-0 w-100">
+                                                    <span class="badge rounded-pill {% if note.type == 'RC' %} bg-danger {% elif note.type == 'OC' %} bg-danger {% elif note.type == 'RF' %} bg-warning text-dark {% elif note.type == 'OP' %} bg-success {% elif note.type == 'OU' %} bg-primary {% elif note.type == 'SYS' %} bg-secondary {% elif note.type == 'PRO' %} bg-success {% else %} bg-info {% endif %}">
+                                                        {{ note.get_type_display }}
+                                                    </span>
+                                                    <div class="fw-semibold mt-2">{{ note.message }}</div>
+                                                    <div class="text-muted small mt-1">
+                                                        {{ note.created_at|date:"d M Y, H:i" }}
+                                                        {% if note.order %}
+                                                            • Order reference:
+                                                            {{ note.order.unique_reference|default:note.order.pk }}
+                                                        {% endif %}
+                                                        {% if note.product %}• Product: {{ note.product.name }}{% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="text-md-end flex-shrink-0">
+                                                    {% if not note.read_at %}
+                                                        <span class="badge bg-danger rounded-pill mb-2">New</span>
+                                                        <form method="POST"
+                                                              action="{% url 'accounts:customer_mark_notification_read' note.pk %}">
+                                                            {% csrf_token %}
+                                                            <input type="hidden"
+                                                                   name="notifications_page"
+                                                                   value="{{ notifications.number|default:1 }}">
+                                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Mark as read</button>
+                                                        </form>
+                                                    {% else %}
+                                                        <span class="badge bg-light text-muted rounded-pill">Read</span>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% if notifications.paginator.num_pages > 1 %}
+                                        <nav class="mt-3" aria-label="Notification pagination">
+                                            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                                                {% if notifications.has_previous %}
+                                                    <a class="btn btn-sm btn-outline-secondary flex-fill"
+                                                       href="?notifications_page={{ notifications.previous_page_number }}#profile-notifications">
+                                                        Previous
+                                                    </a>
+                                                {% else %}
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-secondary flex-fill"
+                                                            disabled>Previous</button>
+                                                {% endif %}
+                                                <span class="small text-muted text-center flex-shrink-0 px-2">
+                                                    Page {{ notifications.number }} of {{ notifications.paginator.num_pages }}
+                                                </span>
+                                                {% if notifications.has_next %}
+                                                    <a class="btn btn-sm btn-outline-secondary flex-fill"
+                                                       href="?notifications_page={{ notifications.next_page_number }}#profile-notifications">
+                                                        Next
+                                                    </a>
+                                                {% else %}
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-secondary flex-fill"
+                                                            disabled>Next</button>
+                                                {% endif %}
+                                            </div>
+                                        </nav>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="text-center py-4 text-muted">
+                                        <p class="mb-1">No notifications yet.</p>
+                                        <p class="small mb-0">Order updates, cancellation notices, refund updates, and recall notices will appear here.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    <!-- Account Details -->
+                    <section class="profile-card mb-4">
+                        <div class="profile-card-header">
+                            <div>
+                                <h3 class="profile-card-title mb-1">Personal details</h3>
+                                <p class="profile-card-text mb-0">Update the name and phone number linked to this account.</p>
+                            </div>
+                        </div>
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="account">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6 profile-field-wrapper">
+                                    <label class="form-label" for="{{ account_form.name.id_for_label }}">Full name</label>
+                                    {{ account_form.name }}
+                                    {% for error in account_form.name.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                </div>
+                                <div class="col-12 col-md-6 profile-field-wrapper">
+                                    <label class="form-label" for="{{ account_form.phone.id_for_label }}">Phone number</label>
+                                    {{ account_form.phone }}
+                                    {% for error in account_form.phone.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                </div>
+                                <div class="col-12 profile-field-wrapper">
+                                    <label class="form-label">Email address</label>
+                                    <input type="email"
+                                           class="form-control"
+                                           value="{{ request.user.email }}"
+                                           readonly>
+                                </div>
+                            </div>
+                            <div class="profile-form-actions">
+                                <button type="submit" class="btn btn-primary">Save personal details</button>
+                            </div>
+                        </form>
+                    </section>
+                    {% if is_producer_profile %}
+                        <!-- Producer Business Profile -->
+                        <section class="profile-card mb-4">
+                            <div class="profile-card-header">
+                                <div>
+                                    <h3 class="profile-card-title mb-1">Business profile</h3>
+                                    <p class="profile-card-text mb-0">Manage the producer business information shown for this account.</p>
+                                </div>
+                            </div>
+                            {% if producer_business_form %}
+                                <form method="post" novalidate>
+                                    {% csrf_token %}
+                                    <input type="hidden" name="form_type" value="producer_business">
+                                    <div class="row g-3">
+                                        <div class="col-12 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.farm_name.id_for_label }}">
+                                                Business / farm name
+                                            </label>
+                                            {{ producer_business_form.farm_name }}
+                                            {% for error in producer_business_form.farm_name.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.contact_name.id_for_label }}">
+                                                Business contact name
+                                            </label>
+                                            {{ producer_business_form.contact_name }}
+                                            {% for error in producer_business_form.contact_name.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.contact_email.id_for_label }}">
+                                                Business contact email
+                                            </label>
+                                            {{ producer_business_form.contact_email }}
+                                            {% for error in producer_business_form.contact_email.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.contact_phone.id_for_label }}">
+                                                Business contact phone
+                                            </label>
+                                            {{ producer_business_form.contact_phone }}
+                                            {% for error in producer_business_form.contact_phone.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 col-md-6 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.farm_postcode.id_for_label }}">
+                                                Business postcode
+                                            </label>
+                                            {{ producer_business_form.farm_postcode }}
+                                            {% for error in producer_business_form.farm_postcode.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-12 profile-field-wrapper">
+                                            <label class="form-label"
+                                                   for="{{ producer_business_form.organic_certification_number.id_for_label }}">
+                                                Organic certification number
+                                            </label>
+                                            {{ producer_business_form.organic_certification_number }}
+                                            {% if producer_business_form.organic_certification_number.help_text %}
+                                                <div class="form-text">{{ producer_business_form.organic_certification_number.help_text }}</div>
+                                            {% endif %}
+                                            {% for error in producer_business_form.organic_certification_number.errors %}
+                                                <div class="profile-field-error">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="profile-form-actions">
+                                        <button type="submit" class="btn btn-primary">Save business profile</button>
+                                    </div>
+                                </form>
+                            {% else %}
+                                <div class="alert alert-warning profile-alert mb-0">Producer profile details are not available for this account.</div>
+                            {% endif %}
+                        </section>
+                    {% else %}
+                        <!-- Customer Address -->
+                        <section class="profile-card mb-4">
+                            <div class="profile-card-header">
+                                <div>
+                                    <h3 class="profile-card-title mb-1">Default address</h3>
+                                    <p class="profile-card-text mb-0">This address can be used for delivery and billing defaults.</p>
+                                </div>
+                            </div>
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                <input type="hidden" name="form_type" value="address">
+                                <div class="row g-3">
+                                    <div class="col-12 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.line1.id_for_label }}">Address line 1</label>
+                                        {{ address_form.line1 }}
+                                        {% for error in address_form.line1.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                    <div class="col-12 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.line2.id_for_label }}">Address line 2</label>
+                                        {{ address_form.line2 }}
+                                        {% for error in address_form.line2.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                    <div class="col-12 col-md-6 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.city.id_for_label }}">City</label>
+                                        {{ address_form.city }}
+                                        {% for error in address_form.city.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                    <div class="col-12 col-md-6 profile-field-wrapper">
+                                        <label class="form-label" for="{{ address_form.postcode.id_for_label }}">Postcode</label>
+                                        {{ address_form.postcode }}
+                                        {% for error in address_form.postcode.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                    </div>
+                                </div>
+                                <div class="profile-form-actions">
+                                    <button type="submit" class="btn btn-primary">Save address</button>
+                                </div>
+                            </form>
+                        </section>
+                    {% endif %}
+                    <!-- Password -->
+                    <section class="profile-card">
+                        <div class="profile-card-header">
+                            <div>
+                                <h3 class="profile-card-title mb-1">Security</h3>
+                                <p class="profile-card-text mb-0">Change the account password after confirming the current password.</p>
+                            </div>
+                        </div>
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="password">
+                            {% if password_form.non_field_errors %}
+                                <div class="alert alert-danger profile-alert">
+                                    {% for error in password_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="row g-3">
+                                <!-- Current Password -->
+                                <div class="col-12 profile-field-wrapper">
+                                    <label class="form-label"
+                                           for="{{ password_form.current_password.id_for_label }}">
+                                        Current password
+                                    </label>
+                                    <div class="input-group profile-password-field">
+                                        {{ password_form.current_password }}
+                                        <button type="button"
+                                                class="btn profile-password-toggle"
+                                                data-password-toggle
+                                                data-target="{{ password_form.current_password.id_for_label }}"
+                                                aria-label="Show current password"
+                                                aria-controls="{{ password_form.current_password.id_for_label }}">
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    {% for error in password_form.current_password.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                </div>
+                                <!-- New Password -->
+                                <div class="col-12 col-md-6 profile-field-wrapper">
+                                    <label class="form-label"
+                                           for="{{ password_form.new_password.id_for_label }}">New password</label>
+                                    <div class="input-group profile-password-field">
+                                        {{ password_form.new_password }}
+                                        <button type="button"
+                                                class="btn profile-password-toggle"
+                                                data-password-toggle
+                                                data-target="{{ password_form.new_password.id_for_label }}"
+                                                aria-label="Show new password"
+                                                aria-controls="{{ password_form.new_password.id_for_label }}">
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    {% for error in password_form.new_password.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                </div>
+                                <!-- Confirm Password -->
+                                <div class="col-12 col-md-6 profile-field-wrapper">
+                                    <label class="form-label"
+                                           for="{{ password_form.confirm_password.id_for_label }}">
+                                        Confirm new password
+                                    </label>
+                                    <div class="input-group profile-password-field">
+                                        {{ password_form.confirm_password }}
+                                        <button type="button"
+                                                class="btn profile-password-toggle"
+                                                data-password-toggle
+                                                data-target="{{ password_form.confirm_password.id_for_label }}"
+                                                aria-label="Show confirmed password"
+                                                aria-controls="{{ password_form.confirm_password.id_for_label }}">
+                                            <i class="bi bi-eye" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    {% for error in password_form.confirm_password.errors %}<div class="profile-field-error">{{ error }}</div>{% endfor %}
+                                </div>
+                            </div>
+                            <div class="profile-form-actions">
+                                <button type="submit" class="btn btn-primary">Change password</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'js/profile_validations.js' %}"></script>
+{% endblock %}

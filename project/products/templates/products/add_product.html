@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% load static %}{% block title %}List New Product | Bristol Regional Food Network{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/products.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="page-title mb-5">List New Product</h1>
+
+    {% if error_message %}
+    <div class="alert alert-danger" role="alert">
+        {{ error_message }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'products:add_product' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="row g-4 mb-4">
+            
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_name" class="form-label custom-form-label">Product Name</label>
+                    <input type="text" class="form-control" name="name" id="id_name" placeholder="e.g. Apples" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_price" class="form-label custom-form-label">Price</label>
+                    <div class="input-group">
+                        <span class="input-group-text">£</span>
+                        <input type="number" class="form-control" name="price" id="id_price" step="0.01" placeholder="3.00" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_availability_status" class="form-label custom-form-label">Availability</label>
+                    <select class="form-select" name="availability_status" id="id_availability_status">
+                        <option value="AV">In Season / Available</option>
+                        <option value="OOS">Out of Stock</option>
+                        <option value="DIS">Discontinued</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_harvest_date" class="form-label custom-form-label">Harvest Date</label>
+                    <input type="datetime-local" class="form-control" name="harvest_date" id="id_harvest_date" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_expiry_type" class="form-label custom-form-label">Expiry Type</label>
+                    <select class="form-select" name="expiry_type" id="id_expiry_type" required>
+                        <option value="BB" selected>Best Before</option>
+                        <option value="UB">Use By</option>
+                    </select>
+                </div>
+            
+                <div class="mb-3">
+                    <label for="id_expiry_date" class="form-label custom-form-label" id="id_expiry_date_label">Best Before Date</label>
+                    <input type="datetime-local" class="form-control" name="expiry_date" id="id_expiry_date" required>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_category" class="form-label custom-form-label">Product Category</label>
+                    <select class="form-select" name="category" id="id_category" required>
+                        <option value="" selected disabled>Select a category...</option>
+                        
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                        
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_unit" class="form-label custom-form-label">Units</label>
+                    <select class="form-select" name="unit" id="id_unit" required>
+                        <option value="" selected disabled>Select a unit...</option>
+                        
+                        {% for value, label in units %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                        
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_organic_certification_status" class="form-label custom-form-label">Organic Certification</label>
+                    <select class="form-select" name="organic_certification_status" id="id_organic_certification_status" required>
+                        <option value="NOT_CERTIFIED" selected>Not Certified</option>
+                        <option value="CERTIFIED">Certified Organic</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_stock_quantity" class="form-label custom-form-label">Stock</label>
+                    <input type="number" class="form-control" name="stock_quantity" id="id_stock_quantity" placeholder="100" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_wholesale_price" class="form-label custom-form-label">Wholesale Price (Optional)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">£</span>
+                        <input type="number" class="form-control" name="wholesale_price" id="id_wholesale_price" step="0.01" min="0" placeholder="2.50">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_wholesale_min_quantity" class="form-label custom-form-label">Minimum Wholesale Quantity</label>
+                    <input type="number" class="form-control" name="wholesale_min_quantity" id="id_wholesale_min_quantity" min="1" placeholder="1">
+                    <small class="text-muted">Minimum number of units a buyer must order to get the wholesale price.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_allergen" class="form-label custom-form-label">Allergen Information</label>
+                    <select class="form-select" name="allergen" id="id_allergen" multiple size="6">
+                        {% if allergens %}
+                            {% for allergen in allergens %}
+                                <option value="{{ allergen.value }}">{{ allergen.label }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No allergens available</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_image" class="form-label custom-form-label">Product Image</label>
+                    <div class="image-upload-box px-3">
+                        <input class="form-control" type="file" name="image" id="id_image" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_description" class="form-label custom-form-label">Product Description</label>
+                    <textarea class="form-control" name="description" id="id_description" rows="5" placeholder="Enter product details..."></textarea>
+                </div>
+            </div>
+            
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-submit">List New Item</button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="{% static 'js/allergen_select.js' %}"></script>
+<script src="{% static 'js/expiry_type_select.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const basePriceInput = document.getElementById('id_price');
+        const wholesaleInput = document.getElementById('id_wholesale_price');
+
+        if (!basePriceInput || !wholesaleInput) {
+            return;
+        }
+
+        const validateWholesaleVsBase = function () {
+            const base = parseFloat(basePriceInput.value);
+            const wholesaleRaw = wholesaleInput.value;
+
+            if (!wholesaleRaw || Number.isNaN(base)) {
+                wholesaleInput.setCustomValidity('');
+                return;
+            }
+
+            const wholesale = parseFloat(wholesaleRaw);
+            if (!Number.isNaN(wholesale) && wholesale > base) {
+                wholesaleInput.setCustomValidity('Wholesale price cannot be higher than the base price.');
+            } else {
+                wholesaleInput.setCustomValidity('');
+            }
+        };
+
+        basePriceInput.addEventListener('input', validateWholesaleVsBase);
+        wholesaleInput.addEventListener('input', validateWholesaleVsBase);
+    });
+</script>
+{% endblock %}

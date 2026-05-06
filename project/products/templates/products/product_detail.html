@@ -1,0 +1,153 @@
+{# added food miles - joe #}
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Product details{% endblock %}
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/product_detail.css' %}">
+  <link rel="stylesheet" href="{% static 'reviews/css/product_review.css' %}">
+  <link rel="stylesheet"
+        href="{% static 'ai_recommendations/css/product_recommendations.css' %}" />
+{% endblock %}
+{% block content %}
+  <section class="py-4 py-lg-5">
+    <div class="container">
+      <div class="p-3 p-md-4 p-lg-5"
+           id="productDetailPage"
+           data-product-id="{{ product_id }}">
+        <div id="productDetailMsg" class="mb-3" aria-live="polite"></div>
+        <div id="productDetailLoading">Loading product...</div>
+        <div id="productDetailContent" class="d-none">
+          <div class="row g-4 align-items-start">
+            <div class="col-lg-5">
+              <div class="product-image-panel">
+                <img id="productImage"
+                     src="{% static 'img/default-product.png' %}"
+                     alt=""
+                     class="product-image" />
+              </div>
+            </div>
+            <div class="col-lg-7">
+              <h1 id="productName" class="h1 mb-2"></h1>
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <span id="productUnit" class="badge rounded-pill text-bg-primary"></span>
+                <span id="productCategory" class="badge rounded-pill text-bg-secondary"></span>
+                <span class="product-seller">Sold by <strong id="productProducer"></strong></span>
+              </div>
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <span id="availabilityBadge" class="badge rounded-pill text-bg-secondary"></span>
+                <span id="stockText" class="product-stock-text small"></span>
+              </div>
+              <div id="expiryInfoRow" class="mb-3" style="display:none;">
+                <div class="product-meta-label" id="expiryTypeLabel">Expiry</div>
+                <div id="expiryValue" class="product-meta-value">—</div>
+              </div>
+              <div class="mb-3">
+                <div class="product-price-row">
+                  <span id="unitPriceLabel" class="product-price-current">£0.00</span>
+                  <span id="compareAtPrice"
+                        class="product-price-compare"
+                        style="display:none">£0.00</span>
+                  <span id="surplusPercentPill"
+                        class="badge rounded-pill bg-danger"
+                        style="display:none"></span>
+                  <span class="product-price-unit">per <span id="unitLabel"></span></span>
+                </div>
+                <div id="surplusNotice" class="mt-2"></div>
+                <div id="wholesaleNotice" class="mt-2"></div>
+              </div>
+              <div class="mt-3">
+                <h3 class="product-section-title">Details</h3>
+                <div class="mb-3">
+                  <div class="product-meta-label">Description</div>
+                  <div id="productDescription" class="product-meta-value"></div>
+                </div>
+                <div class="mb-3">
+                  <div class="product-meta-label">Allergens</div>
+                  <div id="allergensWrap" class="d-flex flex-wrap gap-2"></div>
+                </div>
+                <div class="mb-3">
+                  <div class="product-meta-label">Storage guidance</div>
+                  <div id="storageGuidance" class="product-meta-value"></div>
+                </div>
+                <div class="mb-3">
+                  <div class="product-meta-label">Farm origin</div>
+                  <div id="farmOrigin" class="product-meta-value"></div>
+                </div>
+                <div class="mb-3">
+                  <div class="product-meta-label">Food miles</div>
+                  <div id="foodMiles" class="product-meta-value">
+                    {% if user.is_authenticated %}
+                      Add a delivery address to view food miles.
+                    {% else %}
+                      Log in to see your food miles.
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="product-meta-label">Organic certification</div>
+                  <div id="organicCertification" class="product-meta-value"></div>
+                </div>
+              </div>
+              <div class="product-actions d-flex flex-wrap align-items-center gap-3">
+                <div class="input-group quantity-control">
+                  <button class="btn btn-primary quantity-btn" type="button" id="qtyMinus">−</button>
+                  <input type="number"
+                         class="form-control text-center quantity-input"
+                         id="qtyInput"
+                         value="1"
+                         min="1"
+                         step="1"
+                         inputmode="numeric"
+                         autocomplete="off">
+                  <button class="btn btn-primary quantity-btn" type="button" id="qtyPlus">+</button>
+                </div>
+                <button type="button"
+                        class="btn btn-primary product-action-btn"
+                        id="addToCartBtn"
+                        disabled>
+                  <i class="bi bi-cart-plus me-1"></i>
+                  Add to Cart
+                </button>
+                <a class="btn btn-primary product-action-btn product-back-link"
+                   href="{% url 'products:product_view' category_id=0 %}">Back to products</a>
+              </div>
+            </div>
+          </div>
+          {% if user.is_authenticated %}
+            <section class="ai-recommendations d-none"
+                     data-ai-recommendations
+                     data-product-id="{{ product_id }}">
+              {% csrf_token %}
+              <div class="ai-recommendations__header">
+                <h2 class="ai-recommendations__title">Recommended for your next order</h2>
+                <p class="ai-recommendations__subtitle">
+                  Suggestions are based on recent views, basket activity, previous orders,
+                  product type similarity and marketplace behaviour.
+                </p>
+              </div>
+              <p class="ai-recommendations__status" data-ai-recommendations-status>Loading recommendations...</p>
+              <div class="ai-recommendations__grid" data-ai-recommendations-grid></div>
+            </section>
+          {% endif %}
+          <div class="row mt-4">
+            <div class="mt-4">
+              <h3 class="product-section-title">Recipe Suggestions</h3>
+              <div id="recipeSuggestions">
+                <p class="text-muted">Loading recipes...</p>
+              </div>
+            </div>
+            <div class="col-12">{% include "reviews/partials/product_reviews.html" %}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  {% endblock %}
+  {% block scripts %}
+    {{ block.super }}
+    <script src="{% static 'js/product_detail_messages.js' %}"></script>
+    <script src="{% static 'js/product_detail.js' %}"></script>
+    <script src="{% static 'reviews/js/product_reviews.js' %}"></script>
+    <script src="{% static 'ai_recommendations/js/product_recommendations.js' %}"
+            defer></script>
+  {% endblock %}

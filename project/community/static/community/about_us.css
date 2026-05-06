@@ -1,0 +1,122 @@
+/* HERO */
+.about-hero-section {
+    padding: 140px 20px;
+    background-size: cover;
+    background-position: center 40%;
+    background-repeat: no-repeat;
+    color: #fff;
+    position: relative;
+}
+
+.about-hero-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0,0,0,0.25);
+}
+
+.about-hero-content {
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+    text-shadow: 0 0 8px rgba(0,0,0,1);
+}
+
+.about-hero-title {
+    font-family: var(--font-brand);
+    font-weight: 900;
+    font-size: 2.6rem;
+}
+
+/* STATS */
+.about-stat-box {
+    background-color: #fff;
+    border: 1px solid var(--alabaster-grey);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.stat-number {
+    font-family: var(--font-brand);
+    font-weight: 900;
+    font-size: 2rem;
+    color: var(--ink-black);
+}
+
+.stat-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--lavender-grey);
+}
+
+/* FEATURE SECTIONS */
+.about-features-wrapper {
+    background-color: var(--background-grey);
+    padding: 60px 0;
+}
+
+.about-feature-card {
+    background-color: #fff;
+    border: 1px solid var(--alabaster-grey);
+    border-radius: var(--radius);
+    padding: 40px;
+    margin: 40px auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.about-feature-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+.about-feature-row.reverse {
+    flex-direction: row-reverse;
+}
+
+.about-feature-text {
+    flex: 1;
+    max-width: 600px;
+}
+
+.about-feature-text h3 {
+    font-family: var(--font-brand);
+    font-weight: 800;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--ink-black);
+}
+
+.about-feature-text p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-dark);
+}
+
+.about-feature-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 1px solid var(--alabaster-grey);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.about-feature-icon i {
+    font-size: 3rem;
+    color: var(--prussian-blue);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .about-feature-row {
+        flex-direction: column !important;
+        text-align: center;
+    }
+}

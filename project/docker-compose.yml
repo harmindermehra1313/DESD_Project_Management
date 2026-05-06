@@ -1,0 +1,160 @@
+# # Harminder EDITS
+# services:
+
+#   db:
+#     image: postgres:15-alpine
+#     container_name: brfn_db
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_DB: ${POSTGRES_DB:-brfn}
+#       POSTGRES_USER: ${POSTGRES_USER:-brfn_user}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brfn_password}
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+#       interval: 5s
+#       timeout: 5s
+#       retries: 5   
+
+#   web:
+#     build: .
+#     container_name: brfn_app
+#     command: ["./wait-for-db.sh"]
+#     volumes:
+#       - .:/code
+#     ports:
+#       - "8000:8000"
+#     env_file:
+#       - .env
+#     depends_on:
+#       db:
+#         condition: service_healthy
+
+#   qcluster:
+#     build: .
+#     container_name: brfn_qcluster
+#     command: ["python", "manage.py", "qcluster"]
+#     volumes:
+#       - .:/code
+#     env_file:
+#       - .env
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#       web:
+#         condition: service_started
+  
+#   # dramatiq:
+#   #   build: .
+#   #   container_name: brfn_dramatiq
+#   #   working_dir: /code
+#   #   command: ["dramatiq", "BRFN", "--path", "."]
+#   #   volumes:
+#   #     - .:/code
+#   #   env_file:
+#   #     - .env
+#   #   environment:
+#   #     DJANGO_SETTINGS_MODULE: "BRFN.settings"
+#   #   depends_on:
+#   #     redis:
+#   #       condition: service_started
+#   #     web:
+#   #       condition: service_started
+  
+#   # redis:
+#   #   image: redis:7-alpine
+#   #   container_name: brfn_redis
+#   #   restart: unless-stopped
+
+#   # camunda:
+#   #   image: camunda/camunda-bpm-platform:run-latest
+#   #   container_name: camunda
+#   #   environment:
+#   #     - TZ=Europe/London
+#   #   ports:
+#   #     - "8100:8080" # Must be port 8080 do not change
+
+#   adminer:
+#     image: adminer:latest
+#     container_name: brfn_adminer
+#     restart: always
+#     ports:
+#       - "8080:8080"
+#     depends_on:
+#       db:
+#         condition: service_healthy
+
+# volumes:
+#   postgres_data:
+
+# NEON DATABASE
+services:
+
+  web:
+    build: .
+    container_name: brfn_app
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PRELOAD_REVIEW_MODERATION: "1"
+      TRANSFORMERS_VERBOSITY: "error"
+      HF_HUB_VERBOSITY: "error"
+
+  qcluster:
+    build: .
+    container_name: brfn_qcluster
+    command: ["python", "manage.py", "qcluster"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    depends_on:
+      web:
+        condition: service_started
+  
+  cron:
+    build: .
+    container_name: brfn_cron
+    command: ["cron", "-f"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    environment:
+      TZ: Europe/London
+    depends_on:
+      web:
+        condition: service_started
+
+  adminer:
+    image: adminer:latest
+    container_name: brfn_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+# *** STRIPE CLI IS FOR LOCAL DEV ONLY, DO NOT USE IN PRODUCTION ***
+# Use docker compose logs stripe_cli to see the logs and confirm that the webhook events are being forwarded correctly. 
+  stripe_cli:
+    image: stripe/stripe-cli:latest
+    container_name: brfn_stripe_cli
+    depends_on:
+      - web
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_DEVICE_NAME: brfn-docker-dev
+    command: >
+      listen
+      --events payment_intent.succeeded,payment_intent.payment_failed,charge.refunded
+      --forward-to http://web:8000/payments/webhook/
+    restart: unless-stopped
+  
+  
+
+
