@@ -35,7 +35,7 @@ from orders.models import (
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
+from django.core.cache import cache
 # ---------------------------------------
 # JWT / Authentication
 # ---------------------------------------
@@ -117,6 +117,18 @@ def firebase_auth_view(request):
     data = json.loads(request.body)
     token = data.get("token")
 
+    # Rate limiting
+    ip = request.META.get("REMOTE_ADDR", "")
+    cache_key = f"login_attempts:{ip}"
+    attempts = cache.get(cache_key, 0)
+
+    if attempts >= 10:
+        return JsonResponse(
+            {"error": "Too many login attempts. Please try again later."},
+            status=429,
+        )
+
+    cache.set(cache_key, attempts + 1, timeout=300)
     try:
         decoded = firebase_auth.verify_id_token(token)
         email = decoded.get("email")
@@ -170,8 +182,11 @@ def firebase_auth_view(request):
 
         return JsonResponse(response)
 
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+    except Exception:
+        return JsonResponse(
+            {"error": "Invalid login credentials."},
+            status=400,
+        )
 
 
 # ---------------------------------------
@@ -435,9 +450,17 @@ def producer_dashboard(request):
                 }
             )
 
+    # 3. Fetch Status History
+    history_records = ProducerOrderStatusHistory.objects.filter(
+        producer_order_summary__producer=producer
+    ).select_related(
+        "producer_order_summary__order"
+    ).order_by("-changed_at")
+
     context = {
         "summaries": summaries,
         "all_subscriptions": all_subscriptions,
+        "history_records": history_records,
         "order_search": order_search,
     }
 
@@ -616,6 +639,9 @@ def update_order_status(request, summary_id):
     try:
         data = json.loads(request.body)
         new_status = data.get("status")
+        # Extract note from request, use default if empty or not provided
+        custom_note = data.get("note", "").strip()
+        final_note = custom_note if custom_note else "Status updated via Producer Dashboard"
 
         valid_statuses = [
             ProducerOrderSummary.Status.PENDING,
@@ -634,7 +660,7 @@ def update_order_status(request, summary_id):
             producer=request.user.producer_profile,
             updated_by=request.user,
             new_status=new_status,
-            note="Status updated via Producer Dashboard",
+            note=final_note,
         )
 
         summary = result["summary"]
@@ -772,11 +798,16 @@ class UnifiedRegistrationView(APIView):
     def post(self, request):
         role = request.data.get("role", "").lower()
 
+        if role not in ["customer", "producer"]:
+            return Response(
+                {"role": ["Invalid registration role."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if role == "producer":
             serializer = ProducerRegistrationSerializer(data=request.data)
         else:
             serializer = CustomerRegistrationSerializer(data=request.data)
-
         if serializer.is_valid():
             serializer.save()
             return Response(

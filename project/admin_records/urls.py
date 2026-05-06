@@ -4,6 +4,7 @@ from . import views, dashboard_notification_views
 app_name = "admin_records"
 
 urlpatterns = [
+    path("", dashboard_notification_views.admin_records_dashboard, name="index"),
     path("", views.index, name="index"),
     path(
         "review-notifications/json/",
@@ -60,5 +61,16 @@ urlpatterns = [
         "action-required/<int:product_id>/",
         views.action_required,
         name="action_required",
+    ),
+    # approving producer 
+    path(
+    "producers/<int:producer_id>/approve/",
+    views.approve_producer,
+    name="approve_producer",
+    ),
+    path(
+    "producers/<int:producer_id>/reject/",
+    views.reject_producer,
+    name="reject_producer",
     ),
 ]

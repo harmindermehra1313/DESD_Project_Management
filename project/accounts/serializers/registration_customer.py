@@ -9,7 +9,7 @@ from accounts.models import User, Customer, Address
 import re
 from firebase_admin import auth as firebase_auth
 from django_q.tasks import async_task
-
+from firebase_admin.auth import EmailAlreadyExistsError
 
 class CustomerRegistrationSerializer(serializers.Serializer):
     # User fields
@@ -51,9 +51,17 @@ class CustomerRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError({"email": "This email is already registered."})
 
         # Phone validation (optional)
-        phone = data.get("phone")
-        if phone and not re.match(r"^\+?[0-9\s\-()]{7,20}$", phone):
-            raise serializers.ValidationError({"phone": "Enter a valid phone number."})
+        phone = data.get("phone", "").strip()
+
+        if phone:
+            uk_phone_pattern = r"^\+44(7\d{9}|1\d{9}|2\d{9}|3\d{9}|8\d{9}|55\d{8}|56\d{8})$"
+
+            if not re.match(uk_phone_pattern, phone):
+                raise serializers.ValidationError({
+                    "phone": "Enter a valid UK phone number starting with +44."
+                })
+
+            data["phone"] = phone
 
         # Password match
         if data["password"] != data["confirm_password"]:
@@ -81,7 +89,16 @@ class CustomerRegistrationSerializer(serializers.Serializer):
         for f in ["line1", "city", "postcode"]:
             if not data.get(f):
                 raise serializers.ValidationError({f: "This field is required."})
+        uk_postcode_pattern = r"^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$"
 
+        postcode = data.get("postcode", "").strip().upper()
+
+        if not re.match(uk_postcode_pattern, postcode):
+            raise serializers.ValidationError({
+                "postcode": "Enter a valid UK postcode."
+            })
+
+        data["postcode"] = postcode
         return data
 
     @transaction.atomic
@@ -96,11 +113,19 @@ class CustomerRegistrationSerializer(serializers.Serializer):
             phone=validated_data.get("phone", ""),
             role="CUSTOMER",
         )
-        firebase_auth.create_user(
-            email=validated_data["email"],
-            password=validated_data["password"]
-        )
-
+        # firebase_auth.create_user(
+        #     email=validated_data["email"],
+        #     password=validated_data["password"]
+        # )
+        try:
+            firebase_auth.create_user(
+                email=validated_data["email"],
+                password=validated_data["password"]
+            )
+        except EmailAlreadyExistsError:
+            raise serializers.ValidationError({
+                "email": "This email is already registered in Firebase."
+            })
         # Create customer profile
         customer = Customer.objects.create(
             user=user,

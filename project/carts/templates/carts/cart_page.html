@@ -54,7 +54,12 @@
             </div>
             <div class="d-flex justify-content-between mb-2">
               <span>Total food miles</span>
-              <span id="totalFoodMiles" class="fw-semibold" style="background-color: #d4edda; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #155724;">
+              <span id="totalFoodMiles"
+                    class="fw-semibold"
+                    style="background-color: #d4edda;
+                           padding: 0.25rem 0.5rem;
+                           border-radius: 0.25rem;
+                           color: #155724">
                 {% if user.is_authenticated %}
                   0.00 miles
                 {% else %}

@@ -18,11 +18,15 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.template.loader import get_template
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.views.decorators.http import require_POST
+
 # -----------------------------
 # Project Imports
 # -----------------------------
 from BRFN.decorators import admin_required
-from orders.models import Order
+from orders.models import Order, ProducerOrderSummary
 from accounts.models import User, Producer, Admin
 from products.models import Product
 from django.core.mail import EmailMultiAlternatives
@@ -57,15 +61,56 @@ def _clean_producer_id(raw):
 
 @admin_required
 def user_list(request):
-    users = User.objects.all().order_by("-created_at")
+    users = User.objects.exclude(role="ADMIN").order_by("-created_at")
     return render(request, "admin_records/user_list.html", {"users": users})
 
+@login_required
+@admin_required
+@require_POST
+def reject_producer(request, producer_id):
+    producer = get_object_or_404(Producer, id=producer_id)
+
+    reason = request.POST.get("reason", "Producer registration rejected by admin.")
+
+    producer.is_approved = False
+    producer.approved_at = None
+    producer.approved_by_admin = None
+    producer.save(update_fields=["is_approved", "approved_at", "approved_by_admin"])
+
+    producer.user.is_active = False
+    producer.user.deactivation_reason = reason
+    producer.user.deactivated_at = timezone.now()
+    producer.user.deactivated_by = request.user
+    producer.user.save(update_fields=[
+        "is_active",
+        "deactivation_reason",
+        "deactivated_at",
+        "deactivated_by",
+    ])
+
+    messages.warning(request, f"{producer.farm_name} has been rejected and deactivated.")
+    return redirect("admin_records:producer_list")
 
 @admin_required
 def producer_list(request):
     producers = Producer.objects.all().order_by("farm_name")
     return render(request, "admin_records/producer_list.html", {"producers": producers})
 
+
+
+@login_required
+@admin_required
+@require_POST
+def approve_producer(request, producer_id):
+    producer = get_object_or_404(Producer, id=producer_id)
+
+    producer.is_approved = True
+    producer.approved_at = timezone.now()
+    producer.approved_by_admin = request.user
+    producer.save(update_fields=["is_approved", "approved_at", "approved_by_admin"])
+
+    messages.success(request, f"{producer.farm_name} has been approved successfully.")
+    return redirect("admin_records:producer_list")
 
 @admin_required
 def index(request):
@@ -89,7 +134,13 @@ def _build_financial_context(request):
         orders = orders.filter(order_date__date__lte=end_date)
 
     if status:
-        orders = orders.filter(status=status)
+        if status == "CAN":
+            orders = orders.filter(
+                Q(status=Order.Status.CANCELLED) |
+                Q(producer_summaries__status=ProducerOrderSummary.Status.CANCELLED)
+            ).distinct()
+        else:
+            orders = orders.filter(status=status)
 
     if producer_id:
         orders = orders.filter(producer_summaries__producer_id=producer_id).distinct()
@@ -274,8 +325,13 @@ def financial_reports_csv(request):
         orders = orders.filter(order_date__date__lte=end_date)
 
     if status:
-        orders = orders.filter(status=status)
-
+        if status == "CAN":
+            orders = orders.filter(
+                Q(status=Order.Status.CANCELLED) |
+                Q(producer_summaries__status=ProducerOrderSummary.Status.CANCELLED)
+            ).distinct()
+        else:
+            orders = orders.filter(status=status)
     if producer_id:
         orders = orders.filter(producer_summaries__producer_id=producer_id).distinct()
 
@@ -555,7 +611,6 @@ def product_details(request, product_id):
     return JsonResponse(data)
 
 
-# ------------ EMAILS
 
 
 def action_required(request, product_id):
@@ -573,5 +628,5 @@ def action_required(request, product_id):
 
     return JsonResponse({"success": True})
 
-#
+
 

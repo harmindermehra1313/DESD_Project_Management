@@ -24,6 +24,7 @@
                     <th>Phone</th>
                     <th>Approved</th>
                     <th>Payout Method</th>
+                    <th>Action</th>
                 </tr>
             </thead>
 
@@ -53,6 +54,25 @@
                     </td>
 
                     <td data-label="Payout Method">{{ p.get_payout_method_display }}</td>
+                    <td data-label="Action" onclick="event.stopPropagation();">
+                        {% if not p.is_approved %}
+                            <form method="post" action="{% url 'admin_records:approve_producer' p.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    Approve
+                                </button>
+                            </form>
+                            <!-- <form method="post" action="{% url 'admin_records:reject_producer' p.id %}" onclick="event.stopPropagation();">
+                                {% csrf_token %}
+                                <input type="hidden" name="reason" value="Producer registration rejected by admin.">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    Reject
+                                </button>
+                            </form> -->
+                        {% else %}
+                            <span class="text-muted">Approved</span>
+                        {% endif %}
+                    </td>
 
                 </tr>
                 {% empty %}

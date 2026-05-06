@@ -228,7 +228,21 @@
 {% csrf_token %}
 {% block extra_js %}
 <script src="{% static 'js/approval_requests.js' %}"></script>
+{% if request.path|slice:":15" == "/admin_records/" %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
 
+    if (params.get("status") === "rejected") {
+        showToast("success", "Product rejected successfully.");
+    }
+
+    if (params.get("status") === "action_required") {
+        showToast("success", "Action required message sent successfully.");
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
 
 {% endblock %}

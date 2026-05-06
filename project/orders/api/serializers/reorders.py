@@ -559,6 +559,7 @@ class ReorderSuggestedItemSerializer(serializers.Serializer):
     match_basis = serializers.CharField()
     recommendation_badge = serializers.CharField(required=False, allow_blank=True)
 
+
 class ReorderUnavailableItemSerializer(serializers.Serializer):
     order_item_id = serializers.IntegerField(required=False)
     product_id = serializers.IntegerField()

@@ -64,20 +64,32 @@ document.addEventListener("DOMContentLoaded", () => {
   function buildBadges(product) {
     const badges = [];
 
-    if (product.is_disabled) {
-      badges.push(
-        buildBadge(
-          product.disabled_reason || "Unavailable",
-          "product-card-badge--muted",
-        ),
-      );
+    // Check if the product is disabled (or specifically out of season)
+    if (product.is_disabled || (product.is_seasonal && !product.in_season)) {
+      let reason = product.disabled_reason || "Unavailable";
+      let badgeClass = "product-card-badge--muted";
+      
+      // Override text and color if it's simply out of season
+      if (product.is_seasonal && !product.in_season) {
+        reason = "Out of Season";
+        badgeClass = "product-card-badge--warning";
+      }
 
+      badges.push(buildBadge(reason, badgeClass));
       return badges.join("");
     }
 
     badges.push(buildBadge("Available", "product-card-badge--success"));
 
-    if (product.surplus_active) {
+    // Add Seasonal Badge if applicable
+    if (product.is_seasonal && product.in_season) {
+      badges.push(buildBadge("In Season", "product-card-badge--success"));
+    }
+
+    // Add Discount/Surplus badges
+    if (product.discount_reason === "Expires soon") {
+      badges.push(buildBadge("Expires soon", "product-card-badge--danger"));
+    } else if (product.surplus_active) {
       badges.push(buildBadge("Surplus", "product-card-badge--danger"));
     }
 
@@ -134,7 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function buildStockHTML(product) {
-    if (product.is_disabled) {
+    // If the product is disabled but NOT because it's out of season, show the standard disabled reason
+    if (product.is_disabled && !(product.is_seasonal && !product.in_season)) {
       return `
         <div class="product-card-meta-row">
           <span class="product-card-meta-label">Status</span>
@@ -186,25 +199,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function buildActionHTML(product) {
-    if (product.is_disabled) {
+    if (product.is_disabled || (product.is_seasonal && !product.in_season)) {
+      let reason = product.disabled_reason || "Unavailable";
+      
+      if (product.is_seasonal && !product.in_season) {
+        reason = "Out of Season";
+      }
+
       return `
-      <button
-        class="btn btn-primary product-action-btn w-100 mt-auto"
-        disabled
-      >
-        ${escapeHTML(product.disabled_reason || "Unavailable")}
-      </button>
-    `;
+        <button
+          class="btn btn-primary product-action-btn w-100 mt-auto"
+          disabled
+        >
+          ${escapeHTML(reason)}
+        </button>
+      `;
     }
 
     return `
-    <a
-      href="/products/${escapeHTML(product.id)}/"
-      class="btn btn-primary product-action-btn w-100 mt-auto"
-    >
-      View details
-    </a>
-  `;
+      <a
+        href="/products/${escapeHTML(product.id)}/"
+        class="btn btn-primary product-action-btn w-100 mt-auto"
+      >
+        View details
+      </a>
+    `;
   }
 
   function renderProducts(list) {
@@ -229,9 +248,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     list.forEach((product) => {
-      const cardClass = product.is_disabled
+      // Out of season items will get the disabled UI fade applied to the card
+      const cardClass = product.is_disabled || (product.is_seasonal && !product.in_season)
         ? "product-card product-card--disabled"
         : "product-card";
+
+      // Build seasonal metadata row if applicable
+      let seasonalTextHtml = '';
+      if (product.is_seasonal) {
+        seasonalTextHtml = `
+          <div class="product-card-meta-row">
+            <span class="product-card-meta-label">Season</span>
+            <span class="product-card-meta-value">
+              ${escapeHTML(product.season_text)}
+            </span>
+          </div>
+        `;
+      }
 
       grid.innerHTML += `
         <article class="${cardClass}">
@@ -265,7 +298,8 @@ document.addEventListener("DOMContentLoaded", () => {
                   ${escapeHTML(product.category)}
                 </span>
               </div>
-
+              
+              ${seasonalTextHtml}
               ${buildStockHTML(product)}
 ${buildAllergensHTML(product)}
             </div>

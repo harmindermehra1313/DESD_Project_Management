@@ -697,7 +697,7 @@ password.addEventListener("input", () => {
     });
 }
 
-normaliseUKPhone(contact_phone);
+normaliseUKPhone(contactPhone);
 normaliseUKPhone(phone); // customer phone if needed
 
   // ------------------------------------------------------------
@@ -890,7 +890,7 @@ normaliseUKPhone(phone); // customer phone if needed
       for (const field in data) {
         const messages = Array.isArray(data[field]) ? data[field] : [String(data[field])];
         const combined = messages.join(', ');
-        apiMessages.push(`${field}: ${combined}`);
+        apiMessages.push(combined);
 
         // Inline error if field exists
         const input = form.querySelector(`[name="${field}"]`);

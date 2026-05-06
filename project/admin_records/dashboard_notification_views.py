@@ -112,10 +112,10 @@ def get_review_notification_context(request):
     }
 
 
-# @staff_member_required
-# def admin_records_dashboard(request):
-#     context = get_review_notification_context(request)
-#     return render(request, "admin_records/index.html", context)
+@staff_member_required
+def admin_records_dashboard(request):
+    context = get_review_notification_context(request)
+    return render(request, "admin_records/index.html", context)
 
 
 @staff_member_required
