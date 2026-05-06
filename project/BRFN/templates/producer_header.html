@@ -51,6 +51,12 @@
               <li>
                 <a class="dropdown-item" href="{% url 'accounts:profile' %}">Profile</a>
               </li>
+              <!-- Stripe Payout Dashboard -->
+              <li>
+                <a class="dropdown-item" href="{% url 'accounts:producer_stripe_dashboard' %}">
+                  Payout Settings
+                </a>
+              </li>
               <!-- Universal logout link -->
               <li>
                 <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">Logout</a>
