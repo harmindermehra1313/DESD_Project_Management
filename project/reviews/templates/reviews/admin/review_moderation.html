@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Review Moderation{% endblock %}
+{% block extra_css %}
+    <link rel="stylesheet"
+          href="{% static 'reviews/css/admin_review_moderation.css' %}">
+{% endblock %}
+{% block content %}
+    <div class="review-moderation-page">
+        <div class="container py-4">
+            <div class="moderation-header mb-4">
+                <div>
+                    <p class="moderation-kicker mb-1">Admin moderation</p>
+                    <h1 class="moderation-title mb-1">Review Moderation</h1>
+                    <p class="moderation-subtitle mb-0">Approve, reject, or keep flagged customer reviews and producer responses.</p>
+                </div>
+            </div>
+            {% if messages %}
+                <div class="moderation-message-stack mb-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <form method="get" class="moderation-filter-card mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-lg-5">
+                        <label for="q" class="form-label">Search</label>
+                        <input type="search"
+                               id="q"
+                               name="q"
+                               class="form-control"
+                               value="{{ search }}"
+                               placeholder="Search by product, email, order reference, title, or text">
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="review_status" class="form-label">Customer review status</label>
+                        <select id="review_status" name="review_status" class="form-select">
+                            <option value="flagged"
+                                    {% if review_status == "flagged" %}selected{% endif %}>
+                                Flagged ({{ review_counts.flagged }})
+                            </option>
+                            <option value="published"
+                                    {% if review_status == "published" %}selected{% endif %}>
+                                Published ({{ review_counts.published }})
+                            </option>
+                            <option value="removed"
+                                    {% if review_status == "removed" %}selected{% endif %}>
+                                Removed ({{ review_counts.removed }})
+                            </option>
+                            <option value="all" {% if review_status == "all" %}selected{% endif %}>All ({{ review_counts.all }})</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="response_status" class="form-label">Producer response status</label>
+                        <select id="response_status" name="response_status" class="form-select">
+                            <option value="flagged"
+                                    {% if response_status == "flagged" %}selected{% endif %}>
+                                Flagged ({{ response_counts.flagged }})
+                            </option>
+                            <option value="published"
+                                    {% if response_status == "published" %}selected{% endif %}>
+                                Published ({{ response_counts.published }})
+                            </option>
+                            {% if response_has_removed_status %}
+                                <option value="removed"
+                                        {% if response_status == "removed" %}selected{% endif %}>
+                                    Removed ({{ response_counts.removed }})
+                                </option>
+                            {% endif %}
+                            <option value="all" {% if response_status == "all" %}selected{% endif %}>All ({{ response_counts.all }})</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-lg-1 d-grid">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+            </form>
+            <section class="moderation-section mb-5">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">Customer Reviews</h2>
+                        <p class="section-subtitle mb-0">Customer reviews that need admin moderation.</p>
+                    </div>
+                </div>
+                {% if review_page.object_list %}
+                    <div class="moderation-list">
+                        {% for review in review_page.object_list %}
+                            <article class="moderation-card">
+                                <div class="moderation-card-main">
+                                    <div class="moderation-card-top">
+                                        <div>
+                                            <span class="status-pill status-{{ review.status|lower }}">{{ review.get_status_display|default:review.status }}</span>
+                                            <h3 class="item-title mt-2 mb-1">{{ review.title }}</h3>
+                                            <p class="item-meta mb-0">
+                                                Product:
+                                                <strong>{{ review.product.name|default:"Unknown product" }}</strong>
+                                            </p>
+                                        </div>
+                                        <div class="rating-pill">{{ review.rating }}/5</div>
+                                    </div>
+                                    <p class="item-text">{{ review.text }}</p>
+                                    <dl class="moderation-details">
+                                        <div>
+                                            <dt>Customer</dt>
+                                            <dd>
+                                                {{ review.customer.user.email|default:"Unknown customer" }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Order</dt>
+                                            <dd>
+                                                {% if review.order %}
+                                                    #{{ review.order.order_reference|default:review.order.id }}
+                                                {% else %}
+                                                    Not linked
+                                                {% endif %}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Moderated at</dt>
+                                            <dd>
+                                                {{ review.moderated_at|date:"d M Y, H:i"|default:"Not moderated yet" }}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                    {% if review.moderation_notes %}
+                                        <div class="moderation-notes">
+                                            <strong>Moderation notes</strong>
+                                            <p>{{ review.moderation_notes|linebreaksbr }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <form method="post"
+                                      action="{% url 'reviews:admin_moderate_review' review.id %}"
+                                      class="moderation-action-panel">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ current_url }}">
+                                    <label for="review-note-{{ review.id }}" class="form-label">Admin note</label>
+                                    <textarea id="review-note-{{ review.id }}"
+                                              name="admin_note"
+                                              class="form-control"
+                                              rows="3"
+                                              placeholder="Optional reason for this decision"></textarea>
+                                    <div class="action-buttons">
+                                        <button type="submit"
+                                                name="action"
+                                                value="publish"
+                                                class="btn btn-success"
+                                                {% if review.status == review_status_values.published %}disabled{% endif %}>
+                                            Approve
+                                        </button>
+                                        <button type="submit"
+                                                name="action"
+                                                value="flag"
+                                                class="btn btn-warning"
+                                                {% if review.status == review_status_values.flagged %}disabled{% endif %}>
+                                            Keep flagged
+                                        </button>
+                                        <button type="submit"
+                                                name="action"
+                                                value="remove"
+                                                class="btn btn-danger"
+                                                {% if review.status == review_status_values.removed %}disabled{% endif %}>
+                                            Remove
+                                        </button>
+                                    </div>
+                                </form>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <nav class="moderation-pagination"
+                         aria-label="Customer review moderation pages">
+                        {% if review_page.has_previous %}
+                            <a class="btn btn-outline-secondary btn-sm"
+                               href="?q={{ search|urlencode }}&review_status={{ review_status }}&response_status={{ response_status }}&review_page={{ review_page.previous_page_number }}&response_page={{ response_page.number }}">
+                                Previous
+                            </a>
+                        {% else %}
+                            <span class="btn btn-outline-secondary btn-sm disabled">Previous</span>
+                        {% endif %}
+                        <span class="page-state">Page {{ review_page.number }} of {{ review_page.paginator.num_pages }}</span>
+                        {% if review_page.has_next %}
+                            <a class="btn btn-outline-secondary btn-sm"
+                               href="?q={{ search|urlencode }}&review_status={{ review_status }}&response_status={{ response_status }}&review_page={{ review_page.next_page_number }}&response_page={{ response_page.number }}">
+                                Next
+                            </a>
+                        {% else %}
+                            <span class="btn btn-outline-secondary btn-sm disabled">Next</span>
+                        {% endif %}
+                    </nav>
+                {% else %}
+                    <div class="empty-state">No customer reviews match the current filters.</div>
+                {% endif %}
+            </section>
+            <section class="moderation-section">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">Producer Responses</h2>
+                        <p class="section-subtitle mb-0">Producer replies that need admin moderation.</p>
+                    </div>
+                </div>
+                {% if response_page.object_list %}
+                    <div class="moderation-list">
+                        {% for response in response_page.object_list %}
+                            <article class="moderation-card">
+                                <div class="moderation-card-main">
+                                    <div class="moderation-card-top">
+                                        <div>
+                                            <span class="status-pill status-{{ response.status|lower }}">
+                                                {{ response.get_status_display|default:response.status }}
+                                            </span>
+                                            <h3 class="item-title mt-2 mb-1">Response to: {{ response.review.title }}</h3>
+                                            <p class="item-meta mb-0">
+                                                Product:
+                                                <strong>{{ response.review.product.name|default:"Unknown product" }}</strong>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p class="item-text">{{ response.text }}</p>
+                                    <dl class="moderation-details">
+                                        <div>
+                                            <dt>Producer</dt>
+                                            <dd>
+                                                {{ response.responder|default:"Unknown producer" }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Original review</dt>
+                                            <dd>
+                                                {{ response.review.text|truncatechars:160 }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Moderated at</dt>
+                                            <dd>
+                                                {{ response.moderated_at|date:"d M Y, H:i"|default:"Not moderated yet" }}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                    {% if response.moderation_notes %}
+                                        <div class="moderation-notes">
+                                            <strong>Moderation notes</strong>
+                                            <p>{{ response.moderation_notes|linebreaksbr }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <form method="post"
+                                      action="{% url 'reviews:admin_moderate_producer_response' response.id %}"
+                                      class="moderation-action-panel">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ current_url }}">
+                                    <label for="response-note-{{ response.id }}" class="form-label">Admin note</label>
+                                    <textarea id="response-note-{{ response.id }}"
+                                              name="admin_note"
+                                              class="form-control"
+                                              rows="3"
+                                              placeholder="Optional reason for this decision"></textarea>
+                                    <div class="action-buttons">
+                                        <button type="submit"
+                                                name="action"
+                                                value="publish"
+                                                class="btn btn-success"
+                                                {% if response.status == response_status_values.published %}disabled{% endif %}>
+                                            Approve
+                                        </button>
+                                        <button type="submit"
+                                                name="action"
+                                                value="flag"
+                                                class="btn btn-warning"
+                                                {% if response.status == response_status_values.flagged %}disabled{% endif %}>
+                                            Keep flagged
+                                        </button>
+                                        <button type="submit"
+                                                name="action"
+                                                value="remove"
+                                                class="btn btn-danger"
+                                                {% if response_status_values.removed and response.status == response_status_values.removed %}disabled{% endif %}>
+                                            Reject
+                                        </button>
+                                    </div>
+                                </form>
+                            </article>
+                        {% endfor %}
+                    </div>
+                    <nav class="moderation-pagination"
+                         aria-label="Producer response moderation pages">
+                        {% if response_page.has_previous %}
+                            <a class="btn btn-outline-secondary btn-sm"
+                               href="?q={{ search|urlencode }}&review_status={{ review_status }}&response_status={{ response_status }}&review_page={{ review_page.number }}&response_page={{ response_page.previous_page_number }}">
+                                Previous
+                            </a>
+                        {% else %}
+                            <span class="btn btn-outline-secondary btn-sm disabled">Previous</span>
+                        {% endif %}
+                        <span class="page-state">Page {{ response_page.number }} of {{ response_page.paginator.num_pages }}</span>
+                        {% if response_page.has_next %}
+                            <a class="btn btn-outline-secondary btn-sm"
+                               href="?q={{ search|urlencode }}&review_status={{ review_status }}&response_status={{ response_status }}&review_page={{ review_page.number }}&response_page={{ response_page.next_page_number }}">
+                                Next
+                            </a>
+                        {% else %}
+                            <span class="btn btn-outline-secondary btn-sm disabled">Next</span>
+                        {% endif %}
+                    </nav>
+                {% else %}
+                    <div class="empty-state">No producer responses match the current filters.</div>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+{% endblock %}
