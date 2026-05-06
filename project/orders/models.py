@@ -231,14 +231,6 @@ class ProducerOrderSummary(models.Model):
         related_name="order_summaries",
     )
 
-    settlement = models.ForeignKey(
-        "payments.ProducerSettlement",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="summaries",
-    )
-
     subtotal = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")
     )

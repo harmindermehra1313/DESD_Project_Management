@@ -4,7 +4,6 @@ from django.urls import path
 from . import views
 from .views.views_main import add_product, product_view, producer_products, edit_producer_product, send_for_approval, cancel_producer_product, ProductDetailView, product_detail_page
 from .views import reductions, api_reductions, batch
-from .views.freshness_check import freshness_check_page, freshness_check_api
 from community.views import api_product_recipes
 
 
@@ -22,9 +21,8 @@ urlpatterns = [
     path("product/<int:product_id>/recipes/", api_product_recipes, name="product_recipes"),
     path("producer/products/<int:pk>/send-for-approval/", send_for_approval,name="send_for_approval"),
 
-    # Freshness check - Joe
-    path("freshness/", freshness_check_page, name="freshness_check"),
-    path("freshness/analyse/", freshness_check_api, name="freshness_check_api"),
+
+
     
     # Hannah edit: reductions handling
     path("reductions/", reductions.manage_reductions, name="producer_manage_reductions"),

@@ -1,37 +1,5 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-<<<<<<< HEAD
-from products.models import Inventory
-
-
-class Command(BaseCommand):
-    help = "Mark expired inventory batches as EXP and update surplus flags."
-
-    def handle(self, *args, **options):
-        today = timezone.localdate()
-
-        # Active batches that have passed expiry date
-        expired_qs = Inventory.objects.filter(
-            status=Inventory.BatchStatus.ACTIVE,
-            expiry_date__lt=today,
-        )
-
-        count = expired_qs.count()
-
-        # Mark them as expired
-        expired_qs.update(status=Inventory.BatchStatus.EXPIRED)
-
-        # Surplus batches that were active should also be marked surplus-expired
-        Inventory.objects.filter(
-            expiry_date__lt=today,
-            surplus_status=Inventory.SurplusStatus.SURPLUS_ACTIVE,
-        ).update(surplus_status=Inventory.SurplusStatus.SURPLUS_EXPIRED)
-
-        self.stdout.write(
-            self.style.SUCCESS(f"Expired batches marked as EXP: {count}")
-        )
-        
-=======
 from products.models import Inventory, InventoryUpdateHistory
 from datetime import timedelta, datetime, time
 from django.utils.timezone import make_aware
@@ -81,4 +49,3 @@ class Command(BaseCommand):
                 f"Batches expiring within 48 hours marked as EXP: {count}"
             )
         )
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64

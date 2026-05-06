@@ -9,7 +9,6 @@ from django.db import transaction
 from accounts.models import User, Producer
 from firebase_admin import auth as firebase_auth
 from django_q.tasks import async_task
-from orders.services.food_miles import is_within_distance_limit
 
 class ProducerRegistrationSerializer(serializers.Serializer):
     # User fields
@@ -50,14 +49,6 @@ class ProducerRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError({"accept_terms": "You must accept the terms."})
 
         validate_password(data["password"])
-
-        # Check that producer farm is within 20 miles of Bristol city centre
-        farm_postcode = data.get("farm_postcode")
-        if farm_postcode and not is_within_distance_limit(farm_postcode, max_miles=20.0):
-            raise serializers.ValidationError(
-                {"farm_postcode": "Farm must be within 20 miles of Bristol city centre to register."}
-            )
-
         return data
 
     @transaction.atomic

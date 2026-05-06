@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from admin_records import views as admin_views
 from django.views.generic import TemplateView
+from admin_records.dashboard_notification_views import admin_records_dashboard
 
 
     
@@ -29,7 +30,7 @@ handler500 = "BRFN.view.custom_500"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # path("dashboard/", admin_records_dashboard, name="dashboard"),
+    path("dashboard/", admin_records_dashboard, name="dashboard"),
 
     path("", include("home.urls", namespace="home")),
     path("accounts/", include("accounts.urls", namespace="accounts")),

@@ -4,7 +4,7 @@ from . import views, dashboard_notification_views
 app_name = "admin_records"
 
 urlpatterns = [
-    path("", views.index, name="index"),
+    path("", dashboard_notification_views.admin_records_dashboard, name="index"),
     path(
         "review-notifications/json/",
         dashboard_notification_views.review_notification_panel_json,
