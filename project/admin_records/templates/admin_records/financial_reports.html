@@ -88,47 +88,70 @@
 
   <!-- Summary cards -->
   <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="summary-card">
-        <div class="summary-label">Total order value</div>
-        <div class="summary-value">£{{ total_order_value }}</div>
+
+  <!-- Gross Total -->
+  <div class="col-md-3">
+    <div class="summary-card">
+      <div class="summary-label">
+        Gross Total
+        <i class="fa-solid fa-circle-info ms-1"
+           title="Sum of all order totals before refunds or cancellations"></i>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="summary-card">
-        <div class="summary-label">Commission (5% calculated)</div>
-        <div class="summary-value text-primary">£{{ total_commission_calc }}</div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="summary-card">
-        <div class="summary-label">Commission (recorded)</div>
-        <div class="summary-value text-warning">£{{ total_commission_recorded }}</div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="summary-card">
-        <div class="summary-label">Producer payouts (95% approx)</div>
-        <div class="summary-value text-success">£{{ total_producer_payout }}</div>
-      </div>
+      <div class="summary-value">£{{ gross_total }}</div>
     </div>
   </div>
 
-  <!-- YTD -->
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="summary-card">
-        <div class="summary-label">YTD order total</div>
-        <div class="summary-value">£{{ ytd_total }}</div>
+  <!-- Refund Total -->
+  <div class="col-md-3">
+    <div class="summary-card">
+      <div class="summary-label">
+        Refund Total
+        <i class="fa-solid fa-circle-info ms-1"
+           title="Total amount refunded to customers (successful refunds only)"></i>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="summary-card">
-        <div class="summary-label">YTD commission (5% calculated)</div>
-        <div class="summary-value text-muted">£{{ ytd_commission_calc }}</div>
-      </div>
+      <div class="summary-value text-danger">£{{ refund_total }}</div>
     </div>
   </div>
+
+  <!-- Net Sales -->
+  <div class="col-md-3">
+    <div class="summary-card">
+      <div class="summary-label">
+        Net Sales
+        <i class="fa-solid fa-circle-info ms-1"
+           title="Gross Total minus Refund Total"></i>
+      </div>
+      <div class="summary-value text-primary">£{{ net_sales }}</div>
+    </div>
+  </div>
+
+  <!-- Commission -->
+  <div class="col-md-3">
+    <div class="summary-card">
+      <div class="summary-label">
+        Commission (5%)
+        <i class="fa-solid fa-circle-info ms-1"
+           title="Commission after removing cancelled producers and cancelled orders"></i>
+      </div>
+      <div class="summary-value text-warning">£{{ total_commission_calc }}</div>
+    </div>
+  </div>
+
+  <!-- Producer Payout -->
+  <div class="col-md-3">
+    <div class="summary-card">
+      <div class="summary-label">
+        Producer Payout
+        <i class="fa-solid fa-circle-info ms-1"
+           title="Total payout to producers after cancellations and commission deduction"></i>
+      </div>
+      <div class="summary-value text-success">£{{ total_producer_payout }}</div>
+    </div>
+  </div>
+
+</div>
+
+
 
   <!-- Orders table -->
   <div class="table-responsive">
@@ -179,21 +202,55 @@
           </td>
 
           <td data-label="Producers breakdown">
-            {% if row.producer_breakdown %}
-            <ul class="mb-0 small">
-              {% for pb in row.producer_breakdown %}
-              <li>
-                {{ pb.producer_name }}:
-                £{{ pb.subtotal|floatformat:2 }}
-                → payout £{{ pb.payout_amount|floatformat:2 }}
-                (commission £{{ pb.commission_total|floatformat:2 }})
-              </li>
-              {% endfor %}
-            </ul>
-            {% else %}
-            <span class="text-muted small">No producer breakdown</span>
+
+            <!-- Refund Summary -->
+            {% if row.refund_total > 0 %}
+              <div class="mb-2 small">
+                <strong>Refund:</strong> £{{ row.refund_total|floatformat:2 }}
+                {% if row.refund_pending %}
+                  <span class="text-warning">(Pending)</span>
+                {% else %}
+                  <span class="text-success">(Succeeded)</span>
+                {% endif %}
+                <br>
+                <strong>Method:</strong> {{ row.payment_method|default:"N/A" }}
+              </div>
             {% endif %}
+
+            <!-- Active Producers -->
+            {% if row.active_producers %}
+              <div class="small mb-1"><strong>Active Producers</strong></div>
+              <ul class="mb-2 small">
+                {% for ap in row.active_producers %}
+                  <li>
+                    {{ ap.producer_name }}:
+                    £{{ ap.subtotal|floatformat:2 }}
+                    → payout £{{ ap.payout|floatformat:2 }}
+                    (commission £{{ ap.commission|floatformat:2 }})
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <!-- Cancelled Producers -->
+            {% if row.cancelled_producers %}
+              <div class="small mb-1"><strong>Cancelled Producers</strong></div>
+              <ul class="mb-0 small text-danger">
+                {% for cp in row.cancelled_producers %}
+                  <li>
+                    {{ cp.producer_name }}:
+                    CANCELLED — refund £{{ cp.refund|floatformat:2 }}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            {% if not row.active_producers and not row.cancelled_producers %}
+              <span class="text-muted small">No producer breakdown</span>
+            {% endif %}
+
           </td>
+
         </tr>
         {% empty %}
         <tr>

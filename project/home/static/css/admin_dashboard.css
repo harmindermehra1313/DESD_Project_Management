@@ -1,0 +1,124 @@
+/* ============================
+   GLOBAL LAYOUT
+============================ */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ============================
+   KPI CARDS
+============================ */
+.kpi-card {
+    border-radius: 14px;
+    padding: 25px;
+    text-align: center;
+    background: #ffffff;
+    transition: 0.25s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+}
+
+.kpi-card h6 {
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.kpi-card h2 {
+    font-size: 2rem;
+    margin-top: 8px;
+}
+
+/* ============================
+   CARD STYLE
+============================ */
+.card {
+    border-radius: 14px !important;
+    overflow: hidden;
+    border: none !important;
+}
+
+.card-body {
+    padding: 28px !important;
+}
+
+/* ============================
+   CHART CONTAINER
+============================ */
+.chart-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px 0;
+}
+
+.chart-wrapper {
+    width: 100%;
+    max-width: 480px; /* prevents stretching */
+    margin: 0 auto;
+}
+
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: 320px !important;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .chart-wrapper canvas {
+        height: 260px !important;
+    }
+}
+
+/* ============================
+   TABLE
+============================ */
+.table-hover tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.table th {
+    font-weight: 600;
+}
+
+/* ============================
+   FILTER BUTTONS
+============================ */
+.chart-filter {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.chart-filter:hover {
+    background: #1b263b;
+    color: white;
+}
+
+
+.chart-box1 {
+    width: 100%;
+    max-width: 650px;   /* controls width */
+    margin: 0 auto;     /* centers it */
+    padding: 20px;
+}
+
+.chart-box1 canvas {
+    width: 100% !important;   /* responsive width */
+    height: auto !important;  /* keeps proportions */
+}
+
+.chart-box2 {
+    width: 100%;
+    max-width: 650px;   /* controls width */
+    margin: 0 auto;     /* centers it */
+    padding: 20px;
+}
+
+.chart-box2 canvas {
+    width: 100% !important;   /* responsive width */
+    height: auto !important;  /* keeps proportions */
+}

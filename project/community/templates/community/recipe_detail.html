@@ -10,7 +10,21 @@
   <!-- Recipe Card -->
   <div class="recipe-card shadow-sm rounded-4 p-4 bg-white">
 
-    <h1 class="recipe-title mb-3">{{ recipe.title }}</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="recipe-title m-0">{{ recipe.title }}</h1>
+
+      <!-- LIKE BUTTON -->
+      <form method="POST" action="{% url 'community:toggle_recipe_favourite' recipe.id %}">
+        {% csrf_token %}
+        <button class="like-btn">
+          {% if recipe.id in user_favourites %}
+            <i class="fa-solid fa-heart liked"></i>
+          {% else %}
+            <i class="fa-regular fa-heart"></i>
+          {% endif %}
+        </button>
+      </form>
+    </div>
 
     {% if recipe.image %}
       <img src="{{ recipe.image.url }}"
@@ -21,6 +35,12 @@
     <div class="d-flex align-items-center mb-4 text-muted small">
       <span class="badge bg-secondary me-2">{{ recipe.get_seasonal_tag_display }}</span>
       <span>{{ recipe.created_at|date:"d M Y" }}</span>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="section-block mb-4">
+      <h4 class="section-title">Description</h4>
+      <p class="recipe-description">{{ recipe.description }}</p>
     </div>
 
     <!-- Ingredients -->
