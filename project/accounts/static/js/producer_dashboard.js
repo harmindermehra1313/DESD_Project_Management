@@ -2191,15 +2191,8 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   if (openOrderId) {
-    // Delay to ensure rows are rendered + filters applied
     setTimeout(() => {
-      applyAllFilters(false, false);
-
-      const row = document.getElementById(`row-${openOrderId}`);
-      if (row) {
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-        showOrderDetails(openOrderId, row);
-      }
-    }, 50);
+      openSummaryDetails(openOrderId, true);
+    }, 80);
   }
 });

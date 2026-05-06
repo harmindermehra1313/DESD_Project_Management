@@ -105,8 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
       badges.push(buildBadge("Organic", "product-card-badge--soft"));
     }
 
-    // New feature: Limit to a maximum of 3 badges
-    return badges.slice(0, 3).join("");
+    return badges.join("");
   }
 
   function buildImageHTML(product) {
@@ -302,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
               
               ${seasonalTextHtml}
               ${buildStockHTML(product)}
-              ${buildAllergensHTML(product)}
+${buildAllergensHTML(product)}
             </div>
 
             <div class="product-card-footer">

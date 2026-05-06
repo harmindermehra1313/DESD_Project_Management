@@ -39,7 +39,6 @@ THRESHOLDS = {
 }
 
 
-
 @dataclass(frozen=True)
 class ModerationResult:
     flagged: bool

@@ -906,7 +906,7 @@ def product_view(request, category_id):
     allergen_filter = (request.GET.get("allergen") or "").strip()
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
-    sort = (request.GET.get("sort") or "").strip()
+    sort = (request.GET.get("sort") or "newest").strip()
 
     live_product_filters = {
         "status": Product.Status.PUBLISHED,
