@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ${isSurplus ? `<span class="badge text-bg-danger">${M.surplusBadge}</span>` : ""}
     </div>
     ${producer ? `<div class="text-muted small">${producer}</div>` : ""}
-    ${Number.isFinite(foodMiles) ? `<div class="small text-muted mt-1">Food miles: ${foodMiles.toFixed(2)} miles from this producer</div>` : `<div class="small text-muted mt-1">${rowFoodMilesLoginRequired ? "Log in to see your food miles" : "Food miles unavailable for this route"}</div>`}
+    ${Number.isFinite(foodMiles) ? `<div class="small text-muted mt-1" style="background-color: #d4edda; padding: 0.5rem; border-radius: 0.25rem; border-left: 3px solid #28a745; color: #155724;">Food miles: ${foodMiles.toFixed(2)} miles from this producer</div>` : `<div class="small text-muted mt-1">${rowFoodMilesLoginRequired ? "Log in to see your food miles" : "Food miles unavailable for this route"}</div>`}
     ${
       product.expiry_date
         ? `<div class="small mt-1 ${isExpired ? "text-danger fw-semibold" : "text-muted"}">

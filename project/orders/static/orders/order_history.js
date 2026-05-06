@@ -803,7 +803,15 @@ function renderOrdersTable(orders) {
             ${M.viewDetailsButton}
           </button>
 
+<<<<<<< HEAD
+          ${getReorderButtonHtml(
+            order.id,
+            order.order_status,
+            "btn-sm order-history-action-btn",
+          )}
+=======
           ${getReorderButtonHtml(order, "btn-sm order-history-action-btn")}
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
         </div>
       </td>
     </tr>
