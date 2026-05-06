@@ -2,664 +2,626 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Checkout{% endblock %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'orders/checkout.css' %}">
+    <link rel="stylesheet" href="{% static 'orders/checkout.css' %}">
 {% endblock %}
-
 {% block content %}
-<div class="checkout-container">
-
-    <h1 class="title">Checkout</h1>
-
-    <!-- Cart Summary -->
-    <section class="checkout-section">
-        <h2>Cart Overview</h2>
-
-        {% if cart.items %}
-            <!-- <table class="checkout-table"> -->
-            <table class="table main-table">
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>Qty</th>
-                        <th>Unit Price</th>
-                        <th>Unit</th>
-                        <th>Origin</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in cart.items %}
+    <div class="checkout-container">
+        <h1 class="title">Checkout</h1>
+        <!-- Cart Summary -->
+        <section class="checkout-section">
+            <h2>Cart Overview</h2>
+            {% if cart.items %}
+                <!-- <table class="checkout-table"> -->
+                <table class="table main-table">
+                    <thead>
                         <tr>
-                            <td>{{ item.product.name }}</td>
-                            <td>{{ item.quantity|floatformat:0 }}</td>
-                            <td>
-                                {% if item.is_wholesale %}
-                                    <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
-                                    <small class="price-note">Wholesale price applied</small>
-                                {% elif item.is_discounted %}
-                                    <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
-                                    <small class="price-note">Discounted from £{{ item.original_price|floatformat:2 }}</small>
-                                {% else %}
-                                    £{{ item.unit_price }}
-                                {% endif %}
-
-                                <br>
-                                <small class="vat-note">
-                                    + £{{ item.vat_per_unit|floatformat:2 }} VAT ({{ item.vat_rate }}%)
-                                </small>
-
-                            </td>
-                            <td>{{ item.product.get_unit_display }}</td>
-                            <td>
-                                {{ item.product.farm_origin }}
-                                <br>
-                                <small class="vat-note">
-                                    {% if item.food_miles != None %}
-                                        {{ item.food_miles|floatformat:2 }} miles from this producer
-                                    {% elif not user.is_authenticated %}
-                                        Log in to see your food miles
-                                    {% else %}
-                                        Food miles unavailable
-                                    {% endif %}
-                                </small>
-                                <br>
-                                    <small class="vat-note">
-                                        Producer: {{ item.product.producer.user.name }}
-                                    </small>
-                            </td>
-                            <td>
-                                £{{ item.total_price|floatformat:2 }}
-                                {% if item.savings_total > 0 %}
-                                    <br>
-                                    <small class="savings-note">
-                                        You saved £{{ item.savings_total|floatformat:2 }}
-                                    </small>
-                                {% endif %}
-                            </td>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                            <th>Unit</th>
+                            <th>Origin</th>
+                            <th>Total</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>Your cart is empty.</p>
-        {% endif %}
-    </section>
-
-
-    {% if cart.items %}
-    <!-- Minimum order warning -->
-    <div id="min-order-warning" class="min-order-card" style="display:none;">
-        <strong>Minimum order not met</strong>
-        <p>A minimum order value of £1.00 is required to checkout.</p>
-    </div>
-
-    <!-- Payment timeout error -->
-    {% if payment_timeout %}
-    <div class="min-order-card" style="display:block;">
-        <strong>Payment processing took too long</strong>
-        <p>Your payment didn't complete within the expected time. No money has been taken.</p>
-        <p>You can try again below.</p>
-    </div>
-    {% endif %}
-
-    <br>
-    <div id="checkout-whole">
-        <div id="checkout-wrapper">
-            <h2>Order by Producer</h2>
-        <input type="hidden" id="delivery-min" value="{{ delivery_earliest|date:'Y-m-d\TH:i' }}">
-        <input type="hidden" id="collection-min" value="{{ collection_earliest|date:'Y-m-d\TH:i' }}">
-        <input type="hidden" id="delivery-hint" value="Earliest available: {{ delivery_earliest|date:'D j M, H:i' }}">
-        <input type="hidden" id="collection-hint" value="Earliest available: {{ collection_earliest|date:'D j M, H:i' }}">
-
-        {% for producer, data in producers.items %}
-            <section class="producer-box">
-
-                <h3>{{ data.items.0.product.farm_origin }} - {{ producer.user.name }}</h3>
-
-                <div class="producer-grid">
-                    <!-- LEFT: Products -->
-                    <div class="producer-products">
-                        <!-- <table class="checkout-table"> -->
-                        <table class="table main-table">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Qty</th>
-                                    <th>Unit Price</th>
-                                    <th>Unit</th>
-                                    <th>Food Miles</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in data.items %}
-                                <tr>
-                                    <td>{{ item.product.name }}</td>
-                                    <td>{{ item.quantity|floatformat:0 }}</td>
-                                    
-                                    <td>
-                                        {% if item.is_wholesale %}
-                                            <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
-                                            <small class="price-note">Wholesale price applied</small>
-                                        {% elif item.is_discounted %}
-                                            <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
-                                            <small class="price-note">Discounted from £{{ item.original_price|floatformat:2 }}</small>
-                                        {% else %}
-                                            £{{ item.unit_price|floatformat:2 }}
-                                        {% endif %}
-
+                    </thead>
+                    <tbody>
+                        {% for item in cart.items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.quantity|floatformat:0 }}</td>
+                                <td>
+                                    {% if item.is_wholesale %}
+                                        <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span>
                                         <br>
-                                        <small class="vat-note">
-                                            + £{{ item.vat_per_unit|floatformat:2 }} VAT ({{ item.vat_rate }}%)
-                                        </small>
-                                    </td>
-
-                                    <td>{{ item.product.get_unit_display }}</td>
-
-                                    <td>
+                                        <small class="price-note">Wholesale price applied</small>
+                                    {% elif item.is_discounted %}
+                                        <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span>
+                                        <br>
+                                        <small class="price-note">Discounted from £{{ item.original_price|floatformat:2 }}</small>
+                                    {% else %}
+                                        £{{ item.unit_price }}
+                                    {% endif %}
+                                    <br>
+                                    <small class="vat-note">+ £{{ item.vat_per_unit|floatformat:2 }} VAT ({{ item.vat_rate }}%)</small>
+                                </td>
+                                <td>{{ item.product.get_unit_display }}</td>
+                                <td>
+                                    {{ item.product.farm_origin }}
+                                    <br>
+                                    <small class="vat-note">
                                         {% if item.food_miles != None %}
-                                            {{ item.food_miles|floatformat:2 }} miles
-                                            <br>
-                                            <small class="vat-note">
-                                                Counted once for this producer route
-                                            </small>
+                                            <span style="background-color: #d4edda;
+                                                         padding: 0.25rem 0.5rem;
+                                                         border-radius: 0.25rem;
+                                                         color: #155724">{{ item.food_miles|floatformat:2 }} miles from this producer</span>
                                         {% elif not user.is_authenticated %}
-                                            <small class="vat-note">Log in to see your food miles</small>
+                                            Log in to see your food miles
                                         {% else %}
-                                            <small class="vat-note">Unavailable</small>
+                                            Food miles unavailable
                                         {% endif %}
-                                    </td>
-
-                                    <td> £{{ item.total_price|floatformat:2 }}
-                                        {% if item.savings_total > 0 %}
-                                            <br>
-                                            <small class="savings-note">
-                                                You saved £{{ item.savings_total|floatformat:2 }} 
-                                            </small>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- RIGHT: Delivery/Collection fields -->
-                    <div class="producer-delivery">
-                        <input type="hidden" class="producer-id" value="{{ producer.id }}">
-            
-                        <h3>Select Delivery or Collection</h3>
-
-                        <!-- <label>
-                            <input type="radio" 
-                                name="delivery_or_collection_{{ producer.id }}" 
-                                value="DEL" checked required>
+                                    </small>
+                                    <br>
+                                    <small class="vat-note">Producer: {{ item.product.producer.user.name }}</small>
+                                </td>
+                                <td>
+                                    £{{ item.total_price|floatformat:2 }}
+                                    {% if item.savings_total > 0 %}
+                                        <br>
+                                        <small class="savings-note">You saved £{{ item.savings_total|floatformat:2 }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Your cart is empty.</p>
+            {% endif %}
+        </section>
+        {% if cart.items %}
+            <!-- Minimum order warning -->
+            <div id="min-order-warning" class="min-order-card" style="display:none;">
+                <strong>Minimum order not met</strong>
+                <p>A minimum order value of £1.00 is required to checkout.</p>
+            </div>
+            <!-- Payment timeout error -->
+            {% if payment_timeout %}
+                <div class="min-order-card" style="display:block;">
+                    <strong>Payment processing took too long</strong>
+                    <p>Your payment didn't complete within the expected time. No money has been taken.</p>
+                    <p>You can try again below.</p>
+                </div>
+            {% endif %}
+            <br>
+            <div id="checkout-whole">
+                <div id="checkout-wrapper">
+                    <h2>Order by Producer</h2>
+                    <input type="hidden"
+                           id="delivery-min"
+                           value="{{ delivery_earliest|date:'Y-m-d\TH:i' }}">
+                    <input type="hidden"
+                           id="collection-min"
+                           value="{{ collection_earliest|date:'Y-m-d\TH:i' }}">
+                    <input type="hidden"
+                           id="delivery-hint"
+                           value="Earliest available: {{ delivery_earliest|date:'D j M, H:i' }}">
+                    <input type="hidden"
+                           id="collection-hint"
+                           value="Earliest available: {{ collection_earliest|date:'D j M, H:i' }}">
+                    {% for producer, data in producers.items %}
+                        <section class="producer-box">
+                            <h3>{{ data.items.0.product.farm_origin }} - {{ producer.user.name }}</h3>
+                            <div class="producer-grid">
+                                <!-- LEFT: Products -->
+                                <div class="producer-products">
+                                    <!-- <table class="checkout-table"> -->
+                                    <table class="table main-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Qty</th>
+                                                <th>Unit Price</th>
+                                                <th>Unit</th>
+                                                <th>Food Miles</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in data.items %}
+                                                <tr>
+                                                    <td>{{ item.product.name }}</td>
+                                                    <td>{{ item.quantity|floatformat:0 }}</td>
+                                                    <td>
+                                                        {% if item.is_wholesale %}
+                                                            <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span>
+                                                            <br>
+                                                            <small class="price-note">Wholesale price applied</small>
+                                                        {% elif item.is_discounted %}
+                                                            <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span>
+                                                            <br>
+                                                            <small class="price-note">Discounted from £{{ item.original_price|floatformat:2 }}</small>
+                                                        {% else %}
+                                                            £{{ item.unit_price|floatformat:2 }}
+                                                        {% endif %}
+                                                        <br>
+                                                        <small class="vat-note">+ £{{ item.vat_per_unit|floatformat:2 }} VAT ({{ item.vat_rate }}%)</small>
+                                                    </td>
+                                                    <td>{{ item.product.get_unit_display }}</td>
+                                                    <td>
+                                                        {% if item.food_miles != None %}
+                                                            <span style="background-color: #d4edda;
+                                                                         padding: 0.25rem 0.5rem;
+                                                                         border-radius: 0.25rem;
+                                                                         color: #155724">{{ item.food_miles|floatformat:2 }} miles</span>
+                                                            <br>
+                                                            <small class="vat-note">Food miles calculated once per farm</small>
+                                                        {% elif not user.is_authenticated %}
+                                                            <small class="vat-note">Log in to see your food miles</small>
+                                                        {% else %}
+                                                            <small class="vat-note">Unavailable</small>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        £{{ item.total_price|floatformat:2 }}
+                                                        {% if item.savings_total > 0 %}
+                                                            <br>
+                                                            <small class="savings-note">You saved £{{ item.savings_total|floatformat:2 }}</small>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- RIGHT: Delivery/Collection fields -->
+                                <div class="producer-delivery">
+                                    <input type="hidden" class="producer-id" value="{{ producer.id }}">
+                                    <h3>Select Delivery or Collection</h3>
+                                    <!-- <label>
+                            <input type="radio" name="delivery_or_collection_{{ producer.id }}" value="DEL" checked required>
                             Delivery
                         </label><br>
 
                         <label>
-                            <input type="radio" 
-                                name="delivery_or_collection_{{ producer.id }}" 
-                                value="COL" required>
+                            <input type="radio" name="delivery_or_collection_{{ producer.id }}" value="COL" required>
                             Collection
                         </label> -->
-                        <label>
-                            <input type="radio"
-                                name="delivery_or_collection_{{ producer.id }}"
-                                value="DEL"
-                                {% if data.collection_only %}disabled{% else %}checked{% endif %}
-                                required>
-                            Delivery
-                        </label>
-
-                        {% if data.collection_only %}
-                            <p class="form-text form-text-danger">
-                                Delivery unavailable: one or more items expire within 72 hours.
-                            </p>
-                        {% endif %}
-
-                        <label>
-                            <input type="radio"
-                                name="delivery_or_collection_{{ producer.id }}"
-                                value="COL"
-                                {% if data.collection_only %}checked{% endif %}
-                                required>
-                            Collection
-                        </label>
-
-                        <hr>
-
-                        <h3>Select Date and Time</h3>
-                        <label class="required" for="delivery-date-{{ producer.id }}">Date</label>
-                        <input type="date"
-                            id="delivery-date-{{ producer.id }}"
-                            name="delivery_date_{{ producer.id }}"
-                            max="{{ data.max_delivery_date|date:'Y-m-d' }}" 
-                            required
-                            class="delivery-date">
-                        <span class="error-message">Please select a valid date.</span>
-                        <p class="form-text">
-                            The latest available date is based on the shortest shelf-life item in your basket, with a 48-hour freshness buffer.
-                        </p>
-
-                        <label class="required" for="delivery-time-{{ producer.id }}">Time slot</label>
-                        <select id="delivery-time-{{ producer.id }}" 
-                                name="delivery_time_{{ producer.id }}" 
-                                required
-                                class="delivery-time">
-                            <option value="">Select a time slot</option>
-                            <option value="10:00-12:00">10:00-12:00</option>
-                            <option value="12:00-14:00">12:00-14:00</option>
-                            <option value="14:00-16:00">14:00-16:00</option>
-                            <option value="16:00-18:00">16:00-18:00</option>
-                        </select>
-                        <span class="error-message">Please select a time slot.</span>
-
-                        <p class="date-hint form-text">
-                            Earliest available: 
-                            {{ delivery_earliest|date:"D j M, H:i" }}
-                        </p>
-
-                        {% if user.is_authenticated %}
-                        <hr>
-                        <div class="recurring-order-section">
-                            <h3>Recurring Order</h3>
-
-                            <select id="is-recurring-{{ producer.id }}"
-                                    name="is_recurring_{{ producer.id }}"
-                                    class="recurring-select"
-                                    data-producer-id="{{ producer.id }}">
-                                <option value="no" selected>No</option>
-                                <option value="yes">Yes</option>
-                            </select>
-
-                            <div class="recurring-options" id="recurring-options-{{ producer.id }}" style="display:none;">
-                                <label for="recurrence-pattern-{{ producer.id }}">Frequency</label>
-                                <select id="recurrence-pattern-{{ producer.id }}"
-                                        name="recurrence_pattern_{{ producer.id }}"
-                                        class="recurrence-pattern"
-                                        data-producer-id="{{ producer.id }}">
-                                    <option value="WEEKLY" selected>Weekly</option>
-                                    <option value="FORTNIGHTLY">Fortnightly</option>
-                                </select>
-
-                                <label for="recurrence-day-{{ producer.id }}">Repeat every</label>
-                                <select id="recurrence-day-{{ producer.id }}"
-                                        name="recurrence_day_{{ producer.id }}"
-                                        class="recurrence-day-select"
-                                        data-producer-id="{{ producer.id }}">
-                                    <option value="">Select a day</option>
-                                    <option value="MON">Monday</option>
-                                    <option value="TUE">Tuesday</option>
-                                    <option value="WED">Wednesday</option>
-                                    <option value="THU">Thursday</option>
-                                    <option value="FRI">Friday</option>
-                                    <option value="SAT">Saturday</option>
-                                    <option value="SUN">Sunday</option>
-                                </select>
-                                <span class="error-message">Please select a recurrence day.</span>
-
-                                <p class="form-text recurring-summary" id="recurring-summary-{{ producer.id }}"></p>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            
-                <div class="producer-subtotal">
-                    <strong>Subtotal (excl. VAT):</strong>
-                    £{{ data.subtotal|floatformat:2 }}<br>
-                    
-                    <strong>VAT:</strong> £{{ data.vat_total|floatformat:2 }}<br>
-                    
-                    {% if data.savings_total > 0 %}
-                        <strong>Savings:</strong>
-                        -£{{ data.savings_total|floatformat:2 }}<br>
-                    {% endif %}
-
-                    <strong>Food miles total:</strong>
-                    {% if user.is_authenticated %}
-                        {% if data.food_miles_total != None %}
-                            {{ data.food_miles_total|floatformat:2 }} miles
-                        {% else %}
-                            Unavailable
-                        {% endif %}
-                    {% else %}
-                        Log in to see your food miles
-                    {% endif %}
-                    <br>
-                    
-                    <strong>Total (incl. VAT):</strong>
-                    £{{ data.grand_total|floatformat:2 }}
-                </div>
-
-            </section>
-        {% endfor %}
-        
-        {% if cart.items %}
-            <div class="checkout-total">
-                <!-- Final total including VAT -->
-                <h3 class="final-order-price">
-                    Final total (incl. VAT): 
-                    £{{ cart.final_total|floatformat:2 }}
-                </h3>
-
-                <details class="order-breakdown">
-                    <summary>Order breakdown</summary>
-
-                    <ul>
-                        <!-- Total before discounts -->
-                        <li>
-                            Original total (before VAT and discounts): 
-                            £{{ cart.original_total|floatformat:2 }}
-                        </li>
-
-                        <!-- Base total (excluding VAT) -->
-                        <li>
-                            Products total (before VAT, with all discounts applied): 
-                            £{{ cart.total|floatformat:2 }}
-                        </li>
-
-                        <!-- VAT -->
-                        <li>
-                            VAT total: 
-                            £{{ cart.vat_total|floatformat:2 }}
-                        </li>
-
-                        <!-- Savings -->
-                        {% if cart.savings_total > 0 %}
-                            <li>
-                                Savings applied: 
-                                -£{{ cart.savings_total|floatformat:2 }}
-                            </li>
-                        {% endif %}
-
-                        <li>
-                            Total food miles:
-                            {% if user.is_authenticated %}
-                                {% if cart.total_food_miles != None %}
-                                    {{ cart.total_food_miles|floatformat:2 }} miles
-                                {% else %}
-                                    Unavailable
-                                {% endif %}
-                            {% else %}
-                                Log in to see your food miles
-                            {% endif %}
-                        </li>
-                    </ul>
-
-                    {% if cart.savings_total > 0 %}
-                        <div class="order-savings">
-                            You saved £{{ cart.savings_total|floatformat:2 }} on this order
-                        </div>
-                    {% endif %}
-                </details>
-            </div>
-            <br>
-        {% endif %}
-
-        {% if cart.items %}
-            <!-- Delivery Address -->
-            {% if user.is_authenticated %}
-                <section class="checkout-section">
-                    <section id="delivery-address-section" class="checkout-section">
-                        <h3>Delivery Address</h3>
-
-                        
-                        <!-- Default delivery address -->
-                        <div id="selected-delivery-address">
-                            <p>
-                                {{ default_delivery.line1 }}<br>
-                                {% if default_delivery.line2 %} {{ default_delivery.line2 }}<br> {% endif %}
-                                {{ default_delivery.city }}<br>
-                                {{ default_delivery.postcode }}
-                            </p>
-                        </div>
-
-                        <!-- Delivery address selector -->
-                        <label class="required"><strong>Choose another address:</strong></label>
-                        <select id="delivery-address-select" name="delivery_address_id">
-                            {% for addr in addresses %}
-                                <option 
-                                    value="{{ addr.id }}"
-                                    data-line1="{{ addr.line1 }}"
-                                    data-line2="{{ addr.line2|default:'' }}"
-                                    data-city="{{ addr.city }}"
-                                    data-postcode="{{ addr.postcode }}"
-                                    {% if addr.id == default_delivery.id %}selected{% endif %}
-                                >
-                                    {{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}, {{ addr.city }} ({{ addr.postcode }})
-                                </option>
-                            {% endfor %}
-                            <option value="new">+ Add a new address</option>
-                        </select>
-
-                        <!-- New delivery address form -->
-                        <div id="new-delivery-address-form" style="display:none; margin-top:1rem;">
-                            <div class="address-wrapper">
-                                <form id="delivery-address-create-form">
-                                    {% csrf_token %}
-                                    <h4>Add New Delivery Address</h4>
-
-                                    <label class="required">Address Line 1</label>
-                                    <input type="text" name="line1" required placeholder="12 Farm Lane">
-                                    <div class="error-message">Please enter address line 1.</div>
-
-                                    <label>Address Line 2 (optional)</label>
-                                    <input type="text" name="line2" placeholder="Apartment 1A">
-
-                                    <label class="required">City</label>
-                                    <input type="text" name="city" required placeholder="Bristol">
-                                    <div class="error-message">Please enter a city.</div>
-
-                                    <label class="required">Postcode</label>
-                                    <input type="text" name="postcode" required placeholder="BS16 2AX">
-                                    <div class="error-message">Please enter a postcode.</div>
-
                                     <label>
-                                        <input type="checkbox" name="is_default_delivery">
-                                        Set as default delivery address
+                                        <input type="radio"
+                                               name="delivery_or_collection_{{ producer.id }}"
+                                               value="DEL"
+                                               {% if data.collection_only %}disabled{% else %}checked{% endif %}
+                                               required>
+                                        Delivery
                                     </label>
-
-                                    <button type="submit" class="btn btn-primary">Save Address</button>
-                                </form>
+                                    {% if data.collection_only %}
+                                        <p class="form-text form-text-danger">Delivery unavailable: one or more items expire within 72 hours.</p>
+                                    {% endif %}
+                                    <label>
+                                        <input type="radio"
+                                               name="delivery_or_collection_{{ producer.id }}"
+                                               value="COL"
+                                               {% if data.collection_only %}checked{% endif %}
+                                               required>
+                                        Collection
+                                    </label>
+                                    <hr>
+                                    <h3>Select Date and Time</h3>
+                                    <label class="required" for="delivery-date-{{ producer.id }}">Date</label>
+                                    <input type="date"
+                                           id="delivery-date-{{ producer.id }}"
+                                           name="delivery_date_{{ producer.id }}"
+                                           max="{{ data.max_delivery_date|date:'Y-m-d' }}"
+                                           required
+                                           class="delivery-date">
+                                    <span class="error-message">Please select a valid date.</span>
+                                    <p class="form-text">
+                                        The latest available date is based on the shortest shelf-life item in your basket, with a 48-hour freshness buffer.
+                                    </p>
+                                    <label class="required" for="delivery-time-{{ producer.id }}">Time slot</label>
+                                    <select id="delivery-time-{{ producer.id }}"
+                                            name="delivery_time_{{ producer.id }}"
+                                            required
+                                            class="delivery-time">
+                                        <option value="">Select a time slot</option>
+                                        <option value="10:00-12:00">10:00-12:00</option>
+                                        <option value="12:00-14:00">12:00-14:00</option>
+                                        <option value="14:00-16:00">14:00-16:00</option>
+                                        <option value="16:00-18:00">16:00-18:00</option>
+                                    </select>
+                                    <span class="error-message">Please select a time slot.</span>
+                                    <p class="date-hint form-text">
+                                        Earliest available:
+                                        {{ delivery_earliest|date:"D j M, H:i" }}
+                                    </p>
+                                    {% if user.is_authenticated %}
+                                        <hr>
+                                        <div class="recurring-order-section">
+                                            <h3>Recurring Order</h3>
+                                            <select id="is-recurring-{{ producer.id }}"
+                                                    name="is_recurring_{{ producer.id }}"
+                                                    class="recurring-select"
+                                                    data-producer-id="{{ producer.id }}">
+                                                <option value="no" selected>No</option>
+                                                <option value="yes">Yes</option>
+                                            </select>
+                                            <div class="recurring-options"
+                                                 id="recurring-options-{{ producer.id }}"
+                                                 style="display:none">
+                                                <label for="recurrence-pattern-{{ producer.id }}">Frequency</label>
+                                                <select id="recurrence-pattern-{{ producer.id }}"
+                                                        name="recurrence_pattern_{{ producer.id }}"
+                                                        class="recurrence-pattern"
+                                                        data-producer-id="{{ producer.id }}">
+                                                    <option value="WEEKLY" selected>Weekly</option>
+                                                    <option value="FORTNIGHTLY">Fortnightly</option>
+                                                </select>
+                                                <label for="recurrence-day-{{ producer.id }}">Repeat every</label>
+                                                <select id="recurrence-day-{{ producer.id }}"
+                                                        name="recurrence_day_{{ producer.id }}"
+                                                        class="recurrence-day-select"
+                                                        data-producer-id="{{ producer.id }}">
+                                                    <option value="">Select a day</option>
+                                                    <option value="MON">Monday</option>
+                                                    <option value="TUE">Tuesday</option>
+                                                    <option value="WED">Wednesday</option>
+                                                    <option value="THU">Thursday</option>
+                                                    <option value="FRI">Friday</option>
+                                                    <option value="SAT">Saturday</option>
+                                                    <option value="SUN">Sunday</option>
+                                                </select>
+                                                <span class="error-message">Please select a recurrence day.</span>
+                                                <p class="form-text recurring-summary"
+                                                   id="recurring-summary-{{ producer.id }}"></p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
+                            <div class="producer-subtotal">
+                                <strong>Subtotal (excl. VAT):</strong>
+                                £{{ data.subtotal|floatformat:2 }}
+                                <br>
+                                <strong>VAT:</strong> £{{ data.vat_total|floatformat:2 }}
+                                <br>
+                                {% if data.savings_total > 0 %}
+                                    <strong>Savings:</strong>
+                                    -£{{ data.savings_total|floatformat:2 }}
+                                    <br>
+                                {% endif %}
+                                <strong>Food miles total:</strong>
+                                {% if user.is_authenticated %}
+                                    {% if data.food_miles_total != None %}
+                                        <span style="background-color: #d4edda;
+                                                     padding: 0.25rem 0.5rem;
+                                                     border-radius: 0.25rem;
+                                                     color: #155724">{{ data.food_miles_total|floatformat:2 }} miles</span>
+                                    {% else %}
+                                        Unavailable
+                                    {% endif %}
+                                {% else %}
+                                    Log in to see your food miles
+                                {% endif %}
+                                <br>
+                                <strong>Total (incl. VAT):</strong>
+                                £{{ data.grand_total|floatformat:2 }}
+                            </div>
+                        </section>
+                    {% endfor %}
+                    {% if cart.items %}
+                        <div class="checkout-total">
+                            <!-- Final total including VAT -->
+                            <h3 class="final-order-price">
+                                Final total (incl. VAT):
+                                £{{ cart.final_total|floatformat:2 }}
+                            </h3>
+                            <details class="order-breakdown">
+                                <summary>Order breakdown</summary>
+                                <ul>
+                                    <!-- Total before discounts -->
+                                    <li>
+                                        Original total (before VAT and discounts):
+                                        £{{ cart.original_total|floatformat:2 }}
+                                    </li>
+                                    <!-- Base total (excluding VAT) -->
+                                    <li>
+                                        Products total (before VAT, with all discounts applied):
+                                        £{{ cart.total|floatformat:2 }}
+                                    </li>
+                                    <!-- VAT -->
+                                    <li>
+                                        VAT total:
+                                        £{{ cart.vat_total|floatformat:2 }}
+                                    </li>
+                                    <!-- Savings -->
+                                    {% if cart.savings_total > 0 %}
+                                        <li>
+                                            Savings applied:
+                                            -£{{ cart.savings_total|floatformat:2 }}
+                                        </li>
+                                    {% endif %}
+                                    <li>
+                                        Total food miles:
+                                        {% if user.is_authenticated %}
+                                            {% if cart.total_food_miles != None %}
+                                                <span style="background-color: #d4edda;
+                                                             padding: 0.25rem 0.5rem;
+                                                             border-radius: 0.25rem;
+                                                             color: #155724">{{ cart.total_food_miles|floatformat:2 }} miles</span>
+                                            {% else %}
+                                                Unavailable
+                                            {% endif %}
+                                        {% else %}
+                                            Log in to see your food miles
+                                        {% endif %}
+                                    </li>
+                                </ul>
+                                {% if cart.savings_total > 0 %}
+                                    <div class="order-savings">You saved £{{ cart.savings_total|floatformat:2 }} on this order</div>
+                                {% endif %}
+                            </details>
                         </div>
-                    </section>
-
-                    <!-- Collection Address (farm collection info) --> 
-                    <section id="collection-address-section" class="checkout-section" style="display:none;">
-                        <h3>Collection Addresses</h3>
-
-                        <ul>
-                            {% for addr in collection_addresses %}
-                                <li class="collection-address-item" data-producer-id="{{ addr.producer_id }}">
-                                    <strong>{{ addr.farm_name }}</strong> ({{ addr.producer_name }})<br>
-                                    {{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}<br>
-                                    {{ addr.city }} {{ addr.postcode }}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </section>
-                </section>
-
-                <!-- Billing address selector -->
-                <section class="checkout-section">
-                    <h3>Billing Address</h3>
-
-                    <div id="selected-billing-address">
-                        <p>
-                            {{ default_billing.line1 }}<br>
-                            {{ default_billing.city }}<br>
-                            {{ default_billing.postcode }}
-                        </p>
-                    </div>
-
-                    <label class="required"><strong>Choose another address:</strong></label>
-                    <select id="billing-address-select" name="billing_address_id">
-                        {% for addr in addresses %}
-                            <option 
-                                value="{{ addr.id }}"
-                                data-line1="{{ addr.line1 }}"
-                                data-line2="{{ addr.line2|default:'' }}"
-                                data-city="{{ addr.city }}"
-                                data-postcode="{{ addr.postcode }}"
-                                {% if addr.id == default_billing.id %}selected{% endif %}
-                            >
-                                {{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}, {{ addr.city }} ({{ addr.postcode }})
-                            </option>
-                        {% endfor %}
-                        <option value="new">+ Add a new address</option>
-                    </select>
-
-                    <div id="new-billing-address-form" style="display:none; margin-top:1rem;">
-                        <div class="address-wrapper">
-                            <form id="billing-address-create-form">
-                                {% csrf_token %}
-                                <h4>Add New Billing Address</h4>
-
-                                <label class="required">Address Line 1</label>
-                                <input type="text" name="line1" required placeholder="12 Farm Lane">
-                                <div class="error-message">Please enter address line 1.</div>
-
-                                <label>Address Line 2 (optional)</label>
-                                <input type="text" name="line2" placeholder="Apartment 1A">
-
-                                <label class="required">City</label>
-                                <input type="text" name="city" required placeholder="Bristol">
-                                <div class="error-message">Please enter a city.</div>
-
-                                <label class="required">Postcode</label>
-                                <input type="text" name="postcode" required placeholder="BS16 2AX">
-                                <div class="error-message">Please enter a postcode.</div>
-
-                                <label>
-                                    <input type="checkbox" name="is_default_billing">
-                                    Set as default billing address
+                        <br>
+                    {% endif %}
+                    {% if cart.items %}
+                        <!-- Delivery Address -->
+                        {% if user.is_authenticated %}
+                            <section class="checkout-section">
+                                <section id="delivery-address-section" class="checkout-section">
+                                    <h3>Delivery Address</h3>
+                                    <!-- Default delivery address -->
+                                    <div id="selected-delivery-address">
+                                        <p>
+                                            {{ default_delivery.line1 }}
+                                            <br>
+                                            {% if default_delivery.line2 %}
+                                                {{ default_delivery.line2 }}
+                                                <br>
+                                            {% endif %}
+                                            {{ default_delivery.city }}
+                                            <br>
+                                            {{ default_delivery.postcode }}
+                                        </p>
+                                    </div>
+                                    <!-- Delivery address selector -->
+                                    <label class="required">
+                                        <strong>Choose another address:</strong>
+                                    </label>
+                                    <select id="delivery-address-select" name="delivery_address_id">
+                                        {% for addr in addresses %}
+                                            <option value="{{ addr.id }}"
+                                                    data-line1="{{ addr.line1 }}"
+                                                    data-line2="{{ addr.line2|default:'' }}"
+                                                    data-city="{{ addr.city }}"
+                                                    data-postcode="{{ addr.postcode }}"
+                                                    {% if addr.id == default_delivery.id %}selected{% endif %}>
+                                                {{ addr.line1 }}
+                                                {% if addr.line2 %}, {{ addr.line2 }}{% endif %}
+                                                , {{ addr.city }} ({{ addr.postcode }})
+                                            </option>
+                                        {% endfor %}
+                                        <option value="new">+ Add a new address</option>
+                                    </select>
+                                    <!-- New delivery address form -->
+                                    <div id="new-delivery-address-form" style="display:none; margin-top:1rem;">
+                                        <div class="address-wrapper">
+                                            <form id="delivery-address-create-form">
+                                                {% csrf_token %}
+                                                <h4>Add New Delivery Address</h4>
+                                                <label class="required">Address Line 1</label>
+                                                <input type="text" name="line1" required placeholder="12 Farm Lane">
+                                                <div class="error-message">Please enter address line 1.</div>
+                                                <label>Address Line 2 (optional)</label>
+                                                <input type="text" name="line2" placeholder="Apartment 1A">
+                                                <label class="required">City</label>
+                                                <input type="text" name="city" required placeholder="Bristol">
+                                                <div class="error-message">Please enter a city.</div>
+                                                <label class="required">Postcode</label>
+                                                <input type="text" name="postcode" required placeholder="BS16 2AX">
+                                                <div class="error-message">Please enter a postcode.</div>
+                                                <label>
+                                                    <input type="checkbox" name="is_default_delivery">
+                                                    Set as default delivery address
+                                                </label>
+                                                <button type="submit" class="btn btn-primary">Save Address</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </section>
+                                <!-- Collection Address (farm collection info) -->
+                                <section id="collection-address-section"
+                                         class="checkout-section"
+                                         style="display:none">
+                                    <h3>Collection Addresses</h3>
+                                    <ul>
+                                        {% for addr in collection_addresses %}
+                                            <li class="collection-address-item"
+                                                data-producer-id="{{ addr.producer_id }}">
+                                                <strong>{{ addr.farm_name }}</strong> ({{ addr.producer_name }})
+                                                <br>
+                                                {{ addr.line1 }}
+                                                {% if addr.line2 %}, {{ addr.line2 }}{% endif %}
+                                                <br>
+                                                {{ addr.city }} {{ addr.postcode }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </section>
+                            </section>
+                            <!-- Billing address selector -->
+                            <section class="checkout-section">
+                                <h3>Billing Address</h3>
+                                <div id="selected-billing-address">
+                                    <p>
+                                        {{ default_billing.line1 }}
+                                        <br>
+                                        {{ default_billing.city }}
+                                        <br>
+                                        {{ default_billing.postcode }}
+                                    </p>
+                                </div>
+                                <label class="required">
+                                    <strong>Choose another address:</strong>
                                 </label>
-
-                                <button type="submit" class="btn btn-primary">Save Address</button>
+                                <select id="billing-address-select" name="billing_address_id">
+                                    {% for addr in addresses %}
+                                        <option value="{{ addr.id }}"
+                                                data-line1="{{ addr.line1 }}"
+                                                data-line2="{{ addr.line2|default:'' }}"
+                                                data-city="{{ addr.city }}"
+                                                data-postcode="{{ addr.postcode }}"
+                                                {% if addr.id == default_billing.id %}selected{% endif %}>
+                                            {{ addr.line1 }}
+                                            {% if addr.line2 %}, {{ addr.line2 }}{% endif %}
+                                            , {{ addr.city }} ({{ addr.postcode }})
+                                        </option>
+                                    {% endfor %}
+                                    <option value="new">+ Add a new address</option>
+                                </select>
+                                <div id="new-billing-address-form" style="display:none; margin-top:1rem;">
+                                    <div class="address-wrapper">
+                                        <form id="billing-address-create-form">
+                                            {% csrf_token %}
+                                            <h4>Add New Billing Address</h4>
+                                            <label class="required">Address Line 1</label>
+                                            <input type="text" name="line1" required placeholder="12 Farm Lane">
+                                            <div class="error-message">Please enter address line 1.</div>
+                                            <label>Address Line 2 (optional)</label>
+                                            <input type="text" name="line2" placeholder="Apartment 1A">
+                                            <label class="required">City</label>
+                                            <input type="text" name="city" required placeholder="Bristol">
+                                            <div class="error-message">Please enter a city.</div>
+                                            <label class="required">Postcode</label>
+                                            <input type="text" name="postcode" required placeholder="BS16 2AX">
+                                            <div class="error-message">Please enter a postcode.</div>
+                                            <label>
+                                                <input type="checkbox" name="is_default_billing">
+                                                Set as default billing address
+                                            </label>
+                                            <button type="submit" class="btn btn-primary">Save Address</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </section>
+                        {% endif %}
+                        <!-- Order details -->
+                        <section class="checkout-section">
+                            <!-- <form id="checkout-form" action="javascript:void(0);" novalidate> -->
+                            <!-- <form id="checkout-form"> -->
+                            <form id="checkout-form" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden"
+                                       id="is-authenticated"
+                                       value="{{ user.is_authenticated|yesno:'1,0' }}">
+                                <!-- Guest checkout -->
+                                {% if not user.is_authenticated %}
+                                    <section class="checkout-section">
+                                        <h3>Your Details</h3>
+                                        <label class="required">Full Name</label>
+                                        <input type="text" name="guest_name" required placeholder="Jane Doe">
+                                        <span class="error-message">Full name is required.</span>
+                                        <label class="required">Email</label>
+                                        <input type="email"
+                                               name="guest_email"
+                                               required
+                                               placeholder="janedoe@hotmail.com">
+                                        <span class="error-message">Please enter a valid email address.</span>
+                                        <label class="required">Phone Number</label>
+                                        <input type="text" name="guest_phone" required placeholder="07123456789">
+                                        <span class="error-message">Phone number is required.</span>
+                                    </section>
+                                    <section class="checkout-section">
+                                        <h3>Delivery Address</h3>
+                                        <label class="required">Address Line 1</label>
+                                        <input type="text"
+                                               name="guest_delivery_line1"
+                                               required
+                                               placeholder="12 Farm Lane">
+                                        <span class="error-message">Address line 1 is required.</span>
+                                        <label>Address Line 2 (optional)</label>
+                                        <input type="text" name="guest_delivery_line2" placeholder="Apartment 1A">
+                                        <label class="required">City</label>
+                                        <input type="text" name="guest_delivery_city" required placeholder="Bristol">
+                                        <span class="error-message">City is required.</span>
+                                        <label class="required">Postcode</label>
+                                        <input type="text"
+                                               name="guest_delivery_postcode"
+                                               required
+                                               placeholder="BS16 2AX">
+                                        <span class="error-message">Postcode is required.</span>
+                                    </section>
+                                    <section class="checkout-section">
+                                        <h3>Billing Address</h3>
+                                        <label>
+                                            <input type="checkbox" id="billing-same-as-delivery">
+                                            Same as delivery address
+                                        </label>
+                                        <div id="guest-billing-fields">
+                                            <label class="required">Address Line 1</label>
+                                            <input type="text"
+                                                   name="guest_billing_line1"
+                                                   required
+                                                   placeholder="12 Farm Lane">
+                                            <span class="error-message">Address line 1 is required.</span>
+                                            <label>Address Line 2 (optional)</label>
+                                            <input type="text" name="guest_billing_line2" placeholder="Apartment 1A">
+                                            <label class="required">City</label>
+                                            <input type="text" name="guest_billing_city" required placeholder="Bristol">
+                                            <span class="error-message">City is required.</span>
+                                            <label class="required">Postcode</label>
+                                            <input type="text"
+                                                   name="guest_billing_postcode"
+                                                   required
+                                                   placeholder="BS16 2AX">
+                                            <span class="error-message">Postcode is required.</span>
+                                        </div>
+                                    </section>
+                                {% endif %}
+                                <!-- Special instruction -->
+                                <h3>Special Instructions (optional)</h3>
+                                <textarea name="special_instructions"
+                                          placeholder="Add any notes for the producer or driver."
+                                          rows="3"></textarea>
+                                <hr>
+                                <!-- Payment method -->
+                                <h3>Payment Method</h3>
+                                <label>
+                                    <input type="radio"
+                                           name="payment_method"
+                                           value="CRD"
+                                           checked
+                                           id="payment-card">
+                                    Pay by Card
+                                </label>
+                                <br>
+                                <label>
+                                    <input type="radio" name="payment_method" value="CSH" id="payment-cash">
+                                    Cash on Delivery/Collection
+                                </label>
+                                <br>
+                                <!-- Payment -->
+                                <div id="card-payment-section">
+                                    <h3>Card Payment</h3>
+                                    <div id="payment-element"></div>
+                                    <div id="payment-errors" class="payment-errors"></div>
+                                </div>
+                                <button type="submit"
+                                        id="checkout-submit"
+                                        class="btn btn-primary checkout-btn">
+                                    Place Order (£{{ cart.total|floatformat:2 }})
+                                </button>
                             </form>
-                        </div>
-                    </div>
-                </section>
-            {% endif %}
-
-            <!-- Order details -->
-            <section class="checkout-section">
-                <!-- <form id="checkout-form" action="javascript:void(0);" novalidate> -->
-                <!-- <form id="checkout-form"> -->
-                <form id="checkout-form" method="POST">
-
-                    {% csrf_token %}
-                    <input type="hidden" id="is-authenticated" value="{{ user.is_authenticated|yesno:'1,0' }}">
-
-                    <!-- Guest checkout -->
-                    {% if not user.is_authenticated %}
-                        <section class="checkout-section">
-                            <h3>Your Details</h3>
-
-                            <label class="required">Full Name</label>
-                            <input type="text" name="guest_name" required placeholder="Jane Doe">
-                            <span class="error-message">Full name is required.</span>
-
-                            <label class="required">Email</label>
-                            <input type="email" name="guest_email" required placeholder="janedoe@hotmail.com">
-                            <span class="error-message">Please enter a valid email address.</span>
-
-                            <label class="required">Phone Number</label>
-                            <input type="text" name="guest_phone" required placeholder="07123456789">
-                            <span class="error-message">Phone number is required.</span>
-                        </section>
-
-                        <section class="checkout-section">
-                            <h3>Delivery Address</h3>
-
-                            <label class="required">Address Line 1</label>
-                            <input type="text" name="guest_delivery_line1" required placeholder="12 Farm Lane">
-                            <span class="error-message">Address line 1 is required.</span>
-
-                            <label>Address Line 2 (optional)</label>
-                            <input type="text" name="guest_delivery_line2" placeholder="Apartment 1A">
-
-                            <label class="required">City</label>
-                            <input type="text" name="guest_delivery_city" required placeholder="Bristol">
-                            <span class="error-message">City is required.</span>
-
-                            <label class="required">Postcode</label>
-                            <input type="text" name="guest_delivery_postcode" required placeholder="BS16 2AX">
-                            <span class="error-message">Postcode is required.</span>
-                        </section>
-
-                        <section class="checkout-section">
-                            <h3>Billing Address</h3>
-
-                            <label>
-                                <input type="checkbox" id="billing-same-as-delivery">
-                                Same as delivery address
-                            </label>
-
-                            <div id="guest-billing-fields">
-                                <label class="required">Address Line 1</label>
-                                <input type="text" name="guest_billing_line1" required placeholder="12 Farm Lane">
-                                <span class="error-message">Address line 1 is required.</span>
-
-                                <label>Address Line 2 (optional)</label>
-                                <input type="text" name="guest_billing_line2" placeholder="Apartment 1A">
-
-                                <label class="required">City</label>
-                                <input type="text" name="guest_billing_city" required placeholder="Bristol">
-                                <span class="error-message">City is required.</span>
-
-                                <label class="required">Postcode</label>
-                                <input type="text" name="guest_billing_postcode" required placeholder="BS16 2AX">
-                                <span class="error-message">Postcode is required.</span>
-                            </div>
                         </section>
                     {% endif %}
-
-                    <!-- Special instruction --> 
-                    <h3>Special Instructions (optional)</h3> 
-                    <textarea name="special_instructions" placeholder="Add any notes for the producer or driver." rows="3" ></textarea> 
-                    
-                    <hr>
-                    
-                    <!-- Payment method --> 
-                    <h3>Payment Method</h3>
-                    <label>
-                        <input type="radio" name="payment_method" value="CRD" checked id="payment-card">
-                        Pay by Card
-                    </label><br>
-
-                    <label>
-                        <input type="radio" name="payment_method" value="CSH" id="payment-cash">
-                        Cash on Delivery
-                    </label><br>
-
-                    <!-- Payment --> 
-                    <div id="card-payment-section">
-                        <h3>Card Payment</h3>
-                        <div id="payment-element"></div>
-                        <div id="payment-errors" class="payment-errors"></div>
-                    </div>
-
-                    <button type="submit" id="checkout-submit" class="btn btn-primary checkout-btn">
-                        Place Order (£{{ cart.total|floatformat:2 }})
-                    </button>
-                </form>
-            </section>
-        {% endif %}
-    </div>
-    {% endif %}
-</div>
-<script src="https://js.stripe.com/v3/"></script>
-<script>
+                </div>
+            {% endif %}
+        </div>
+        <script src="https://js.stripe.com/v3/"></script>
+        <script>
     const STRIPE_PUBLISHABLE_KEY = "{{ STRIPE_PUBLISHABLE_KEY }}";
     const STRIPE_CLIENT_SECRET = "{{ client_secret }}";
     //const RETURN_URL = "{{ request.scheme }}://{{ request.get_host }}/orders/success/";
     const RETURN_URL = "{{ request.scheme }}://{{ request.get_host }}{% url 'orders:stripe_return' %}";
-</script>
-<script src="{% static 'orders/checkout.js' %}"></script>
-{% endblock %}
+        </script>
+        <script src="{% static 'orders/checkout.js' %}"></script>
+    {% endblock %}

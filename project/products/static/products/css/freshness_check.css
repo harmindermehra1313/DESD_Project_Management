@@ -1,0 +1,177 @@
+/* freshness_check.css - Freshness checker UI styling */
+
+.freshness-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    padding: 3rem 1rem;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.freshness-upload-area:hover {
+    border-color: #0d6efd;
+    background-color: #f0f6ff;
+}
+
+.freshness-upload-area.drag-over {
+    border-color: #0d6efd;
+    background-color: #e7f1ff;
+    transform: scale(1.01);
+}
+
+.freshness-upload-container {
+    position: relative;
+}
+
+/* Score cards */
+.score-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid #dee2e6;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.score-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.score-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.score-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.score-bar {
+    background-color: #e9ecef;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Result badge */
+.result-badge-fresh {
+    background-color: #d4edda;
+    color: #155724;
+    border: 2px solid #28a745;
+}
+
+.result-badge-borderline {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 2px solid #ffc107;
+}
+
+.result-badge-spoiled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 2px solid #dc3545;
+}
+
+/* Explainability grid */
+.explainability-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: #fff;
+    transition: box-shadow 0.2s ease;
+}
+
+.explainability-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.explainability-title {
+    background-color: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.explainability-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .freshness-upload-area {
+        padding: 2rem 1rem;
+    }
+
+    .freshness-upload-area i {
+        font-size: 2rem !important;
+    }
+
+    .score-card {
+        padding: 1rem;
+    }
+
+    .score-value {
+        font-size: 1.5rem;
+    }
+
+    .explainability-image {
+        aspect-ratio: 1;
+    }
+}
+
+/* Alert customization */
+.alert-info {
+    background-color: #cfe2ff;
+    border-color: #b6d4fe;
+    color: #084298;
+}
+
+.alert-info strong {
+    color: #084298;
+}
+
+/* Loading animation */
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Smooth transitions */
+.page-title {
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 0.5rem;
+}
+
+.lead {
+    font-size: 1.125rem;
+    font-weight: 300;
+}

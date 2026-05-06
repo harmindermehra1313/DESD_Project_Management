@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/customer.css' %}">
+{% endblock %}
+<div class="page-header">
+    <h1>Farm Stories</h1>
+    <p>Meet the people behind your food</p>
+</div>
+<form method="GET" class="row g-2 mb-4">
+
+  <div class="col-md-4">
+    <select name="producer" class="form-select">
+      <option value="">All Producers</option>
+      {% for p in producers %}
+        <option value="{{ p.id }}" {% if selected_producer == p.id|stringformat:"s" %}selected{% endif %}>
+          {{ p.farm_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-6">
+    <input type="text" name="search" class="form-control" placeholder="Search stories..."
+           value="{{ search }}">
+  </div>
+
+  <div class="col-md-2">
+    <button class="btn btn-success w-100">Filter</button>
+  </div>
+
+</form>
+
+<div class="grid-3">
+    {% for story in stories %}
+    <a href="{% url 'community:story_detail' story.id %}" class="card">
+        <img src="{{ story.image.url }}" class="card-img">
+        <div class="card-body">
+            <h3>{{ story.title }}</h3>
+            <p class="meta">By {{ story.producer.farm_name }}</p>
+            <p class="meta">{{ story.created_at|date:"j M Y" }}</p>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+{% endblock %}

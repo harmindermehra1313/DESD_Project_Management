@@ -5,6 +5,7 @@ app_name = "admin_records"
 
 urlpatterns = [
     path("", dashboard_notification_views.admin_records_dashboard, name="index"),
+    path("", views.index, name="index"),
     path(
         "review-notifications/json/",
         dashboard_notification_views.review_notification_panel_json,

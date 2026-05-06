@@ -1,91 +1,90 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block content %}
-
-<link rel="stylesheet" href="{% static 'css/recipe_detail.css' %}">
-
-<div class="container py-4 recipe-page">
-
-  <!-- Recipe Card -->
-  <div class="recipe-card shadow-sm rounded-4 p-4 bg-white">
-
-    <h1 class="recipe-title mb-3">{{ recipe.title }}</h1>
-
-    {% if recipe.image %}
-      <img src="{{ recipe.image.url }}"
-           class="recipe-hero-img rounded-4 mb-4"
-           alt="{{ recipe.title }}">
-    {% endif %}
-
-    <div class="d-flex align-items-center mb-4 text-muted small">
-      <span class="badge bg-secondary me-2">{{ recipe.get_seasonal_tag_display }}</span>
-      <span>{{ recipe.created_at|date:"d M Y" }}</span>
-    </div>
-
-    <!-- Ingredients -->
-    <div class="section-block mb-4">
-      <h4 class="section-title">Ingredients</h4>
-      <ul class="ingredients-list">
-        {% for item in recipe.ingredients %}
-          <li>{{ item }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <!-- Instructions -->
-    <div class="section-block mb-4">
-      <h4 class="section-title">Instructions</h4>
-      <ol class="instructions-list">
-        {% for step in recipe.instructions %}
-          <li>{{ step }}</li>
-        {% endfor %}
-      </ol>
-    </div>
-
-    <!-- Linked Products -->
-    <div class="section-block mb-4">
-      <h4 class="section-title">Products Used</h4>
-
-      {% if linked_products %}
-        <div class="row g-3">
-          {% for p in linked_products %}
-            <div class="col-6 col-md-4 col-lg-3">
-              <a href="/products/{{ p.id }}/" class="product-card text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 rounded-4">
-                  <img src="{{ p.image.url }}"
-                       class="card-img-top product-img"
-                       alt="{{ p.name }}">
-                  <div class="card-body text-center">
-                    <strong class="product-name">{{ p.name }}</strong>
-                  </div>
-                </div>
-              </a>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="text-muted">No linked products.</p>
+  <link rel="stylesheet" href="{% static 'css/recipe_detail.css' %}">
+  <div class="container py-4 recipe-page">
+    <!-- Recipe Card -->
+    <div class="recipe-card shadow-sm rounded-4 p-4 bg-white">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="recipe-title m-0">{{ recipe.title }}</h1>
+        <!-- LIKE BUTTON -->
+        <form method="POST"
+              action="{% url 'community:toggle_recipe_favourite' recipe.id %}">
+          {% csrf_token %}
+          <button class="like-btn">
+            {% if recipe.id in user_favourites %}
+              <i class="fa-solid fa-heart liked"></i>
+            {% else %}
+              <i class="fa-regular fa-heart"></i>
+            {% endif %}
+          </button>
+        </form>
+      </div>
+      {% if recipe.image %}
+        <img src="{{ recipe.image.url }}"
+             class="recipe-hero-img rounded-4 mb-4"
+             alt="{{ recipe.title }}">
       {% endif %}
-    </div>
-
-    <hr class="my-4">
-
-    <!-- Producer -->
-    <div class="producer-box p-3 rounded-4 shadow-sm">
-      <div class="d-flex align-items-center">
-        <div class="flex-grow-1">
-          <p class="mb-1 text-muted small">Recipe by</p>
-          <a href="/community/producers/{{ recipe.producer.id }}/"
-             class="fw-bold producer-link">
-            {{ recipe.producer.farm_name }}
-          </a>
+      <div class="d-flex align-items-center mb-4 text-muted small">
+        <span class="badge bg-secondary me-2">{{ recipe.get_seasonal_tag_display }}</span>
+        <span>{{ recipe.created_at|date:"d M Y" }}</span>
+      </div>
+      <!-- DESCRIPTION -->
+      <div class="section-block mb-4">
+        <h4 class="section-title">Description</h4>
+        <p class="recipe-description">{{ recipe.description }}</p>
+      </div>
+      <!-- Ingredients -->
+      <div class="section-block mb-4">
+        <h4 class="section-title">Ingredients</h4>
+        <ul class="ingredients-list">
+          {% for item in recipe.ingredients %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+      </div>
+      <!-- Instructions -->
+      <div class="section-block mb-4">
+        <h4 class="section-title">Instructions</h4>
+        <ol class="instructions-list">
+          {% for step in recipe.instructions %}<li>{{ step }}</li>{% endfor %}
+        </ol>
+      </div>
+      <!-- Linked Products -->
+      <div class="section-block mb-4">
+        <h4 class="section-title">Products Used</h4>
+        {% if linked_products %}
+          <div class="row g-3">
+            {% for p in linked_products %}
+              <div class="col-6 col-md-4 col-lg-3">
+                <a href="/products/{{ p.id }}/"
+                   class="product-card text-decoration-none">
+                  <div class="card h-100 shadow-sm border-0 rounded-4">
+                    <img src="{{ p.image.url }}"
+                         class="card-img-top product-img"
+                         alt="{{ p.name }}">
+                    <div class="card-body text-center">
+                      <strong class="product-name">{{ p.name }}</strong>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted">No linked products.</p>
+        {% endif %}
+      </div>
+      <hr class="my-4">
+      <!-- Producer -->
+      <div class="producer-box p-3 rounded-4 shadow-sm">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+            <p class="mb-1 text-muted small">Recipe by</p>
+            <a href="/community/producers/{{ recipe.producer.id }}/"
+               class="fw-bold producer-link">{{ recipe.producer.farm_name }}</a>
+          </div>
+          <i class="bi bi-chevron-right text-muted"></i>
         </div>
-        <i class="bi bi-chevron-right text-muted"></i>
       </div>
     </div>
-
   </div>
-</div>
-
 {% endblock %}

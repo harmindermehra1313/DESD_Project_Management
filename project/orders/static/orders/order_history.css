@@ -490,6 +490,20 @@
     a.btn {
     width: 100%;
   }
+
+
+  .order-history-producers-cell {
+  min-width: 20rem;
+  max-width: 20rem;
+}
+
+.order-history-actions-cell {
+  min-width: 8.5rem;
+}
+
+.main-table .order-history-actions .btn + .btn {
+  margin-top: 0 !important;
+}
 }
 
 /* Tablet: 2-column summary cards, table still scrolls safely */
@@ -539,4 +553,5 @@
     min-width: 22rem;
     max-width: 38rem;
   }
+
 }

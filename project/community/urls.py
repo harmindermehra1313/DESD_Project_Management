@@ -4,7 +4,8 @@ from . import views
 app_name = 'community'
 
 urlpatterns = [
-    path("", views.index, name='index'),
+    # path("", views.index, name='index'),
+    path("", views.community_hub, name="hub"),
     path("producer/content/", views.producer_content_dashboard, name="producer_content_dashboard"),
     path("contact/", views.contact_us, name='contact_us'),
     path("producer/content/recipes/new/", views.recipe_create, name="recipe_create"),
@@ -30,5 +31,16 @@ urlpatterns = [
 
     path("stories/<int:pk>/", views.story_detail, name="story_detail"),
 
+    path("", views.index, name='index'),
+    path("contact/", views.contact_us, name='contact_us'),
     path("about/", views.about, name="about"),
+
+    ###
+    
+    path("recipes/", views.recipe_list, name="recipe_list"),
+    path("recipes/<int:pk>/", views.recipe_detail, name="recipe_detail"),
+    path("stories/", views.story_list, name="story_list"),
+    path("stories/<int:pk>/", views.story_detail, name="story_detail"),
+    path("recipes/<int:pk>/favourite/", views.toggle_recipe_favourite, name="toggle_recipe_favourite"),
+
 ]
