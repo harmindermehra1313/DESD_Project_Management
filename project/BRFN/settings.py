@@ -130,21 +130,6 @@ WSGI_APPLICATION = "BRFN.wsgi.application"
 #     }
 # }
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("POSTGRES_DB"),
-#         "USER": os.getenv("POSTGRES_USER"),
-#         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-#         "HOST": os.getenv("POSTGRES_HOST"),
-#         "PORT": os.getenv("POSTGRES_PORT", "5432"),
-#         "OPTIONS": {
-#             "sslmode": os.getenv("POSTGRES_SSLMODE", "require"),
-#             "channel_binding": os.getenv("POSTGRES_CHANNEL_BINDING", "require"),
-#         },
-#     }
-# }
-
 # Neon Database configuration with connection pooling and SSL settings
 DATABASES = {
     "default": {
@@ -189,7 +174,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Europe/London'
 
 USE_I18N = True
 
@@ -295,6 +280,8 @@ LOGGING = {
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
+STRIPE_ONBOARDING_RETURN_URL = "http://localhost:8000/accounts/producer/stripe/dashboard/"
+STRIPE_ONBOARDING_REFRESH_URL = "http://localhost:8000/accounts/producer/stripe/refresh/"
 
 # Django Q – background task queue
 Q_CLUSTER = {
@@ -347,3 +334,5 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@brfn.com")
+
+FRESHNESS_MODEL_PATH = BASE_DIR / "ml_models" / "model_AtoC.pth"

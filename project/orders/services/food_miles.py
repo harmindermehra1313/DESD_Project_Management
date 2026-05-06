@@ -125,6 +125,48 @@ def calculate_food_miles(
     )
 
 
+def get_bristol_city_centre_coordinates() -> Tuple[float, float]:
+    """
+    Returns Bristol City Centre coordinates (latitude, longitude).
+    Uses postcode.io to fetch BS1 (Bristol city centre postcode).
+    """
+    bristol_coords = _fetch_postcode_coordinates("BS1")
+    if bristol_coords:
+        return bristol_coords
+    # Fallback coordinates for Bristol city centre
+    return (51.4545, -2.5879)
+
+
+def is_within_distance_limit(
+    postcode: Optional[str], max_miles: float = 20.0
+) -> bool:
+    """
+    Check if a postcode is within max_miles of Bristol city centre.
+    Returns True if within limit (or if API is disabled/fails).
+    Returns False only if postcode is explicitly outside the radius.
+    """
+    if not postcode:
+        return False
+
+    normalized = normalize_postcode(postcode)
+    if not normalized:
+        return False
+
+    postcode_coords = _fetch_postcode_coordinates(normalized)
+    if not postcode_coords:
+        return True  # Allow if we can't verify
+
+    bristol_coords = get_bristol_city_centre_coordinates()
+    distance = _haversine_miles(
+        postcode_coords[0],
+        postcode_coords[1],
+        bristol_coords[0],
+        bristol_coords[1],
+    )
+
+    return float(distance) <= max_miles
+
+
 def get_default_delivery_postcode(user) -> Optional[str]:
     if not user or not getattr(user, "is_authenticated", False):
         return None

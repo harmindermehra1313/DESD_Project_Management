@@ -28,7 +28,7 @@ from carts.api.serializers.carts import (
     CartSerializer,
     CartItemSerializer,
 )
-from orders.services.food_miles import get_default_delivery_postcode
+from orders.services.food_miles import get_default_delivery_postcode, is_within_distance_limit
 
 
 def _ensure_session_key(request) -> str:
@@ -110,6 +110,12 @@ class CartItemAddView(CreateAPIView):
         ser = self.get_serializer(data=request.data)
 
         ser.is_valid(raise_exception=True)
+
+        # Check if customer is within 20 miles of Bristol city centre
+        customer_postcode = get_default_delivery_postcode(request.user)
+        if request.user.is_authenticated and customer_postcode:
+            if not is_within_distance_limit(customer_postcode, max_miles=20.0):
+                raise ValidationError(detail="You must be within 20 miles of Bristol city centre to purchase items.")
 
         try:
             cart = cart_get_or_create_active(owner=_owner(request))

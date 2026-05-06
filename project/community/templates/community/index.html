@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="community-page-wrapper">
+
+    <link rel="stylesheet" href="{% static 'css/customer.css' %}">
+
+    <div class="community-hero">
+        <h1>Community Hub</h1>
+        <p>Discover recipes and stories from our local producers</p>
+    </div>
+
+    <div class="community-section">
+        <h2>Featured Recipes</h2>
+        <form method="GET" class="row g-2 mb-4 filter-bar">
+
+  <div class="col-md-3">
+    <select name="season" class="form-select">
+      <option value="">All Seasons</option>
+      <option value="SPR" {% if selected_season == "SPR" %}selected{% endif %}>Spring</option>
+      <option value="SUM" {% if selected_season == "SUM" %}selected{% endif %}>Summer</option>
+      <option value="AUT" {% if selected_season == "AUT" %}selected{% endif %}>Autumn</option>
+      <option value="WIN" {% if selected_season == "WIN" %}selected{% endif %}>Winter</option>
+      <option value="ALL" {% if selected_season == "ALL" %}selected{% endif %}>All Year</option>
+    </select>
+  </div>
+
+  <div class="col-md-3">
+    <select name="producer" class="form-select">
+      <option value="">All Producers</option>
+      {% for p in producers %}
+        <option value="{{ p.id }}" {% if selected_producer == p.id|stringformat:"s" %}selected{% endif %}>
+          {{ p.farm_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-4">
+    <input type="text" name="search" class="form-control" placeholder="Search recipes..."
+           value="{{ search }}">
+  </div>
+
+  <div class="col-md-2">
+    <button class="btn btn-success w-100">Filter</button>
+  </div>
+
+</form>
+        <div class="grid-3">
+            {% for recipe in featured_recipes %}
+            <a href="{% url 'community:recipe_detail' recipe.id %}" class="card">
+                <img src="{{ recipe.image.url }}" class="card-img">
+                <div class="card-body">
+                    <h3>{{ recipe.title }}</h3>
+                    <p class="meta">By {{ recipe.producer.farm_name }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="community-section">
+        <h2>Farm Stories</h2>
+        <div class="grid-3">
+            {% for story in featured_stories %}
+            <a href="{% url 'community:story_detail' story.id %}" class="card">
+                <img src="{{ story.image.url }}" class="card-img">
+                <div class="card-body">
+                    <h3>{{ story.title }}</h3>
+                    <p class="meta">By {{ story.producer.farm_name }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
