@@ -130,21 +130,6 @@ WSGI_APPLICATION = "BRFN.wsgi.application"
 #     }
 # }
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("POSTGRES_DB"),
-#         "USER": os.getenv("POSTGRES_USER"),
-#         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-#         "HOST": os.getenv("POSTGRES_HOST"),
-#         "PORT": os.getenv("POSTGRES_PORT", "5432"),
-#         "OPTIONS": {
-#             "sslmode": os.getenv("POSTGRES_SSLMODE", "require"),
-#             "channel_binding": os.getenv("POSTGRES_CHANNEL_BINDING", "require"),
-#         },
-#     }
-# }
-
 # Neon Database configuration with connection pooling and SSL settings
 DATABASES = {
     "default": {
@@ -189,7 +174,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Europe/London'
 
 USE_I18N = True
 
