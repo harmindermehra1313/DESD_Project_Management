@@ -51,6 +51,12 @@ def recipe_create(request):
         if form.is_valid():
             recipe = form.save(commit=False)
             recipe.producer = producer  # ← REQUIRED
+            action = request.POST.get("action")
+
+            if action == "draft":
+                recipe.status = Recipe.Status.HIDDEN
+            else:
+                recipe.status = Recipe.Status.PUBLISHED
             recipe.save()
 
             # Save linked products
@@ -65,7 +71,8 @@ def recipe_create(request):
 
     return render(request, "community/recipe_form.html", {"form": form})
 
-
+@login_required
+@producer_required
 def recipe_api(request, pk):
     r = Recipe.objects.get(id=pk)
     linked_products = list(
@@ -85,6 +92,8 @@ def recipe_api(request, pk):
 
     })
 
+@login_required
+@producer_required
 def story_api(request, pk):
     s = FarmStory.objects.get(id=pk)
 
@@ -225,7 +234,8 @@ def producer_profile(request, producer_id):
         "stories": stories,
     })
 
-
+@login_required
+@producer_required
 def api_product_recipes(request, product_id):
     """
     Existing endpoint used by product detail page to fetch linked recipes.
@@ -505,7 +515,7 @@ def recipe_list(request):
 
     recipes = recipes.select_related("producer").order_by("-created_at")
 
-    producers = Producer.objects.filter(is_approved=False)
+    producers = Producer.objects.filter(is_approved=True)
 
 
     return render(request, "community/recipes.html", {

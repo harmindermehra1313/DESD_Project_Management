@@ -1,7 +1,10 @@
+import os
+
 from BRFN.decorators import admin_required
 from django.shortcuts import render, redirect
 from django.db.models import Count, Avg
 from .models import AIUsage, ClassifierModel
+from django.contrib import messages
 
 @admin_required
 def dashboard(request):
@@ -30,6 +33,7 @@ def dashboard(request):
 
     # Active model 
     active_model = ClassifierModel.objects.filter(is_active=True).first()
+    all_models = ClassifierModel.objects.order_by("-uploaded_at")
 
     # Recent logs 
     recent_logs = AIUsage.objects.order_by("-created_at")[:20]
@@ -43,6 +47,7 @@ def dashboard(request):
         "exec_labels": exec_labels,
         "exec_values": exec_values,
         "active_model": active_model,
+        "all_models": all_models,
         "recent_logs": recent_logs,
     }
 
@@ -56,6 +61,14 @@ def upload_model(request):
         file = request.FILES.get("file")
 
         if not (name and version and file):
+            messages.error(request, "All fields are required.")
+            return redirect("ai_admin:dashboard")
+        
+        allowed_ext = {".pth", ".pt", ".bin"}
+        ext = os.path.splitext(file.name)[1].lower()
+
+        if ext not in allowed_ext:
+            messages.error(request, "Invalid model file type.")
             return redirect("ai_admin:dashboard")
 
         # Create and activate the new model
@@ -66,6 +79,25 @@ def upload_model(request):
             is_active=True
         )
 
+        messages.success(request, f"Model '{name}' (v{version}) uploaded and activated.")
         return redirect("ai_admin:dashboard")
 
+    return redirect("ai_admin:dashboard")
+
+@admin_required
+def activate_model(request, model_id):
+    model = ClassifierModel.objects.filter(id=model_id).first()
+    if not model:
+        messages.error(request, "Model not found.")
+        return redirect("ai_admin:dashboard")
+
+    # Activate this model
+    model.is_active = True
+    model.save()
+
+    # Clear cached PyTorch model so next request loads the new one
+    from products.views.freshness_check import _model
+    _model = None
+
+    messages.success(request, f"Activated model {model.name} (v{model.version}).")
     return redirect("ai_admin:dashboard")
