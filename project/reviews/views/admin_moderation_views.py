@@ -15,7 +15,7 @@ from reviews.models import Review, ReviewProducerResponse
 from notifications.services.notifications import NotificationService
 
 ADMIN_NOTE_MAX_LENGTH = 500
-ACTIONS_REQUIRING_NOTE = {"remove"}
+ACTIONS_REQUIRING_NOTE = {"remove", "flag"}
 DEFAULT_STATUS_FILTER = "flagged"
 ITEMS_PER_PAGE = 10
 
@@ -369,6 +369,7 @@ def admin_review_moderation(request):
 @require_POST
 def admin_moderate_review(request, review_id):
     review = get_object_or_404(Review, id=review_id)
+    old_status = review.status
 
     action = (request.POST.get("action") or "").strip()
     admin_note = request.POST.get("admin_note", "")
@@ -429,6 +430,18 @@ def admin_moderate_review(request, review_id):
     except ValidationError as exc:
         messages.error(request, f"Review could not be moderated: {exc}")
         return _redirect_back(request)
+    if target_status == Review.Status.PUBLISHED:
+        if old_status == Review.Status.FLAGGED:
+            NotificationService.notify_review_flag_rejected_and_published(review)
+        else:
+            NotificationService.notify_review_published_after_submission(review)
+
+    elif target_status == Review.Status.REMOVED:
+        NotificationService.notify_review_removed_after_moderation(review)
+
+    elif target_status == Review.Status.FLAGGED:
+        NotificationService.notify_review_kept_flagged_after_moderation(review)
+
     if target_status != Review.Status.FLAGGED:
         NotificationService.resolve_admin_review_flagged_notifications(review)
 
@@ -441,6 +454,7 @@ def admin_moderate_review(request, review_id):
 @require_POST
 def admin_moderate_producer_response(request, response_id):
     response = get_object_or_404(ReviewProducerResponse, id=response_id)
+    old_status = response.status
 
     action = (request.POST.get("action") or "").strip()
     admin_note = request.POST.get("admin_note", "")
@@ -519,9 +533,28 @@ def admin_moderate_producer_response(request, response_id):
     except ValidationError as exc:
         messages.error(request, f"Producer response could not be moderated: {exc}")
         return _redirect_back(request)
+    if target_status == ReviewProducerResponse.Status.PUBLISHED:
+        if old_status == ReviewProducerResponse.Status.FLAGGED:
+            NotificationService.notify_producer_response_approved_after_moderation(
+                response
+            )
+        else:
+            NotificationService.notify_producer_response_published_after_submission(
+                response
+            )
+
+    elif target_status == ReviewProducerResponse.Status.FLAGGED:
+        NotificationService.notify_producer_response_kept_flagged_after_moderation(
+            response
+        )
+
+    else:
+        NotificationService.notify_producer_response_removed_after_moderation(response)
+
     if target_status != ReviewProducerResponse.Status.FLAGGED:
         NotificationService.resolve_admin_producer_response_flagged_notifications(
             response
         )
+
     messages.success(request, success_message)
     return _redirect_back(request)

@@ -35,11 +35,13 @@ class ReviewCreateAPIView(generics.CreateAPIView):
         if review.status == Review.Status.PUBLISHED:
             code = "review_submitted"
             message = "Review submitted successfully."
+            NotificationService.notify_review_published_after_submission(review)
         else:
             code = "review_submitted_for_moderation"
             message = "Review submitted and sent for moderation."
 
             if review.status == Review.Status.FLAGGED:
+                NotificationService.notify_review_flagged_after_submission(review)
                 NotificationService.notify_admin_review_flagged(review)
 
         return Response(
@@ -166,18 +168,26 @@ class ProducerReviewResponseAPIView(APIView):
             existing_response.status if existing_response is not None else None
         )
         response = serializer.save()
+
         if response.status == ReviewProducerResponse.Status.PUBLISHED:
             code = "producer_response_saved"
             message = "Response saved successfully."
+
+            NotificationService.notify_producer_response_published_after_submission(
+                response
+            )
+
         else:
             code = "producer_response_sent_for_moderation"
             message = "Response saved and sent for moderation."
 
-            if (
-                response.status == ReviewProducerResponse.Status.FLAGGED
-                and old_response_status != ReviewProducerResponse.Status.FLAGGED
-            ):
-                NotificationService.notify_admin_producer_response_flagged(response)
+            if response.status == ReviewProducerResponse.Status.FLAGGED:
+                NotificationService.notify_producer_response_flagged_after_submission(
+                    response
+                )
+
+                if old_response_status != ReviewProducerResponse.Status.FLAGGED:
+                    NotificationService.notify_admin_producer_response_flagged(response)
 
         return Response(
             {
