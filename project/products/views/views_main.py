@@ -17,6 +17,7 @@ import json
 from notifications.services.notifications import NotificationService
 from notifications.models import Notification
 from admin_records.models import ModerationLog
+from products.serializers import ProductCreateSerializer
 
 
 from rest_framework.decorators import api_view
@@ -24,10 +25,6 @@ from rest_framework.response import Response
 from community.models import Recipe
 from django.core.paginator import Paginator
 from products.services.product_type_inference import get_or_create_inferred_product_type
-<<<<<<< HEAD
-from ..serializers import ProductCreateSerializer
-=======
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 
 @api_view(["GET"])
@@ -134,7 +131,6 @@ def is_producer_or_admin(user):
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
     if request.method == "POST":
-<<<<<<< HEAD
         # Combine POST data and FILES for the serializer
         data = request.POST.copy()
 
@@ -164,145 +160,6 @@ def add_product(request):
 
         product_type = get_or_create_inferred_product_type(
             name=validated_data['name'],
-=======
-        name = request.POST.get("name")
-        price = request.POST.get("price")
-        availability_status = request.POST.get("availability_status")
-        harvest_date = request.POST.get("harvest_date")
-        expiry_date = request.POST.get("expiry_date")
-        expiry_type = request.POST.get("expiry_type", Inventory.ExpiryType.BEST_BEFORE)
-        organic_certification_status = request.POST.get(
-            "organic_certification_status",
-            Product.OrganicStatus.NOT_CERTIFIED,
-        )
-        unit_code = request.POST.get("unit")
-        stock_quantity = request.POST.get("stock_quantity")
-        wholesale_price_raw = (request.POST.get("wholesale_price") or "").strip()
-        wholesale_min_qty_raw = (
-            request.POST.get("wholesale_min_quantity") or ""
-        ).strip()
-        description = request.POST.get("description")
-        uploaded_image = request.FILES.get("image")
-
-        try:
-            base_price_value = Decimal(str(price))
-        except (TypeError, ValueError, InvalidOperation):
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Please enter a valid base price."),
-            )
-
-        try:
-            stock_quantity_value = int(stock_quantity)
-        except (TypeError, ValueError):
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Please enter a valid stock quantity."),
-            )
-
-        if stock_quantity_value < 0:
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Stock quantity cannot be negative."),
-            )
-
-        wholesale_price = None
-        wholesale_min_quantity = 1
-        if wholesale_price_raw:
-            try:
-                wholesale_price = Decimal(wholesale_price_raw)
-            except (TypeError, ValueError, InvalidOperation):
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context("Please enter a valid wholesale price."),
-                )
-
-            if wholesale_price <= 0:
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context(
-                        "Wholesale price must be greater than 0."
-                    ),
-                )
-
-            if wholesale_price > base_price_value:
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context(
-                        "Wholesale price cannot be higher than the base price."
-                    ),
-                )
-
-            if wholesale_min_qty_raw:
-                try:
-                    wholesale_min_quantity = int(wholesale_min_qty_raw)
-                except (TypeError, ValueError):
-                    return render(
-                        request,
-                        "products/add_product.html",
-                        _build_add_product_context(
-                            "Please enter a valid minimum wholesale quantity."
-                        ),
-                    )
-                if wholesale_min_quantity < 1:
-                    return render(
-                        request,
-                        "products/add_product.html",
-                        _build_add_product_context(
-                            "Minimum wholesale quantity must be at least 1."
-                        ),
-                    )
-
-            if stock_quantity_value < wholesale_min_quantity:
-                return render(
-                    request,
-                    "products/add_product.html",
-                    _build_add_product_context(
-                        f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price."
-                    ),
-                )
-
-        valid_expiry_types = {choice[0] for choice in Inventory.ExpiryType.choices}
-        if expiry_type not in valid_expiry_types:
-            expiry_type = Inventory.ExpiryType.BEST_BEFORE
-
-        valid_organic_statuses = {choice[0] for choice in Product.OrganicStatus.choices}
-        if organic_certification_status not in valid_organic_statuses:
-            organic_certification_status = Product.OrganicStatus.NOT_CERTIFIED
-
-        try:
-            harvest_dt = datetime.strptime(harvest_date, "%Y-%m-%dT%H:%M")
-            expiry_dt = datetime.strptime(expiry_date, "%Y-%m-%dT%H:%M")
-        except (TypeError, ValueError):
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context(
-                    "Please enter valid harvest and expiry dates."
-                ),
-            )
-
-        if harvest_dt > expiry_dt:
-            return render(
-                request,
-                "products/add_product.html",
-                _build_add_product_context("Harvest date cannot be after expiry date."),
-            )
-
-        # expiry_date=expiry_date
-
-        category_id = request.POST.get("category")
-
-        category_obj = get_object_or_404(Category, id=category_id)
-        product_type = get_or_create_inferred_product_type(
-            name=name,
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             category=category_obj,
         )
         default_image_path = _get_category_default_image(category_obj)
@@ -314,7 +171,6 @@ def add_product(request):
             producer=producer,
             category=category_obj,
             product_type=product_type,
-<<<<<<< HEAD
             name=validated_data['name'],
             price=validated_data['price'],
             availability_status=validated_data['availability_status'],
@@ -324,15 +180,6 @@ def add_product(request):
             image=validated_data.get('image'),
             low_stock_threshold=validated_data.get('low_stock_threshold', 0),
             storage_guidance=validated_data.get('storage_guidance', ''),
-=======
-            name=name,
-            price=base_price_value,
-            availability_status=availability_status,
-            unit=unit_code,
-            organic_certification_status=organic_certification_status,
-            description=description,
-            image=uploaded_image,
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             farm_origin=farm_origin,
             status=Product.Status.PENDING,
         )
@@ -359,12 +206,7 @@ def add_product(request):
                 unit_price=validated_data['wholesale_price'],
             )
 
-<<<<<<< HEAD
         for a_code in validated_data.get('allergen', []):
-=======
-        allergen_ids = request.POST.getlist("allergen")
-        for a_code in allergen_ids:
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             allergen_obj, _ = Allergen.objects.get_or_create(name=a_code)
             ProductAllergen.objects.create(product=new_product, allergen=allergen_obj)
 
@@ -545,23 +387,6 @@ def edit_producer_product(request, pk):
                             "error": "Minimum wholesale quantity must be at least 2.",
                         }
                     )
-<<<<<<< HEAD
-
-            stock_total = (
-                product.inventory_batches.aggregate(
-                    total=Sum("remaining_quantity")
-                ).get("total")
-                or 0
-            )
-            if stock_total < wholesale_min_quantity:
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price.",
-                    }
-                )
-
-=======
 
             stock_total = (
                 product.inventory_batches.aggregate(
@@ -578,7 +403,6 @@ def edit_producer_product(request, pk):
             #         }
             #     )
 
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
         # Low stock threshold
         low_stock_raw = data.get("low_stock_threshold")
 
@@ -961,12 +785,9 @@ def _can_view_wholesale_prices(user):
         "COMMUNITY_GROUP",
     }
 
-<<<<<<< HEAD
-=======
 
 NO_ALLERGENS_FILTER = "__none__"
 
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 def product_view(request, category_id):
     categories = Category.objects.exclude(name__icontains="organic")
@@ -978,16 +799,9 @@ def product_view(request, category_id):
     search_query = (request.GET.get("q") or "").strip()
     category_filter = (request.GET.get("category") or "").strip()
     producer_filter = (request.GET.get("producer") or "").strip()
-<<<<<<< HEAD
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
     sort = (request.GET.get("sort") or "").strip()
-=======
-    allergen_filter = (request.GET.get("allergen") or "").strip()
-    min_price = (request.GET.get("min_price") or "").strip()
-    max_price = (request.GET.get("max_price") or "").strip()
-    sort = (request.GET.get("sort") or "newest").strip()
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
     live_product_filters = {
         "status": Product.Status.PUBLISHED,
@@ -1020,11 +834,6 @@ def product_view(request, category_id):
     if search_query:
         products_qs = products_qs.filter(
             Q(name__icontains=search_query)
-<<<<<<< HEAD
-            | Q(description__icontains=search_query)
-            | Q(producer__farm_name__icontains=search_query)
-            | Q(category__name__icontains=search_query)
-=======
             | Q(product_type__name__icontains=search_query)
             | Q(category__name__icontains=search_query)
             | Q(description__icontains=search_query)
@@ -1044,7 +853,6 @@ def product_view(request, category_id):
                 default=Value(99),
                 output_field=IntegerField(),
             )
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
         )
 
     if show_filters and category_filter:
@@ -1053,8 +861,6 @@ def product_view(request, category_id):
     if show_filters and producer_filter:
         products_qs = products_qs.filter(producer__farm_name=producer_filter)
 
-<<<<<<< HEAD
-=======
     real_allergen_codes = [
         code
         for code, _label in Allergen.Allergens.choices
@@ -1071,7 +877,6 @@ def product_view(request, category_id):
             product_allergen__allergen__name=allergen_filter
         ).distinct()
 
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
     try:
         if min_price:
             products_qs = products_qs.filter(price__gte=Decimal(min_price))
@@ -1088,15 +893,6 @@ def product_view(request, category_id):
         order_by = ("price", "id")
     elif sort == "price_high":
         order_by = ("-price", "id")
-<<<<<<< HEAD
-    elif sort == "newest":
-        order_by = ("-created_at", "-id")
-    else:
-        order_by = ("-created_at", "-id")
-
-    products = (
-        products_qs.select_related("producer", "category")
-=======
     elif sort == "oldest":
         order_by = ("created_at", "id")
     else:
@@ -1108,7 +904,6 @@ def product_view(request, category_id):
 
     products = (
         products_qs.select_related("producer", "category", "product_type")
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
         .prefetch_related(
             Prefetch(
                 "inventory_batches",
@@ -1124,17 +919,10 @@ def product_view(request, category_id):
                 queryset=WholesalePrice.objects.order_by("min_quantity"),
                 to_attr="wholesale_tiers",
             ),
-<<<<<<< HEAD
-        )
-        .order_by(*order_by)
-    )
-
-=======
             "product_allergen__allergen",
         )
         .order_by(*order_by)
     )
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
     paginator = Paginator(products, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
@@ -1193,8 +981,6 @@ def product_view(request, category_id):
 
         days_old = (today - earliest_live_batch.harvest_date).days
         fresh_today = days_old <= 1
-<<<<<<< HEAD
-=======
         allergen_names = list(
             dict.fromkeys(
                 product_allergen.allergen.get_name_display()
@@ -1203,7 +989,6 @@ def product_view(request, category_id):
                 and product_allergen.allergen.name != Allergen.Allergens.NONE
             )
         )
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
         product_json.append(
             {
@@ -1223,10 +1008,7 @@ def product_view(request, category_id):
                 "wholesale_min_quantity": (
                     active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
-<<<<<<< HEAD
-=======
                 "allergens": allergen_names,
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                 "is_disabled": False,
                 "disabled_reason": "",
                 "image": p.image.url if p.image else "",
@@ -1247,12 +1029,9 @@ def product_view(request, category_id):
         {
             "categories": categories,
             "producers": producers,
-<<<<<<< HEAD
-=======
             "allergens": Allergen.objects.exclude(
                 name=Allergen.Allergens.NONE
             ).order_by("name"),
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             "products_json": json.dumps(product_json),
             "selected_category": selected_category,
             "show_filters": show_filters,
@@ -1263,10 +1042,7 @@ def product_view(request, category_id):
                 "q": search_query,
                 "category": category_filter,
                 "producer": producer_filter,
-<<<<<<< HEAD
-=======
                 "allergen": allergen_filter,
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                 "min_price": min_price,
                 "max_price": max_price,
                 "sort": sort,
@@ -1275,10 +1051,6 @@ def product_view(request, category_id):
     )
 
 
-<<<<<<< HEAD
-# Pippal
-=======
 # Product Detail page
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 def product_detail_page(request, product_id):
     return render(request, "products/product_detail.html", {"product_id": product_id})

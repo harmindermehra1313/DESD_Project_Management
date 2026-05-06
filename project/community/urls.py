@@ -30,11 +30,7 @@ urlpatterns = [
 
     path("stories/<int:pk>/", views.story_detail, name="story_detail"),
 
-<<<<<<< HEAD
-
     path("", views.index, name='index'),
     path("contact/", views.contact_us, name='contact_us'),
-=======
     path("about/", views.about, name="about"),
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 ]

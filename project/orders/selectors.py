@@ -44,10 +44,7 @@ from orders.models import (
     ProducerOrderSummary,
     ProducerOrderStatusHistory,
 )
-<<<<<<< HEAD
-=======
 from orders.services.order_status import get_order_status_context
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 from products.models import Inventory, Product
 
 User = get_user_model()
@@ -58,8 +55,6 @@ TRENDING_MIN_COMPLETED_ORDERS = 2
 NEW_PRODUCT_LOOKBACK_DAYS = 14
 
 
-<<<<<<< HEAD
-=======
 ORDER_STATUS_FILTER_ALIASES = {
     "pending": "pending",
     "pen": "pending",
@@ -84,7 +79,6 @@ def _normalise_filter_text(value: str | None) -> str:
     return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
 
 
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 def _normalise_derived_status_filter(value: str | None) -> str | None:
     """
     Convert a request status filter into the stable customer-facing status key.
@@ -96,38 +90,7 @@ def _normalise_derived_status_filter(value: str | None) -> str | None:
     if not normalised:
         return None
 
-<<<<<<< HEAD
-    normalized = str(value).strip().lower().replace("-", "_").replace(" ", "_")
-
-    allowed = {"pending", "in_progress", "completed"}
-    return normalized if normalized in allowed else None
-
-
-def _normalise_summary_status(summary: ProducerOrderSummary) -> str:
-    """
-    Convert one producer summary status into a stable lowercase text value.
-
-    The display label is preferred because enum constant names may differ
-    from the public status wording shown to customers.
-    """
-    try:
-        display_value = summary.get_status_display()
-    except Exception:
-        display_value = None
-
-    if display_value:
-        return str(display_value).strip().lower().replace("-", " ").replace("_", " ")
-
-    return (
-        str(getattr(summary, "status", "") or "")
-        .strip()
-        .lower()
-        .replace("-", " ")
-        .replace("_", " ")
-    )
-=======
     return ORDER_STATUS_FILTER_ALIASES.get(normalised)
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 
 def get_derived_order_status_key(order: Order) -> str:
@@ -146,63 +109,10 @@ def get_derived_order_status_key(order: Order) -> str:
 
 
 def get_derived_order_status_label(order: Order) -> str:
-<<<<<<< HEAD
-    status_key = get_derived_order_status_key(order)
-
-    if status_key == "pending":
-        return "Pending"
-
-    if status_key == "completed":
-        return "Completed"
-
-    return "In Progress"
-
-
-def _normalise_status_text(value: str | None) -> str:
-    return (value or "").strip().lower().replace("-", " ").replace("_", " ")
-
-
-def _normalise_requested_order_status(status: str | None) -> str | None:
-    value = _normalise_status_text(status)
-    if not value:
-        return None
-
-    compact = value.replace(" ", "")
-
-    if value == "pending" or compact.startswith("pen"):
-        return "pending"
-
-    if (
-        value == "completed"
-        or value == "shipped"
-        or compact.startswith("com")
-        or compact.startswith("ship")
-    ):
-        return "completed"
-
-    if (
-        value == "in progress"
-        or compact.startswith("inprog")
-        or compact.startswith("prog")
-        or compact.startswith("ipr")
-    ):
-        return "in_progress"
-
-    return None
-
-
-def _get_producer_summary_status_labels(order: Order) -> list[str]:
-    return [
-        _normalise_status_text(summary.get_status_display())
-        for summary in order.producer_summaries.all()
-    ]
-
-=======
     """
     Return the customer-facing order status display label.
     """
     return get_order_status_context(order)["status_display"]
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 def _get_order_history_base_queryset() -> QuerySet[Order]:
     """

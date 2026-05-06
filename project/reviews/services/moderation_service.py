@@ -38,26 +38,7 @@ THRESHOLDS = {
     "sexual_explicit": 0.80,
 }
 
-<<<<<<< HEAD
-flagged_categories = {
-    category: score >= thresholds[category]
-    for category, score in scores.items()
-    if category in thresholds
-}
 
-print(scores)
-print(flagged_categories)
-print(any(flagged_categories.values()))
-"""
-
-import logging
-from dataclasses import dataclass
-
-from detoxify import Detoxify
-
-
-=======
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 @dataclass(frozen=True)
 class ModerationResult:

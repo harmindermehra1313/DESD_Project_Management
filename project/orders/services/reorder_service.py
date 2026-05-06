@@ -746,11 +746,7 @@ def reorder_order(
             user=user,
             product=item.product,
             original_producer_id=item.producer_id,
-<<<<<<< HEAD
-            requested_quantity=item.quantity,
-=======
             requested_quantity=active_quantity,
->>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             excluded_product_ids=order_product_ids,
         )
         suggested_items = _serialise_suggested_items_from_candidates(
