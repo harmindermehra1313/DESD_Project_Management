@@ -18,13 +18,13 @@ from __future__ import annotations
 
 from datetime import date
 
+from django.db.models import Q
 from django.http import Http404
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from orders.api.serializers.reorders import (
     OrderDetailSerializer,
     OrderHistorySerializer,
@@ -105,6 +105,16 @@ def _parse_int(value: str | None, field_name: str) -> int | None:
             data={"field": field_name},
         ) from exc
 
+def _normalise_order_reference(value: str | None) -> str:
+    """
+    Normalises a copied order reference.
+
+    Supports:
+    - 7x2bM9jaqHJUrJq3PYvfaE
+    - #7x2bM9jaqHJUrJq3PYvfaE
+    - values with accidental spaces
+    """
+    return (value or "").strip().lstrip("#").strip()
 
 def _raise_not_found_if_needed(exc: Exception) -> None:
     model = getattr(exc, "__class__", None)
@@ -120,6 +130,10 @@ class OrderHistoryApiView(generics.ListAPIView):
 
     def get_queryset(self):
         params = self.request.query_params
+
+        order_reference = _normalise_order_reference(
+            params.get("order_reference"),
+        )
 
         start_date = _parse_date(params.get("start_date"), "start_date")
         end_date = _parse_date(params.get("end_date"), "end_date")
@@ -151,14 +165,24 @@ class OrderHistoryApiView(generics.ListAPIView):
                 },
             )
 
-        return get_order_history_for_user(
+        queryset = get_order_history_for_user(
             user=self.request.user,
-            status=params.get("status") or None,
+            status=None if order_reference else params.get("status") or None,
             producer_id=producer_id,
             start_date=start_date,
             end_date=end_date,
             delivery_or_collection=params.get("delivery_or_collection") or None,
         )
+
+        if order_reference:
+            order_filter = Q(unique_reference__icontains=order_reference)
+
+            if order_reference.isdigit():
+                order_filter |= Q(id=int(order_reference))
+
+            queryset = queryset.filter(order_filter)
+
+        return queryset
 
 
 class OrderDetailApiView(generics.RetrieveAPIView):

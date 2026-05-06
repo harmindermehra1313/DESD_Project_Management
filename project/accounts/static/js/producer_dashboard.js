@@ -138,6 +138,26 @@ function renderDetailLines(container, details = []) {
     container.appendChild(row);
   });
 }
+function normaliseOrderSearchValue(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^#+/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+function getRowOrderSearchText(row) {
+  return [
+    row.getAttribute("data-order-id") || "",
+    row.getAttribute("data-order-reference") || "",
+    row.getAttribute("data-order-db-id") || "",
+    row.cells?.[0]?.innerText || "",
+  ]
+    .join(" ")
+    .toLowerCase()
+    .replace(/^#+/, "")
+    .replace(/\s+/g, "");
+}
 
 /* ============================================================
    Reusable professional modals
@@ -421,7 +441,9 @@ function showTextInputModal({
   }
 
   const titleElement = document.getElementById("producerTextInputModalLabel");
-  const messageElement = document.getElementById("producerTextInputModalMessage");
+  const messageElement = document.getElementById(
+    "producerTextInputModalMessage",
+  );
   const labelElement = document.getElementById("producerTextInputLabel");
   const inputElement = document.getElementById("producerTextInputField");
   const errorElement = document.getElementById("producerTextInputError");
@@ -465,7 +487,8 @@ function showTextInputModal({
 
         if (required && !value) {
           if (errorElement) {
-            errorElement.textContent = "A reason is required before this action can continue.";
+            errorElement.textContent =
+              "A reason is required before this action can continue.";
             errorElement.classList.remove("d-none");
           }
           return;
@@ -797,7 +820,8 @@ function renderDetailStatusActionArea(allowedStatuses) {
 
   if (allowedStatuses.length === 1) {
     const status = allowedStatuses[0];
-    const helpText = STATUS_CONFIRMATION_HELP[status.value] ||
+    const helpText =
+      STATUS_CONFIRMATION_HELP[status.value] ||
       "Only continue if this status is correct.";
 
     const wrapper = document.createElement("div");
@@ -857,13 +881,15 @@ function applyAllFilters(resetPage = true, resetDetails = true) {
     currentPage = 1;
   }
 
-  const orderIdSearch = (
-    document.getElementById("filterOrderId")?.value || ""
-  ).toLowerCase();
+  const orderIdSearch = normaliseOrderSearchValue(
+    document.getElementById("filterOrderId")?.value,
+  );
 
   const nameSearch = (
     document.getElementById("filterCustomerName")?.value || ""
-  ).toLowerCase();
+  )
+    .trim()
+    .toLowerCase();
 
   const fromDate = document.getElementById("filterDateFrom")?.value || "";
   const toDate = document.getElementById("filterDateTo")?.value || "";
@@ -876,15 +902,23 @@ function applyAllFilters(resetPage = true, resetDetails = true) {
 
   document.querySelectorAll(".order-row").forEach((row) => {
     const status = row.getAttribute("data-status");
-    const orderId = row.getAttribute("data-order-id") || "";
-    const customerName = row.getAttribute("data-customer-name") || "";
+    const orderId = getRowOrderSearchText(row);
+    const customerName = (row.getAttribute("data-customer-name") || "").toLowerCase();
     const dueDate = row.getAttribute("data-due-date") || "";
 
-    const statusMatch = checkedStatuses.includes(status);
-    const orderIdMatch = orderId.includes(orderIdSearch);
-    const nameMatch = customerName.includes(nameSearch);
+    const orderIdMatch = !orderIdSearch || orderId.includes(orderIdSearch);
+    const nameMatch = !nameSearch || customerName.includes(nameSearch);
     const fromMatch = fromDate === "" || dueDate >= fromDate;
     const toMatch = toDate === "" || dueDate <= toDate;
+
+    /*
+      Important:
+      If an order reference is typed, search across every status.
+      This prevents cancelled/completed orders being hidden just because their
+      status checkbox is not ticked by default.
+    */
+    const statusMatch =
+      Boolean(orderIdSearch) || checkedStatuses.includes(status);
 
     if (statusMatch && orderIdMatch && nameMatch && fromMatch && toMatch) {
       matchingRows.push(row);
@@ -945,7 +979,8 @@ function applyAllFilters(resetPage = true, resetDetails = true) {
           </p>
 
           <ol class="mb-0 ps-3">
-            <li>Use <strong>Filter</strong> to find orders by status, order ID, customer name, or due date.</li>
+            <li>Use <strong>Filter</strong> to find orders by status, order reference, customer name, or due date.</li>
+            <li>Searching by order reference checks all statuses, including completed and cancelled orders.</li>
             <li>Click one order row to open its full details.</li>
             <li>Use the <strong>Next action</strong> button inside Further Details only when the producer section has really moved to the next stage.</li>
             <li>A confirmation box will appear before the status is saved.</li>
@@ -1122,12 +1157,14 @@ function ensureStatusFilterChecked(statusCode) {
 
 function getCurrentOrderFilterValues() {
   return {
-    orderIdSearch: (
-      document.getElementById("filterOrderId")?.value || ""
-    ).toLowerCase(),
+    orderIdSearch: normaliseOrderSearchValue(
+      document.getElementById("filterOrderId")?.value,
+    ),
     nameSearch: (
       document.getElementById("filterCustomerName")?.value || ""
-    ).toLowerCase(),
+    )
+      .trim()
+      .toLowerCase(),
     fromDate: document.getElementById("filterDateFrom")?.value || "",
     toDate: document.getElementById("filterDateTo")?.value || "",
     checkedStatuses: Array.from(
@@ -1140,13 +1177,16 @@ function rowMatchesCurrentOrderFilters(row) {
   const filters = getCurrentOrderFilterValues();
 
   const status = row.getAttribute("data-status");
-  const orderId = row.getAttribute("data-order-id") || "";
-  const customerName = row.getAttribute("data-customer-name") || "";
+  const orderId = getRowOrderSearchText(row);
+  const customerName = (row.getAttribute("data-customer-name") || "").toLowerCase();
   const dueDate = row.getAttribute("data-due-date") || "";
 
-  if (!filters.checkedStatuses.includes(status)) return false;
-  if (!orderId.includes(filters.orderIdSearch)) return false;
-  if (!customerName.includes(filters.nameSearch)) return false;
+  const statusMatch =
+    Boolean(filters.orderIdSearch) || filters.checkedStatuses.includes(status);
+
+  if (!statusMatch) return false;
+  if (filters.orderIdSearch && !orderId.includes(filters.orderIdSearch)) return false;
+  if (filters.nameSearch && !customerName.includes(filters.nameSearch)) return false;
   if (filters.fromDate !== "" && dueDate < filters.fromDate) return false;
   if (filters.toDate !== "" && dueDate > filters.toDate) return false;
 
@@ -1311,7 +1351,8 @@ async function changeStatus(newStatus) {
   if (!csrfToken) {
     await showMessageModal({
       title: "Security check failed",
-      message: "The page security token was not found. Refresh the page and try again.",
+      message:
+        "The page security token was not found. Refresh the page and try again.",
       variant: "danger",
     });
     return;
@@ -1347,7 +1388,8 @@ async function changeStatus(newStatus) {
 
     await showMessageModal({
       title: "Network problem",
-      message: "The status update could not be sent. Check the connection and try again.",
+      message:
+        "The status update could not be sent. Check the connection and try again.",
       variant: "danger",
     });
   }
@@ -1488,7 +1530,8 @@ async function cancelSubscription(subId) {
   if (!csrfToken) {
     await showMessageModal({
       title: "Security check failed",
-      message: "The page security token was not found. Refresh the page and try again.",
+      message:
+        "The page security token was not found. Refresh the page and try again.",
       variant: "danger",
     });
     return;
@@ -1549,7 +1592,8 @@ async function toggleSubscription(subId) {
   if (!csrfToken) {
     await showMessageModal({
       title: "Security check failed",
-      message: "The page security token was not found. Refresh the page and try again.",
+      message:
+        "The page security token was not found. Refresh the page and try again.",
       variant: "danger",
     });
     return;
@@ -1635,7 +1679,8 @@ async function cancelProducerOrder(summaryId) {
     message:
       "Use this only when this producer section cannot be fulfilled. The system will handle any card refund or cash-order adjustment that applies.",
     label: "Reason for cancellation",
-    placeholder: "Example: unable to fulfil this producer order after stock check.",
+    placeholder:
+      "Example: unable to fulfil this producer order after stock check.",
     confirmText: "Review cancellation",
   });
 
@@ -1664,21 +1709,25 @@ async function cancelProducerOrder(summaryId) {
   if (!csrfToken) {
     await showMessageModal({
       title: "Security check failed",
-      message: "The page security token was not found. Refresh the page and try again.",
+      message:
+        "The page security token was not found. Refresh the page and try again.",
       variant: "danger",
     });
     return;
   }
 
   try {
-    const response = await fetch(`/accounts/cancel-producer-order/${summaryId}/`, {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": csrfToken,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `/accounts/cancel-producer-order/${summaryId}/`,
+      {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason }),
       },
-      body: JSON.stringify({ reason }),
-    });
+    );
 
     const data = await response.json();
 
@@ -1725,7 +1774,9 @@ function getCancelQuantityErrorElement() {
   let errorElement = document.getElementById("cancelQuantityError");
 
   if (!errorElement) {
-    const modalBody = document.querySelector("#cancelQuantityModal .modal-body");
+    const modalBody = document.querySelector(
+      "#cancelQuantityModal .modal-body",
+    );
 
     if (modalBody) {
       modalBody.insertAdjacentHTML(
@@ -1854,7 +1905,9 @@ function openCancelQuantityReviewModal() {
   setElementText("reviewCancelReason", pendingCancelReason);
 
   const firstModalElement = document.getElementById("cancelQuantityModal");
-  const reviewModalElement = document.getElementById("cancelQuantityReviewModal");
+  const reviewModalElement = document.getElementById(
+    "cancelQuantityReviewModal",
+  );
 
   const firstModal = getModalInstance(firstModalElement);
   const reviewModal = getModalInstance(reviewModalElement);
@@ -1892,7 +1945,8 @@ async function confirmCancelQuantity() {
   if (!csrfToken) {
     await showMessageModal({
       title: "Security check failed",
-      message: "The page security token was not found. Refresh the page and try again.",
+      message:
+        "The page security token was not found. Refresh the page and try again.",
       variant: "danger",
     });
     return;
@@ -1990,6 +2044,25 @@ async function confirmCancelQuantity() {
 /* ============================================================
    Page initialisation
 ============================================================ */
+function normaliseOrderSearchValue(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^#+/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+function getRowOrderSearchText(row) {
+  return [
+    row.getAttribute("data-order-id") || "",
+    row.getAttribute("data-order-reference") || "",
+    row.getAttribute("data-order-db-id") || "",
+  ]
+    .join(" ")
+    .toLowerCase()
+    .replace(/^#+/, "")
+    .replace(/\s+/g, "");
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const resetAndFilter = () => applyAllFilters(true);

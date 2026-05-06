@@ -83,11 +83,12 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="filterOrderId" class="form-label small fw-bold text-muted mb-1">Order ID</label>
+                            <label for="filterOrderId" class="form-label small fw-bold text-muted mb-1">Order reference</label>
                             <input type="text"
                                    class="form-control form-control-sm"
                                    id="filterOrderId"
-                                   placeholder="Search by ID...">
+                                   placeholder="Example: 7x2bM9jaqHJUrJq3PYvfaE"
+                                   autocomplete="off">
                         </div>
                         <div class="mb-3">
                             <label for="filterCustomerName"
@@ -133,7 +134,9 @@
                             id="row-{{ summary.id }}"
                             data-status="{{ summary.status }}"
                             data-allowed-statuses='{{ summary.allowed_next_statuses_json|escape }}'
-                            data-order-id="{{ summary.order.unique_reference|lower }}"
+                            data-order-id="{{ summary.order.unique_reference|default:''|lower }} {{ summary.order.id }}"
+                            data-order-reference="{{ summary.order.unique_reference|default:''|lower }}"
+                            data-order-db-id="{{ summary.order.id }}"
                             data-customer-name="{% if summary.order.user %}{{ summary.order.user.name|lower }}{% else %}{{ summary.order.guest_name|default:''|lower }}{% endif %}"
                             data-due-date="{{ summary.delivery_date|date:'Y-m-d' }}"
                             onclick="showOrderDetails('{{ summary.id }}', this)">

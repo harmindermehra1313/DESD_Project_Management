@@ -14,7 +14,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.utils import timezone
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.views.decorators.csrf import csrf_exempt
 
 # ---------------------------------------
@@ -346,6 +346,9 @@ def producer_dashboard(request):
 
     producer = request.user.producer_profile
 
+    order_search = (request.GET.get("order_id") or "").strip()
+    order_search = order_search.lstrip("#").strip()
+
     # 1. Fetch physical orders
     summaries = (
         ProducerOrderSummary.objects.filter(producer=producer)
@@ -353,7 +356,7 @@ def producer_dashboard(request):
             "order",
             "order__user",
             "order__delivery_address",
-            "order__recurring_order",  # Fetch recurring order relationship
+            "order__recurring_order",
         )
         .prefetch_related(
             Prefetch(
@@ -364,10 +367,17 @@ def producer_dashboard(request):
                 to_attr="my_items",
             )
         )
-        .order_by("delivery_date")
     )
 
-    # Calculate the 95% payout for each summary
+    if order_search:
+        order_filter = Q(order__unique_reference__icontains=order_search)
+
+        if order_search.isdigit():
+            order_filter |= Q(order__id=int(order_search))
+
+        summaries = summaries.filter(order_filter)
+
+    summaries = summaries.order_by("delivery_date")
 
     for summary in summaries:
         attach_producer_dashboard_item_values(summary)
@@ -382,7 +392,7 @@ def producer_dashboard(request):
             ]
         )
 
-    # 2. Fetch Recurring Templates (all statuses, so the front-end filter works)
+    # 2. Fetch Recurring Templates
     recurring_qs = (
         RecurringOrder.objects.filter(
             items__product__producer=producer,
@@ -392,9 +402,10 @@ def producer_dashboard(request):
     )
 
     all_subscriptions = []
+
     for ro in recurring_qs:
-        # Get only the items relevant to THIS producer
         ro_items = ro.items.filter(product__producer=producer).select_related("product")
+
         if ro_items.exists():
             all_subscriptions.append(
                 {
@@ -427,6 +438,7 @@ def producer_dashboard(request):
     context = {
         "summaries": summaries,
         "all_subscriptions": all_subscriptions,
+        "order_search": order_search,
     }
 
     return render(request, "accounts/producer_dashboard.html", context)

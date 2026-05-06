@@ -7,6 +7,7 @@ const REVIEW_ADD_PAGE_URL = "/reviews/add/";
 const M = window.OrderHistoryMessages;
 
 const DEFAULT_FILTERS = {
+  order_reference: "",
   status: "",
   start_date: "",
   end_date: "",
@@ -205,7 +206,12 @@ function showReorderResultToasts(result) {
 }
 
 function readFiltersFromForm() {
+  const orderReference = normaliseOrderReferenceSearch(
+    document.getElementById("order_reference")?.value,
+  );
+
   return {
+    order_reference: orderReference,
     status: document.getElementById("status")?.value || "",
     start_date: document.getElementById("start_date")?.value || "",
     end_date: document.getElementById("end_date")?.value || "",
@@ -215,9 +221,17 @@ function readFiltersFromForm() {
 }
 
 function writeFiltersToForm(filters) {
-  const fields = ["status", "start_date", "end_date", "delivery_or_collection"];
+  const fields = [
+    "order_reference",
+    "status",
+    "start_date",
+    "end_date",
+    "delivery_or_collection",
+  ];
+
   fields.forEach((field) => {
     const el = document.getElementById(field);
+
     if (el) {
       el.value = filters[field] || "";
     }
@@ -227,10 +241,23 @@ function writeFiltersToForm(filters) {
 function buildQueryString() {
   const params = new URLSearchParams();
 
+  const hasOrderReferenceSearch = Boolean(appliedFilters.order_reference);
+
   Object.entries(appliedFilters).forEach(([key, value]) => {
-    if (value !== "") {
-      params.append(key, value);
+    if (value === "") {
+      return;
     }
+
+    /*
+      Important:
+      When searching by order reference, do not send the status filter.
+      This allows completed, cancelled, pending, and in-progress orders to be found.
+    */
+    if (hasOrderReferenceSearch && key === "status") {
+      return;
+    }
+
+    params.append(key, value);
   });
 
   params.append("page", String(currentPage));
@@ -371,6 +398,13 @@ function formatDate(value) {
     month: "short",
     year: "numeric",
   });
+}
+function normaliseOrderReferenceSearch(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^#+/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
 }
 
 function normaliseStatus(status) {
@@ -1250,20 +1284,14 @@ function renderProducerSection(producerBreakdown) {
 
 function renderOrderFooter(order) {
   const displayTotal =
-    order.display_total_price ??
-    order.active_total_price ??
-    order.total_price;
+    order.display_total_price ?? order.active_total_price ?? order.total_price;
 
-  const originalTotal =
-    order.original_total_price ??
-    order.total_price;
+  const originalTotal = order.original_total_price ?? order.total_price;
 
   const cancelledTotal = Number(order.cancelled_total_price || 0);
   const hasCancelledValue = cancelledTotal > 0;
 
-  const displayLabel =
-    order.display_total_label ||
-    M.totalPaidLabel;
+  const displayLabel = order.display_total_label || M.totalPaidLabel;
 
   return `
     <div class="border rounded p-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
