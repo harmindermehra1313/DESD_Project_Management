@@ -61,4 +61,15 @@ urlpatterns = [
         views.action_required,
         name="action_required",
     ),
+    # approving producer 
+    path(
+    "producers/<int:producer_id>/approve/",
+    views.approve_producer,
+    name="approve_producer",
+    ),
+    path(
+    "producers/<int:producer_id>/reject/",
+    views.reject_producer,
+    name="reject_producer",
+    ),
 ]
