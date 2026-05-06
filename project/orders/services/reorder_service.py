@@ -37,14 +37,12 @@ from carts.services import (
     _get_effective_unit_price,
     cart_add_item_for_owner,
 )
-from orders.models import Order
+from orders.models import Order, OrderItem
 from orders.selectors import (
     get_order_detail_for_user,
     get_reorder_suggestion_inventories,
-    get_derived_order_status_key,
-    get_order_detail_for_user,
-    get_reorder_suggestion_inventories,
 )
+from orders.services.order_status import get_order_status_context
 from django.apps import apps
 
 User = get_user_model()
@@ -85,6 +83,28 @@ def _all_product_batches_deleted(*, product) -> bool:
     )
 
 
+def _active_order_item_quantity(item) -> int:
+    """
+    Return the quantity that should still be reorderable.
+
+    Example:
+    - ordered quantity: 3
+    - cancelled quantity: 1
+    - active reorderable quantity: 2
+    """
+    original_quantity = int(getattr(item, "quantity", 0) or 0)
+    cancelled_quantity = int(getattr(item, "cancelled_quantity", 0) or 0)
+
+    return max(original_quantity - cancelled_quantity, 0)
+
+
+def _is_cancelled_order_item(item) -> bool:
+    return (
+        item.status == OrderItem.Status.CANCELLED
+        or _active_order_item_quantity(item) <= 0
+    )
+
+
 def _structured_validation_error(
     *,
     code: str,
@@ -98,6 +118,50 @@ def _structured_validation_error(
             "data": data or {},
         }
     )
+
+
+def _get_historical_unit_price(item):
+    return (
+        getattr(item, "final_unit_price", None)
+        or getattr(item, "original_unit_price", None)
+        or getattr(item, "unit_price", None)
+    )
+
+
+def _format_unit_price(value) -> str:
+    if value is None:
+        return "unknown price"
+    return f"£{value:.2f}"
+
+
+def _build_price_change_message(
+    *,
+    product_name,
+    original_price,
+    current_price,
+    original_producer_name,
+    current_producer_name,
+    producer_changed,
+    pricing_source,
+):
+    message = (
+        f"Unit price updated for {product_name}: "
+        f"{_format_unit_price(original_price)} → {_format_unit_price(current_price)}."
+    )
+
+    if producer_changed:
+        message += (
+            f" This is because the replacement item is supplied by "
+            f"{current_producer_name} instead of {original_producer_name}."
+        )
+    elif pricing_source == "surplus":
+        message += " This is because the current item has surplus pricing."
+    elif pricing_source == "wholesale":
+        message += " This is because the current quantity uses wholesale pricing."
+    else:
+        message += " This is because the current unit price is different from the previous order."
+
+    return message
 
 
 def _reason_payload(
@@ -442,28 +506,59 @@ def _build_selection_map(*, order, selections: list[dict] | None) -> dict[int, d
     return selection_map
 
 
+def _normalise_reorder_quantity(
+    *,
+    selected_quantity,
+    default_quantity: int,
+) -> tuple[int | None, str | None]:
+    """
+    Validate and clamp the selected reorder quantity.
+
+    The maximum allowed reorder quantity is the active historical quantity,
+    not the original ordered quantity.
+
+    This protects the backend even if the frontend sends the old full quantity
+    for a partially cancelled item.
+    """
+    if selected_quantity is None:
+        return default_quantity, None
+
+    try:
+        quantity = int(selected_quantity)
+    except (TypeError, ValueError):
+        return None, "Selected reorder quantity must be a whole number."
+
+    if quantity <= 0:
+        return None, "Selected reorder quantity must be at least 1."
+
+    return min(quantity, default_quantity), None
+
+
 def _resolve_candidate_for_item(
     *,
     item,
     selection: dict | None,
     original_candidate: dict | None,
     suggestion_candidates: list[dict],
+    default_quantity: int,
 ) -> tuple[dict | None, str | None, int | None]:
-    """
-    Resolve which live candidate should be used for one order item.
-
-    Returns:
-        tuple[candidate | None, rejection_reason | None, requested_quantity | None]
-    """
     if selection is None:
         if original_candidate is None:
             return None, None, None
-        return original_candidate, None, item.quantity
+        return original_candidate, None, default_quantity
 
     action = selection["action"]
 
     if action == "skip":
         return None, "skipped", None
+
+    selected_quantity, quantity_error = _normalise_reorder_quantity(
+        selected_quantity=selection.get("quantity"),
+        default_quantity=default_quantity,
+    )
+
+    if quantity_error:
+        return None, quantity_error, None
 
     if action == "keep":
         if original_candidate is None:
@@ -496,7 +591,7 @@ def _resolve_candidate_for_item(
                 None,
             )
 
-        return original_candidate, None, selection["quantity"]
+        return original_candidate, None, selected_quantity
 
     if action == "replace":
         selected_product_id = selection.get("selected_product_id")
@@ -507,7 +602,7 @@ def _resolve_candidate_for_item(
                 candidate["product"].pk == selected_product_id
                 and candidate["inventory"].pk == selected_inventory_id
             ):
-                return candidate, None, selection["quantity"]
+                return candidate, None, selected_quantity
 
         return (
             None,
@@ -610,13 +705,16 @@ def reorder_order(
     """
     order = get_order_detail_for_user(user=user, order_id=order_id)
 
-    if get_derived_order_status_key(order) != "completed":
+    status_context = get_order_status_context(order)
+
+    if status_context["status_key"] != "completed":
         raise _structured_validation_error(
             code="order_not_reorderable",
             message="This order cannot be reordered.",
             data={
                 "order_id": order.id,
-                "order_status": get_derived_order_status_key(order),
+                "order_status": status_context["status_key"],
+                "status_display": status_context["status_display"],
             },
         )
 
@@ -639,11 +737,20 @@ def reorder_order(
     }
 
     for item in order.items.all():
+        active_quantity = _active_order_item_quantity(item)
+        if _is_cancelled_order_item(item):
+            skipped_count += 1
+            continue
+
         suggestion_candidates = _build_suggestion_candidates(
             user=user,
             product=item.product,
             original_producer_id=item.producer_id,
+<<<<<<< HEAD
             requested_quantity=item.quantity,
+=======
+            requested_quantity=active_quantity,
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             excluded_product_ids=order_product_ids,
         )
         suggested_items = _serialise_suggested_items_from_candidates(
@@ -660,7 +767,7 @@ def reorder_order(
                 result=result,
                 item=item,
                 reason=original_unavailable_reason or "Product cannot be reordered.",
-                requested_quantity=item.quantity,
+                requested_quantity=active_quantity,
                 suggested_items=suggested_items,
             )
             continue
@@ -671,6 +778,7 @@ def reorder_order(
                 selection=selection,
                 original_candidate=original_candidate,
                 suggestion_candidates=suggestion_candidates,
+                default_quantity=active_quantity,
             )
         )
 
@@ -685,14 +793,14 @@ def reorder_order(
                 reason=rejection_reason
                 or original_unavailable_reason
                 or "Product cannot be reordered.",
-                requested_quantity=selected_quantity or item.quantity,
+                requested_quantity=selected_quantity or active_quantity,
                 suggested_items=suggested_items,
             )
             continue
 
         selected_product = selected_candidate["product"]
         selected_inventory = selected_candidate["inventory"]
-        requested_quantity = selected_quantity or item.quantity
+        requested_quantity = selected_quantity or active_quantity
         available_quantity = selected_candidate["available_quantity"]
         quantity_to_add = min(requested_quantity, available_quantity)
 
@@ -721,19 +829,42 @@ def reorder_order(
         )
         current_unit_price = pricing["effective_unit_price"]
 
-        if item.original_unit_price != current_unit_price:
+        historical_unit_price = _get_historical_unit_price(item)
+
+        producer_changed = selected_product.producer_id != item.producer_id
+        original_producer_name = item.producer.farm_name
+        current_producer_name = selected_product.producer.farm_name
+
+        if (
+            historical_unit_price is not None
+            and historical_unit_price != current_unit_price
+        ):
             result["price_changed_items"].append(
                 {
                     "order_item_id": item.pk,
                     "product_id": selected_product.pk,
                     "product_name": selected_product.name,
-                    "original_price": item.original_unit_price,
+                    "original_price": historical_unit_price,
                     "current_price": current_unit_price,
                     "pricing_source": pricing["pricing_source"],
                     "surplus_active": pricing["surplus"]["is_active"],
                     "wholesale_active_for_quantity": pricing["wholesale"][
                         "active_for_quantity"
                     ],
+                    "producer_changed": producer_changed,
+                    "original_producer_id": item.producer_id,
+                    "original_producer_name": original_producer_name,
+                    "current_producer_id": selected_product.producer_id,
+                    "current_producer_name": current_producer_name,
+                    "message": _build_price_change_message(
+                        product_name=selected_product.name,
+                        original_price=historical_unit_price,
+                        current_price=current_unit_price,
+                        original_producer_name=original_producer_name,
+                        current_producer_name=current_producer_name,
+                        producer_changed=producer_changed,
+                        pricing_source=pricing["pricing_source"],
+                    ),
                 }
             )
 

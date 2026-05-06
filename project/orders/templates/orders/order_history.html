@@ -14,38 +14,72 @@
                 <p class="text-muted mb-0">View past purchases and reorder previous items.</p>
             </div>
         </div>
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <form id="orderFiltersForm" class="row g-3">
-                    <div class="col-md-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select id="status" class="form-select">
-                            <option value="">All</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
+        <div class="card shadow-sm mb-4 order-filter-card">
+            <div class="card-body order-filter-card-body">
+                <div class="order-filter-header">
+                    <div>
+                        <h3 class="order-filter-title">Filter orders</h3>
+                        <p class="order-filter-subtitle mb-0">
+                            Narrow the order history by order reference, status, order date, or fulfilment method.
+                        </p>
                     </div>
-                    <div class="col-md-2">
-                        <label for="start_date" class="form-label">Start date</label>
-                        <input type="date" id="start_date" class="form-control">
-                        <div class="invalid-feedback">Please enter a valid start date.</div>
+                </div>
+                <form id="orderFiltersForm" class="order-filter-form">
+                    <div class="order-filter-grid">
+                        <div class="order-filter-field">
+                            <label for="order_reference" class="form-label">Order reference</label>
+                            <input id="order_reference"
+                                   name="order_reference"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="Example: 7x2bM9jaqHJUrJq3PYvfaE"
+                                   autocomplete="off">
+                            <div class="form-text">Search by the order reference shown in the order history.</div>
+                        </div>
+                        <div class="order-filter-field">
+                            <label for="status" class="form-label">Status</label>
+                            <select id="status" class="form-select">
+                                <option value="">All statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="order-filter-field">
+                            <label for="start_date" class="form-label">Order date from</label>
+                            <input id="start_date"
+                                   name="start_date"
+                                   type="date"
+                                   class="form-control"
+                                   aria-describedby="startDateHelp dateFilterNote">
+                            <div id="startDateHelp" class="form-text">Shows orders placed on or after this date.</div>
+                        </div>
+                        <div class="order-filter-field">
+                            <label for="end_date" class="form-label">Order date until</label>
+                            <input id="end_date"
+                                   name="end_date"
+                                   type="date"
+                                   class="form-control"
+                                   aria-describedby="endDateHelp dateFilterNote">
+                            <div id="endDateHelp" class="form-text">Shows orders placed on or before this date.</div>
+                        </div>
+                        <div class="order-filter-field">
+                            <label for="delivery_or_collection" class="form-label">Fulfilment</label>
+                            <select id="delivery_or_collection" class="form-select">
+                                <option value="">All fulfilment types</option>
+                                {% for value, label in fulfilment_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div id="dateFilterNote" class="order-filter-note" role="note">
+                            Date filters use the order date, not the delivery or collection date.
+                            Leave one date empty to search from or up to a date. To view one
+                            specific day, enter the same date in both date boxes.
+                        </div>
                     </div>
-                    <div class="col-md-2">
-                        <label for="end_date" class="form-label">End date</label>
-                        <input type="date" id="end_date" class="form-control">
-                        <div class="invalid-feedback">Please enter a valid end date.</div>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="delivery_or_collection" class="form-label">Fulfilment</label>
-                        <select id="delivery_or_collection" class="form-select">
-                            <option value="">All</option>
-                            {% for value, label in fulfilment_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-12 d-flex gap-2">
+                    <div class="order-filter-actions">
                         <button type="submit" class="btn btn-primary">Apply filters</button>
-                        <button type="button" id="resetFiltersBtn" class="btn btn-primary">Reset</button>
+                        <button type="button" id="resetFiltersBtn" class="btn btn-outline-secondary">Reset</button>
                     </div>
                 </form>
             </div>
@@ -136,4 +170,5 @@
     <script type="module" src="{% static 'carts/cart.js' %}"></script>
     <script src="{% static 'orders/order_history_messages.js' %}"></script>
     <script src="{% static 'orders/order_history.js' %}"></script>
+    <script src="{% static 'orders/order_cancellation.js' %}"></script>
 {% endblock %}

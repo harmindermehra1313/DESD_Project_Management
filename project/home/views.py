@@ -6,6 +6,7 @@ from orders.models import Order, OrderItem
 from notifications.services.notifications import NotificationService
 from django.db.models import Sum
 from django.utils import timezone
+from django.core.paginator import Paginator
 from datetime import timedelta
 
 def home(request):
@@ -19,14 +20,25 @@ def dashboard(request):
 def producer(request):
     producer = request.user.producer_profile
 
-    notifications = Notification.objects.filter(
-        user=request.user
-    ).order_by('-created_at')[:10] # latest 10
+    # notifications = Notification.objects.filter(
+    #     user=request.user
+    # ).order_by('-created_at')[:10] # latest 10
 
-    unread_count = Notification.objects.filter(
-        user=request.user,
-        read_at__isnull=True
-    ).count()
+    # unread_count = Notification.objects.filter(
+    #     user=request.user,
+    #     read_at__isnull=True
+    # ).count()
+
+    # Notifications with pagination
+    notifications_qs = Notification.objects.filter(
+        user=request.user
+    ).order_by('-created_at')
+
+    paginator = Paginator(notifications_qs, 5) # 5 per page
+    page_number = request.GET.get("page")
+    notifications = paginator.get_page(page_number)
+
+    unread_count = notifications_qs.filter(read_at__isnull=True).count()
 
     # Sales stats
     last_30_orders = Order.objects.filter(
@@ -133,13 +145,32 @@ def producer(request):
 def mark_all_notifications_read(request):
     if request.method == "POST":
         NotificationService.mark_all_read(request.user)
-    return redirect('home:producer')
+
+    page = request.POST.get("page") or request.GET.get("page") or "1"
+    return redirect(f"/producer/?page={page}")
+
 
 @producer_required
 def mark_notification_read(request, pk):
     note = Notification.objects.filter(pk=pk, user=request.user).first()
-    if note:
-        NotificationService.mark_read(note)
 
-    # TBC for now return to the producer dashboard
-    return redirect("home:producer")
+    if not note:
+        return redirect("/producer/")
+
+    NotificationService.mark_read(note)
+
+    page = request.POST.get("page") or request.GET.get("page") or "1"
+    producer = request.user.producer_profile
+
+    if note.type == Notification.Type.PRODUCT_ALERT and note.product:
+        return redirect(f"/products/producer/products/?open_product={note.product.id}")
+
+    if note.type == Notification.Type.ORDER_UPDATE and note.order:
+        if note.order.producer_summaries.filter(producer=producer).exists():
+            return redirect(f"/accounts/producer_dashboard/?open_order={note.order.id}")
+
+    if note.type == Notification.Type.RECALL and note.product:
+        if note.product.producer == producer:
+            return redirect(f"/products/producer/products/?open_product={note.product.id}")
+
+    return redirect(f"/producer/?page={page}")

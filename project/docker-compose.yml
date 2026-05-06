@@ -101,6 +101,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      PRELOAD_REVIEW_MODERATION: "1"
+      TRANSFORMERS_VERBOSITY: "error"
+      HF_HUB_VERBOSITY: "error"
 
   qcluster:
     build: .
@@ -114,20 +118,19 @@ services:
       web:
         condition: service_started
   
-#  cron:
-#    build:
-#      context: .
-#      dockerfile: cron/Dockerfile
-#    container_name: brfn_cron
-#    volumes:
-#      - .:/code
-#    env_file:
-#      - .env
-#    depends_on:
-#      db:
-#        condition: service_healthy
-#      web:
-#        condition: service_started
+  cron:
+    build: .
+    container_name: brfn_cron
+    command: ["cron", "-f"]
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    environment:
+      TZ: Europe/London
+    depends_on:
+      web:
+        condition: service_started
 
   adminer:
     image: adminer:latest
@@ -135,3 +138,23 @@ services:
     restart: always
     ports:
       - "8080:8080"
+
+# *** STRIPE CLI IS FOR LOCAL DEV ONLY, DO NOT USE IN PRODUCTION ***
+# Use docker compose logs stripe_cli to see the logs and confirm that the webhook events are being forwarded correctly. 
+  stripe_cli:
+    image: stripe/stripe-cli:latest
+    container_name: brfn_stripe_cli
+    depends_on:
+      - web
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_DEVICE_NAME: brfn-docker-dev
+    command: >
+      listen
+      --events payment_intent.succeeded,payment_intent.payment_failed,charge.refunded
+      --forward-to http://web:8000/payments/webhook/
+    restart: unless-stopped
+  
+  
+
+

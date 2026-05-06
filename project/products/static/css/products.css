@@ -32,6 +32,10 @@
   white-space: nowrap;
 }
 
+<<<<<<< HEAD
+=======
+/* Filters */
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 .product-filter-panel {
   background: #ffffff;
   border: 1px solid #e4e7ec;
@@ -70,7 +74,12 @@
   color: #ffffff;
 }
 
+<<<<<<< HEAD
 .product-primary-btn:hover {
+=======
+.product-primary-btn:hover,
+.product-primary-btn:focus {
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
   background: #2f4b67;
   border-color: #2f4b67;
   color: #ffffff;
@@ -82,17 +91,38 @@
   color: #344054;
 }
 
+<<<<<<< HEAD
 .product-secondary-btn:hover {
+=======
+.product-secondary-btn:hover,
+.product-secondary-btn:focus {
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
   background: #f2f4f7;
   border-color: #c1c7d0;
   color: #1d2939;
 }
 
+<<<<<<< HEAD
 /* Responsive compact card grid */
 .product-grid {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+=======
+/* Product grid
+   Phone: 1 card
+   Small tablet: 2 cards
+   Tablet: 3 cards
+   Laptop/Desktop/large desktop: 4 cards
+*/
+.product-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  margin-inline: auto;
+  max-width: 1180px;
+  width: 100%;
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 }
 
 /* Card */
@@ -297,20 +327,37 @@
   padding: 0.3rem 0.5rem;
 }
 
+<<<<<<< HEAD
 
 .product-card-action {
+=======
+.product-card-action,
+.product-action-btn {
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
   align-items: center;
   border-radius: 0.65rem;
   display: inline-flex;
   font-weight: 700;
   justify-content: center;
   min-height: 2.5rem;
+<<<<<<< HEAD
 }
 
 .product-card-action:disabled {
   cursor: not-allowed;
 }
 
+=======
+  width: 100%;
+}
+
+.product-card-action:disabled,
+.product-action-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Empty state */
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 .product-empty-state {
   background: #ffffff;
   border: 1px dashed #cbd5e1;
@@ -326,6 +373,10 @@
   font-weight: 750;
 }
 
+<<<<<<< HEAD
+=======
+/* Pagination */
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 .product-pagination-wrap {
   display: flex;
   justify-content: center;
@@ -335,6 +386,7 @@
   align-items: center;
   background: #ffffff;
   border: 1px solid var(--alabaster-grey);
+<<<<<<< HEAD
   border-radius: 999px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
   display: inline-flex;
@@ -391,12 +443,89 @@
   }
 }
 
+=======
+  border-radius: 0.75rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.product-page-btn,
+.product-page-current {
+  align-items: center;
+  background: #385878;
+  border: 1px solid #385878;
+  border-radius: 0.5rem;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 2.6rem;
+  min-width: 5.5rem;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.product-page-btn:hover,
+.product-page-btn:focus,
+.product-page-current:hover,
+.product-page-current:focus {
+  background: #2f4b67;
+  border-color: #2f4b67;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.product-page-current {
+  cursor: default;
+  min-width: 8.5rem;
+}
+
+.product-page-btn:disabled,
+.product-page-btn.disabled,
+.product-page-btn[aria-disabled="true"] {
+  background: #385878;
+  border-color: #385878;
+  color: #ffffff;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Small tablets: 2 cards */
+@media (min-width: 576px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Tablets: 3 cards */
+@media (min-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Laptops, desktops, large desktops: always 4 cards */
+@media (min-width: 992px) {
+  .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Header collapse */
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 @media (max-width: 991.98px) {
   .product-list-header {
     flex-direction: column;
   }
 }
 
+<<<<<<< HEAD
+=======
+/* Phones */
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 @media (max-width: 575.98px) {
   .product-grid {
     grid-template-columns: 1fr;
@@ -411,6 +540,7 @@
     padding: 0.9rem;
   }
 
+<<<<<<< HEAD
   .product-card-title {
     min-height: auto;
   }
@@ -418,4 +548,21 @@
   .product-card-description {
     min-height: auto;
   }
+=======
+  .product-card-title,
+  .product-card-description {
+    min-height: auto;
+  }
+
+  .product-pagination {
+    border-radius: 0.75rem;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .product-page-btn,
+  .product-page-current {
+    width: 100%;
+  }
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 }

@@ -7,6 +7,7 @@ const REVIEW_ADD_PAGE_URL = "/reviews/add/";
 const M = window.OrderHistoryMessages;
 
 const DEFAULT_FILTERS = {
+  order_reference: "",
   status: "",
   start_date: "",
   end_date: "",
@@ -205,7 +206,12 @@ function showReorderResultToasts(result) {
 }
 
 function readFiltersFromForm() {
+  const orderReference = normaliseOrderReferenceSearch(
+    document.getElementById("order_reference")?.value,
+  );
+
   return {
+    order_reference: orderReference,
     status: document.getElementById("status")?.value || "",
     start_date: document.getElementById("start_date")?.value || "",
     end_date: document.getElementById("end_date")?.value || "",
@@ -215,9 +221,17 @@ function readFiltersFromForm() {
 }
 
 function writeFiltersToForm(filters) {
-  const fields = ["status", "start_date", "end_date", "delivery_or_collection"];
+  const fields = [
+    "order_reference",
+    "status",
+    "start_date",
+    "end_date",
+    "delivery_or_collection",
+  ];
+
   fields.forEach((field) => {
     const el = document.getElementById(field);
+
     if (el) {
       el.value = filters[field] || "";
     }
@@ -227,10 +241,23 @@ function writeFiltersToForm(filters) {
 function buildQueryString() {
   const params = new URLSearchParams();
 
+  const hasOrderReferenceSearch = Boolean(appliedFilters.order_reference);
+
   Object.entries(appliedFilters).forEach(([key, value]) => {
-    if (value !== "") {
-      params.append(key, value);
+    if (value === "") {
+      return;
     }
+
+    /*
+      Important:
+      When searching by order reference, do not send the status filter.
+      This allows completed, cancelled, pending, and in-progress orders to be found.
+    */
+    if (hasOrderReferenceSearch && key === "status") {
+      return;
+    }
+
+    params.append(key, value);
   });
 
   params.append("page", String(currentPage));
@@ -372,6 +399,13 @@ function formatDate(value) {
     year: "numeric",
   });
 }
+function normaliseOrderReferenceSearch(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^#+/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
 
 function normaliseStatus(status) {
   return (status || "").trim().toLowerCase();
@@ -390,20 +424,97 @@ function getStatusBadgeClass(status) {
   return "bg-secondary";
 }
 
-function isReorderAllowed(status) {
-  const value = normaliseStatus(status);
-  return value.includes("completed");
+function isReorderAllowed(order) {
+  const statusKey = String(
+    order?.order_status_key || order?.status_key || "",
+  ).toLowerCase();
+
+  return statusKey === "completed";
 }
 
 function isReceiptAllowed(status) {
   const value = normaliseStatus(status);
-  return value.includes("completed");
+  return !value.includes("cancel");
 }
 
-function getReorderButtonHtml(orderId, status, extraClass = "") {
-  const allowed = isReorderAllowed(status);
+function isCustomerCancellationAllowed(order) {
+  return Boolean(order?.can_customer_cancel);
+}
+
+function getCustomerCancelButtonHtml(order) {
+  const orderId = order?.id || order?.order_id;
+
+  if (!orderId) {
+    return "";
+  }
+
+  const status = order?.status || order?.order_status || "";
+  const allowed = isCustomerCancellationAllowed(order);
+  const disabledAttr = allowed ? "" : "disabled";
+  const title = allowed
+    ? "Cancel this order before producers start preparing it."
+    : "Cancellation is only available while the order is pending.";
+
+  return `
+    <button
+      type="button"
+      class="btn btn-danger"
+      data-action="cancel-customer-order"
+      data-order-id="${escapeHtml(orderId)}"
+      data-order-number="${escapeHtml(order.order_number || orderId)}"
+      ${disabledAttr}
+      title="${escapeHtml(title)}"
+    >
+      Cancel order
+    </button>
+  `;
+}
+
+function isCustomerItemCancellationAllowed(item) {
+  return Boolean(item?.can_customer_cancel_item);
+}
+
+function getCustomerCancelItemButtonHtml(order, item) {
+  const orderId = order?.id || order?.order_id;
+  const itemId = item?.id;
+  const activeQuantity = Number(item?.active_quantity ?? item?.quantity ?? 0);
+  const allowed = isCustomerItemCancellationAllowed(item) && activeQuantity > 0;
+
+  if (!orderId || !itemId) {
+    return "";
+  }
+
+  const disabledAttr = allowed ? "" : "disabled";
+  const title = allowed
+    ? "Cancel this item before the producer starts preparing it."
+    : "Item cancellation is only available before the producer starts preparing it.";
+
+  return `
+    <button
+      type="button"
+      class="btn btn-sm btn-danger"
+      data-action="cancel-customer-order-item"
+      data-order-id="${escapeHtml(orderId)}"
+      data-item-id="${escapeHtml(itemId)}"
+      data-product-name="${escapeHtml(item.product_name || "this item")}"
+      data-active-quantity="${escapeHtml(activeQuantity)}"
+      ${disabledAttr}
+      title="${escapeHtml(title)}"
+    >
+      Cancel item
+    </button>
+  `;
+}
+
+function getReorderButtonHtml(order, extraClass = "") {
+  const orderId = order?.id || order?.order_id;
+  const allowed = isReorderAllowed(order);
   const disabledAttr = allowed ? "" : "disabled";
   const title = allowed ? M.reorderAllowedTooltip : M.reorderBlockedTooltip;
+
+  if (!orderId) {
+    return "";
+  }
 
   return `
     <button
@@ -692,11 +803,15 @@ function renderOrdersTable(orders) {
             ${M.viewDetailsButton}
           </button>
 
+<<<<<<< HEAD
           ${getReorderButtonHtml(
             order.id,
             order.order_status,
             "btn-sm order-history-action-btn",
           )}
+=======
+          ${getReorderButtonHtml(order, "btn-sm order-history-action-btn")}
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
         </div>
       </td>
     </tr>
@@ -728,31 +843,57 @@ function formatAddress(address) {
 
 function renderOrderSummary(order) {
   return `
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+    <div class="row g-3 mb-4 order-detail-summary">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.orderNumberLabel}</div>
-          <div class="fw-semibold">${escapeHtml(order.order_number)}</div>
+          <div
+            class="fw-semibold order-detail-summary-value order-detail-order-number"
+            title="${escapeHtml(order.order_number)}"
+          >
+            ${escapeHtml(order.order_number)}
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.orderDateLabel}</div>
-          <div class="fw-semibold">${formatDate(order.order_date)}</div>
+          <div class="fw-semibold order-detail-summary-value">
+            ${formatDate(order.order_date)}
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.statusLabel}</div>
-          <div class="fw-semibold">${escapeHtml(order.status || order.order_status || "-")}</div>
+          <div class="fw-semibold order-detail-summary-value">
+            ${escapeHtml(order.status || order.order_status || "-")}
+          </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="border rounded p-3 h-100">
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="order-detail-summary-card border rounded p-3 h-100">
           <div class="small text-muted">${M.paymentLabel}</div>
-          <div class="fw-semibold">${escapeHtml(order.payment_method_display || M.notAvailable)}</div>
+          <div class="fw-semibold order-detail-summary-value">
+            ${escapeHtml(order.payment_method_display || M.notAvailable)}
+          </div>
         </div>
       </div>
+
+      ${
+        order.status_note
+          ? `
+      <div class="col-12">
+        <div class="alert alert-info mb-0">
+  ${escapeHtml(order.status_note)}
+</div>
+      </div>
+    `
+          : ""
+      }
     </div>
   `;
 }
@@ -865,12 +1006,119 @@ function handleWriteReviewClick(button) {
   }
 }
 
-function renderItemsSection(items) {
+function isOrderItemFullyCancelled(item) {
+  const originalQuantity = Number(item?.quantity ?? 0);
+  const cancelledQuantity = Number(item?.cancelled_quantity ?? 0);
+  const activeQuantity = Number(
+    item?.active_quantity ?? Math.max(originalQuantity - cancelledQuantity, 0),
+  );
+
+  const status = normaliseStatus(item?.status_key || item?.status || "");
+
+  return (
+    status === "can" ||
+    status === "cancelled" ||
+    (originalQuantity > 0 && cancelledQuantity >= originalQuantity) ||
+    (activeQuantity <= 0 && cancelledQuantity > 0)
+  );
+}
+
+function isOrderItemPartiallyCancelled(item) {
+  const originalQuantity = Number(item?.quantity ?? 0);
+  const cancelledQuantity = Number(item?.cancelled_quantity ?? 0);
+
+  return (
+    cancelledQuantity > 0 &&
+    originalQuantity > 0 &&
+    cancelledQuantity < originalQuantity
+  );
+}
+
+function getOrderItemRowClass(item) {
+  return isOrderItemFullyCancelled(item)
+    ? "order-detail-item-row order-detail-item-row-cancelled"
+    : "order-detail-item-row";
+}
+
+function renderOrderItemStatus(item) {
+  if (isOrderItemFullyCancelled(item)) {
+    return `
+      <div class="mt-1">
+        <span class="badge text-bg-secondary">Cancelled</span>
+      </div>
+    `;
+  }
+
+  if (isOrderItemPartiallyCancelled(item)) {
+    return `
+      <div class="mt-1">
+        <span class="badge text-bg-warning">Partly cancelled</span>
+      </div>
+    `;
+  }
+
+  if (item.status) {
+    return `<div class="small text-muted mt-1">${escapeHtml(item.status)}</div>`;
+  }
+
+  return "";
+}
+
+function renderOrderItemQuantityCell(item) {
+  const originalQuantity = Number(item?.quantity ?? 0);
+  const cancelledQuantity = Number(item?.cancelled_quantity ?? 0);
+  const activeQuantity = Number(
+    item?.active_quantity ?? Math.max(originalQuantity - cancelledQuantity, 0),
+  );
+
+  if (isOrderItemFullyCancelled(item)) {
+    return `
+      <div class="fw-semibold text-muted">Cancelled</div>
+      <div class="small text-muted">
+        Original quantity: ${escapeHtml(originalQuantity)}
+      </div>
+    `;
+  }
+
+  if (isOrderItemPartiallyCancelled(item)) {
+    return `
+      <div class="fw-semibold">${escapeHtml(activeQuantity)}</div>
+      <div class="small text-warning-emphasis">
+        ${escapeHtml(cancelledQuantity)} cancelled
+      </div>
+      <div class="small text-muted">
+        Original quantity: ${escapeHtml(originalQuantity)}
+      </div>
+    `;
+  }
+
+  return `<div class="fw-semibold">${escapeHtml(activeQuantity)}</div>`;
+}
+
+function renderOrderItemActions(order, item) {
+  if (isOrderItemFullyCancelled(item)) {
+    return `
+      <span class="badge text-bg-light border order-detail-item-disabled-badge">
+        No action available
+      </span>
+    `;
+  }
+
+  return `
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+      ${getCustomerCancelItemButtonHtml(order, item)}
+      ${renderReviewActionCell(item)}
+    </div>
+  `;
+}
+function renderItemsSection(order) {
+  const items = order?.items || [];
+
   return `
     <div class="mb-4">
       <h6 class="mb-3">${M.itemsHeading}</h6>
       <div class="table-responsive">
-        <table class="table table-bordered align-middle">
+        <table class="table table-bordered align-middle order-detail-items-table">
           <thead class="table-light">
             <tr>
               <th>${M.productLabel}</th>
@@ -882,17 +1130,37 @@ function renderItemsSection(items) {
           </thead>
           <tbody>
             ${(items || [])
-              .map(
-                (item) => `
-              <tr>
-                <td>${escapeHtml(item.product_name)}</td>
-                <td>${escapeHtml(item.producer)}</td>
-                <td>${escapeHtml(item.quantity)}</td>
-                <td>${formatMoney(item.paid_unit_price)}</td>
-                <td class="text-end">${renderReviewActionCell(item)}</td>
-              </tr>
-            `,
-              )
+              .map((item) => {
+                const fullyCancelled = isOrderItemFullyCancelled(item);
+
+                return `
+                  <tr
+                    class="${escapeHtml(getOrderItemRowClass(item))}"
+                    ${fullyCancelled ? 'aria-disabled="true"' : ""}
+                  >
+                    <td>
+                      <div class="fw-semibold order-detail-item-product-name">
+                        ${escapeHtml(item.product_name)}
+                      </div>
+                      ${renderOrderItemStatus(item)}
+                    </td>
+
+                    <td>${escapeHtml(item.producer)}</td>
+
+                    <td>
+                      ${renderOrderItemQuantityCell(item)}
+                    </td>
+
+                    <td>
+                      ${formatMoney(item.paid_unit_price)}
+                    </td>
+
+                    <td class="text-end">
+                      ${renderOrderItemActions(order, item)}
+                    </td>
+                  </tr>
+                `;
+              })
               .join("")}
           </tbody>
         </table>
@@ -1023,15 +1291,48 @@ function renderProducerSection(producerBreakdown) {
 }
 
 function renderOrderFooter(order) {
+  const displayTotal =
+    order.display_total_price ?? order.active_total_price ?? order.total_price;
+
+  const originalTotal = order.original_total_price ?? order.total_price;
+
+  const cancelledTotal = Number(order.cancelled_total_price || 0);
+  const hasCancelledValue = cancelledTotal > 0;
+
+  const displayLabel = order.display_total_label || M.totalPaidLabel;
+
   return `
     <div class="border rounded p-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
-        <div class="small text-muted">${M.totalPaidLabel}</div>
-        <div class="fs-5 fw-bold">${formatMoney(order.total_price)}</div>
+        <div class="small text-muted">${escapeHtml(displayLabel)}</div>
+        <div class="fs-5 fw-bold">${formatMoney(displayTotal)}</div>
+
+        ${
+          hasCancelledValue
+            ? `
+              <div class="small text-muted mt-1">
+                Original order total: ${formatMoney(originalTotal)}
+              </div>
+              <div class="small text-muted">
+                Cancelled value removed: ${formatMoney(cancelledTotal)}
+              </div>
+              ${
+                order.display_total_note
+                  ? `
+                    <div class="small text-muted">
+                      ${escapeHtml(order.display_total_note)}
+                    </div>
+                  `
+                  : ""
+              }
+            `
+            : ""
+        }
       </div>
 
       <div class="d-flex gap-2">
-        ${getReorderButtonHtml(order.id, order.status)}
+        ${getCustomerCancelButtonHtml(order)}
+        ${getReorderButtonHtml(order)}
         ${getReceiptButtonHtml(order.id, order.status)}
       </div>
     </div>
@@ -1071,7 +1372,7 @@ async function openOrderDetails(orderId) {
       content.innerHTML = `
         ${renderOrderSummary(order)}
         ${renderFulfilmentSection(order.producer_breakdown || [])}
-        ${renderItemsSection(order.items || [])}
+        ${renderItemsSection(order)}
         ${renderProducerSection(order.producer_breakdown || [])}
         ${renderOrderFooter(order)}
       `;
@@ -2531,7 +2832,40 @@ function renderQuantityAdjustmentsSection(items) {
     </div>
   `;
 }
+function getPriceUpdateMessage(item) {
+  if (item?.message) {
+    return item.message;
+  }
 
+  const productName = item?.product_name || M.productFallback || "this item";
+  const originalPrice = formatMoney(item?.original_price);
+  const currentPrice = formatMoney(item?.current_price);
+
+  let message = `Unit price updated for ${productName}: ${originalPrice} → ${currentPrice}.`;
+
+  if (item?.producer_changed) {
+    const currentProducer =
+      item.current_producer_name || "a different producer";
+    const originalProducer = item.original_producer_name || "";
+
+    message += ` This is because the selected replacement is supplied by ${currentProducer}`;
+
+    if (originalProducer) {
+      message += ` instead of ${originalProducer}`;
+    }
+
+    message += ".";
+  } else if (item?.pricing_source === "surplus") {
+    message += " This is because surplus pricing is currently applied.";
+  } else if (item?.pricing_source === "wholesale") {
+    message += " This is because wholesale pricing is currently applied.";
+  } else {
+    message +=
+      " This is because the current unit price is different from the previous order.";
+  }
+
+  return message;
+}
 function renderPriceChangesSection(items) {
   if (!items || !items.length) {
     return "";
@@ -2547,18 +2881,21 @@ function renderPriceChangesSection(items) {
               <div class="fw-semibold">${escapeHtml(item.product_name)}</div>
 
               ${
-                item.producer_name
+                item.current_producer_name || item.producer_name
                   ? `
                     <div class="small text-muted mt-1">
-                      ${M.producerLine(escapeHtml(item.producer_name))}
+                      ${M.producerLine(
+                        escapeHtml(
+                          item.current_producer_name || item.producer_name,
+                        ),
+                      )}
                     </div>
                   `
                   : ""
               }
 
               <div class="small text-primary mt-2">
-                ${formatMoney(item.original_price)} →
-                ${formatMoney(item.current_price)}
+                ${escapeHtml(getPriceUpdateMessage(item))}
               </div>
             </div>
           `,
@@ -2738,3 +3075,7 @@ function getCookie(name) {
 
   return cookieValue;
 }
+window.OrderHistoryPage = {
+  loadOrders,
+  openOrderDetails,
+};

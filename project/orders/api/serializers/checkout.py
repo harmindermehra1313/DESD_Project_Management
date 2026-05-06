@@ -11,8 +11,9 @@ UK_POSTCODE_REGEX = re.compile(
     re.IGNORECASE
 )
 
-PHONE_REGEX = re.compile(r"^\+?\d{7,15}$")  # simple, international-safe
-NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$")
+PHONE_REGEX = re.compile(r"^\+?\d{7,15}$")
+# NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]{2,}$")
+NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ0-9' .,&()/-]{2,}$")
 
 class CheckoutSerializer(serializers.Serializer):
     is_guest = serializers.BooleanField()

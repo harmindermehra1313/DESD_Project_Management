@@ -119,7 +119,7 @@ def producer_payments_view(request):
             orders.append({
                 "reference": order.unique_reference,
                 "date": order.order_date.date(),
-                "customer_id": order.user.id,
+                "customer_id": order.user.id if order.user else "Guest",
                 "customer_name": (
                     f"{order.user.name}"
                     if order.user else "Guest"
@@ -231,7 +231,11 @@ def download_payment_report_view(request, week_id):
     upcoming_summaries = ProducerOrderSummary.objects.filter(
         producer=producer,
         delivery_date__range=[week_start, week_end],
-    ).exclude(status=ProducerOrderSummary.Status.COMPLETED)
+    ).exclude(
+        status__in=[
+        ProducerOrderSummary.Status.COMPLETED,
+        ProducerOrderSummary.Status.CANCELLED,
+    ])
 
     # Totals
     week_total = completed_summaries.aggregate(total=Sum("subtotal"))["total"] or 0
@@ -375,7 +379,11 @@ def download_payment_csv_view(request, week_id):
     upcoming_summaries = ProducerOrderSummary.objects.filter(
         producer=producer,
         delivery_date__range=[week_start, week_end],
-    ).exclude(status=ProducerOrderSummary.Status.COMPLETED)
+    ).exclude(
+        status__in=[
+        ProducerOrderSummary.Status.COMPLETED,
+        ProducerOrderSummary.Status.CANCELLED,
+    ])
 
     # Payment status logic
     completed_order_ids = completed_summaries.values_list("order_id", flat=True)
@@ -432,7 +440,7 @@ def download_payment_csv_view(request, week_id):
         writer.writerow([
             order.unique_reference,
             order.order_date.date(),
-            f"Customer #{order.user.id}",
+            f"Customer #{order.user.id}" if order.user else "Guest",
             items_str,
             f"{summary.subtotal:.2f}",
             f"{summary.commission_total:.2f}",
@@ -459,7 +467,7 @@ def download_payment_csv_view(request, week_id):
         writer.writerow([
             order.unique_reference,
             order.order_date.date(),
-            f"Customer #{order.user.id}",
+            f"Customer #{order.user.id}" if order.user else "Guest",
             items_str,
             f"{summary.subtotal:.2f}",
             f"{summary.commission_total:.2f}",
@@ -592,7 +600,7 @@ def download_tax_year_csv_view(request):
         writer.writerow([
             order.unique_reference,
             order.order_date.date(),
-            f"Customer #{order.user.id}",
+            f"Customer #{order.user.id}" if order.user else "Guest",
             items_str,
             f"{summary.subtotal:.2f}",
             f"{summary.commission_total:.2f}",

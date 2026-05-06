@@ -33,7 +33,7 @@
                     {% for item in cart.items %}
                         <tr>
                             <td>{{ item.product.name }}</td>
-                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.quantity|floatformat:0 }}</td>
                             <td>
                                 {% if item.is_wholesale %}
                                     <span class="price-discount">£{{ item.unit_price|floatformat:2 }}</span><br>
@@ -137,7 +137,7 @@
                                 {% for item in data.items %}
                                 <tr>
                                     <td>{{ item.product.name }}</td>
-                                    <td>{{ item.quantity }}</td>
+                                    <td>{{ item.quantity|floatformat:0 }}</td>
                                     
                                     <td>
                                         {% if item.is_wholesale %}
@@ -192,7 +192,7 @@
             
                         <h3>Select Delivery or Collection</h3>
 
-                        <label>
+                        <!-- <label>
                             <input type="radio" 
                                 name="delivery_or_collection_{{ producer.id }}" 
                                 value="DEL" checked required>
@@ -203,6 +203,29 @@
                             <input type="radio" 
                                 name="delivery_or_collection_{{ producer.id }}" 
                                 value="COL" required>
+                            Collection
+                        </label> -->
+                        <label>
+                            <input type="radio"
+                                name="delivery_or_collection_{{ producer.id }}"
+                                value="DEL"
+                                {% if data.collection_only %}disabled{% else %}checked{% endif %}
+                                required>
+                            Delivery
+                        </label>
+
+                        {% if data.collection_only %}
+                            <p class="form-text form-text-danger">
+                                Delivery unavailable: one or more items expire within 72 hours.
+                            </p>
+                        {% endif %}
+
+                        <label>
+                            <input type="radio"
+                                name="delivery_or_collection_{{ producer.id }}"
+                                value="COL"
+                                {% if data.collection_only %}checked{% endif %}
+                                required>
                             Collection
                         </label>
 
@@ -616,7 +639,7 @@
                     </label><br>
 
                     <!-- Payment --> 
-                    <div id="card-payment-section" style="display: none;">
+                    <div id="card-payment-section">
                         <h3>Card Payment</h3>
                         <div id="payment-element"></div>
                         <div id="payment-errors" class="payment-errors"></div>

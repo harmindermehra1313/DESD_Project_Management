@@ -2,12 +2,19 @@ from django.db import models
 
 class Notification(models.Model):
     class Type(models.TextChoices):
-        ORDER_UPDATE = 'OU', 'Order Update'
-        PRODUCT_ALERT = 'PA', 'Product Alert'
-        RECALL = 'RC', 'Recall'
-        SYSTEM = 'SYS', 'System'
-        PROMOTION = 'PRO', 'Promotion'
-        MESSAGE = 'MSG', 'Message'
+        ORDER_PLACED = "OP", "Order Placed"
+        ORDER_UPDATE = "OU", "Order Update"
+        ORDER_CANCELLED = "OC", "Order Cancelled"
+        REFUND = "RF", "Refund"
+        PRODUCT_ALERT = "PA", "Product Alert"
+        RECALL = "RC", "Recall"
+        SYSTEM = "SYS", "System"
+        PROMOTION = "PRO", "Promotion"
+        MESSAGE = "MSG", "Message"
+        REVIEW_FLAGGED = "review_flagged", "Review flagged"
+        ADMIN_ALERT = "admin_alert", "Admin alert"
+        SYSTEM_ALERT = "system_alert", "System alert"
+        REVIEW_UPDATE = "review_update", "Review update"
 
     user = models.ForeignKey(
         "accounts.User", 
