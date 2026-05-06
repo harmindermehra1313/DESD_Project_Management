@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}About Us | Bristol Regional Food Network{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'community/about_us.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<div class="about-hero-section"
+     style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2Fsuspension_bridge.jpg?alt=media&token=b5b5ee92-e2d4-41bf-9daa-700da0cd20ce');">
+    <div class="about-hero-content">
+        <h1 class="about-hero-title">Supporting Local Food. Reducing Food Miles.</h1>
+    </div>
+</div>
+
+<!-- STATS -->
+<div class="container py-5">
+    <h2 class="section-title text-center mb-5">Our Impact</h2>
+
+    <div class="row text-center">
+        <div class="col-md-3 mb-4">
+            <div class="about-stat-box p-4">
+                <h3 class="stat-number">{{ producer_count }}</h3>
+                <p class="stat-label">Local Producers</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="about-stat-box p-4">
+                <h3 class="stat-number">{{ active_batches }}</h3>
+                <p class="stat-label">Fresh Batches Available</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="about-stat-box p-4">
+                <h3 class="stat-number">
+                    {% if avg_food_miles %}{{ avg_food_miles }}{% else %}-{% endif %}
+                </h3>
+                <p class="stat-label">Avg Food Miles</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="about-stat-box p-4">
+                <h3 class="stat-number">
+                    {% if total_food_miles %}{{ total_food_miles }}{% else %}-{% endif %}
+                </h3>
+                <p class="stat-label">Total Miles Delivered</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FEATURE SECTIONS -->
+<div class="about-features-wrapper">
+    <div class="container">
+
+        <!-- Local Radius -->
+        <div class="about-feature-card">
+            <div class="about-feature-row">
+                <div class="about-feature-text">
+                    <h3>Our Local Radius</h3>
+                    <p>
+                        Every producer must be located within <strong>{{ radius_limit }} miles</strong> of Bristol city centre.
+                        This ensures that everything on the platform is genuinely local - grown, baked or made right here
+                        in our community.
+                    </p>
+                </div>
+                <div class="about-feature-icon">
+                    <i class="bi bi-geo-alt"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Food Miles -->
+        <div class="about-feature-card">
+            <div class="about-feature-row reverse">
+                <div class="about-feature-text">
+                    <h3>How We Calculate Food Miles</h3>
+                    <p>
+                        Food miles are calculated for every item in every order, based on the distance between the producer’s
+                        registered location and the delivery location. These values are aggregated into each order and displayed
+                        transparently so customers can make informed, sustainable choices.
+                    </p>
+                </div>
+                <div class="about-feature-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Freshness -->
+        <div class="about-feature-card">
+            <div class="about-feature-row">
+                <div class="about-feature-text">
+                    <h3>Freshness & Waste Reduction</h3>
+                    <p>
+                        We enforce strict freshness rules to protect customers and reduce waste. Products too close to their
+                        expiry date are automatically removed from sale, and items approaching expiry receive automatic
+                        reductions to help them sell in time.
+                    </p>
+                </div>
+                <div class="about-feature-icon">
+                    <i class="bi bi-recycle"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Producers -->
+        <div class="about-feature-card">
+            <div class="about-feature-row reverse">
+                <div class="about-feature-text">
+                    <h3>Supporting Local Producers</h3>
+                    <p>
+                        We charge a simple, transparent <strong>5% commission per order per producer</strong>.
+                        There are no listing fees or hidden charges. Producers keep control of their pricing, and our
+                        platform helps them reach local customers without the overhead of traditional retail.
+                    </p>
+                </div>
+                <div class="about-feature-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Community -->
+        <div class="about-feature-card">
+            <div class="about-feature-row">
+                <div class="about-feature-text">
+                    <h3>Why It Matters</h3>
+                    <p>
+                        By choosing local food, you're supporting independent producers, reducing carbon emissions,
+                        and helping build a resilient, sustainable food system for Bristol.
+                    </p>
+                </div>
+                <div class="about-feature-icon">
+                    <i class="bi bi-globe-europe-africa"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

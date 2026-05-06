@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
-from ..models import Address
+from ..models import Address, Producer
 
 UK_PHONE_RE = re.compile(
     r"^\+44(7\d{9}|1\d{9}|2\d{9}|3\d{9}|55\d{8}|56\d{8}|800\d{6}|808\d{6})$"
@@ -21,6 +21,8 @@ NAME_RE = re.compile(r"^[A-Za-z]+(?:\s+[A-Za-z]+)+$")
 ADDRESS_LINE_1_RE = re.compile(r"^[A-Za-z0-9\s,'./-]{5,}$")
 ADDRESS_LINE_2_RE = re.compile(r"^[A-Za-z0-9\s,'./-]{2,}$")
 CITY_RE = re.compile(r"^[A-Za-z\s'-]{2,}$")
+FARM_NAME_RE = re.compile(r"^[A-Za-z0-9\s,'&./()-]{2,150}$")
+ORGANIC_CERTIFICATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-/]{1,14}$")
 
 
 def normalise_uk_phone(value):
@@ -141,6 +143,174 @@ class AccountDetailsForm(forms.Form):
             producer.save(update_fields=["contact_phone"])
 
         return self.user
+
+
+class ProducerBusinessProfileForm(forms.ModelForm):
+    contact_name = forms.CharField(
+        max_length=100,
+        label="Business contact name",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Jane Smith",
+                "autocomplete": "name",
+            }
+        ),
+    )
+
+    class Meta:
+        model = Producer
+        fields = [
+            "farm_name",
+            "contact_name",
+            "contact_email",
+            "contact_phone",
+            "farm_postcode",
+            "organic_certification_number",
+        ]
+
+        labels = {
+            "farm_name": "Business / farm name",
+            "contact_email": "Business contact email",
+            "contact_phone": "Business contact phone",
+            "farm_postcode": "Business postcode / farm postcode",
+            "organic_certification_number": "Organic certification number",
+        }
+
+        widgets = {
+            "farm_name": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Bristol Valley Farm",
+                    "autocomplete": "organization",
+                }
+            ),
+            "contact_email": forms.EmailInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "jane@gmail.com",
+                    "autocomplete": "email",
+                }
+            ),
+            "contact_phone": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "+441179123456",
+                    "autocomplete": "tel",
+                    "inputmode": "tel",
+                }
+            ),
+            "farm_postcode": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "BS1 4DJ",
+                    "autocomplete": "postal-code",
+                }
+            ),
+            "organic_certification_number": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "AB-12345",
+                }
+            ),
+        }
+
+        help_texts = {
+            "organic_certification_number": (
+                "Optional. Use 2-15 letters, numbers, hyphens, or slashes."
+            ),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+        if user:
+            self.fields["contact_name"].initial = user.name
+
+        self.fields["organic_certification_number"].required = False
+
+    def clean_farm_name(self):
+        farm_name = self.cleaned_data["farm_name"].strip()
+
+        if not FARM_NAME_RE.match(farm_name):
+            raise ValidationError(
+                "Enter a valid business or farm name using letters, numbers, spaces, "
+                "and common business punctuation."
+            )
+
+        return " ".join(farm_name.split())
+
+    def clean_contact_name(self):
+        contact_name = self.cleaned_data["contact_name"].strip()
+
+        if re.search(r"\d", contact_name):
+            raise ValidationError("Business contact name cannot contain numbers.")
+
+        if not NAME_RE.match(contact_name):
+            raise ValidationError(
+                "Enter the business contact's full name using letters and spaces only."
+            )
+
+        return title_case_name(contact_name)
+
+    def clean_contact_phone(self):
+        contact_phone = normalise_uk_phone(self.cleaned_data["contact_phone"])
+
+        if not UK_PHONE_RE.match(contact_phone):
+            raise ValidationError(
+                "Enter a valid UK business phone number, for example +441179123456."
+            )
+
+        return contact_phone
+
+    def clean_farm_postcode(self):
+        farm_postcode = normalise_uk_postcode(self.cleaned_data["farm_postcode"])
+
+        if not UK_POSTCODE_RE.match(farm_postcode):
+            raise ValidationError("Enter a valid UK postcode, for example BS1 4DJ.")
+
+        return farm_postcode
+
+    def clean_organic_certification_number(self):
+        certification_number = self.cleaned_data.get(
+            "organic_certification_number",
+            "",
+        ).strip().upper()
+
+        if not certification_number:
+            return ""
+
+        if not ORGANIC_CERTIFICATION_RE.match(certification_number):
+            raise ValidationError(
+                "Organic certification number must be 2-15 characters and can only "
+                "contain letters, numbers, hyphens, or slashes."
+            )
+
+        return certification_number
+
+    def save(self, commit=True):
+        producer = super().save(commit=False)
+
+        if self.user:
+            self.user.name = self.cleaned_data["contact_name"]
+            self.user.phone = self.cleaned_data["contact_phone"]
+
+            if commit:
+                self.user.save(update_fields=["name", "phone"])
+
+        if commit:
+            producer.save(
+                update_fields=[
+                    "farm_name",
+                    "contact_email",
+                    "contact_phone",
+                    "farm_postcode",
+                    "organic_certification_number",
+                ]
+            )
+
+        return producer
 
 
 class AddressForm(forms.ModelForm):

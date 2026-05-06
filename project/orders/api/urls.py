@@ -6,18 +6,43 @@ from orders.api.views.reorders import (
     ReorderOrderApiView,
     ReorderPreviewApiView,
 )
-from orders.api.views.receipts import (
-    ReceiptDetailApiView,
-    ReceiptDownloadPdfApiView
-)
+from orders.api.views.receipts import ReceiptDetailApiView, ReceiptDownloadPdfApiView
+from orders.api.views import order_cancellation 
 
 app_name = "orders_api"
 
 urlpatterns = [
     path("history/", OrderHistoryApiView.as_view(), name="order-history"),
     path("<int:order_id>/", OrderDetailApiView.as_view(), name="order-detail"),
-    path("<int:order_id>/reorder-preview/", ReorderPreviewApiView.as_view(), name="order-reorder-preview"),
-    path("<int:order_id>/reorder/", ReorderOrderApiView.as_view(), name="order-reorder"),
-    path("<int:order_id>/receipt/", ReceiptDetailApiView.as_view(), name="receipt-detail"),
-    path("<int:order_id>/receipt/download/", ReceiptDownloadPdfApiView.as_view(), name="receipt-download"),
+    path(
+        "<int:order_id>/reorder-preview/",
+        ReorderPreviewApiView.as_view(),
+        name="order-reorder-preview",
+    ),
+    path(
+        "<int:order_id>/reorder/", ReorderOrderApiView.as_view(), name="order-reorder"
+    ),
+    path(
+        "<int:order_id>/receipt/", ReceiptDetailApiView.as_view(), name="receipt-detail"
+    ),
+    path(
+        "<int:order_id>/receipt/download/",
+        ReceiptDownloadPdfApiView.as_view(),
+        name="receipt-download",
+    ),
+    # order cancellation endpoint
+    # example: http://localhost:8000/api/orders/customer/orders/5/cancel/
+    path(
+        "customer/orders/<int:order_id>/cancel/",
+        order_cancellation.cancel_customer_order,
+        name="cancel_customer_order",
+    ),
+    
+    # item cancellation endpoint
+    # example: http://localhost:8000/api/orders/customer/orders/5/items/10/cancel/
+    path(
+    "customer/orders/<int:order_id>/items/<int:item_id>/cancel/",
+    order_cancellation.cancel_customer_order_item,
+    name="cancel_customer_order_item",
+),
 ]

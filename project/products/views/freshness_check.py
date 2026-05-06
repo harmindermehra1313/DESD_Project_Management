@@ -1,29 +1,3 @@
-"""
-freshness_check.py
-------------------
-Freshness analysis view for the Bristol Regional Food Network.
-
-Loads a user-supplied PyTorch model and runs:
-  • Inference            → Fresh / Borderline / Spoiled probabilities
-  • Grad-CAM             → Class activation heatmap
-  • Integrated Gradients → Attribution map (captum)
-  • LIME                 → Superpixel attribution (lime)
-  • SHAP                 → DeepExplainer pixel attribution (shap)
-
-HOW TO CONFIGURE
-~~~~~~~~~~~~~~~~
-1. Place your trained .pt / .pth file in: project/ml_models/model_AtoC.pt
-   Or set FRESHNESS_MODEL_PATH in Django settings, e.g.:
-
-       FRESHNESS_MODEL_PATH = BASE_DIR / "ml_models" / "model_AtoC.pt"
-
-2. If your model requires a custom architecture class, import it at the
-   top of this file and adjust _load_model() accordingly.
-
-3. The last convolutional layer name used for Grad-CAM defaults to
-   "layer4" (ResNet-style).  Change GRAD_CAM_LAYER below if needed.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -50,6 +24,27 @@ import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as T
 
+from torchvision.models.efficientnet import MBConv
+
+def _patched_mbconv_forward(self, input: torch.Tensor) -> torch.Tensor:
+    result = self.block(input)
+    if self.use_res_connect:
+        result = self.stochastic_depth(result)
+        result = result + input 
+    return result
+
+MBConv.forward = _patched_mbconv_forward
+
+if hasattr(models.efficientnet, 'FusedMBConv'):
+    from torchvision.models.efficientnet import FusedMBConv
+    def _patched_fused_forward(self, input: torch.Tensor) -> torch.Tensor:
+        result = self.block(input)
+        if self.use_res_connect:
+            result = self.stochastic_depth(result)
+            result = result + input
+        return result
+    FusedMBConv.forward = _patched_fused_forward
+
 # Configure matplotlib backend early to prevent runtime issues
 import matplotlib
 matplotlib.use("Agg")
@@ -66,10 +61,10 @@ CLASS_LABELS = ["Fresh", "Borderline", "Spoiled"]
 CLASS_COLOURS = ["#22c55e", "#f59e0b", "#ef4444"]   # green / amber / red
 
 IMG_SIZE = 224          # resize target for the model
-GRAD_CAM_LAYER = "layer4"   # last conv layer name (ResNet default)
+GRAD_CAM_LAYER = "features.8"  # last conv layer name (EfficientNet default)
 
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/bmp", "image/tiff", "image/gif"}
-MAX_UPLOAD_BYTES = 3 * 255 * 255   # 3 MB
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024   # 10 MB
 
 FRESHNESS_RECOMMENDATIONS = {
     "Fresh": (
@@ -133,27 +128,39 @@ def _load_model() -> nn.Module:
         if isinstance(checkpoint, nn.Module):
             net = checkpoint
 
-        # Case 2: state dict — build ResNet-50 with 3-class head
+        # Case 2: state dict — build EfficientNet-B0 with 3-class head
         elif isinstance(checkpoint, dict):
-            net = models.resnet50(weights=None)
-            net.fc = nn.Linear(net.fc.in_features, len(CLASS_LABELS))
-            # Handle both raw state dicts and {"model": ..., "state_dict": ...} wrappers
+            net = models.efficientnet_b0(weights=None)
+            net.classifier[1] = nn.Linear(net.classifier[1].in_features, len(CLASS_LABELS))
+            
+            # Handle both raw state dicts and wrapper dicts
             state = (
                 checkpoint.get("state_dict")
                 or checkpoint.get("model_state_dict")
                 or checkpoint
             )
-            net.load_state_dict(state, strict=False)
+            net.load_state_dict(state, strict=True)
 
         else:
             raise TypeError(f"Unrecognised model checkpoint type: {type(checkpoint)}")
 
         net.to(_device)
         net.eval()
+
+        def replace_inplace(model_layer):
+            for name, child in model_layer.named_children():
+                if isinstance(child, nn.SiLU):
+                    setattr(model_layer, name, nn.SiLU(inplace=False))
+                elif isinstance(child, nn.ReLU):
+                    setattr(model_layer, name, nn.ReLU(inplace=False))
+                else:
+                    replace_inplace(child)
+                    
+        replace_inplace(net)
+
         _model = net
         logger.info("Freshness model loaded from %s on %s", model_path, _device)
         return _model
-
 
 # ─────────────────────────────────────────────────────────────
 # Image Pre-processing
@@ -162,15 +169,7 @@ def _load_model() -> nn.Module:
 _transform = T.Compose([
     T.Resize((IMG_SIZE, IMG_SIZE)),
     T.ToTensor(),
-    T.Normalize(mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]),
 ])
-
-_inv_transform = T.Compose([
-    T.Normalize(mean=[0., 0., 0.], std=[1/0.229, 1/0.224, 1/0.225]),
-    T.Normalize(mean=[-0.485, -0.456, -0.406], std=[1., 1., 1.]),
-])
-
 
 def _pil_to_tensor(pil_img: Image.Image) -> torch.Tensor:
     """Return a normalised (1, 3, H, W) tensor with gradient tracking."""
@@ -324,7 +323,7 @@ def _run_lime(model: nn.Module, pil_img: Image.Image, class_idx: int) -> str:
         num_samples=300,
     )
     temp, mask = explanation.get_image_and_mask(
-        class_idx, positive_only=True, num_features=10, hide_rest=False
+        class_idx, positive_only=True, num_features=10, hide_rest=True
     )
     lime_img = mark_boundaries(temp / 255.0, mask)
     lime_img = np.clip(lime_img * 255, 0, 255).astype(np.uint8)
@@ -336,34 +335,37 @@ def _run_lime(model: nn.Module, pil_img: Image.Image, class_idx: int) -> str:
 
 def _run_shap(model: nn.Module, tensor: torch.Tensor,
               class_idx: int, base_img: Image.Image) -> str:
-    """SHAP DeepExplainer pixel-level attribution."""
+    """GradientSHAP via Captum, optimized for fast web inference."""
     try:
-        import shap
+        from captum.attr import GradientShap
     except ImportError:
-        return _placeholder_b64(base_img, "SHAP not installed.\npip install shap")
+        return _placeholder_b64(base_img, "Captum not installed.")
 
-    # Use a blank background as reference
-    background = torch.zeros(1, 3, IMG_SIZE, IMG_SIZE).to(_device)
+    # Create a fast, lightweight baseline for the web (black and white frames)
+    baselines = torch.cat([
+        torch.zeros_like(tensor), 
+        torch.ones_like(tensor)
+    ], dim=0).to(_device)
 
-    # Wrapper so SHAP only gets logits for the target class
-    class _Wrapper(nn.Module):
-        def __init__(self, m, idx):
-            super().__init__()
-            self.m = m
-            self.idx = idx
-
-        def forward(self, x):
-            return self.m(x)[:, self.idx:self.idx + 1]
-
-    wrapper = _Wrapper(model, class_idx)
-    e = shap.DeepExplainer(wrapper, background)
-    shap_values = e.shap_values(tensor)   # list or array
-    if isinstance(shap_values, list):
-        sv = shap_values[0]
-    else:
-        sv = shap_values
-    attr_np = sv.squeeze(0).transpose(1, 2, 0)  # (H, W, 3)
-    return _attr_to_b64(attr_np, base_img)
+    explainer = GradientShap(model)
+    
+    try:
+        # Keep n_samples relatively low (e.g., 10) so the web request doesn't timeout
+        attributions = explainer.attribute(
+            tensor,
+            baselines=baselines,
+            target=class_idx,
+            n_samples=10,  
+            stdevs=0.1
+        )
+        
+        
+        attr_np = attributions.squeeze(0).permute(1, 2, 0).detach().cpu().numpy()
+        return _attr_to_b64(attr_np, base_img)
+        
+    except Exception as e:
+        logger.error("Captum SHAP failed: %s", e, exc_info=True)
+        return _placeholder_b64(base_img, f"SHAP error:\n{e}")
 
 
 def _placeholder_b64(base_img: Image.Image, message: str) -> str:

@@ -525,6 +525,12 @@ document.addEventListener("DOMContentLoaded", () => {
         quantity,
       });
 
+      try {
+        await window.AIRecommendations?.trackAddToCart?.(productId);
+      } catch (trackingError) {
+        // Recommendation tracking failure should not block cart behaviour.
+      }
+
       if (typeof window.CartAPI?.showToast === "function") {
         window.CartAPI.showToast(M.addedToCart, {
           title: window.CartApiMessages?.cartTitle || "Cart",

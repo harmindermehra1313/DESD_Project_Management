@@ -354,6 +354,18 @@ def checkout(request):
 
         data["max_delivery_date"] = max_delivery_date
 
+        # Enforce collection only if expiry <= 72 hours
+        now = datetime.now().date()
+        expires_within_72h = False
+
+        if expiry_dates:
+            # earliest expiry minus today
+            days_until_expiry = (earliest_expiry - now).days
+            if days_until_expiry <= 3:
+                expires_within_72h = True
+
+        data["collection_only"] = expires_within_72h
+
     # Get original total before vat or discounts
     original_total = total + order_savings_total
 
@@ -489,7 +501,13 @@ def order_success(request, reference):
         # What the producer receives
         summary.payout_amount = summary.discounted_subtotal - summary.commission_total
 
+    # Show producer contact details for bulk
+    show_producer_contact = False
+    if order.user and order.user.role in ("BUSINESS", "COMMUNITY_GROUP"):
+        show_producer_contact = True
+
     return render(request, "orders/order_confirmed.html", {
         "order": order,
         "producer_summaries": producer_summaries,
+        "show_producer_contact": show_producer_contact,
     })

@@ -18,10 +18,10 @@ from BRFN.firebase_init import *
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 from datetime import timedelta
 
-LOGIN_URL = '/accounts/login/'
+LOGIN_URL = "/accounts/login/"
 # Timer for Session and JWT for token Generation
 # Global Session Time out
 SESSION_COOKIE_AGE = 60 * 30  # 60 seconds * 30 = 30 minutes
@@ -42,70 +42,78 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2$5x6_snt2$9uao@#qli#h_^2se@n&4@0_(%%s624cwv7#k#j4'
+SECRET_KEY = "django-insecure-2$5x6_snt2$9uao@#qli#h_^2se@n&4@0_(%%s624cwv7#k#j4"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "web",
+]
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # Project Apps
-    'home',
-    'accounts',
-    'products',
-    'orders',
-    'payments',
-    'reviews.apps.ReviewsConfig',
-    'community',
-    'notifications',
-    'admin_records',
+    "home",
+    "accounts",
+    "products",
+    "orders",
+    "payments",
+    "reviews.apps.ReviewsConfig",
+    "community",
+    "notifications",
+    "admin_records",
     # Rest API
-    'rest_framework',
-    'api',
-    'carts',
+    "rest_framework",
+    "api",
+    "carts",
     # Task queue
-    'django_q',
+    "django_q",
+    # ai
+    "ai_recommendations",
+    "ai_admin",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'BRFN.urls'
+ROOT_URLCONF = "BRFN.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR/ "BRFN"/"templates"],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "BRFN" / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
                 "BRFN.context_processors.product_categories",
+                "notifications.context_processors.unread_notification_count",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'BRFN.wsgi.application'
+WSGI_APPLICATION = "BRFN.wsgi.application"
 
 
 # Database
@@ -137,6 +145,7 @@ WSGI_APPLICATION = 'BRFN.wsgi.application'
 #     }
 # }
 
+# Neon Database configuration with connection pooling and SSL settings
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -161,16 +170,16 @@ AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -178,9 +187,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -190,18 +199,18 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "BRFN" / "templates",
-    BASE_DIR / "static", 
+    BASE_DIR / "static",
 ]
 
 GS_CREDENTIALS = service_account.Credentials.from_service_account_file(
-    os.path.join(BASE_DIR, 'firebase-key.json')
+    os.path.join(BASE_DIR, "firebase-key.json")
 )
 
-GS_BUCKET_NAME = 'desd-6af1a.firebasestorage.app'
+GS_BUCKET_NAME = "desd-6af1a.firebasestorage.app"
 
 STORAGES = {
     "default": {
@@ -212,20 +221,35 @@ STORAGES = {
     },
 }
 
-MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
 
 # Default Firebase/GCS object path used when a product is created without an uploaded image.
 # This should exist in the bucket, e.g. gs://<bucket>/products/img/default-product.png
-DEFAULT_PRODUCT_IMAGE = os.getenv("DEFAULT_PRODUCT_IMAGE", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg")
+DEFAULT_PRODUCT_IMAGE = os.getenv(
+    "DEFAULT_PRODUCT_IMAGE", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg"
+)
 
 # Category food-group specific default image paths in Firebase/GCS.
 # Keys must match products.Category.FoodGroups values.
 DEFAULT_PRODUCT_IMAGES_BY_GROUP = {
-    "FR": os.getenv("DEFAULT_PRODUCT_IMAGE_FRUIT", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg"),
-    "VEG": os.getenv("DEFAULT_PRODUCT_IMAGE_VEGETABLES", "products/img/DEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg"),
-    "MT": os.getenv("DEFAULT_PRODUCT_IMAGE_MEAT", "products/img/DEFAULT_PRODUCT_IMAGE_MEAT.jpg"),
-    "DAE": os.getenv("DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS", "products/img/DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg"),
-    "SEA": os.getenv("DEFAULT_PRODUCT_IMAGE_SEASONAL", "products/img/DEFAULT_PRODUCT_IMAGE_SEASONAL.jpg"),
+    "FR": os.getenv(
+        "DEFAULT_PRODUCT_IMAGE_FRUIT", "products/img/DEFAULT_PRODUCT_IMAGE_FRUIT.jpg"
+    ),
+    "VEG": os.getenv(
+        "DEFAULT_PRODUCT_IMAGE_VEGETABLES",
+        "products/img/DEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg",
+    ),
+    "MT": os.getenv(
+        "DEFAULT_PRODUCT_IMAGE_MEAT", "products/img/DEFAULT_PRODUCT_IMAGE_MEAT.jpg"
+    ),
+    "DAE": os.getenv(
+        "DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS",
+        "products/img/DEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg",
+    ),
+    "SEA": os.getenv(
+        "DEFAULT_PRODUCT_IMAGE_SEASONAL",
+        "products/img/DEFAULT_PRODUCT_IMAGE_SEASONAL.jpg",
+    ),
 }
 # DRF settings
 
@@ -234,7 +258,6 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    
 }
 
 LOGGING = {
@@ -275,14 +298,14 @@ STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 
 # Django Q – background task queue
 Q_CLUSTER = {
-    'name': 'brfn',
-    'workers': 2,
-    'recycle': 500,
-    'timeout': 120,
-    'retry': 180,
-    'queue_limit': 50,
-    'bulk': 10,
-    'orm': 'default',
+    "name": "brfn",
+    "workers": 2,
+    "recycle": 500,
+    "timeout": 120,
+    "retry": 180,
+    "queue_limit": 50,
+    "bulk": 10,
+    "orm": "default",
 }
 
 # DRAMATIQ_BROKER = {
@@ -315,6 +338,7 @@ Q_CLUSTER = {
 # Email backend
 # Prints emails to terminal instead of sending (useful for dev/testing):
 # EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+<<<<<<< HEAD
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
@@ -325,3 +349,14 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@brfn.com')
 
 # Freshness Checker Model
 FRESHNESS_MODEL_PATH = BASE_DIR / "ml_models" / "model_AtoC.pth"
+=======
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@brfn.com")
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64

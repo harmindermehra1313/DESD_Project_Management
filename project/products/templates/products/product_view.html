@@ -68,6 +68,27 @@
                                 {% endfor %}
                             </select>
                         </div>
+<<<<<<< HEAD
+=======
+                        <div class="col-md-2">
+                            <label for="allergenFilter" class="product-filter-label">Allergen</label>
+                            <select id="allergenFilter"
+                                    name="allergen"
+                                    class="form-select product-filter-control">
+                                <option value="">All allergens</option>
+                                <option value="__none__"
+                                        {% if filters.allergen == "__none__" %}selected{% endif %}>
+                                    No listed allergens
+                                </option>
+                                {% for allergen in allergens %}
+                                    <option value="{{ allergen.name }}"
+                                            {% if filters.allergen == allergen.name %}selected{% endif %}>
+                                        {{ allergen.get_name_display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                     {% endif %}
                     <div class="col-md-2">
                         <label for="minPrice" class="product-filter-label">Min price</label>
@@ -91,15 +112,27 @@
                     </div>
                     <div class="col-md-3">
                         <label for="sortSelect" class="product-filter-label">Sort</label>
+<<<<<<< HEAD
                         <select id="sortSelect"
                                 name="sort"
                                 class="form-select product-filter-control">
                             <option value="" {% if not filters.sort %}selected{% endif %}>Newest first</option>
+=======
+                        <select name="sort" class="form-select product-filter-control">
+                            <option value="newest"
+                                    {% if filters.sort == "newest" or not filters.sort %}selected{% endif %}>
+                                Newest first
+                            </option>
+                            <option value="oldest" {% if filters.sort == "oldest" %}selected{% endif %}>Oldest first</option>
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                             <option value="price_low"
                                     {% if filters.sort == "price_low" %}selected{% endif %}>Price: Low → High</option>
                             <option value="price_high"
                                     {% if filters.sort == "price_high" %}selected{% endif %}>Price: High → Low</option>
+<<<<<<< HEAD
                             <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>Newest</option>
+=======
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -113,6 +146,7 @@
             <!-- PRODUCT GRID -->
             <div id="productGrid" class="product-grid"></div>
             <!-- PAGINATION -->
+<<<<<<< HEAD
             {% if page_obj.has_other_pages %}
                 <nav aria-label="Product pagination" class="product-pagination-wrap mt-4">
                     <div class="product-pagination">
@@ -135,6 +169,32 @@
                         {% endif %}
                     </div>
                 </nav>
+=======
+            {% if page_obj.paginator.num_pages > 1 %}
+                <div class="product-pagination-wrap mt-4">
+                    <nav class="product-pagination" aria-label="Product pagination">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page=1"
+                               class="btn btn-primary product-action-btn w-100">First</a>
+                            <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                               class="btn btn-primary product-action-btn w-100">Previous</a>
+                        {% else %}
+                            <button class="btn btn-primary product-action-btn w-100" disabled>First</button>
+                            <button class="btn btn-primary product-action-btn w-100" disabled>Previous</button>
+                        {% endif %}
+                        <span class="product-page-current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        {% if page_obj.has_next %}
+                            <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+                               class="btn btn-primary product-action-btn w-100">Next</a>
+                            <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.paginator.num_pages }}"
+                               class="btn btn-primary product-action-btn w-100">Last</a>
+                        {% else %}
+                            <button class="btn btn-primary product-action-btn w-100" disabled>Next</button>
+                            <button class="btn btn-primary product-action-btn w-100" disabled>Last</button>
+                        {% endif %}
+                    </nav>
+                </div>
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             {% endif %}
         </div>
     </section>

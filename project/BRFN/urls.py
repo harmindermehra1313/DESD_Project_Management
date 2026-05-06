@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from admin_records import views as admin_views
 from django.views.generic import TemplateView
+from admin_records.dashboard_notification_views import admin_records_dashboard
 
 
     
@@ -29,20 +30,25 @@ handler500 = "BRFN.view.custom_500"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("dashboard/", admin_records_dashboard, name="dashboard"),
+
     path("", include("home.urls", namespace="home")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("admin_records/", include("admin_records.urls", namespace="admin_records")),
     path("community/", include("community.urls", namespace="community")),
     path("notifications/", include("notifications.urls", namespace="notifications")),
-    path('orders/', include("orders.urls", namespace="orders")),
-    path('payments/', include('payments.urls', namespace="payments")),
-    path('products/', include('products.urls')),
+    path("orders/", include("orders.urls", namespace="orders")),
+    path("payments/", include("payments.urls", namespace="payments")),
+    path("products/", include("products.urls")),
     # path('producer/', include('products.urls')),
-    path('reviews/', include('reviews.urls', namespace='reviews')),
-    path('api/', include('api.urls', namespace='api')),
+    path("reviews/", include("reviews.urls", namespace="reviews")),
+    path("api/", include("api.urls", namespace="api")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # Cart Endpoint
     path("cart/", include(("carts.urls", "carts"), namespace="carts")),
     path("search/", admin_views.global_search, name="global_search"),
+    # AI Recommendations Endpoint
+    path("ai-recommendations/", include("ai_recommendations.urls")),
+    path("ai-admin/", include("ai_admin.urls")),
     path("cookie-policy/", TemplateView.as_view(template_name="cookie_policy.html"), name="cookie_policy"),
 ]

@@ -44,6 +44,10 @@ from orders.models import (
     ProducerOrderSummary,
     ProducerOrderStatusHistory,
 )
+<<<<<<< HEAD
+=======
+from orders.services.order_status import get_order_status_context
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 from products.models import Inventory, Product
 
 User = get_user_model()
@@ -54,10 +58,45 @@ TRENDING_MIN_COMPLETED_ORDERS = 2
 NEW_PRODUCT_LOOKBACK_DAYS = 14
 
 
+<<<<<<< HEAD
+=======
+ORDER_STATUS_FILTER_ALIASES = {
+    "pending": "pending",
+    "pen": "pending",
+    "in_progress": "in_progress",
+    "inprogress": "in_progress",
+    "progress": "in_progress",
+    "ipr": "in_progress",
+    "packaged": "packaged",
+    "package": "packaged",
+    "ready_for_collection": "ready_for_collection",
+    "readyforcollection": "ready_for_collection",
+    "collection_ready": "ready_for_collection",
+    "completed": "completed",
+    "complete": "completed",
+    "cancelled": "cancelled",
+    "canceled": "cancelled",
+    "cancel": "cancelled",
+}
+
+
+def _normalise_filter_text(value: str | None) -> str:
+    return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 def _normalise_derived_status_filter(value: str | None) -> str | None:
-    if not value:
+    """
+    Convert a request status filter into the stable customer-facing status key.
+
+    The returned value must match get_order_status_context(order)["status_key"].
+    """
+    normalised = _normalise_filter_text(value)
+
+    if not normalised:
         return None
 
+<<<<<<< HEAD
     normalized = str(value).strip().lower().replace("-", "_").replace(" ", "_")
 
     allowed = {"pending", "in_progress", "completed"}
@@ -86,35 +125,28 @@ def _normalise_summary_status(summary: ProducerOrderSummary) -> str:
         .replace("-", " ")
         .replace("_", " ")
     )
+=======
+    return ORDER_STATUS_FILTER_ALIASES.get(normalised)
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 
 def get_derived_order_status_key(order: Order) -> str:
     """
-    Derive the public order status from producer summaries.
+    Return the customer-facing order status key.
 
-    Rules:
-    - all Pending -> pending
-    - all Shipped -> completed
-    - otherwise   -> in_progress
+    Status derivation is delegated to orders.services.order_status so that:
+    - the order history filter
+    - order history serializer
+    - order detail serializer
+    - parent order status sync workflow
+
+    all use the same rules.
     """
-    summary_statuses = [
-        _normalise_summary_status(summary)
-        for summary in order.producer_summaries.all()
-    ]
-
-    if not summary_statuses:
-        return "pending"
-
-    if all(status == "pending" for status in summary_statuses):
-        return "pending"
-
-    if all(status == "shipped" for status in summary_statuses):
-        return "completed"
-
-    return "in_progress"
+    return get_order_status_context(order)["status_key"]
 
 
 def get_derived_order_status_label(order: Order) -> str:
+<<<<<<< HEAD
     status_key = get_derived_order_status_key(order)
 
     if status_key == "pending":
@@ -165,6 +197,12 @@ def _get_producer_summary_status_labels(order: Order) -> list[str]:
         for summary in order.producer_summaries.all()
     ]
 
+=======
+    """
+    Return the customer-facing order status display label.
+    """
+    return get_order_status_context(order)["status_display"]
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
 def _get_order_history_base_queryset() -> QuerySet[Order]:
     """
@@ -222,6 +260,13 @@ def _apply_order_history_filters(
     end_date: Optional[date] = None,
     delivery_or_collection: Optional[str] = None,
 ) -> QuerySet[Order]:
+    """
+    Apply order history filters.
+
+    Status filtering is handled after basic database filters because the
+    customer-facing status is derived from producer summaries and cancellation
+    state rather than only one simple database field.
+    """
     if producer_id:
         queryset = queryset.filter(producer_summaries__producer_id=producer_id)
 
@@ -239,6 +284,7 @@ def _apply_order_history_filters(
     queryset = queryset.distinct()
 
     derived_status = _normalise_derived_status_filter(status)
+
     if status and derived_status is None:
         return queryset.none()
 
