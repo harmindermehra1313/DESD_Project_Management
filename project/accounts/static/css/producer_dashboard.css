@@ -233,6 +233,48 @@
     font-size: 0.9rem;
 }
 
+.producer-next-action-box {
+    background-color: #f0f7ff;
+    border: 1px solid #b2ddff;
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.detail-status-action-area {
+    width: 100%;
+}
+
+.detail-status-single-action {
+    width: 100%;
+}
+
+.detail-status-action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.detail-status-action-card {
+    background-color: #ffffff;
+    border: 1px solid #e4e7ec;
+    border-radius: var(--radius);
+    padding: 0.75rem;
+}
+
+.detail-status-action-button {
+    width: 100%;
+    min-height: 44px;
+    white-space: normal;
+}
+
+.producer-next-action-complete {
+    background-color: #ecfdf3;
+    border: 1px solid #abefc6;
+    border-radius: var(--radius);
+    color: #027a48;
+    padding: 0.75rem;
+}
+
 #confirmStatusName {
     color: var(--prussian-blue);
 }
@@ -445,5 +487,20 @@
     .status-badge {
         width: fit-content;
         max-width: 100%;
+    }
+}
+@media (max-width: 767.98px) {
+    .producer-next-action-box,
+    .producer-instruction-box,
+    .producer-help-box {
+        padding: 0.85rem;
+    }
+
+    .detail-status-action-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-status-action-button {
+        min-height: 48px;
     }
 }

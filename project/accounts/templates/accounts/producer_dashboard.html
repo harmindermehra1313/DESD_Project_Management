@@ -111,21 +111,6 @@
                                 onclick="clearFilters()">Clear Filters</button>
                     </div>
                 </div>
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle"
-                            type="button"
-                            id="updateStatusBtn"
-                            data-bs-toggle="dropdown"
-                            aria-expanded="false"
-                            disabled>Change Status</button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm"
-                        id="statusActionMenu"
-                        aria-labelledby="updateStatusBtn">
-                        <li>
-                            <span class="dropdown-item text-muted">Select an order first</span>
-                        </li>
-                    </ul>
-                </div>
             </div>
         </div>
         <div class="table-responsive order-table-responsive mb-4 shadow-sm">
@@ -333,7 +318,7 @@
                         </li>
                         <li>Click one order row to open its full details.</li>
                         <li>
-                            Use <strong>Change Status</strong> only when the order has really moved to the next stage.
+                            Use the <strong>Next action</strong> button inside Further Details only when the producer section has really moved to the next stage.
                         </li>
                         <li>A confirmation box will appear before the status is saved.</li>
                         <li>Status cannot be moved backwards. If a mistake is made, contact an admin.</li>
@@ -451,6 +436,19 @@
                                 <strong>Current Producer Status:</strong>
                                 <br>
                                 <span class="js-producer-status-display">{{ summary.get_status_display }}</span>
+                                <div class="producer-next-action-box mt-3">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
+                                        <div>
+                                            <strong>Next action</strong>
+                                            <p class="text-muted small mb-0">
+                                                Check the active items, delivery or collection type, and customer instructions before changing status.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="detail-status-action-area" aria-live="polite">
+                                        <div class="text-muted small">Select this order from the table to load the next allowed action.</div>
+                                    </div>
+                                </div>
                                 <div class="producer-instruction-box mt-3">
                                     <strong>What to do next:</strong>
                                     <ul class="mb-0 mt-2 ps-3">
@@ -769,7 +767,7 @@
                         <p>If filters are used, the list still keeps the same due-date order, but only matching orders are shown.</p>
                         <h6 class="fw-bold mt-3">4. Changing status</h6>
                         <p>
-                            After selecting an order, use <strong>Change Status</strong>.
+                            Click an order row first, then use the <strong>Next action</strong> button inside Further Details.
                             Only the next allowed status will appear.
                             The system will not show older statuses after the order has moved forward.
                         </p>
@@ -837,6 +835,6 @@
             </div>
         </div>
         {% csrf_token %}
-        <script src="{% static 'js/producer_dashboard.js' %}?v=3.8"></script>
+        <script src="{% static 'js/producer_dashboard.js' %}?v=3.9"></script>
     </div>
 {% endblock %}

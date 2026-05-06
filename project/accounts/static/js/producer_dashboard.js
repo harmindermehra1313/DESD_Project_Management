@@ -728,7 +728,21 @@ function parseAllowedStatuses(rowElement) {
   }
 }
 
-function renderStatusActionMenu(allowedStatuses) {
+function createStatusActionButton(status, options = {}) {
+  const button = document.createElement("button");
+  const actionLabel = getStatusActionText(status.value, status.label);
+
+  button.type = "button";
+  button.className = options.className || "btn btn-primary fw-bold";
+  button.textContent = actionLabel;
+  button.addEventListener("click", () => {
+    openStatusConfirmModal(status.value, status.label);
+  });
+
+  return button;
+}
+
+function renderTopStatusActionMenu(allowedStatuses) {
   const menu = document.getElementById("statusActionMenu");
   const updateBtn = document.getElementById("updateStatusBtn");
 
@@ -744,23 +758,100 @@ function renderStatusActionMenu(allowedStatuses) {
     return;
   }
 
-  menu.innerHTML = allowedStatuses
-    .map(
-      (status) => `
-        <li>
-          <button class="dropdown-item fw-bold"
-                  type="button"
-                  onclick="openStatusConfirmModal('${status.value}', '${status.label}')">
-            ${getStatusActionText(status.value, status.label)}
-          </button>
-        </li>
-      `,
-    )
-    .join("");
+  menu.innerHTML = "";
+
+  allowedStatuses.forEach((status) => {
+    const item = document.createElement("li");
+    const button = createStatusActionButton(status, {
+      className: "dropdown-item fw-bold",
+    });
+
+    item.appendChild(button);
+    menu.appendChild(item);
+  });
 
   updateBtn.disabled = false;
 }
 
+function renderDetailStatusActionArea(allowedStatuses) {
+  const area = document.querySelector(
+    "#detailsContent .detail-status-action-area",
+  );
+
+  if (!area) return;
+
+  area.innerHTML = "";
+
+  if (!allowedStatuses || allowedStatuses.length === 0) {
+    const message = document.createElement("div");
+    message.className = "producer-next-action-complete";
+    message.innerHTML = `
+      <strong>No further status update is available.</strong>
+      <div class="small mt-1">
+        This producer section is already complete, shipped, cancelled, or has no valid next stage.
+      </div>
+    `;
+    area.appendChild(message);
+    return;
+  }
+
+  if (allowedStatuses.length === 1) {
+    const status = allowedStatuses[0];
+    const helpText = STATUS_CONFIRMATION_HELP[status.value] ||
+      "Only continue if this status is correct.";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "detail-status-single-action";
+
+    const help = document.createElement("p");
+    help.className = "small text-muted mb-2";
+    help.textContent = helpText;
+
+    const button = createStatusActionButton(status, {
+      className: "btn btn-primary fw-bold detail-status-action-button",
+    });
+
+    wrapper.appendChild(help);
+    wrapper.appendChild(button);
+    area.appendChild(wrapper);
+    return;
+  }
+
+  const intro = document.createElement("p");
+  intro.className = "small text-muted mb-2";
+  intro.textContent =
+    "Choose the correct next step only after checking this producer section.";
+
+  const grid = document.createElement("div");
+  grid.className = "detail-status-action-grid";
+
+  allowedStatuses.forEach((status) => {
+    const actionCard = document.createElement("div");
+    actionCard.className = "detail-status-action-card";
+
+    const button = createStatusActionButton(status, {
+      className: "btn btn-outline-primary fw-bold detail-status-action-button",
+    });
+
+    const help = document.createElement("div");
+    help.className = "small text-muted mt-2";
+    help.textContent =
+      STATUS_CONFIRMATION_HELP[status.value] ||
+      "Only continue if this status is correct.";
+
+    actionCard.appendChild(button);
+    actionCard.appendChild(help);
+    grid.appendChild(actionCard);
+  });
+
+  area.appendChild(intro);
+  area.appendChild(grid);
+}
+
+function renderStatusActionMenu(allowedStatuses) {
+  renderTopStatusActionMenu(allowedStatuses);
+  renderDetailStatusActionArea(allowedStatuses);
+}
 function applyAllFilters(resetPage = true, resetDetails = true) {
   if (resetPage) {
     currentPage = 1;
@@ -856,7 +947,7 @@ function applyAllFilters(resetPage = true, resetDetails = true) {
           <ol class="mb-0 ps-3">
             <li>Use <strong>Filter</strong> to find orders by status, order ID, customer name, or due date.</li>
             <li>Click one order row to open its full details.</li>
-            <li>Use <strong>Change Status</strong> only when the order has really moved to the next stage.</li>
+            <li>Use the <strong>Next action</strong> button inside Further Details only when the producer section has really moved to the next stage.</li>
             <li>A confirmation box will appear before the status is saved.</li>
             <li>Status cannot be moved backwards. If a mistake is made, contact an admin.</li>
           </ol>
@@ -1158,11 +1249,7 @@ function showSubscriptionDetails(subId, rowElement) {
     detailsContent.innerHTML = template.innerHTML;
   }
 
-  const updateBtn = document.getElementById("updateStatusBtn");
-
-  if (updateBtn) {
-    updateBtn.disabled = true;
-  }
+  renderStatusActionMenu([]);
 }
 
 /* ============================================================
