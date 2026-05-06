@@ -3,7 +3,7 @@ from .views import views_main
 from .views import profile_views
 from accounts.views.views_main import UnifiedRegistrationView
 from accounts.views.views_main import UnifiedRegistrationView, check_email_exists
-from accounts.views import profile_views, producer_stripe
+from accounts.views import profile_views
 from accounts.views.producer_payments import (
     producer_payments_view,
     download_payment_report_view,
