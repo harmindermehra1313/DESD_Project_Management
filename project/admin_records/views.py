@@ -611,7 +611,6 @@ def product_details(request, product_id):
     return JsonResponse(data)
 
 
-# ------------ EMAILS
 
 
 def action_required(request, product_id):
@@ -629,5 +628,5 @@ def action_required(request, product_id):
 
     return JsonResponse({"success": True})
 
-#
+
 

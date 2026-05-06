@@ -140,6 +140,9 @@
                     data-edit-description="{{ product.description|default:'' }}"
                     data-edit-wholesale-price="{% if wholesale_tier %}{{ wholesale_tier.unit_price }}{% endif %}"
                     data-edit-wholesale-min-qty="{% if wholesale_tier %}{{ wholesale_tier.min_quantity }}{% endif %}"
+                    data-edit-is-seasonal="{{ product.is_seasonal|yesno:'true,false' }}"
+                    data-edit-season-start="{{ product.season_start|default:'' }}"
+                    data-edit-season-end="{{ product.season_end|default:'' }}"
                     onclick="showProductDetails('{{ product.pk }}', this)">
 
                     <td>#{{ product.pk }}</td>
@@ -206,6 +209,7 @@
                 <strong>Product Info:</strong><br>
                 <span class="text-muted small">Name:</span> <span class="js-detail-name">{{ product.name }}</span><br>
                 <span class="text-muted small">Category:</span> <span class="js-detail-category">{{ product.category.name }}</span><br>
+                <span class="text-muted small">Seasonality:</span> <span class="js-detail-seasonality">{{ product.season_display_text }}</span><br>
                 <span class="text-muted small">Price:</span> <span class="js-detail-price">£{{ product.price }} per {{ product.get_unit_display }}</span><br>
                 {% with wholesale_tier=product.product_wholesale_first.0 %}
                 <span class="text-muted small">Wholesale:</span>
@@ -381,6 +385,54 @@
                                 <option value="CERTIFIED">Certified Organic</option>
                             </select>
                         </div>
+
+                        <!-- SEASONAL FIELDS -->
+                        <div class="col-12 mt-2 p-3 border rounded bg-light">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="editIsSeasonal" name="is_seasonal">
+                                <label class="form-check-label fw-semibold" for="editIsSeasonal">This is a seasonal product</label>
+                            </div>
+                            <div id="editSeasonalDatesContainer" class="row g-2 mt-2" style="display: none;">
+                                <div class="col-md-6">
+                                    <label for="editSeasonStart" class="form-label text-muted small">Start Month</label>
+                                    <select class="form-select form-select-sm" id="editSeasonStart" name="season_start">
+                                        <option value="">Select...</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="editSeasonEnd" class="form-label text-muted small">End Month</label>
+                                    <select class="form-select form-select-sm" id="editSeasonEnd" name="season_end">
+                                        <option value="">Select...</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- END SEASONAL FIELDS -->
+
                         <div class="col-12">
                             <label for="editDescription" class="form-label fw-semibold">Description</label>
                             <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
@@ -566,4 +618,37 @@
 {% csrf_token %}
 
 <script src="{% static 'js/producer_products.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const editIsSeasonal = document.getElementById('editIsSeasonal');
+        const editSeasonalDatesContainer = document.getElementById('editSeasonalDatesContainer');
+        
+        // Handle dropdown visibility toggle
+        if(editIsSeasonal && editSeasonalDatesContainer) {
+            editIsSeasonal.addEventListener('change', function() {
+                editSeasonalDatesContainer.style.display = this.checked ? 'flex' : 'none';
+            });
+        }
+
+        // Hook into the Edit button click to populate the seasonal fields from the data attributes
+        const editBtn = document.getElementById('editProductBtn');
+        if(editBtn) {
+            editBtn.addEventListener('click', function() {
+                const selectedRow = document.querySelector('.order-row.selected');
+                if(selectedRow && editIsSeasonal) {
+                    const isSeasonal = selectedRow.getAttribute('data-edit-is-seasonal') === 'true';
+                    const start = selectedRow.getAttribute('data-edit-season-start');
+                    const end = selectedRow.getAttribute('data-edit-season-end');
+                    
+                    editIsSeasonal.checked = isSeasonal;
+                    document.getElementById('editSeasonStart').value = start;
+                    document.getElementById('editSeasonEnd').value = end;
+                    
+                    // Trigger the display toggle so the dropdowns show up if it's checked
+                    editIsSeasonal.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -3,6 +3,7 @@ from django.contrib.postgres.fields import ArrayField
 from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Sum
+from django.core.exceptions import ValidationError
 
 class Category(models.Model):
     class FoodGroups(models.TextChoices):
@@ -98,6 +99,19 @@ class Product(models.Model):
         REMOVED = 'RMV', 'Removed'
         PENDING = 'PND', 'Pending Approval'
 
+    class Month(models.IntegerChoices):
+        JANUARY = 1, "January"
+        FEBRUARY = 2, "February"
+        MARCH = 3, "March"
+        APRIL = 4, "April"
+        MAY = 5, "May"
+        JUNE = 6, "June"
+        JULY = 7, "July"
+        AUGUST = 8, "August"
+        SEPTEMBER = 9, "September"
+        OCTOBER = 10, "October"
+        NOVEMBER = 11, "November"
+        DECEMBER = 12, "December"
 
     producer = models.ForeignKey(
         "accounts.Producer", on_delete=models.CASCADE, related_name="producer_products"
@@ -152,6 +166,11 @@ class Product(models.Model):
         default=Availability_status.OUT_OF_STOCK,
     )
 
+    # Seasonal Fields
+    is_seasonal = models.BooleanField(default=False)
+    season_start = models.IntegerField(choices=Month.choices, null=True, blank=True)
+    season_end = models.IntegerField(choices=Month.choices, null=True, blank=True)
+
     low_stock_email_sent = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -200,6 +219,31 @@ class Product(models.Model):
             .aggregate(total=Sum("remaining_quantity"))["total"]
             or 0
         )
+
+    # Seasonal Check Properties
+    @property
+    def is_currently_in_season(self):
+        if not self.is_seasonal:
+            return True
+        if not self.season_start or not self.season_end:
+            return True
+        
+        current_month = timezone.localdate().month
+        
+        # Handle standard seasons (e.g., June - August)
+        if self.season_start <= self.season_end:
+            return self.season_start <= current_month <= self.season_end
+        else:
+            # Handle seasons that wrap around the year (e.g., November - February)
+            return current_month >= self.season_start or current_month <= self.season_end
+            
+    @property
+    def season_display_text(self):
+        if not self.is_seasonal or not self.season_start or not self.season_end:
+            return "Available Year-Round"
+        start_month = self.Month(self.season_start).label
+        end_month = self.Month(self.season_end).label
+        return f"Available: {start_month} - {end_month}"
 
     def __str__(self):
         return self.name
@@ -257,18 +301,27 @@ class Inventory(models.Model):
 
     status = models.CharField(max_length=20, choices=BatchStatus.choices, default=BatchStatus.ACTIVE)
 
-    # Return the discounted price if surplus is active else normal price
+    @property
+    def current_discount_percentage(self):
+        return self.surplus_discount_percentage if self.surplus_status == self.SurplusStatus.SURPLUS_ACTIVE and self.surplus_discount_percentage else Decimal("0")
+
+    @property
+    def current_discount_reason(self):
+        if self.surplus_status == self.SurplusStatus.SURPLUS_ACTIVE and self.surplus_discount_percentage:
+            return "Surplus"
+        return None
+
+    # Return the discounted price based on the best available active discount
     def get_discounted_price(self):
         base_price = self.product.price
+        discount_pct = self.current_discount_percentage
 
-        if self.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
-            discount_factor = (
-                Decimal("100") - self.surplus_discount_percentage
-            ) / Decimal("100")
+        if discount_pct > 0:
+            discount_factor = (Decimal("100") - discount_pct) / Decimal("100")
             return base_price * discount_factor
         else:
             return base_price
-        
+            
     def is_expired(self) -> bool:
         return self.expiry_date < timezone.localdate()
 

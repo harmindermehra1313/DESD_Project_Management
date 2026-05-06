@@ -1,272 +1,214 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}Financial Reports | BRFN Admin{% endblock %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/financial_report.css' %}">
+  <link rel="stylesheet" href="{% static 'css/financial_report.css' %}">
 {% endblock %}
-
 {% block content %}
-
-<div class="container my-4 admin-report-container">
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
-
-  <h2 class="mb-0 title">Network Commission & Financial Reports</h2>
-
-  <div class="d-flex gap-2">
-    <a href="{% url 'admin_records:financial_reports_csv' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
-       class="btn btn-primary btn-sm">
-      Download CSV
-    </a>
-
-    <a href="{% url 'admin_records:financial_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
-       class="btn btn-primary btn-sm">
-      Download PDF
-    </a>
-  </div>
-
-</div>
-
-  <!-- Filters -->
-  <form method="get" class="row g-3 mb-4 align-items-end" id="filtersForm">
-    <div class="col-md-3">
-      <label class="form-label">Start date</label>
-      <input type="date"
-       name="start_date"
-       class="form-control"
-       value="{{ start_date|default:''|date:'Y-m-d' }}">
-
-
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">End date</label>
-      <input type="date"
-       name="end_date"
-       class="form-control"
-       value="{{ end_date|default:''|date:'Y-m-d' }}">
-
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Producer</label>
-      <select name="producer" class="form-select">
-        <option value="">All producers</option>
-        {% for p in producers %}
-          <option value="{{ p.id }}" {% if selected_producer == p.id %}selected{% endif %}>
-            {{ p.farm_name }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2">
-      <label class="form-label">Order status</label>
-      <select name="status" class="form-select">
-        <option value="">All</option>
-        {% for code,label in order_rows.0.order.Status.choices %}
-        <option value="{{ code }}" {% if status == code %}selected{% endif %}>
-            {{ label }}
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-1 d-flex gap-2">
-      <button type="button" id="applyFilters" class="btn btn-brand w-100">Filter</button>
-    </div>
-    <div class="col-12 d-flex gap-2 mt-2">
-      <button type="button" class="btn btn-primary btn-sm quick-range" data-range="14">
-        Last 2 weeks
-      </button>
-      <button type="button" class="btn btn-primary btn-sm quick-range" data-range="30">
-        Last 30 days
-      </button>
-      <button type="button" class="btn btn-primary btn-sm" id="clearFilters">
-        Clear filters
-      </button>
-    </div>
-  </form>
-
-  <!-- Summary cards -->
-  <div class="row g-3 mb-4">
-
-  <!-- Gross Total -->
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-label">
-        Gross Total
-        <i class="fa-solid fa-circle-info ms-1"
-           title="Sum of all order totals before refunds or cancellations"></i>
+  <div class="container my-4 admin-report-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0 title">Network Commission & Financial Reports</h2>
+      <div class="d-flex gap-2">
+        <a href="{% url 'admin_records:financial_reports_csv' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
+           class="btn btn-primary btn-sm">Download CSV</a>
+        <a href="{% url 'admin_records:financial_report_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&producer={{ selected_producer }}&status={{ status }}"
+           class="btn btn-primary btn-sm">Download PDF</a>
       </div>
-      <div class="summary-value">£{{ gross_total }}</div>
     </div>
-  </div>
-
-  <!-- Refund Total -->
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-label">
-        Refund Total
-        <i class="fa-solid fa-circle-info ms-1"
-           title="Total amount refunded to customers (successful refunds only)"></i>
+    <!-- Filters -->
+    <form method="get" class="row g-3 mb-4 align-items-end" id="filtersForm">
+      <div class="col-md-3">
+        <label class="form-label">Start date</label>
+        <input type="date"
+               name="start_date"
+               class="form-control"
+               value="{{ start_date|default:''|date:'Y-m-d' }}">
       </div>
-      <div class="summary-value text-danger">£{{ refund_total }}</div>
-    </div>
-  </div>
-
-  <!-- Net Sales -->
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-label">
-        Net Sales
-        <i class="fa-solid fa-circle-info ms-1"
-           title="Gross Total minus Refund Total"></i>
+      <div class="col-md-3">
+        <label class="form-label">End date</label>
+        <input type="date"
+               name="end_date"
+               class="form-control"
+               value="{{ end_date|default:''|date:'Y-m-d' }}">
       </div>
-      <div class="summary-value text-primary">£{{ net_sales }}</div>
-    </div>
-  </div>
-
-  <!-- Commission -->
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-label">
-        Commission (5%)
-        <i class="fa-solid fa-circle-info ms-1"
-           title="Commission after removing cancelled producers and cancelled orders"></i>
+      <div class="col-md-3">
+        <label class="form-label">Producer</label>
+        <select name="producer" class="form-select">
+          <option value="">All producers</option>
+          {% for p in producers %}
+            <option value="{{ p.id }}"
+                    {% if selected_producer == p.id %}selected{% endif %}>{{ p.farm_name }}</option>
+          {% endfor %}
+        </select>
       </div>
-      <div class="summary-value text-warning">£{{ total_commission_calc }}</div>
-    </div>
-  </div>
-
-  <!-- Producer Payout -->
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-label">
-        Producer Payout
-        <i class="fa-solid fa-circle-info ms-1"
-           title="Total payout to producers after cancellations and commission deduction"></i>
+      <div class="col-md-2">
+        <label class="form-label">Order status</label>
+        <select name="status" class="form-select">
+          <option value="">All</option>
+          {% for code,label in order_rows.0.order.Status.choices %}
+            <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
-      <div class="summary-value text-success">£{{ total_producer_payout }}</div>
+      <div class="col-md-1 d-flex gap-2">
+        <button type="button" id="applyFilters" class="btn btn-brand w-100">Filter</button>
+      </div>
+      <div class="col-12 d-flex gap-2 mt-2">
+        <button type="button"
+                class="btn btn-primary btn-sm quick-range"
+                data-range="14">Last 2 weeks</button>
+        <button type="button"
+                class="btn btn-primary btn-sm quick-range"
+                data-range="30">Last 30 days</button>
+        <button type="button" class="btn btn-primary btn-sm" id="clearFilters">Clear filters</button>
+      </div>
+    </form>
+    <!-- Summary cards -->
+    <div class="row g-3 mb-4">
+      <!-- Gross Total -->
+      <div class="col-md-3">
+        <div class="summary-card">
+          <div class="summary-label">
+            Gross Total
+            <i class="fa-solid fa-circle-info ms-1"
+               title="Sum of all order totals before refunds or cancellations"></i>
+          </div>
+          <div class="summary-value">£{{ gross_total }}</div>
+        </div>
+      </div>
+      <!-- Refund Total -->
+      <div class="col-md-3">
+        <div class="summary-card">
+          <div class="summary-label">
+            Refund Total
+            <i class="fa-solid fa-circle-info ms-1"
+               title="Total amount refunded to customers (successful refunds only)"></i>
+          </div>
+          <div class="summary-value text-danger">£{{ refund_total }}</div>
+        </div>
+      </div>
+      <!-- Net Sales -->
+      <div class="col-md-3">
+        <div class="summary-card">
+          <div class="summary-label">
+            Net Sales
+            <i class="fa-solid fa-circle-info ms-1"
+               title="Gross Total minus Refund Total"></i>
+          </div>
+          <div class="summary-value text-primary">£{{ net_sales }}</div>
+        </div>
+      </div>
+      <!-- Commission -->
+      <div class="col-md-3">
+        <div class="summary-card">
+          <div class="summary-label">
+            Commission (5%)
+            <i class="fa-solid fa-circle-info ms-1"
+               title="Commission after removing cancelled producers and cancelled orders"></i>
+          </div>
+          <div class="summary-value text-warning">£{{ total_commission_calc }}</div>
+        </div>
+      </div>
+      <!-- Producer Payout -->
+      <div class="col-md-3">
+        <div class="summary-card">
+          <div class="summary-label">
+            Producer Payout
+            <i class="fa-solid fa-circle-info ms-1"
+               title="Total payout to producers after cancellations and commission deduction"></i>
+          </div>
+          <div class="summary-value text-success">£{{ total_producer_payout }}</div>
+        </div>
+      </div>
     </div>
-  </div>
-
-</div>
-
-
-
-  <!-- Orders table -->
-  <div class="table-responsive">
-    <table class="table table-sm table-striped align-middle admin-report-table">
-      <thead>
-        <tr>
-          <th>Order ID</th>
-          <th>Reference</th>
-          <th>Date</th>
-          <th>Status</th>
-          <th class="text-end">Order total</th>
-          <th class="text-end">Commission (5% calc)</th>
-          <th class="text-end">Commission (recorded)</th>
-          <th class="text-end">Producer payout (95%)</th>
-          <th>Producers breakdown</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {% for row in order_rows %}
-        <tr>
-          <td data-label="Order ID">{{ row.order.id }}</td>
-
-          <td data-label="Reference">{{ row.order.unique_reference }}</td>
-
-          <td data-label="Date">
-            {{ row.order.order_date|date:"Y-m-d H:i" }}
-          </td>
-
-          <td data-label="Status">
-            {{ row.order.get_status_display }}
-          </td>
-
-          <td data-label="Order total" class="text-end">
-            £{{ row.order_total|floatformat:2 }}
-          </td>
-
-          <td data-label="Commission (5% calc)" class="text-end text-primary">
-            £{{ row.commission_calc|floatformat:2 }}
-          </td>
-
-          <td data-label="Commission (recorded)" class="text-end text-warning">
-            £{{ row.commission_recorded|floatformat:2 }}
-          </td>
-
-          <td data-label="Producer payout (95%)" class="text-end text-success">
-            £{{ row.producer_payout_total|floatformat:2 }}
-          </td>
-
-          <td data-label="Producers breakdown">
-
-            <!-- Refund Summary -->
-            {% if row.refund_total > 0 %}
-              <div class="mb-2 small">
-                <strong>Refund:</strong> £{{ row.refund_total|floatformat:2 }}
-                {% if row.refund_pending %}
-                  <span class="text-warning">(Pending)</span>
-                {% else %}
-                  <span class="text-success">(Succeeded)</span>
+    <!-- Orders table -->
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle admin-report-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Reference</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th class="text-end">Order total</th>
+            <th class="text-end">Commission (5% calc)</th>
+            <th class="text-end">Commission (recorded)</th>
+            <th class="text-end">Producer payout (95%)</th>
+            <th>Producers breakdown</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in order_rows %}
+            <tr>
+              <td data-label="Order ID">{{ row.order.id }}</td>
+              <td data-label="Reference">{{ row.order.unique_reference }}</td>
+              <td data-label="Date">{{ row.order.order_date|date:"Y-m-d H:i" }}</td>
+              <td data-label="Status">{{ row.order.get_status_display }}</td>
+              <td data-label="Order total" class="text-end">£{{ row.order_total|floatformat:2 }}</td>
+              <td data-label="Commission (5% calc)" class="text-end text-primary">£{{ row.commission_calc|floatformat:2 }}</td>
+              <td data-label="Commission (recorded)" class="text-end text-warning">£{{ row.commission_recorded|floatformat:2 }}</td>
+              <td data-label="Producer payout (95%)" class="text-end text-success">
+                £{{ row.producer_payout_total|floatformat:2 }}
+              </td>
+              <td data-label="Producers breakdown">
+                <!-- Refund Summary -->
+                {% if row.refund_total > 0 %}
+                  <div class="mb-2 small">
+                    <strong>Refund:</strong> £{{ row.refund_total|floatformat:2 }}
+                    {% if row.refund_pending %}
+                      <span class="text-warning">(Pending)</span>
+                    {% else %}
+                      <span class="text-success">(Succeeded)</span>
+                    {% endif %}
+                    <br>
+                    <strong>Method:</strong> {{ row.payment_method|default:"N/A" }}
+                  </div>
                 {% endif %}
-                <br>
-                <strong>Method:</strong> {{ row.payment_method|default:"N/A" }}
-              </div>
-            {% endif %}
-
-            <!-- Active Producers -->
-            {% if row.active_producers %}
-              <div class="small mb-1"><strong>Active Producers</strong></div>
-              <ul class="mb-2 small">
-                {% for ap in row.active_producers %}
-                  <li>
-                    {{ ap.producer_name }}:
-                    £{{ ap.subtotal|floatformat:2 }}
-                    → payout £{{ ap.payout|floatformat:2 }}
-                    (commission £{{ ap.commission|floatformat:2 }})
-                  </li>
-                {% endfor %}
-              </ul>
-            {% endif %}
-
-            <!-- Cancelled Producers -->
-            {% if row.cancelled_producers %}
-              <div class="small mb-1"><strong>Cancelled Producers</strong></div>
-              <ul class="mb-0 small text-danger">
-                {% for cp in row.cancelled_producers %}
-                  <li>
-                    {{ cp.producer_name }}:
-                    CANCELLED — refund £{{ cp.refund|floatformat:2 }}
-                  </li>
-                {% endfor %}
-              </ul>
-            {% endif %}
-
-            {% if not row.active_producers and not row.cancelled_producers %}
-              <span class="text-muted small">No producer breakdown</span>
-            {% endif %}
-
-          </td>
-
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="9" class="text-center text-muted py-4">
-            No orders found for this filter.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+                <!-- Active Producers -->
+                {% if row.active_producers %}
+                  <div class="small mb-1">
+                    <strong>Active Producers</strong>
+                  </div>
+                  <ul class="mb-2 small">
+                    {% for ap in row.active_producers %}
+                      <li>
+                        {{ ap.producer_name }}:
+                        £{{ ap.subtotal|floatformat:2 }}
+                        → payout £{{ ap.payout|floatformat:2 }}
+                        (commission £{{ ap.commission|floatformat:2 }})
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+                <!-- Cancelled Producers -->
+                {% if row.cancelled_producers %}
+                  <div class="small mb-1">
+                    <strong>Cancelled Producers</strong>
+                  </div>
+                  <ul class="mb-0 small text-danger">
+                    {% for cp in row.cancelled_producers %}
+                      <li>
+                        {{ cp.producer_name }}:
+                        CANCELLED — refund £{{ cp.refund|floatformat:2 }}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+                {% if not row.active_producers and not row.cancelled_producers %}
+                  <span class="text-muted small">No producer breakdown</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9" class="text-center text-muted py-4">No orders found for this filter.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-
-</div>
-
-{% block extra_js %}
-<script src="{% static 'js/financial_report.js' %}"></script>
-{% endblock %}
-
+  {% block extra_js %}
+    <script src="{% static 'js/financial_report.js' %}"></script>
+  {% endblock %}
 {% endblock %}

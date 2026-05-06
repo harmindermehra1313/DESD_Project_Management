@@ -37,6 +37,14 @@
               <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <span id="availabilityBadge" class="badge rounded-pill text-bg-secondary"></span>
                 <span id="stockText" class="product-stock-text small"></span>
+                
+                <!-- SEASONAL BADGE INJECTION -->
+                {% if product.is_seasonal and product.is_currently_in_season %}
+                  <span class="product-chip product-chip--availability is-available">In Season</span>
+                  <span class="text-muted small fw-semibold">{{ product.season_display_text }}</span>
+                {% endif %}
+                <!-- END SEASONAL BADGE INJECTION -->
+
               </div>
               <div id="expiryInfoRow" class="mb-3" style="display:none;">
                 <div class="product-meta-label" id="expiryTypeLabel">Expiry</div>
@@ -76,7 +84,12 @@
                 </div>
                 <div class="mb-3">
                   <div class="product-meta-label">Food miles</div>
-                  <div id="foodMiles" class="product-meta-value" style="background-color: #d4edda; padding: 0.5rem; border-radius: 0.25rem; color: #155724;">
+                  <div id="foodMiles"
+                       class="product-meta-value"
+                       style="background-color: #d4edda;
+                              padding: 0.5rem;
+                              border-radius: 0.25rem;
+                              color: #155724">
                     {% if user.is_authenticated %}
                       Add a delivery address to view food miles.
                     {% else %}

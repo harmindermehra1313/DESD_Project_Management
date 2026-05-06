@@ -115,7 +115,6 @@ class Producer(models.Model):
         BANK_TRANSFER = 'BT', 'Bank Transfer'
         PAY_PAL = 'PP', 'Pay Pal'
         CHEQUE = 'CHQ', 'Cheque'
-        STRIPE = 'STP', 'Stripe Payouts'
 
     user = models.OneToOneField(
         User, 
