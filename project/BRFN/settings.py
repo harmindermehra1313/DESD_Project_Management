@@ -277,6 +277,8 @@ LOGGING = {
 STRIPE_PUBLIC_KEY = env("STRIPE_PUBLIC_KEY")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
+STRIPE_ONBOARDING_RETURN_URL = "http://localhost:8000/accounts/producer/stripe/dashboard/"
+STRIPE_ONBOARDING_REFRESH_URL = "http://localhost:8000/accounts/producer/stripe/refresh/"
 
 # Django Q – background task queue
 Q_CLUSTER = {
