@@ -13,6 +13,7 @@ def manage_reductions(request):
 
     available_inventory = Inventory.objects.filter(
         product__producer=producer,
+        status=Inventory.BatchStatus.ACTIVE,
         remaining_quantity__gt=0,
         expiry_date__gte=today,
         surplus_status=Inventory.SurplusStatus.NONE
@@ -32,6 +33,7 @@ def manage_reductions(request):
 
     active_reductions = Inventory.objects.filter(
         product__producer=producer,
+        status=Inventory.BatchStatus.ACTIVE,
         surplus_status=Inventory.SurplusStatus.SURPLUS_ACTIVE,
         surplus_expiry__gt=now
     ).select_related("product")
@@ -43,7 +45,7 @@ def manage_reductions(request):
 
     past_reductions = Inventory.objects.filter(
         product__producer=producer,
-        surplus_status=Inventory.SurplusStatus.NONE
+        #surplus_status=Inventory.SurplusStatus.NONE
     ).annotate(
         had_reduction=Exists(has_reduction_event)
     ).filter(

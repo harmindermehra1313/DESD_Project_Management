@@ -154,11 +154,22 @@ def reduce_batch(request, pk):
 @require_POST
 def delete_batch(request, pk):
     try:
-        product = Product.objects.get(pk=pk)
+        # product = Product.objects.get(pk=pk)
+        product = get_object_or_404(
+                Product,
+                pk=pk,
+                producer=request.user.producer_profile
+            )
         data = json.loads(request.body)
 
         batch_id = data.get("batch_id")
-        batch = Inventory.objects.get(pk=batch_id, product=product)
+        # batch = Inventory.objects.get(pk=batch_id, product=product)
+
+        batch = get_object_or_404(
+            Inventory,
+            pk=batch_id,
+            product=product
+        )
 
         # Soft delete
         batch.status = "DEL"

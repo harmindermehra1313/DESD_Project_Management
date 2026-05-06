@@ -35,7 +35,7 @@ from orders.models import (
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
+from django.core.cache import cache
 # ---------------------------------------
 # JWT / Authentication
 # ---------------------------------------
@@ -117,6 +117,18 @@ def firebase_auth_view(request):
     data = json.loads(request.body)
     token = data.get("token")
 
+    # Rate limiting
+    ip = request.META.get("REMOTE_ADDR", "")
+    cache_key = f"login_attempts:{ip}"
+    attempts = cache.get(cache_key, 0)
+
+    if attempts >= 10:
+        return JsonResponse(
+            {"error": "Too many login attempts. Please try again later."},
+            status=429,
+        )
+
+    cache.set(cache_key, attempts + 1, timeout=300)
     try:
         decoded = firebase_auth.verify_id_token(token)
         email = decoded.get("email")
@@ -170,8 +182,11 @@ def firebase_auth_view(request):
 
         return JsonResponse(response)
 
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+    except Exception:
+        return JsonResponse(
+            {"error": "Invalid login credentials."},
+            status=400,
+        )
 
 
 # ---------------------------------------
@@ -783,11 +798,16 @@ class UnifiedRegistrationView(APIView):
     def post(self, request):
         role = request.data.get("role", "").lower()
 
+        if role not in ["customer", "producer"]:
+            return Response(
+                {"role": ["Invalid registration role."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if role == "producer":
             serializer = ProducerRegistrationSerializer(data=request.data)
         else:
             serializer = CustomerRegistrationSerializer(data=request.data)
-
         if serializer.is_valid():
             serializer.save()
             return Response(

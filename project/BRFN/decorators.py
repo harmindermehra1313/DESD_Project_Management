@@ -17,5 +17,5 @@ def role_required(role):
 admin_required = role_required("ADMIN")
 producer_required = role_required("PRODUCER")
 business_required = role_required("BUSINESS")
-community_required = role_required("COMMUNITY")
+community_required = role_required("COMMUNITY_GROUP")
 customer_required = role_required("CUSTOMER")
