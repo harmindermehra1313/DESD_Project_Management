@@ -29,6 +29,8 @@ handler500 = "BRFN.view.custom_500"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # path("dashboard/", admin_records_dashboard, name="dashboard"),
+
     path("", include("home.urls", namespace="home")),
     path("accounts/", include("accounts.urls", namespace="accounts")),
     path("admin_records/", include("admin_records.urls", namespace="admin_records")),

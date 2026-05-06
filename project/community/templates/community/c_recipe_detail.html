@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="detail-container">
+
+    <img src="{{ recipe.image.url }}" class="detail-hero">
+
+    <h1>{{ recipe.title }}</h1>
+    <p class="meta">By {{ recipe.producer.farm_name }}</p>
+    <p class="meta">Season: {{ recipe.get_seasonal_tag_display }}</p>
+
+    <h2>Description</h2>
+    <p>{{ recipe.description }}</p>
+
+    <h2>Ingredients</h2>
+    <ul>
+        {% for item in recipe.ingredients %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Instructions</h2>
+    <ol>
+        {% for step in recipe.instructions %}
+        <li>{{ step }}</li>
+        {% endfor %}
+    </ol>
+
+</div>
+
+{% endblock %}

@@ -12,9 +12,7 @@ from datetime import timedelta
 def home(request):
     return render(request, "home/home.html")
 
-@admin_required
-def dashboard(request):
-    return render(request, "home/dashboard.html")
+
 
 @producer_required
 def producer(request):
@@ -145,33 +143,30 @@ def producer(request):
 def mark_all_notifications_read(request):
     if request.method == "POST":
         NotificationService.mark_all_read(request.user)
-    #return redirect('home:producer')
-    page = request.POST.get("page", 1)
+
+    page = request.POST.get("page") or request.GET.get("page") or "1"
     return redirect(f"/producer/?page={page}")
+
 
 @producer_required
 def mark_notification_read(request, pk):
-    # Only fetch notifications belonging to the logged-in user
     note = Notification.objects.filter(pk=pk, user=request.user).first()
-    if not note:
-        return redirect("home:producer")
 
-    # Mark as read
+    if not note:
+        return redirect("/producer/")
+
     NotificationService.mark_read(note)
 
-    # PRODUCT ALERT: open product in producer products page
+    page = request.POST.get("page") or request.GET.get("page") or "1"
+    producer = request.user.producer_profile
+
     if note.type == Notification.Type.PRODUCT_ALERT and note.product:
         return redirect(f"/products/producer/products/?open_product={note.product.id}")
 
-    # ORDER UPDATE: open order in producer order dashboard
     if note.type == Notification.Type.ORDER_UPDATE and note.order:
-        producer = request.user.producer_profile
-
-        # Ensure this producer is part of the order
         if note.order.producer_summaries.filter(producer=producer).exists():
             return redirect(f"/accounts/producer_dashboard/?open_order={note.order.id}")
 
-    # RECALL: treat same as product alert
     if note.type == Notification.Type.RECALL and note.product:
         if note.product.producer == producer:
             return redirect(f"/products/producer/products/?open_product={note.product.id}")
@@ -180,3 +175,231 @@ def mark_notification_read(request, pk):
     page = request.POST.get("page", 1)
     return redirect(f"home/producer/?page={page}")
     #return redirect("home:producer")
+
+
+
+from django.utils import timezone
+from django.db.models import Count
+from datetime import timedelta
+from accounts.models import User
+from products.models import Product
+from reviews.models import Review
+
+
+# @admin_required
+# def dashboard(request):
+
+#     def get_user_growth(days):
+#         start = timezone.now() - timedelta(days=days)
+#         qs = (
+#             User.objects.filter(created_at__gte=start)
+#             .extra(select={'day': "date(created_at)"})
+#             .values('day')
+#             .annotate(count=Count('id'))
+#             .order_by('day')
+#         )
+#         return {
+#             "labels": [str(x["day"]) for x in qs],
+#             "values": [x["count"] for x in qs]
+#         }
+
+
+#     user_growth_15 = get_user_growth(15)
+#     user_growth_30 = get_user_growth(30)
+#     user_growth_365 = get_user_growth(365)
+
+#     today = timezone.now()
+#     last_15 = today - timedelta(days=15)
+#     last_30 = today - timedelta(days=30)
+#     last_year = today - timedelta(days=365)
+
+#     # KPIs
+#     # kpi_cards = [
+#     #     {"label": "Total Users", "value": User.objects.count()},
+#     #     {"label": "New Users (15 days)", "value": User.objects.filter(created_at__gte=last_15).count()},
+#     #     {"label": "New Users (30 days)", "value": User.objects.filter(created_at__gte=last_30).count()},
+#     #     {"label": "New Users (1 year)", "value": User.objects.filter(created_at__gte=last_year).count()},
+#     #     {"label": "Active Accounts", "value": User.objects.filter(is_active=True).count()},
+#     #     {"label": "Deactivated Accounts", "value": User.objects.filter(is_active=False).count()},
+#     #     {"label": "Customers", "value": User.objects.filter(role="customer").count()},
+#     #     {"label": "Producers", "value": User.objects.filter(role="producer").count()},
+#     #     {"label": "Business Accounts", "value": User.objects.filter(role="business").count()},
+#     #     {"label": "Total Products", "value": Product.objects.count()},
+#     #     {"label": "Published Products", "value": Product.objects.filter(status="published").count()},
+#     #     {"label": "Pending Products", "value": Product.objects.filter(status="pending").count()},
+#     #     {"label": "Flagged Products", "value": Product.objects.filter(status="flagged").count()},
+#     #     {"label": "Total Reviews", "value": Review.objects.count()},
+#     # ]
+#     kpi_cards = [
+#     {"label": "Total Users", "value": User.objects.count()},
+#     {"label": "Total Products", "value": Product.objects.count()},
+#     {"label": "Total Reviews", "value": Review.objects.count()},
+# ]
+
+#     # User Growth (last 30 days)
+#     user_growth = (
+#         User.objects.filter(created_at__gte=last_30)
+#         .extra(select={'day': "date(created_at)"})
+#         .values('day')
+#         .annotate(count=Count('id'))
+#         .order_by('day')
+#     )
+
+#     user_growth_labels = [str(u["day"]) for u in user_growth]
+#     user_growth_values = [u["count"] for u in user_growth]
+
+#     # Account Type Breakdown
+#     account_type_labels = ["Customer", "Producer", "Business"]
+#     account_type_values = [
+#         User.objects.filter(role="customer").count(),
+#         User.objects.filter(role="producer").count(),
+#         User.objects.filter(role="business").count(),
+#     ]
+
+#     # Account Status
+#     account_status_labels = ["Active", "Deactivated"]
+#     account_status_values = [
+#         User.objects.filter(is_active=True).count(),
+#         User.objects.filter(is_active=False).count(),
+#     ]
+
+#     # Product Status
+#     product_status_labels = ["Published", "Pending", "Flagged"]
+#     product_status_values = [
+#         Product.objects.filter(status="published").count(),
+#         Product.objects.filter(status="pending").count(),
+#         Product.objects.filter(status="flagged").count(),
+#     ]
+
+#     # Review Sentiment
+#     review_sentiment_labels = ["Positive", "Neutral", "Negative"]
+#     review_sentiment_values = [
+#         Review.objects.filter(rating__gte=4).count(),
+#         Review.objects.filter(rating=3).count(),
+#         Review.objects.filter(rating__lte=2).count(),
+#     ]
+
+#     # Recent Users
+#     recent_users = User.objects.order_by("-created_at")[:10]
+
+#     return render(request, "home/dashboard.html", {
+#         "growth_15": user_growth_15,
+#         "growth_30": user_growth_30,
+#         "growth_365": user_growth_365,
+#         "kpi_cards": kpi_cards,
+#         "user_growth_labels": user_growth_labels,
+#         "user_growth_values": user_growth_values,
+#         "account_type_labels": account_type_labels,
+#         "account_type_values": account_type_values,
+
+#         "account_status_labels": account_status_labels,
+#         "account_status_values": account_status_values,
+#         "product_status_labels": product_status_labels,
+#         "product_status_values": product_status_values,
+#         "review_sentiment_labels": review_sentiment_labels,
+#         "review_sentiment_values": review_sentiment_values,
+#         "recent_users": recent_users,
+#     })
+from django.utils import timezone
+from django.db.models import Count
+from datetime import timedelta
+from django.shortcuts import render
+from reviews.models import Review
+from admin_records.dashboard_notification_views import get_review_notification_context
+
+@admin_required
+def dashboard(request):
+
+    # Helper function for user growth
+    def get_user_growth(days):
+        start = timezone.now() - timedelta(days=days)
+        qs = (
+            User.objects.filter(created_at__gte=start)
+            .extra(select={'day': "date(created_at)"})
+            .values('day')
+            .annotate(count=Count('id'))
+            .order_by('day')
+        )
+        return {
+            "labels": [str(x["day"]) for x in qs],
+            "values": [x["count"] for x in qs]
+        }
+
+    # Growth datasets
+    growth_15 = get_user_growth(15)
+    growth_30 = get_user_growth(30)
+    growth_365 = get_user_growth(365)
+
+    # KPIs (only 3)
+    kpi_cards = [
+        {"label": "Total Users", "value": User.objects.count()},
+        {"label": "Total Products", "value": Product.objects.count()},
+        {"label": "Total Reviews", "value": Review.objects.count()},
+    ]
+
+    # Account Type Breakdown
+    account_type_labels = ["Customer", "Producer", "Business"]
+    account_type_values = [
+        User.objects.filter(role="CUSTOMER").count(),
+        User.objects.filter(role="PRODUCER").count(),
+        User.objects.filter(role="BUSINESS").count(),
+    ]
+
+    # Account Status
+    account_status_labels = ["Active", "Deactivated"]
+    account_status_values = [
+        User.objects.filter(is_active=True).count(),
+        User.objects.filter(is_active=False).count(),
+    ]
+
+    # Product Status
+    product_status_labels = [
+        Product.Status.PUBLISHED.label,
+        Product.Status.PENDING.label,
+        Product.Status.FLAGGED.label,
+    ]
+
+    product_status_values = [
+    Product.objects.filter(status=Product.Status.PUBLISHED).count(),
+    Product.objects.filter(status=Product.Status.PENDING).count(),
+    Product.objects.filter(status=Product.Status.FLAGGED).count(),
+]
+
+
+    # Review Sentiment
+    review_sentiment_labels = ["Positive", "Neutral", "Negative"]
+    review_sentiment_values = [
+        Review.objects.filter(rating__gte=4).count(),
+        Review.objects.filter(rating=3).count(),
+        Review.objects.filter(rating__lte=2).count(),
+    ]
+
+    # Recent Users
+    recent_users = User.objects.order_by("-created_at")[:10]
+    context = get_review_notification_context(request)
+    return render(request, "home/dashboard.html", {
+        "growth_15": growth_15,
+        "growth_30": growth_30,
+        "growth_365": growth_365,
+
+        "kpi_cards": kpi_cards,
+
+        "account_type_labels": account_type_labels,
+        "account_type_values": account_type_values,
+
+        "account_status_labels": account_status_labels,
+        "account_status_values": account_status_values,
+
+        "product_status_labels": product_status_labels,
+        "product_status_values": product_status_values,
+
+        "review_sentiment_labels": review_sentiment_labels,
+        "review_sentiment_values": review_sentiment_values,
+
+        "recent_users": recent_users,
+        
+    })
+# @staff_member_required
+# def admin_records_dashboard(request):
+#     context = get_review_notification_context(request)
+#     return render(request, "admin_records/index.html", context)

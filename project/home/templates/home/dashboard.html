@@ -1,12 +1,163 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}Admin Dashboard{% endblock %}
 
-{% block content %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}">
+{% endblock %}
 
-  <div class="card border-0 shadow-none">
-  <div class="card-body p-3 p-md-4">
-    <h1>Dashboard</h1>
-    <p>Use the navbar to visit each app’s placeholder page.</p>
-  </div>
+{% block content %}
+<div class="container py-5">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1 fw-bold">Admin Dashboard</h1>
+            <p class="text-muted mb-0">Platform insights, growth metrics, and system health.</p>
+        </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="row g-4 mb-5">
+        {% for card in kpi_cards %}
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 kpi-card">
+                <div class="card-body">
+                    <h6 class="text-muted">{{ card.label }}</h6>
+                    <h2 class="fw-bold">{{ card.value }}</h2>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- FILTER BUTTONS -->
+    <div class="d-flex gap-3 mb-4">
+        <button class="btn btn-outline-primary chart-filter" data-range="15">Last 15 Days</button>
+        <button class="btn btn-outline-primary chart-filter" data-range="30">Last 30 Days</button>
+        <button class="btn btn-outline-primary chart-filter" data-range="365">Last 12 Months</button>
+    </div>
+
+    <!-- CHARTS ROW 1 -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 id="growthTitle" class="mb-3">User Growth (Last 30 Days)</h5>
+                    <div class="chart-container">
+                      <div class="chart-box1">
+                        <canvas id="userGrowthChart"></canvas>
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                     <h5 class="mb-3">Product Status</h5>
+                    <div class="chart-container">
+                      <div class="chart-box1">
+                        <canvas id="productStatusChart"></canvas>
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARTS ROW 2 -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="mb-3">Account Status</h5>
+                    <div class="chart-container">
+                      <div class="chart-box2">
+                        <canvas id="accountStatusChart"></canvas>
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                  <h5 class="mb-3">Account Type Breakdown</h5>
+                    <div class="chart-container">
+                      <div class="d-flex justify-content-center">
+                        <div class="chart-box2">
+                          <canvas id="accountTypeChart"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARTS ROW 3 -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="mb-3">Review Sentiment</h5>
+                    <div class="chart-container">
+                      <div class="chart-box2">
+                        <canvas id="reviewSentimentChart"></canvas>
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENT USERS -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-body p-4">
+            <h4 class="mb-3">Recent User Signups</h4>
+            <table class="table table-hover">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                    {% for u in recent_users %}
+                    <tr>
+                        <td>{{ u.name }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.created_at|date:"d M Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-muted text-center">No recent users.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
+
+<!-- DATA PASSED TO JS -->
+<script>
+window.adminDashboardData = {
+    growth_15: {{ growth_15|safe }},
+    growth_30: {{ growth_30|safe }},
+    growth_365: {{ growth_365|safe }},
+    accountTypeLabels: {{ account_type_labels|safe }},
+    accountTypeValues: {{ account_type_values|safe }},
+    accountStatusLabels: {{ account_status_labels|safe }},
+    accountStatusValues: {{ account_status_values|safe }},
+    productStatusLabels: {{ product_status_labels|safe }},
+    productStatusValues: {{ product_status_values|safe }},
+    reviewSentimentLabels: {{ review_sentiment_labels|safe }},
+    reviewSentimentValues: {{ review_sentiment_values|safe }},
+};
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/admin_dashboard.js' %}"></script>
+
 {% endblock %}

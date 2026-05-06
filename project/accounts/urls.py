@@ -3,7 +3,7 @@ from .views import views_main
 from .views import profile_views
 from accounts.views.views_main import UnifiedRegistrationView
 from accounts.views.views_main import UnifiedRegistrationView, check_email_exists
-from accounts.views import profile_views
+from accounts.views import profile_views, producer_stripe
 from accounts.views.producer_payments import (
     producer_payments_view,
     download_payment_report_view,
@@ -88,5 +88,37 @@ urlpatterns = [
         "payments/tax-year/zip/",
         download_tax_year_zip_view,
         name="download_tax_year_zip",
+    ),
+    # Producer Stripe Connect
+    path(
+        "producer/stripe/connect/",
+        producer_stripe.connect_stripe_account,
+        name="producer_stripe_connect",
+    ),
+    path(
+        "producer/stripe/refresh/",
+        producer_stripe.onboarding_refresh,
+        name="producer_stripe_onboarding_refresh",
+    ),
+    path(
+        "producer/stripe/dashboard/",
+        producer_stripe.stripe_dashboard,
+        name="producer_stripe_dashboard",
+    ),
+    path(
+        "producer/stripe/update-method/",
+        producer_stripe.update_payout_method,
+        name="update_payout_method",
+    ),
+    # Producer manual payout settings
+    path(
+        "producer/settings/",
+        producer_stripe.producer_settings,
+        name="producer_settings",
+    ),
+    path(
+        "api/producer/update-payout/",
+        producer_stripe.update_payout_api,
+        name="update_payout_api",
     ),
 ]

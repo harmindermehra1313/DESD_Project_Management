@@ -7,9 +7,9 @@
 {% block content %}
     <div class="container py-4 dashboard-container">
         <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">Order Management</h2>
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3 dashboard-page-header">
             <h5 id="pageTitle" class="mb-0">Orders</h5>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 dashboard-actions">
                 <button class="btn btn-outline-secondary"
                         type="button"
                         data-bs-toggle="modal"
@@ -78,17 +78,17 @@
                                 <input class="form-check-input status-filter"
                                        type="checkbox"
                                        value="CAN"
-                                       id="filterCan"
-                                       checked>
+                                       id="filterCan">
                                 <label class="form-check-label" for="filterCan">Cancelled</label>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="filterOrderId" class="form-label small fw-bold text-muted mb-1">Order ID</label>
+                            <label for="filterOrderId" class="form-label small fw-bold text-muted mb-1">Order reference</label>
                             <input type="text"
                                    class="form-control form-control-sm"
                                    id="filterOrderId"
-                                   placeholder="Search by ID...">
+                                   placeholder="Example: 7x2bM9jaqHJUrJq3PYvfaE"
+                                   autocomplete="off">
                         </div>
                         <div class="mb-3">
                             <label for="filterCustomerName"
@@ -99,11 +99,11 @@
                                    placeholder="Start typing to search...">
                         </div>
                         <div class="mb-3">
-                            <label for="filterDateFrom" class="form-label small fw-bold text-muted mb-1">From (Due Date)</label>
+                            <label for="filterDateFrom" class="form-label small fw-bold text-muted mb-1">From due date</label>
                             <input type="date" class="form-control form-control-sm" id="filterDateFrom">
                         </div>
                         <div class="mb-3">
-                            <label for="filterDateTo" class="form-label small fw-bold text-muted mb-1">To (Due Date)</label>
+                            <label for="filterDateTo" class="form-label small fw-bold text-muted mb-1">To due date</label>
                             <input type="date" class="form-control form-control-sm" id="filterDateTo">
                         </div>
                         <button class="btn btn-sm btn-outline-secondary w-100 mt-2"
@@ -111,26 +111,9 @@
                                 onclick="clearFilters()">Clear Filters</button>
                     </div>
                 </div>
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle"
-                            type="button"
-                            id="updateStatusBtn"
-                            data-bs-toggle="dropdown"
-                            aria-expanded="false"
-                            disabled>Change Status</button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm"
-                        id="statusActionMenu"
-                        aria-labelledby="updateStatusBtn">
-                        <li>
-                            <span class="dropdown-item text-muted">Select an order first</span>
-                        </li>
-                    </ul>
-                </div>
             </div>
         </div>
-        <div class="table-responsive mb-4 shadow-sm"
-             style="border-radius: var(--radius);
-                    overflow: hidden">
+        <div class="table-responsive order-table-responsive mb-4 shadow-sm">
             <table class="table table-hover mb-0 order-table align-middle text-center">
                 <thead>
                     <tr>
@@ -140,8 +123,8 @@
                         <th>Due Date</th>
                         <th>Type</th>
                         <th>Items</th>
-                        <th>Total Value</th>
-                        <th>Payout (95%)</th>
+                        <th>Current Value</th>
+                        <th>Current Payout (95%)</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -151,18 +134,20 @@
                             id="row-{{ summary.id }}"
                             data-status="{{ summary.status }}"
                             data-allowed-statuses='{{ summary.allowed_next_statuses_json|escape }}'
-                            data-order-id="{{ summary.order.unique_reference|lower }}"
+                            data-order-id="{{ summary.order.unique_reference|default:''|lower }} {{ summary.order.id }}"
+                            data-order-reference="{{ summary.order.unique_reference|default:''|lower }}"
+                            data-order-db-id="{{ summary.order.id }}"
                             data-customer-name="{% if summary.order.user %}{{ summary.order.user.name|lower }}{% else %}{{ summary.order.guest_name|default:''|lower }}{% endif %}"
                             data-due-date="{{ summary.delivery_date|date:'Y-m-d' }}"
                             onclick="showOrderDetails('{{ summary.id }}', this)">
-                            <td>
+                            <td data-label="Order ID">
                                 {{ summary.order.unique_reference }}
                                 {% if summary.order.recurring_order %}
                                     <br>
-                                    <span class="badge bg-info text-dark" style="font-size: 0.7rem;">🔄 Recurring</span>
+                                    <span class="badge bg-info text-dark" style="font-size: 0.7rem;">Recurring</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Customer Name">
                                 {% if summary.order.user %}
                                     {{ summary.order.user.name }}
                                 {% elif summary.order.guest_name %}
@@ -171,38 +156,35 @@
                                     Guest customer
                                 {% endif %}
                             </td>
-                            <td>{{ summary.order.order_date|date:"d/m/Y" }}</td>
-                            <td>{{ summary.delivery_date|date:"d/m/Y" }}</td>
-                            <td>{{ summary.get_delivery_or_collection_display }}</td>
-                            <td>
-                                {% if summary.status == 'CAN' %}
-                                    0 active
-                                    <br>
-                                    <span class="text-muted small">{{ summary.cancelled_item_count }} cancelled</span>
+                            <td data-label="Order Date">{{ summary.order.order_date|date:"d/m/Y" }}</td>
+                            <td data-label="Due Date">{{ summary.delivery_date|date:"d/m/Y" }}</td>
+                            <td data-label="Type">{{ summary.get_delivery_or_collection_display }}</td>
+                            <td data-label="Items">
+                                {% if summary.dashboard_is_fully_cancelled %}
+                                    <div class="fw-bold text-danger">{{ summary.dashboard_item_status_label }}</div>
                                 {% else %}
-                                    {{ summary.active_item_count }} active item{{ summary.active_item_count|pluralize }}
-                                    {% if summary.cancelled_item_count %}
-                                        <br>
-                                        <span class="text-muted small">{{ summary.cancelled_item_count }} cancelled</span>
-                                    {% endif %}
+                                    <div class="fw-bold">{{ summary.dashboard_item_status_label }}</div>
+                                {% endif %}
+                                <div class="text-muted small">{{ summary.dashboard_item_status_help }}</div>
+                            </td>
+                            <td data-label="Current Value">
+                                <div class="fw-bold">£{{ summary.display_subtotal|floatformat:2 }}</div>
+                                {% if summary.dashboard_is_fully_cancelled %}
+                                    <div class="text-muted small">Original: £{{ summary.original_subtotal|floatformat:2 }}</div>
+                                {% elif summary.has_cancelled_items %}
+                                    <div class="text-muted small">{{ summary.dashboard_value_help }}</div>
                                 {% endif %}
                             </td>
-                            <td>
-                                £{{ summary.display_subtotal|floatformat:2 }}
-                                {% if summary.has_cancelled_items %}
-                                    <br>
-                                    <span class="text-muted small">after cancellation</span>
+                            <td data-label="Current Payout">
+                                <div class="fw-bold">£{{ summary.display_payout_amount|floatformat:2 }}</div>
+                                {% if summary.dashboard_is_fully_cancelled %}
+                                    <div class="text-danger small">No payout due</div>
+                                {% elif summary.has_cancelled_items %}
+                                    <div class="text-muted small">{{ summary.dashboard_payout_help }}</div>
                                 {% endif %}
                             </td>
-                            <td>
-                                £{{ summary.display_payout_amount|floatformat:2 }}
-                                {% if summary.has_cancelled_items %}
-                                    <br>
-                                    <span class="text-muted small">after cancellation</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="status-badge {% if summary.status == 'PEN' %}status-pending {% elif summary.status == 'PRE' %}status-preparing {% elif summary.status == 'PAC' %}status-packaged {% elif summary.status == 'RFC' %}status-ready {% elif summary.status == 'SHP' %}status-shipped {% elif summary.status == 'COM' %}status-completed {% elif summary.status == 'CAN' %}status-cancelled {% endif %}">
+                            <td data-label="Status">
+                                <span class="status-badge {% if summary.status == 'PEN' %}status-pending{% elif summary.status == 'PRE' %}status-preparing{% elif summary.status == 'PAC' %}status-packaged{% elif summary.status == 'RFC' %}status-ready{% elif summary.status == 'SHP' %}status-shipped{% elif summary.status == 'COM' %}status-completed{% elif summary.status == 'CAN' %}status-cancelled{% endif %}">
                                     {{ summary.get_status_display }}
                                 </span>
                                 {% if summary.has_cancelled_items and summary.status != 'CAN' %}
@@ -225,11 +207,11 @@
         </nav>
         {% if all_subscriptions %}
             <div class="mt-5 mb-5">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 dashboard-page-header">
                     <div>
                         <h5 class="mb-0" style="color: var(--brand); font-weight: bold;">Recurring Subscriptions</h5>
                         <p class="text-muted small mb-0 mt-1">
-                            These are ongoing requests from customers. The system will automatically generate physical orders for active subscriptions prior to delivery.
+                            These are ongoing requests from customers. The system will automatically generate physical orders for active subscriptions before delivery.
                         </p>
                     </div>
                     <div class="dropdown">
@@ -273,14 +255,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive shadow-sm"
-                     style="border-radius: var(--radius);
-                            overflow: hidden">
+                <div class="table-responsive order-table-responsive shadow-sm">
                     <table class="table table-hover mb-0 align-middle text-center order-table">
                         <thead>
                             <tr>
                                 <th>Sub ID</th>
-                                <th>Restaurant / Customer</th>
+                                <th>Customer</th>
                                 <th>Frequency</th>
                                 <th>Repeats On</th>
                                 <th>Initial Delivery Day</th>
@@ -296,15 +276,15 @@
                                     data-sub-status="{{ sub.status }}"
                                     onclick="showSubscriptionDetails('{{ sub.id }}', this)"
                                     style="cursor: pointer">
-                                    <td class="fw-bold text-muted">#SUB-{{ sub.id }}</td>
-                                    <td>{{ sub.customer_name }}</td>
-                                    <td>{{ sub.recurrence_pattern }}</td>
-                                    <td>Every {{ sub.recurrence_day }}</td>
-                                    <td>{{ sub.delivery_day }}</td>
-                                    <td>{{ sub.items|length }} items</td>
-                                    <td class="text-muted">{{ sub.created_at|date:"d/m/Y" }}</td>
-                                    <td>
-                                        <span class="status-badge sub-status-badge {% if sub.status == 'ACTIVE' %}status-packaged {% elif sub.status == 'PAUSED' %}status-pending {% else %}status-cancelled{% endif %}">
+                                    <td class="fw-bold text-muted" data-label="Sub ID">#SUB-{{ sub.id }}</td>
+                                    <td data-label="Customer">{{ sub.customer_name }}</td>
+                                    <td data-label="Frequency">{{ sub.recurrence_pattern }}</td>
+                                    <td data-label="Repeats On">Every {{ sub.recurrence_day }}</td>
+                                    <td data-label="Initial Delivery Day">{{ sub.delivery_day }}</td>
+                                    <td data-label="Items Reserved">{{ sub.items|length }} items</td>
+                                    <td class="text-muted" data-label="Started">{{ sub.created_at|date:"d/m/Y" }}</td>
+                                    <td data-label="Status">
+                                        <span class="status-badge sub-status-badge {% if sub.status == 'ACTIVE' %}status-packaged{% elif sub.status == 'PAUSED' %}status-pending{% else %}status-cancelled{% endif %}">
                                             {{ sub.status_display }}
                                         </span>
                                     </td>
@@ -394,7 +374,7 @@
                         </li>
                         <li>Click one order row to open its full details.</li>
                         <li>
-                            Use <strong>Change Status</strong> only when the order has really moved to the next stage.
+                            Use the <strong>Next action</strong> button inside Further Details only when the producer section has really moved to the next stage.
                         </li>
                         <li>A confirmation box will appear before the status is saved.</li>
                         <li>Status cannot be moved backwards. If a mistake is made, contact an admin.</li>
@@ -452,7 +432,7 @@
                             <br>
                             {% if summary.has_cancelled_items %}
                                 <div class="alert alert-warning py-2 mt-2 mb-2">
-                                    This order has cancelled items. Only prepare the active items below. If any.
+                                    This order has cancelled items. Only prepare the active items below, if any.
                                 </div>
                             {% endif %}
                             <strong>Active items to prepare:</strong>
@@ -464,11 +444,18 @@
                                             ({{ item.product.get_unit_display }})
                                         </span>
                                         {% if summary.status != 'CAN' and summary.status != 'COM' and summary.status != 'SHP' %}
-                                            <button type="button"
-                                                    class="btn btn-outline-danger btn-sm"
-                                                    onclick="cancelProducerOrderItem('{{ item.id }}', '{{ item.product.name|escapejs }}', '{{ summary.id }}')">
-                                                Cancel item
-                                            </button>
+                                            <div class="d-flex gap-2 flex-wrap justify-content-end">
+                                                <button type="button"
+                                                        class="btn btn-outline-warning btn-sm"
+                                                        onclick="openCancelQuantityModal('{{ item.id }}', '{{ item.product.name|escapejs }}', '{{ summary.id }}', '{{ item.dashboard_active_quantity }}', false)">
+                                                    Cancel quantity
+                                                </button>
+                                                <button type="button"
+                                                        class="btn btn-outline-danger btn-sm"
+                                                        onclick="openCancelQuantityModal('{{ item.id }}', '{{ item.product.name|escapejs }}', '{{ summary.id }}', '{{ item.dashboard_active_quantity }}', true)">
+                                                    Cancel whole item
+                                                </button>
+                                            </div>
                                         {% endif %}
                                     </li>
                                 {% empty %}
@@ -476,18 +463,33 @@
                                 {% endfor %}
                             </ul>
                             {% if summary.cancelled_items %}
-                                <strong>Cancelled items:</strong>
-                                <ul class="list-unstyled mb-3 text-muted">
-                                    {% for item in summary.cancelled_items %}
-                                        <li>
-                                            <s>
-                                                {{ item.dashboard_cancelled_quantity }}x {{ item.product.name }}
-                                                ({{ item.product.get_unit_display }})
-                                            </s>
-                                            <span class="badge bg-secondary ms-1">Cancelled</span>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
+                                <div class="mt-2 mb-3">
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#cancelledItems-{{ summary.id }}"
+                                            aria-expanded="false"
+                                            aria-controls="cancelledItems-{{ summary.id }}">
+                                        Show cancelled items
+                                    </button>
+                                    <div class="collapse mt-3" id="cancelledItems-{{ summary.id }}">
+                                        <div class="producer-cancelled-items-box">
+                                            <strong>Cancelled items:</strong>
+                                            <ul class="list-unstyled mb-0 text-muted mt-2">
+                                                {% for item in summary.cancelled_items %}
+                                                    <li class="mb-1">
+                                                        <s>
+                                                            {{ item.dashboard_cancelled_quantity }}x {{ item.product.name }}
+                                                            ({{ item.product.get_unit_display }})
+                                                        </s>
+                                                        <span class="badge bg-secondary ms-1">Cancelled</span>
+                                                        <span class="text-muted small ms-1">{{ item.dashboard_quantity_summary }}</span>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             {% endif %}
                             <strong>Special Instructions:</strong>
                             <br>
@@ -497,13 +499,26 @@
                                 <br>
                                 <strong>Recurring Order:</strong>
                                 <br>
-                                🔁 {{ summary.order.recurring_order.get_recurrence_pattern_display }}
+                                {{ summary.order.recurring_order.get_recurrence_pattern_display }}
                                 &ndash; Every {{ summary.order.recurring_order.get_recurrence_day_display }}
                             {% endif %}
                             <div class="mt-3 pt-3 border-top">
                                 <strong>Current Producer Status:</strong>
                                 <br>
                                 <span class="js-producer-status-display">{{ summary.get_status_display }}</span>
+                                <div class="producer-next-action-box mt-3">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
+                                        <div>
+                                            <strong>Next action</strong>
+                                            <p class="text-muted small mb-0">
+                                                Check the active items, delivery or collection type, and customer instructions before changing status.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="detail-status-action-area" aria-live="polite">
+                                        <div class="text-muted small">Select this order from the table to load the next allowed action.</div>
+                                    </div>
+                                </div>
                                 <div class="producer-instruction-box mt-3">
                                     <strong>What to do next:</strong>
                                     <ul class="mb-0 mt-2 ps-3">
@@ -645,6 +660,156 @@
             </div>
         </div>
         <div class="modal fade"
+             id="cancelQuantityModal"
+             tabindex="-1"
+             aria-labelledby="cancelQuantityModalLabel"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" id="cancelQuantityModalLabel">Cancel item quantity</h5>
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning py-2">
+                            <strong>Use this carefully.</strong>
+                            The customer will be refunded for the cancelled quantity only.
+                        </div>
+                        <p class="mb-2">
+                            <strong>Product:</strong>
+                            <span id="cancelQuantityProductName">Product</span>
+                        </p>
+                        <p class="mb-3">
+                            <strong>Active quantity available:</strong>
+                            <span id="cancelQuantityActiveQty">0</span>
+                        </p>
+                        <div class="mb-3">
+                            <label for="cancelQuantityInput" class="form-label fw-bold">Quantity to cancel</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="cancelQuantityInput"
+                                   min="1"
+                                   step="1">
+                            <div class="form-text">Example: if 2 out of 3 expired, enter 2.</div>
+                        </div>
+                        <div class="mb-0">
+                            <label for="cancelQuantityReason" class="form-label fw-bold">Reason</label>
+                            <textarea class="form-control"
+                                      id="cancelQuantityReason"
+                                      rows="3"
+                                      placeholder="Example: 2 items expired after stock check."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">Go back</button>
+                        <button type="button"
+                                class="btn btn-warning fw-bold"
+                                id="reviewCancelQuantityBtn">Review cancellation</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade"
+             id="cancelQuantityReviewModal"
+             tabindex="-1"
+             aria-labelledby="cancelQuantityReviewModalLabel"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" id="cancelQuantityReviewModalLabel">Final cancellation check</h5>
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger py-2">
+                            <strong>Please check carefully.</strong>
+                            This will refund the customer and cannot be undone.
+                        </div>
+                        <p class="mb-2">
+                            <strong>Product:</strong>
+                            <span id="reviewCancelProductName">Product</span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Current active quantity:</strong>
+                            <span id="reviewCancelActiveQty">0</span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Quantity being cancelled:</strong>
+                            <span id="reviewCancelQty">0</span>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Quantity still to prepare:</strong>
+                            <span id="reviewRemainingQty">0</span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Reason:</strong>
+                            <span id="reviewCancelReason">Reason</span>
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-dismiss="modal">Go back</button>
+                        <button type="button"
+                                class="btn btn-danger fw-bold"
+                                id="confirmCancelQuantityBtn">Confirm cancellation and refund</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade"
+             id="cancelQuantitySuccessModal"
+             tabindex="-1"
+             aria-labelledby="cancelQuantitySuccessModalLabel"
+             aria-hidden="true"
+             data-bs-backdrop="static"
+             data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title fw-bold text-success"
+                            id="cancelQuantitySuccessModalLabel">Cancellation processed</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-success mb-3">
+                            The item quantity was cancelled successfully and the refund process was completed.
+                        </div>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-2">
+                                <strong>Product:</strong>
+                                <span id="successCancelProductName">Product</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Cancelled quantity:</strong>
+                                <span id="successCancelQty">0</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Refund result:</strong>
+                                <span id="successRefundMessage">Processed.</span>
+                            </p>
+                            <p class="mb-0">
+                                <strong>Next step:</strong>
+                                Prepare the remaining active quantity shown in the order details.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button"
+                                class="btn btn-primary fw-bold"
+                                id="closeCancelSuccessBtn">Return to order</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade"
              id="producerHelpModal"
              tabindex="-1"
              aria-labelledby="producerHelpModalLabel"
@@ -671,19 +836,32 @@
                         <h6 class="fw-bold mt-3">3. How orders are sorted</h6>
                         <p>Orders are shown by due date. The orders due soonest appear at the top of the list.</p>
                         <p>
-                            This means producers should normally start from the top of the table and work downwards.
+                            Producers should normally start from the top of the table and work downwards.
                             Orders with an earlier due date should be checked first because those customers are expecting delivery or collection sooner.
                         </p>
-                        <p class="mb-0">
-                            If filters are used, the list still keeps the same due-date order, but only matching orders are shown.
-                        </p>
+                        <p>If filters are used, the list still keeps the same due-date order, but only matching orders are shown.</p>
                         <h6 class="fw-bold mt-3">4. Changing status</h6>
                         <p>
-                            After selecting an order, use <strong>Change Status</strong>.
+                            Click an order row first, then use the <strong>Next action</strong> button inside Further Details.
                             Only the next allowed status will appear.
-                            The system will not show older statuses such as Pending after the order has moved forward.
+                            The system will not show older statuses after the order has moved forward.
                         </p>
-                        <h6 class="fw-bold mt-3">5. Delivery order stages</h6>
+                        <h6 class="fw-bold mt-3">5. Cancelling item quantities</h6>
+                        <p>
+                            Use <strong>Cancel quantity</strong> when only part of an item cannot be supplied.
+                            Example: if 2 out of 3 items expired, cancel quantity 2 and prepare the remaining 1.
+                        </p>
+                        <h6 class="fw-bold mt-3">6. Cancelling a whole item</h6>
+                        <p>
+                            Use <strong>Cancel whole item</strong> when none of that specific item can be supplied.
+                            The rest of the producer order can still continue.
+                        </p>
+                        <h6 class="fw-bold mt-3">7. Cancelling the whole producer order</h6>
+                        <p>
+                            Use <strong>Cancel producer order and refund customer</strong> only when none of this producer's active items can be fulfilled.
+                            This cancels this producer section and refunds the customer for this producer section.
+                        </p>
+                        <h6 class="fw-bold mt-3">8. Delivery order stages</h6>
                         <ol>
                             <li>
                                 <strong>Pending:</strong> order received, not started yet.
@@ -701,7 +879,7 @@
                                 <strong>Completed:</strong> delivery has been fulfilled.
                             </li>
                         </ol>
-                        <h6 class="fw-bold mt-3">6. Collection order stages</h6>
+                        <h6 class="fw-bold mt-3">9. Collection order stages</h6>
                         <ol>
                             <li>
                                 <strong>Pending:</strong> order received, not started yet.
@@ -719,18 +897,7 @@
                                 <strong>Completed:</strong> customer has collected the order.
                             </li>
                         </ol>
-                        <h6 class="fw-bold mt-3">7. Cancelling one item</h6>
-                        <p>
-                            Use <strong>Cancel item</strong> only when one specific item cannot be fulfilled.
-                            The customer will be refunded for that item only.
-                            The rest of the order can still continue.
-                        </p>
-                        <h6 class="fw-bold mt-3">8. Cancelling the whole producer order</h6>
-                        <p>
-                            Use <strong>Cancel producer order and refund customer</strong> only when none of this producer's active items can be fulfilled.
-                            This cancels this producer section and refunds the customer for this producer section.
-                        </p>
-                        <h6 class="fw-bold mt-3">9. Mistakes</h6>
+                        <h6 class="fw-bold mt-3">10. Mistakes</h6>
                         <p class="mb-0">
                             If a status is updated or an item is cancelled by mistake, contact an admin.
                             Status should not be moved backwards because the order history must stay accurate.
@@ -743,6 +910,7 @@
             </div>
         </div>
         {% csrf_token %}
-        <script src="{% static 'js/producer_dashboard.js' %}?v=3.4"></script>
+        <script src="{% static 'js/producer_dashboard.js' %}?v=4.0"></script>
+        <script src="{% static 'js/producer_dashboard_validation.js' %}?v=1.2"></script>
     </div>
 {% endblock %}

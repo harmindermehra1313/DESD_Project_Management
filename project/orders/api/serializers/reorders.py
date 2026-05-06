@@ -18,6 +18,68 @@ from reviews.selectors import (
     get_reviewed_product_ids_for_user_and_products,
 )
 from orders.services.order_status import get_order_status_context
+from decimal import Decimal, ROUND_HALF_UP
+
+MONEY_PLACES = Decimal("0.01")
+
+
+def _money(value) -> Decimal:
+    return Decimal(value or 0).quantize(
+        MONEY_PLACES,
+        rounding=ROUND_HALF_UP,
+    )
+
+
+def _active_quantity(item: OrderItem) -> int:
+    return max(int(item.quantity or 0) - int(item.cancelled_quantity or 0), 0)
+
+
+def _cancelled_quantity(item: OrderItem) -> int:
+    return max(int(item.cancelled_quantity or 0), 0)
+
+
+def _vat_per_unit(item: OrderItem) -> Decimal:
+    if not item.quantity or item.quantity <= 0:
+        return Decimal("0.00")
+
+    return _money(Decimal(item.vat_amount or 0) / Decimal(item.quantity))
+
+
+def _line_total_for_quantity(item: OrderItem, quantity: int) -> Decimal:
+    quantity = Decimal(quantity)
+    unit_price = Decimal(item.final_unit_price or 0)
+    vat_per_unit = _vat_per_unit(item)
+
+    return _money((unit_price + vat_per_unit) * quantity)
+
+
+def _active_order_total(order: Order) -> Decimal:
+    total = Decimal("0.00")
+
+    for item in order.items.all():
+        total += _line_total_for_quantity(item, _active_quantity(item))
+
+    return _money(total)
+
+
+def _cancelled_order_total(order: Order) -> Decimal:
+    total = Decimal("0.00")
+
+    for item in order.items.all():
+        total += _line_total_for_quantity(item, _cancelled_quantity(item))
+
+    return _money(total)
+
+
+def _has_cancelled_quantities(order: Order) -> bool:
+    return any(
+        int(getattr(item, "cancelled_quantity", 0) or 0) > 0
+        for item in order.items.all()
+    )
+
+
+def _is_cash_payment_display(payment_method_display: str | None) -> bool:
+    return "cash" in str(payment_method_display or "").lower()
 
 
 class OrderHistorySerializer(serializers.ModelSerializer):
@@ -29,12 +91,15 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     can_customer_cancel = serializers.SerializerMethodField()
     status_note = serializers.SerializerMethodField()
 
-    total = serializers.DecimalField(
+    total = serializers.SerializerMethodField()
+    original_total_price = serializers.DecimalField(
         source="total_price",
         max_digits=10,
         decimal_places=2,
         read_only=True,
     )
+    active_total_price = serializers.SerializerMethodField()
+    cancelled_total_price = serializers.SerializerMethodField()
     producer_names = serializers.SerializerMethodField()
 
     class Meta:
@@ -44,6 +109,9 @@ class OrderHistorySerializer(serializers.ModelSerializer):
             "order_number",
             "order_date",
             "total",
+            "original_total_price",
+            "active_total_price",
+            "cancelled_total_price",
             "order_status",
             "order_status_code",
             "order_status_key",
@@ -71,13 +139,6 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     def get_can_customer_cancel(self, obj: Order) -> bool:
         return self._status_context(obj)["can_customer_cancel"]
 
-    def get_status_note(self, obj: Order) -> str:
-        if self._status_context(obj)["is_partially_cancelled"]:
-            return (
-                "Partially cancelled: one producer could not fulfil part of this order."
-            )
-        return ""
-
     def get_producer_names(self, obj: Order) -> list[str]:
         names: list[str] = []
 
@@ -87,6 +148,23 @@ class OrderHistorySerializer(serializers.ModelSerializer):
                 names.append(producer_name)
 
         return names
+
+    def get_total(self, obj: Order) -> Decimal:
+        if _has_cancelled_quantities(obj):
+            return _active_order_total(obj)
+
+        return obj.total_price
+
+    def get_active_total_price(self, obj: Order) -> Decimal:
+        return _active_order_total(obj)
+
+    def get_cancelled_total_price(self, obj: Order) -> Decimal:
+        return _cancelled_order_total(obj)
+
+    def get_status_note(self, obj: Order) -> str:
+        if self._status_context(obj)["is_partially_cancelled"]:
+            return "Some quantities were cancelled. The order total reflects the active items only."
+        return ""
 
 
 class OrderItemDetailSerializer(serializers.ModelSerializer):
@@ -284,6 +362,17 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     is_partially_cancelled = serializers.SerializerMethodField()
     can_customer_cancel = serializers.SerializerMethodField()
     status_note = serializers.SerializerMethodField()
+    original_total_price = serializers.DecimalField(
+        source="total_price",
+        max_digits=10,
+        decimal_places=2,
+        read_only=True,
+    )
+    active_total_price = serializers.SerializerMethodField()
+    cancelled_total_price = serializers.SerializerMethodField()
+    display_total_price = serializers.SerializerMethodField()
+    display_total_label = serializers.SerializerMethodField()
+    display_total_note = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -291,6 +380,12 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "order_date",
+            "original_total_price",
+            "active_total_price",
+            "cancelled_total_price",
+            "display_total_price",
+            "display_total_label",
+            "display_total_note",
             "status",
             "status_code",
             "status_key",
@@ -335,6 +430,41 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     def get_status(self, obj: Order) -> str:
         return self._status_context(obj)["status_display"]
 
+    def get_active_total_price(self, obj: Order) -> Decimal:
+        return _active_order_total(obj)
+
+    def get_cancelled_total_price(self, obj: Order) -> Decimal:
+        return _cancelled_order_total(obj)
+
+    def get_display_total_price(self, obj: Order) -> Decimal:
+        if _has_cancelled_quantities(obj):
+            return _active_order_total(obj)
+
+        return obj.total_price
+
+    def get_display_total_label(self, obj: Order) -> str:
+        payment_display = self.get_payment_method_display(obj)
+        has_cancellations = _has_cancelled_quantities(obj)
+
+        if _is_cash_payment_display(payment_display):
+            return "Amount due at collection"
+
+        if has_cancellations:
+            return "Total after cancellations"
+
+        return "Total paid"
+
+    def get_display_total_note(self, obj: Order) -> str:
+        payment_display = self.get_payment_method_display(obj)
+
+        if not _has_cancelled_quantities(obj):
+            return ""
+
+        if _is_cash_payment_display(payment_display):
+            return "Cancelled value has been removed from the amount due at collection."
+
+        return "Cancelled value has been removed from the active order total."
+
     def get_status_code(self, obj: Order) -> str:
         return self._status_context(obj)["status_code"]
 
@@ -349,9 +479,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
     def get_status_note(self, obj: Order) -> str:
         if self._status_context(obj)["is_partially_cancelled"]:
-            return (
-                "Partially cancelled: one producer could not fulfil part of this order."
-            )
+            return "Some quantities were cancelled. The order total below reflects active items only."
         return ""
 
     def get_payment_method_display(self, obj: Order) -> str | None:
@@ -430,7 +558,6 @@ class ReorderSuggestedItemSerializer(serializers.Serializer):
     product_type_name = serializers.CharField(required=False, allow_null=True)
     match_basis = serializers.CharField()
     recommendation_badge = serializers.CharField(required=False, allow_blank=True)
-
 
 class ReorderUnavailableItemSerializer(serializers.Serializer):
     order_item_id = serializers.IntegerField(required=False)

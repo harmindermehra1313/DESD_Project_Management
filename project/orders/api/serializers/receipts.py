@@ -22,8 +22,12 @@ class ReceiptItemSerializer(serializers.Serializer):
     product_name = serializers.CharField()
     producer_name = serializers.CharField()
     quantity = serializers.IntegerField()
+    active_quantity = serializers.IntegerField(required=False)
     original_quantity = serializers.IntegerField(required=False)
     cancelled_quantity = serializers.IntegerField(required=False)
+    refunded_quantity = serializers.IntegerField(required=False)
+    is_partially_cancelled = serializers.BooleanField(required=False)
+    is_fully_cancelled = serializers.BooleanField(required=False)
     unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
     discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     vat_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -31,7 +35,11 @@ class ReceiptItemSerializer(serializers.Serializer):
     line_subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
     line_discount = serializers.DecimalField(max_digits=10, decimal_places=2)
     line_vat = serializers.DecimalField(max_digits=10, decimal_places=2)
+    line_total_ex_vat = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     line_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    cancelled_refunded_subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    cancelled_refunded_vat = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    cancelled_refunded_total = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
 
 
 class ReceiptProducerBreakdownSerializer(serializers.Serializer):
@@ -39,6 +47,11 @@ class ReceiptProducerBreakdownSerializer(serializers.Serializer):
     producer_id = serializers.IntegerField()
     producer_name = serializers.CharField()
     status = serializers.CharField()
+    status_code = serializers.CharField(required=False)
+    is_cancelled = serializers.BooleanField(required=False)
+    active_quantity = serializers.IntegerField(required=False)
+    cancelled_quantity = serializers.IntegerField(required=False)
+    cancelled_refunded_total = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     delivery_or_collection = serializers.CharField()
     delivery_date = serializers.DateField(required=False, allow_null=True)
     collection_date = serializers.DateField(required=False, allow_null=True)
@@ -56,6 +69,7 @@ class ReceiptTotalsSerializer(serializers.Serializer):
     discount = serializers.DecimalField(max_digits=10, decimal_places=2)
     vat = serializers.DecimalField(max_digits=10, decimal_places=2)
     final_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    cancelled_refunded_total = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
 
 
 class ReceiptResponseSerializer(serializers.Serializer):

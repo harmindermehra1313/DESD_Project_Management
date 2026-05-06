@@ -17,6 +17,8 @@ import json
 from notifications.services.notifications import NotificationService
 from notifications.models import Notification
 from admin_records.models import ModerationLog
+from products.serializers import ProductCreateSerializer
+
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -147,21 +149,6 @@ def add_product(request):
         ).strip()
         description = request.POST.get("description")
         uploaded_image = request.FILES.get("image")
-        
-        # Extract Seasonal Inputs
-        is_seasonal = request.POST.get("is_seasonal") in ["true", "on", "True"]
-        season_start_raw = request.POST.get("season_start")
-        season_end_raw = request.POST.get("season_end")
-        
-        season_start_val = None
-        season_end_val = None
-        
-        if is_seasonal and season_start_raw and season_end_raw:
-            try:
-                season_start_val = int(season_start_raw)
-                season_end_val = int(season_end_raw)
-            except ValueError:
-                pass
 
         try:
             base_price_value = Decimal(str(price))
@@ -274,11 +261,14 @@ def add_product(request):
                 _build_add_product_context("Harvest date cannot be after expiry date."),
             )
 
+        # expiry_date=expiry_date
+
         category_id = request.POST.get("category")
 
         category_obj = get_object_or_404(Category, id=category_id)
+
         product_type = get_or_create_inferred_product_type(
-            name=name,
+            name=validated_data['name'],
             category=category_obj,
         )
         default_image_path = _get_category_default_image(category_obj)
@@ -290,13 +280,15 @@ def add_product(request):
             producer=producer,
             category=category_obj,
             product_type=product_type,
-            name=name,
-            price=base_price_value,
-            availability_status=availability_status,
-            unit=unit_code,
-            organic_certification_status=organic_certification_status,
-            description=description,
-            image=uploaded_image,
+            name=validated_data['name'],
+            price=validated_data['price'],
+            availability_status=validated_data['availability_status'],
+            unit=validated_data['unit'],
+            organic_certification_status=validated_data['organic_certification_status'],
+            description=validated_data['description'],
+            image=validated_data.get('image'),
+            low_stock_threshold=validated_data.get('low_stock_threshold', 0),
+            storage_guidance=validated_data.get('storage_guidance', ''),
             farm_origin=farm_origin,
             status=Product.Status.PENDING,
             is_seasonal=is_seasonal,
@@ -304,30 +296,29 @@ def add_product(request):
             season_end=season_end_val,
         )
 
-        if not uploaded_image:
+        if not validated_data.get('image'):
             new_product.image.name = default_image_path
             new_product.save(update_fields=["image"])
 
         Inventory.objects.create(
             product=new_product,
-            original_quantity=stock_quantity_value,
-            remaining_quantity=stock_quantity_value,
-            harvest_date=harvest_dt.date(),
-            expiry_date=expiry_dt.date(),
-            expiry_type=expiry_type,
+            original_quantity=validated_data['stock_quantity'],
+            remaining_quantity=validated_data['stock_quantity'],
+            harvest_date=validated_data['harvest_date'],
+            expiry_date=validated_data['expiry_date'],
+            expiry_type=validated_data['expiry_type'],
             surplus_status="NONE",
             surplus_discount_percentage=0,
         )
 
-        if wholesale_price is not None:
+        if validated_data.get('wholesale_price'):
             WholesalePrice.objects.create(
                 product=new_product,
-                min_quantity=wholesale_min_quantity,
-                unit_price=wholesale_price,
+                min_quantity=validated_data['wholesale_min_quantity'],
+                unit_price=validated_data['wholesale_price'],
             )
 
-        allergen_ids = request.POST.getlist("allergen")
-        for a_code in allergen_ids:
+        for a_code in validated_data.get('allergen', []):
             allergen_obj, _ = Allergen.objects.get_or_create(name=a_code)
             ProductAllergen.objects.create(product=new_product, allergen=allergen_obj)
 
@@ -915,7 +906,7 @@ def product_view(request, category_id):
     allergen_filter = (request.GET.get("allergen") or "").strip()
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
-    sort = (request.GET.get("sort") or "newest").strip()
+    sort = (request.GET.get("sort") or "").strip()
 
     live_product_filters = {
         "status": Product.Status.PUBLISHED,

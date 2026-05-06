@@ -91,6 +91,11 @@ document.addEventListener("DOMContentLoaded", () => {
       badges.push(buildBadge("Expires soon", "product-card-badge--danger"));
     } else if (product.surplus_active) {
       badges.push(buildBadge("Surplus", "product-card-badge--danger"));
+<<<<<<< HEAD
+    } else if (product.wholesale_active) {
+      badges.push(buildBadge("Wholesale", "product-card-badge--warning"));
+    } else if (product.low_stock) {
+=======
     }
 
     if (product.wholesale_active) {
@@ -98,6 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (product.low_stock) {
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
       badges.push(buildBadge("Low stock", "product-card-badge--danger"));
     }
 
@@ -105,7 +111,11 @@ document.addEventListener("DOMContentLoaded", () => {
       badges.push(buildBadge("Organic", "product-card-badge--soft"));
     }
 
+<<<<<<< HEAD
+    return badges.slice(0, 3).join("");
+=======
     return badges.join("");
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
   }
 
   function buildImageHTML(product) {
@@ -179,6 +189,11 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
+<<<<<<< HEAD
+  function buildActionHTML(product) {
+  if (product.is_disabled) {
+    return `
+=======
   function buildAllergensHTML(product) {
     const allergens = Array.isArray(product.allergens)
       ? product.allergens.filter(Boolean)
@@ -207,24 +222,35 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       return `
-        <button
-          class="btn btn-primary product-action-btn w-100 mt-auto"
-          disabled
-        >
-          ${escapeHTML(reason)}
-        </button>
-      `;
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
+      <button
+        class="btn btn-primary product-action-btn w-100 mt-auto"
+        disabled
+      >
+        ${escapeHTML(product.disabled_reason || "Unavailable")}
+      </button>
+    `;
+<<<<<<< HEAD
+  }
+
+  return `
+=======
     }
 
     return `
-      <a
-        href="/products/${escapeHTML(product.id)}/"
-        class="btn btn-primary product-action-btn w-100 mt-auto"
-      >
-        View details
-      </a>
-    `;
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
+    <a
+      href="/products/${escapeHTML(product.id)}/"
+      class="btn btn-primary product-action-btn w-100 mt-auto"
+    >
+      View details
+    </a>
+  `;
+<<<<<<< HEAD
+}
+=======
   }
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 
   function renderProducts(list) {
     const grid = document.getElementById("productGrid");
@@ -240,7 +266,11 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="product-empty-state">
           <h2 class="h5 mb-2">No products found</h2>
           <p class="mb-0">
+<<<<<<< HEAD
+            Try changing the search, category, producer, or price filters.
+=======
             Try changing the search, category, producer, allergen, or price filters.
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
           </p>
         </div>
       `;
@@ -301,7 +331,10 @@ document.addEventListener("DOMContentLoaded", () => {
               
               ${seasonalTextHtml}
               ${buildStockHTML(product)}
-              ${buildAllergensHTML(product)}
+<<<<<<< HEAD
+=======
+${buildAllergensHTML(product)}
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             </div>
 
             <div class="product-card-footer">
@@ -316,4 +349,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   renderProducts(products);
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
