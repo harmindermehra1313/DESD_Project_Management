@@ -68,6 +68,8 @@
                                 {% endfor %}
                             </select>
                         </div>
+<<<<<<< HEAD
+=======
                         <div class="col-md-2">
                             <label for="allergenFilter" class="product-filter-label">Allergen</label>
                             <select id="allergenFilter"
@@ -86,6 +88,7 @@
                                 {% endfor %}
                             </select>
                         </div>
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                     {% endif %}
                     <div class="col-md-2">
                         <label for="minPrice" class="product-filter-label">Min price</label>
@@ -109,16 +112,27 @@
                     </div>
                     <div class="col-md-3">
                         <label for="sortSelect" class="product-filter-label">Sort</label>
+<<<<<<< HEAD
+                        <select id="sortSelect"
+                                name="sort"
+                                class="form-select product-filter-control">
+                            <option value="" {% if not filters.sort %}selected{% endif %}>Newest first</option>
+=======
                         <select name="sort" class="form-select product-filter-control">
                             <option value="newest"
                                     {% if filters.sort == "newest" or not filters.sort %}selected{% endif %}>
                                 Newest first
                             </option>
                             <option value="oldest" {% if filters.sort == "oldest" %}selected{% endif %}>Oldest first</option>
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                             <option value="price_low"
                                     {% if filters.sort == "price_low" %}selected{% endif %}>Price: Low → High</option>
                             <option value="price_high"
                                     {% if filters.sort == "price_high" %}selected{% endif %}>Price: High → Low</option>
+<<<<<<< HEAD
+                            <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>Newest</option>
+=======
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -132,6 +146,30 @@
             <!-- PRODUCT GRID -->
             <div id="productGrid" class="product-grid"></div>
             <!-- PAGINATION -->
+<<<<<<< HEAD
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Product pagination" class="product-pagination-wrap mt-4">
+                    <div class="product-pagination">
+                        {% if page_obj.has_previous %}
+                            <a class="btn btn-primary product-page-btn"
+                               href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                Previous
+                            </a>
+                        {% else %}
+                            <button class="btn btn-primary product-page-btn" disabled>Previous</button>
+                        {% endif %}
+                        <span class="product-page-current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        {% if page_obj.has_next %}
+                            <a class="btn btn-primary product-page-btn"
+                               href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                Next
+                            </a>
+                        {% else %}
+                            <button class="btn btn-primary product-page-btn" disabled>Next</button>
+                        {% endif %}
+                    </div>
+                </nav>
+=======
             {% if page_obj.paginator.num_pages > 1 %}
                 <div class="product-pagination-wrap mt-4">
                     <nav class="product-pagination" aria-label="Product pagination">
@@ -156,6 +194,7 @@
                         {% endif %}
                     </nav>
                 </div>
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
             {% endif %}
         </div>
     </section>

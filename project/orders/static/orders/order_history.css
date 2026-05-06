@@ -191,6 +191,50 @@
   border-color: var(--dusk-blue);
   box-shadow: 0 0 0 0.25rem rgba(55, 82, 111, 0.25);
 }
+.main-table th,
+.main-table td {
+  vertical-align: middle;
+}
+
+.order-history-producers-cell {
+  min-width: 22rem;
+  max-width: 38rem;
+  white-space: normal;
+}
+
+.order-history-producers-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.order-history-producer-badge {
+  max-width: 14rem;
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-history-actions-cell {
+  width: 8.5rem;
+  min-width: 8.5rem;
+}
+
+.order-history-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.order-history-action-btn {
+  width: 100%;
+  margin-right: 0 !important;
+  white-space: nowrap;
+}
 
 /* Main order history table */
 .main-table {
@@ -490,6 +534,21 @@
     a.btn {
     width: 100%;
   }
+<<<<<<< HEAD
+
+  .order-history-producers-cell {
+  min-width: 20rem;
+  max-width: 20rem;
+}
+
+.order-history-actions-cell {
+  min-width: 8.5rem;
+}
+
+.main-table .order-history-actions .btn + .btn {
+  margin-top: 0 !important;
+}
+=======
 }
 
 /* Tablet: 2-column summary cards, table still scrolls safely */
@@ -539,4 +598,5 @@
     min-width: 22rem;
     max-width: 38rem;
   }
+>>>>>>> 3e77b523377b434b2111b7871fa3173c202d3a64
 }

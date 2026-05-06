@@ -31,6 +31,8 @@ urlpatterns = [
 
     path("stories/<int:pk>/", views.story_detail, name="story_detail"),
 
+    path("", views.index, name='index'),
+    path("contact/", views.contact_us, name='contact_us'),
     path("about/", views.about, name="about"),
 
     ###

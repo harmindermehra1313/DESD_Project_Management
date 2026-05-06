@@ -11,6 +11,10 @@ class Notification(models.Model):
         SYSTEM = "SYS", "System"
         PROMOTION = "PRO", "Promotion"
         MESSAGE = "MSG", "Message"
+        REVIEW_FLAGGED = "review_flagged", "Review flagged"
+        ADMIN_ALERT = "admin_alert", "Admin alert"
+        SYSTEM_ALERT = "system_alert", "System alert"
+        REVIEW_UPDATE = "review_update", "Review update"
 
     user = models.ForeignKey(
         "accounts.User", 

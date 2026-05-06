@@ -143,33 +143,30 @@ def producer(request):
 def mark_all_notifications_read(request):
     if request.method == "POST":
         NotificationService.mark_all_read(request.user)
-    #return redirect('home:producer')
-    page = request.POST.get("page", 1)
+
+    page = request.POST.get("page") or request.GET.get("page") or "1"
     return redirect(f"/producer/?page={page}")
+
 
 @producer_required
 def mark_notification_read(request, pk):
-    # Only fetch notifications belonging to the logged-in user
     note = Notification.objects.filter(pk=pk, user=request.user).first()
-    if not note:
-        return redirect("home:producer")
 
-    # Mark as read
+    if not note:
+        return redirect("/producer/")
+
     NotificationService.mark_read(note)
 
-    # PRODUCT ALERT: open product in producer products page
+    page = request.POST.get("page") or request.GET.get("page") or "1"
+    producer = request.user.producer_profile
+
     if note.type == Notification.Type.PRODUCT_ALERT and note.product:
         return redirect(f"/products/producer/products/?open_product={note.product.id}")
 
-    # ORDER UPDATE: open order in producer order dashboard
     if note.type == Notification.Type.ORDER_UPDATE and note.order:
-        producer = request.user.producer_profile
-
-        # Ensure this producer is part of the order
         if note.order.producer_summaries.filter(producer=producer).exists():
             return redirect(f"/accounts/producer_dashboard/?open_order={note.order.id}")
 
-    # RECALL: treat same as product alert
     if note.type == Notification.Type.RECALL and note.product:
         if note.product.producer == producer:
             return redirect(f"/products/producer/products/?open_product={note.product.id}")
@@ -401,3 +398,4 @@ def dashboard(request):
 
         "recent_users": recent_users,
     })
+    return redirect(f"/producer/?page={page}")
