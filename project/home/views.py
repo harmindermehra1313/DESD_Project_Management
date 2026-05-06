@@ -305,7 +305,7 @@ from django.db.models import Count
 from datetime import timedelta
 from django.shortcuts import render
 from reviews.models import Review
-
+from admin_records.dashboard_notification_views import get_review_notification_context
 
 @admin_required
 def dashboard(request):
@@ -376,7 +376,7 @@ def dashboard(request):
 
     # Recent Users
     recent_users = User.objects.order_by("-created_at")[:10]
-
+    context = get_review_notification_context(request)
     return render(request, "home/dashboard.html", {
         "growth_15": growth_15,
         "growth_30": growth_30,
@@ -397,5 +397,9 @@ def dashboard(request):
         "review_sentiment_values": review_sentiment_values,
 
         "recent_users": recent_users,
+        
     })
-    return redirect(f"/producer/?page={page}")
+# @staff_member_required
+# def admin_records_dashboard(request):
+#     context = get_review_notification_context(request)
+#     return render(request, "admin_records/index.html", context)
