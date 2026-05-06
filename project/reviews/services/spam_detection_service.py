@@ -1,5 +1,7 @@
 """
-DB SHELL TEST: docker compose exec web python manage.py shell
+DB SHELL TEST:
+
+docker compose exec web python manage.py shell
 
 from reviews.services.spam_detection_service import detect_review_spam
 
@@ -24,6 +26,9 @@ import re
 from dataclasses import dataclass
 
 
+SPAM_MODERATION_NOTE = "Spam or promotional content detected."
+
+
 @dataclass(frozen=True)
 class SpamDetectionResult:
     is_spam: bool
@@ -46,15 +51,21 @@ PROMO_PATTERN = re.compile(
 
 
 def detect_review_spam(title: str, review_text: str) -> SpamDetectionResult:
+    """
+    Detect obvious spam or promotional content.
+
+    The detailed reasons are kept for backend/debugging use.
+    Public/admin moderation notes should use SPAM_MODERATION_NOTE only.
+    """
     text = f"{title or ''} {review_text or ''}".strip()
 
     reasons = []
 
     if URL_PATTERN.search(text):
-        reasons.append("Review contains an external link or website reference.")
+        reasons.append("External link or website reference detected.")
 
     if PROMO_PATTERN.search(text):
-        reasons.append("Review contains promotional or advertising language.")
+        reasons.append("Promotional or advertising language detected.")
 
     return SpamDetectionResult(
         is_spam=bool(reasons),

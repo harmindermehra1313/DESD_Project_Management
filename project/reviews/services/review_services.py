@@ -1,10 +1,17 @@
 from django.utils import timezone
 
-from reviews.models import Review
-from reviews.services.moderation_service import moderate_review_content
-from reviews.services.spam_detection_service import detect_review_spam
 from orders.models import OrderItem
 from orders.services.order_status import get_order_status_context
+from reviews.models import Review
+from reviews.services.moderation_service import moderate_review_content
+from reviews.services.spam_detection_service import (
+    SPAM_MODERATION_NOTE,
+    detect_review_spam,
+)
+
+
+TOXIC_MODERATION_NOTE = "Toxic or inappropriate content detected."
+MODERATION_ERROR_NOTE = "Automatic moderation could not be completed. Manual review required."
 
 
 class ReviewSubmissionError(Exception):
@@ -34,6 +41,15 @@ def _active_quantity(order_item) -> int:
         - int(getattr(order_item, "cancelled_quantity", 0) or 0),
         0,
     )
+
+
+def _moderation_note_for_result(moderation_result) -> str:
+    categories = moderation_result.categories or {}
+
+    if categories.get("moderation_error"):
+        return MODERATION_ERROR_NOTE
+
+    return TOXIC_MODERATION_NOTE
 
 
 def validate_order_item_review_eligibility(*, user, order_item) -> None:
@@ -118,48 +134,43 @@ def create_review_for_order_item(*, user, order_item, cleaned_data: dict) -> Rev
         order_item=order_item,
     )
 
-    spam_result = detect_review_spam(
-        title=cleaned_data["title"],
-        review_text=cleaned_data["text"],
-    )
-
-    if spam_result.is_spam:
-        raise ReviewSubmissionError(
-            code="review_spam_detected",
-            message="This review appears to contain spam or promotional content.",
-            data={
-                "reasons": spam_result.reasons,
-            },
-        )
-
-    moderation_result = moderate_review_content(
-        title=cleaned_data["title"],
-        text=cleaned_data["text"],
-    )
+    title = (cleaned_data["title"] or "").strip()
+    text = (cleaned_data["text"] or "").strip()
 
     review = Review(
         customer=customer,
         product=order_item.product,
         order=order_item.order,
         order_item=order_item,
-        title=cleaned_data["title"],
-        text=cleaned_data["text"],
+        title=title,
+        text=text,
         rating=cleaned_data["rating"],
         anonymous=cleaned_data.get("anonymous", False),
         moderated_at=timezone.now(),
     )
 
-    notes = []
+    spam_result = detect_review_spam(
+        title=title,
+        review_text=text,
+    )
 
-    if moderation_result.flagged:
+    if spam_result.is_spam:
         review.status = Review.Status.FLAGGED
-        notes.append("Toxic or inappropriate content detected.")
-        notes.extend(moderation_result.categories.keys())
+        review.moderation_notes = SPAM_MODERATION_NOTE
     else:
-        review.status = Review.Status.PUBLISHED
+        moderation_result = moderate_review_content(
+            title=title,
+            text=text,
+        )
 
-    review.moderation_notes = "\n".join(notes)
+        if moderation_result.flagged:
+            review.status = Review.Status.FLAGGED
+            review.moderation_notes = _moderation_note_for_result(moderation_result)
+        else:
+            review.status = Review.Status.PUBLISHED
+            review.moderation_notes = ""
 
     review.full_clean()
     review.save()
+
     return review

@@ -12,26 +12,41 @@
                 <div>
                     <p class="moderation-kicker mb-1">Admin moderation</p>
                     <h1 class="moderation-title mb-1">Review Moderation</h1>
-                    <p class="moderation-subtitle mb-0">Approve, reject, or keep flagged customer reviews and producer responses.</p>
+                    <p class="moderation-subtitle mb-0">
+                        Review flagged customer reviews and producer responses before they appear publicly.
+                    </p>
                 </div>
             </div>
             {% if messages %}
-                <div class="moderation-message-stack mb-3">
+                <div class="toast-container position-fixed top-0 end-0 p-3 moderation-toast-stack">
                     {% for message in messages %}
-                        <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
+                        <div class="toast moderation-toast {% if 'error' in message.tags %}text-bg-danger {% elif 'success' in message.tags %}text-bg-success {% elif 'warning' in message.tags %}text-bg-warning {% else %}text-bg-info{% endif %}"
+                             role="alert"
+                             aria-live="assertive"
+                             aria-atomic="true"
+                             data-bs-delay="3500">
+                            <div class="d-flex">
+                                <div class="toast-body">{{ message }}</div>
+                                <button type="button"
+                                        class="btn-close btn-close-white me-2 m-auto"
+                                        data-bs-dismiss="toast"
+                                        aria-label="Close"></button>
+                            </div>
+                        </div>
                     {% endfor %}
                 </div>
             {% endif %}
             <form method="get" class="moderation-filter-card mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-lg-5">
-                        <label for="q" class="form-label">Search</label>
+                        <label for="q" class="form-label">Search moderation items</label>
                         <input type="search"
                                id="q"
                                name="q"
                                class="form-control"
                                value="{{ search }}"
-                               placeholder="Search by product, email, order reference, title, or text">
+                               placeholder="Search by product, email, customer name, order ID, title, or text"
+                               autocomplete="off">
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
                         <label for="review_status" class="form-label">Customer review status</label>
@@ -80,7 +95,9 @@
                 <div class="section-heading">
                     <div>
                         <h2 class="section-title">Customer Reviews</h2>
-                        <p class="section-subtitle mb-0">Customer reviews that need admin moderation.</p>
+                        <p class="section-subtitle mb-0">
+                            Approve genuine reviews, keep uncertain reviews flagged, or remove unsuitable reviews.
+                        </p>
                     </div>
                 </div>
                 {% if review_page.object_list %}
@@ -111,16 +128,38 @@
                                             <dt>Order</dt>
                                             <dd>
                                                 {% if review.order %}
-                                                    #{{ review.order.order_reference|default:review.order.id }}
+                                                    #{{ review.order.id }}
                                                 {% else %}
                                                     Not linked
                                                 {% endif %}
                                             </dd>
                                         </div>
                                         <div>
-                                            <dt>Moderated at</dt>
+                                            <dt>Submitted</dt>
+                                            <dd>
+                                                {{ review.created_at|date:"d M Y, H:i" }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Moderated</dt>
                                             <dd>
                                                 {{ review.moderated_at|date:"d M Y, H:i"|default:"Not moderated yet" }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Review ID</dt>
+                                            <dd>
+                                                #{{ review.id }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Order item</dt>
+                                            <dd>
+                                                {% if review.order_item_id %}
+                                                    #{{ review.order_item_id }}
+                                                {% else %}
+                                                    Not linked
+                                                {% endif %}
                                             </dd>
                                         </div>
                                     </dl>
@@ -133,34 +172,54 @@
                                 </div>
                                 <form method="post"
                                       action="{% url 'reviews:admin_moderate_review' review.id %}"
-                                      class="moderation-action-panel">
+                                      class="moderation-action-panel js-moderation-form">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ current_url }}">
-                                    <label for="review-note-{{ review.id }}" class="form-label">Admin note</label>
-                                    <textarea id="review-note-{{ review.id }}"
-                                              name="admin_note"
-                                              class="form-control"
-                                              rows="3"
-                                              placeholder="Optional reason for this decision"></textarea>
+                                    <div class="action-panel-header">
+                                        <h4>Moderation decision</h4>
+                                        <p>Removal requires an admin note. Approval and flagged decisions may include an optional note.</p>
+                                    </div>
+                                    <div class="moderation-field">
+                                        <label for="review-note-{{ review.id }}" class="form-label">Admin note</label>
+                                        <textarea id="review-note-{{ review.id }}"
+                                                  name="admin_note"
+                                                  class="form-control moderation-note-input"
+                                                  rows="4"
+                                                  maxlength="{{ admin_note_max_length }}"
+                                                  data-moderation-note
+                                                  data-counter-target="review-note-count-{{ review.id }}"
+                                                  placeholder="Required for removal. Optional for approval or keeping flagged."></textarea>
+                                        <div class="field-help">
+                                            <span>Required when removing this review.</span>
+                                            <span>
+                                                <span id="review-note-count-{{ review.id }}">0</span>/{{ admin_note_max_length }}
+                                            </span>
+                                        </div>
+                                        <div class="invalid-feedback">Enter an admin note before removing this review.</div>
+                                    </div>
                                     <div class="action-buttons">
                                         <button type="submit"
                                                 name="action"
                                                 value="publish"
-                                                class="btn btn-success"
+                                                class="btn btn-success moderation-btn"
+                                                data-confirm-message="Approve this customer review and make it public?"
                                                 {% if review.status == review_status_values.published %}disabled{% endif %}>
                                             Approve
                                         </button>
                                         <button type="submit"
                                                 name="action"
                                                 value="flag"
-                                                class="btn btn-warning"
+                                                class="btn btn-warning moderation-btn"
+                                                data-confirm-message="Keep this customer review flagged for further moderation?"
                                                 {% if review.status == review_status_values.flagged %}disabled{% endif %}>
                                             Keep flagged
                                         </button>
                                         <button type="submit"
                                                 name="action"
                                                 value="remove"
-                                                class="btn btn-danger"
+                                                class="btn btn-danger moderation-btn"
+                                                data-requires-note="true"
+                                                data-confirm-message="Remove this customer review from public display?"
                                                 {% if review.status == review_status_values.removed %}disabled{% endif %}>
                                             Remove
                                         </button>
@@ -197,7 +256,9 @@
                 <div class="section-heading">
                     <div>
                         <h2 class="section-title">Producer Responses</h2>
-                        <p class="section-subtitle mb-0">Producer replies that need admin moderation.</p>
+                        <p class="section-subtitle mb-0">
+                            Approve suitable replies, keep uncertain replies flagged, or reject unsuitable replies.
+                        </p>
                     </div>
                 </div>
                 {% if response_page.object_list %}
@@ -222,24 +283,50 @@
                                         <div>
                                             <dt>Producer</dt>
                                             <dd>
-                                                {{ response.responder|default:"Unknown producer" }}
+                                                {{ response.responder.email|default:response.responder }}
                                             </dd>
                                         </div>
                                         <div>
-                                            <dt>Original review</dt>
+                                            <dt>Response ID</dt>
                                             <dd>
-                                                {{ response.review.text|truncatechars:160 }}
+                                                #{{ response.id }}
                                             </dd>
                                         </div>
                                         <div>
-                                            <dt>Moderated at</dt>
+                                            <dt>Submitted</dt>
+                                            <dd>
+                                                {{ response.created_at|date:"d M Y, H:i" }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Moderated</dt>
                                             <dd>
                                                 {{ response.moderated_at|date:"d M Y, H:i"|default:"Not moderated yet" }}
                                             </dd>
                                         </div>
+                                        <div>
+                                            <dt>Review ID</dt>
+                                            <dd>
+                                                #{{ response.review.id }}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>Order</dt>
+                                            <dd>
+                                                {% if response.review.order %}
+                                                    #{{ response.review.order.id }}
+                                                {% else %}
+                                                    Not linked
+                                                {% endif %}
+                                            </dd>
+                                        </div>
                                     </dl>
+                                    <div class="moderation-notes">
+                                        <strong>Original customer review</strong>
+                                        <p>{{ response.review.text|truncatechars:220 }}</p>
+                                    </div>
                                     {% if response.moderation_notes %}
-                                        <div class="moderation-notes">
+                                        <div class="moderation-notes mt-3">
                                             <strong>Moderation notes</strong>
                                             <p>{{ response.moderation_notes|linebreaksbr }}</p>
                                         </div>
@@ -247,34 +334,54 @@
                                 </div>
                                 <form method="post"
                                       action="{% url 'reviews:admin_moderate_producer_response' response.id %}"
-                                      class="moderation-action-panel">
+                                      class="moderation-action-panel js-moderation-form">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ current_url }}">
-                                    <label for="response-note-{{ response.id }}" class="form-label">Admin note</label>
-                                    <textarea id="response-note-{{ response.id }}"
-                                              name="admin_note"
-                                              class="form-control"
-                                              rows="3"
-                                              placeholder="Optional reason for this decision"></textarea>
+                                    <div class="action-panel-header">
+                                        <h4>Moderation decision</h4>
+                                        <p>Rejection requires an admin note. Approval and flagged decisions may include an optional note.</p>
+                                    </div>
+                                    <div class="moderation-field">
+                                        <label for="response-note-{{ response.id }}" class="form-label">Admin note</label>
+                                        <textarea id="response-note-{{ response.id }}"
+                                                  name="admin_note"
+                                                  class="form-control moderation-note-input"
+                                                  rows="4"
+                                                  maxlength="{{ admin_note_max_length }}"
+                                                  data-moderation-note
+                                                  data-counter-target="response-note-count-{{ response.id }}"
+                                                  placeholder="Required for rejection. Optional for approval or keeping flagged."></textarea>
+                                        <div class="field-help">
+                                            <span>Required when rejecting this response.</span>
+                                            <span>
+                                                <span id="response-note-count-{{ response.id }}">0</span>/{{ admin_note_max_length }}
+                                            </span>
+                                        </div>
+                                        <div class="invalid-feedback">Enter an admin note before rejecting this response.</div>
+                                    </div>
                                     <div class="action-buttons">
                                         <button type="submit"
                                                 name="action"
                                                 value="publish"
-                                                class="btn btn-success"
+                                                class="btn btn-success moderation-btn"
+                                                data-confirm-message="Approve this producer response and make it public?"
                                                 {% if response.status == response_status_values.published %}disabled{% endif %}>
                                             Approve
                                         </button>
                                         <button type="submit"
                                                 name="action"
                                                 value="flag"
-                                                class="btn btn-warning"
+                                                class="btn btn-warning moderation-btn"
+                                                data-confirm-message="Keep this producer response flagged for further moderation?"
                                                 {% if response.status == response_status_values.flagged %}disabled{% endif %}>
                                             Keep flagged
                                         </button>
                                         <button type="submit"
                                                 name="action"
                                                 value="remove"
-                                                class="btn btn-danger"
+                                                class="btn btn-danger moderation-btn"
+                                                data-requires-note="true"
+                                                data-confirm-message="Reject this producer response and remove it from public display?"
                                                 {% if response_status_values.removed and response.status == response_status_values.removed %}disabled{% endif %}>
                                             Reject
                                         </button>
@@ -309,4 +416,31 @@
             </section>
         </div>
     </div>
+    <div class="modal fade"
+         id="moderationConfirmModal"
+         tabindex="-1"
+         aria-labelledby="moderationConfirmModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centred">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moderationConfirmModalLabel">Confirm moderation action</h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="moderationConfirmMessage" class="mb-0">Confirm this moderation action?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="moderationConfirmSubmit">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'reviews/js/admin_review_moderation.js' %}"></script>
 {% endblock %}

@@ -5,11 +5,19 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from reviews.models import Review, ReviewProducerResponse
 from accounts.models import Admin
+from reviews.models import Review, ReviewProducerResponse
+
+
+ADMIN_NOTE_MAX_LENGTH = 500
+ACTIONS_REQUIRING_NOTE = {"remove"}
+DEFAULT_STATUS_FILTER = "flagged"
+ITEMS_PER_PAGE = 10
 
 
 def _is_platform_admin(user):
@@ -34,6 +42,15 @@ def _status_value(model_class, name, fallback=None):
     return getattr(status_class, name, fallback)
 
 
+def _normalise_status_filter(value, status_map):
+    value = (value or DEFAULT_STATUS_FILTER).strip().lower()
+
+    if value not in status_map:
+        return DEFAULT_STATUS_FILTER
+
+    return value
+
+
 def _build_admin_note(*, existing_notes, action_label, admin_user, admin_note):
     """
     Preserve original automatic moderation notes,
@@ -47,14 +64,15 @@ def _build_admin_note(*, existing_notes, action_label, admin_user, admin_note):
         or "Admin"
     )
 
-    new_admin_note = f"[{timestamp}] Admin moderation: {action_label} by {admin_label}."
+    new_admin_note = (
+        f"[{timestamp}] Admin moderation: {action_label} by {admin_label}."
+    )
 
     cleaned_admin_note = (admin_note or "").strip()
     if cleaned_admin_note:
         new_admin_note = f"{new_admin_note}\nAdmin note: {cleaned_admin_note}"
 
     existing_notes = (existing_notes or "").strip()
-
     preserved_blocks = []
 
     if existing_notes:
@@ -78,6 +96,26 @@ def _status_already_applied(*, instance, target_status, message, request):
         return True
 
     return False
+
+
+def _validate_admin_note_for_action(*, request, action, admin_note, content_label):
+    cleaned_note = (admin_note or "").strip()
+
+    if len(cleaned_note) > ADMIN_NOTE_MAX_LENGTH:
+        messages.error(
+            request,
+            f"Admin note must be {ADMIN_NOTE_MAX_LENGTH} characters or fewer.",
+        )
+        return False, cleaned_note
+
+    if action in ACTIONS_REQUIRING_NOTE and not cleaned_note:
+        messages.error(
+            request,
+            f"Admin note is required when removing or rejecting {content_label}.",
+        )
+        return False, cleaned_note
+
+    return True, cleaned_note
 
 
 def _get_admin_profile_for_user(user):
@@ -114,50 +152,125 @@ def _save_moderated_instance(instance):
 def _redirect_back(request):
     next_url = request.POST.get("next", "")
 
-    if next_url.startswith("/"):
+    if next_url and url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
         return redirect(next_url)
 
-    return redirect("reviews:admin_review_moderation")
+    return redirect(reverse("reviews:admin_review_moderation"))
 
 
-@login_required
-@user_passes_test(_is_platform_admin)
-def admin_review_moderation(request):
-    search = (request.GET.get("q") or "").strip()
-    review_status = (request.GET.get("review_status") or "flagged").strip()
-    response_status = (request.GET.get("response_status") or "flagged").strip()
-
-    review_status_map = {
+def _build_review_status_map():
+    return {
         "flagged": Review.Status.FLAGGED,
         "published": Review.Status.PUBLISHED,
         "removed": Review.Status.REMOVED,
         "all": None,
     }
 
-    response_status_map = {
+
+def _build_response_status_map():
+    status_map = {
         "flagged": ReviewProducerResponse.Status.FLAGGED,
         "published": ReviewProducerResponse.Status.PUBLISHED,
         "all": None,
     }
 
-    response_removed_status = _status_value(
+    removed_status = _status_value(
         ReviewProducerResponse,
         "REMOVED",
         None,
     )
 
-    if response_removed_status is not None:
-        response_status_map["removed"] = response_removed_status
+    if removed_status is not None:
+        status_map["removed"] = removed_status
 
-    selected_review_status = review_status_map.get(
-        review_status,
-        Review.Status.FLAGGED,
+    return status_map, removed_status
+
+
+def _apply_search_filters(*, reviews, producer_responses, search):
+    if not search:
+        return reviews, producer_responses
+
+    review_query = (
+        Q(title__icontains=search)
+        | Q(text__icontains=search)
+        | Q(product__name__icontains=search)
+        | Q(customer__user__email__icontains=search)
+        | Q(customer__user__name__icontains=search)
     )
 
-    selected_response_status = response_status_map.get(
-        response_status,
-        ReviewProducerResponse.Status.FLAGGED,
+    response_query = (
+        Q(text__icontains=search)
+        | Q(review__title__icontains=search)
+        | Q(review__text__icontains=search)
+        | Q(review__product__name__icontains=search)
+        | Q(review__customer__user__email__icontains=search)
+        | Q(review__customer__user__name__icontains=search)
+        | Q(responder__email__icontains=search)
+        | Q(responder__name__icontains=search)
     )
+
+    if search.isdigit():
+        search_id = int(search)
+
+        review_query |= (
+            Q(id=search_id)
+            | Q(order_id=search_id)
+            | Q(order_item_id=search_id)
+            | Q(product_id=search_id)
+        )
+
+        response_query |= (
+            Q(id=search_id)
+            | Q(review_id=search_id)
+            | Q(review__order_id=search_id)
+            | Q(review__order_item_id=search_id)
+            | Q(review__product_id=search_id)
+        )
+
+    return reviews.filter(review_query), producer_responses.filter(response_query)
+
+
+def _order_reviews_for_filter(queryset, status_filter):
+    if status_filter == "flagged":
+        return queryset.order_by("-created_at", "-id")
+
+    return queryset.annotate(
+        moderation_activity_at=Coalesce("moderated_at", "created_at")
+    ).order_by("-moderation_activity_at", "-id")
+
+
+def _order_responses_for_filter(queryset, status_filter):
+    if status_filter == "flagged":
+        return queryset.order_by("-created_at", "-id")
+
+    return queryset.annotate(
+        moderation_activity_at=Coalesce("moderated_at", "created_at")
+    ).order_by("-moderation_activity_at", "-id")
+
+
+@login_required
+@user_passes_test(_is_platform_admin)
+def admin_review_moderation(request):
+    search = (request.GET.get("q") or "").strip()
+
+    review_status_map = _build_review_status_map()
+    response_status_map, response_removed_status = _build_response_status_map()
+
+    review_status = _normalise_status_filter(
+        request.GET.get("review_status"),
+        review_status_map,
+    )
+    response_status = _normalise_status_filter(
+        request.GET.get("response_status"),
+        response_status_map,
+    )
+
+    selected_review_status = review_status_map[review_status]
+    selected_response_status = response_status_map[response_status]
 
     reviews = Review.objects.select_related(
         "customer",
@@ -165,6 +278,8 @@ def admin_review_moderation(request):
         "product",
         "order",
         "order_item",
+        "moderated_by_admin",
+        "moderated_by_admin__user",
     )
 
     producer_responses = ReviewProducerResponse.objects.select_related(
@@ -172,54 +287,33 @@ def admin_review_moderation(request):
         "review__customer",
         "review__customer__user",
         "review__product",
+        "review__order",
+        "review__order_item",
         "responder",
     )
-
-    if review_status == "flagged":
-        reviews = reviews.order_by("-created_at", "-id")
-    else:
-        reviews = reviews.annotate(
-            moderation_activity_at=Coalesce("moderated_at", "created_at")
-        ).order_by("-moderation_activity_at", "-id")
-
-    if response_status == "flagged":
-        producer_responses = producer_responses.order_by("-created_at", "-id")
-    else:
-        producer_responses = producer_responses.annotate(
-            moderation_activity_at=Coalesce("moderated_at", "created_at")
-        ).order_by("-moderation_activity_at", "-id")
 
     if selected_review_status is not None:
         reviews = reviews.filter(status=selected_review_status)
 
     if selected_response_status is not None:
-        producer_responses = producer_responses.filter(status=selected_response_status)
-
-    if search:
-        review_query = (
-            Q(title__icontains=search)
-            | Q(text__icontains=search)
-            | Q(product__name__icontains=search)
-            | Q(customer__user__email__icontains=search)
+        producer_responses = producer_responses.filter(
+            status=selected_response_status
         )
 
-        response_query = (
-            Q(text__icontains=search)
-            | Q(review__title__icontains=search)
-            | Q(review__text__icontains=search)
-            | Q(review__product__name__icontains=search)
-            | Q(review__customer__user__email__icontains=search)
-        )
+    reviews, producer_responses = _apply_search_filters(
+        reviews=reviews,
+        producer_responses=producer_responses,
+        search=search,
+    )
 
-        if search.isdigit():
-            review_query |= Q(order_id=int(search))
-            response_query |= Q(review__order_id=int(search))
+    reviews = _order_reviews_for_filter(reviews, review_status)
+    producer_responses = _order_responses_for_filter(
+        producer_responses,
+        response_status,
+    )
 
-        reviews = reviews.filter(review_query)
-        producer_responses = producer_responses.filter(response_query)
-
-    review_paginator = Paginator(reviews, 10)
-    response_paginator = Paginator(producer_responses, 10)
+    review_paginator = Paginator(reviews, ITEMS_PER_PAGE)
+    response_paginator = Paginator(producer_responses, ITEMS_PER_PAGE)
 
     review_page = review_paginator.get_page(request.GET.get("review_page"))
     response_page = response_paginator.get_page(request.GET.get("response_page"))
@@ -259,6 +353,7 @@ def admin_review_moderation(request):
             "response_counts": response_counts,
             "response_has_removed_status": response_removed_status is not None,
             "current_url": request.get_full_path(),
+            "admin_note_max_length": ADMIN_NOTE_MAX_LENGTH,
             "review_status_values": {
                 "flagged": Review.Status.FLAGGED,
                 "published": Review.Status.PUBLISHED,
@@ -310,6 +405,16 @@ def admin_moderate_review(request, review_id):
         message=already_message,
         request=request,
     ):
+        return _redirect_back(request)
+
+    is_note_valid, admin_note = _validate_admin_note_for_action(
+        request=request,
+        action=action,
+        admin_note=admin_note,
+        content_label="this customer review",
+    )
+
+    if not is_note_valid:
         return _redirect_back(request)
 
     review.status = target_status
@@ -388,6 +493,16 @@ def admin_moderate_producer_response(request, response_id):
         message=already_message,
         request=request,
     ):
+        return _redirect_back(request)
+
+    is_note_valid, admin_note = _validate_admin_note_for_action(
+        request=request,
+        action=action,
+        admin_note=admin_note,
+        content_label="this producer response",
+    )
+
+    if not is_note_valid:
         return _redirect_back(request)
 
     response.status = target_status
