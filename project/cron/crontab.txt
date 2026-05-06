@@ -3,3 +3,4 @@
 45 6 * * * cd /code && python manage.py automatic_end_reductions
 0 7 * * * cd /code && python manage.py send_low_stock_emails
 0 2 * * 0 cd /code && python manage.py train_ai_recommender_from_db
+30 7 * * * cd /code && python manage.py send_expiring_batch_emails
