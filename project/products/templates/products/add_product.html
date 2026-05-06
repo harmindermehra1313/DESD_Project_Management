@@ -25,53 +25,129 @@
                                placeholder="e.g. Apples"
                                required>
                     </div>
-                    <div class="mb-3">
-                        <label for="id_price" class="form-label custom-form-label">Price</label>
-                        <div class="input-group">
-                            <span class="input-group-text">£</span>
-                            <input type="number"
-                                   class="form-control"
-                                   name="price"
-                                   id="id_price"
-                                   step="0.01"
-                                   placeholder="3.00"
-                                   required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_availability_status" class="form-label custom-form-label">Availability</label>
+                    <select class="form-select" name="availability_status" id="id_availability_status">
+                        <option value="AV">In Season / Available</option>
+                        <option value="OOS">Out of Stock</option>
+                        <option value="DIS">Discontinued</option>
+                    </select>
+                </div>
+
+                <!-- SEASONAL FIELDS -->
+                <div class="mb-3 p-3 border rounded bg-light">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" id="is_seasonal" name="is_seasonal">
+                        <label class="form-check-label custom-form-label mb-0" for="is_seasonal">This is a seasonal product</label>
+                    </div>
+
+                    <div id="seasonal_dates_container" class="row g-2 mt-2" style="display: none;">
+                        <div class="col-6">
+                            <label for="season_start" class="form-label custom-form-label text-muted" style="font-size: 0.8rem;">Start Month</label>
+                            <select class="form-select form-select-sm" id="season_start" name="season_start">
+                                <option value="">Select...</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="season_end" class="form-label custom-form-label text-muted" style="font-size: 0.8rem;">End Month</label>
+                            <select class="form-select form-select-sm" id="season_end" name="season_end">
+                                <option value="">Select...</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="id_availability_status" class="form-label custom-form-label">Availability</label>
-                        <select class="form-select"
-                                name="availability_status"
-                                id="id_availability_status">
-                            <option value="AV">In Season / Available</option>
-                            <option value="OOS">Out of Stock</option>
-                            <option value="DIS">Discontinued</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_harvest_date" class="form-label custom-form-label">Harvest Date</label>
-                        <input type="date"
-                               class="form-control"
-                               name="harvest_date"
-                               id="id_harvest_date"
-                               required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_expiry_type" class="form-label custom-form-label">Expiry Type</label>
-                        <select class="form-select" name="expiry_type" id="id_expiry_type" required>
-                            <option value="BB" selected>Best Before</option>
-                            <option value="UB">Use By</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="id_expiry_date"
-                               class="form-label custom-form-label"
-                               id="id_expiry_date_label">Best Before Date</label>
-                        <input type="date"
-                               class="form-control"
-                               name="expiry_date"
-                               id="id_expiry_date"
-                               required>
+                </div>
+                <!-- END SEASONAL FIELDS -->
+
+                <div class="mb-3">
+                    <label for="id_harvest_date" class="form-label custom-form-label">Harvest Date</label>
+                    <input type="datetime-local" class="form-control" name="harvest_date" id="id_harvest_date" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_expiry_type" class="form-label custom-form-label">Expiry Type</label>
+                    <select class="form-select" name="expiry_type" id="id_expiry_type" required>
+                        <option value="BB" selected>Best Before</option>
+                        <option value="UB">Use By</option>
+                    </select>
+                </div>
+            
+                <div class="mb-3">
+                    <label for="id_expiry_date" class="form-label custom-form-label" id="id_expiry_date_label">Best Before Date</label>
+                    <input type="datetime-local" class="form-control" name="expiry_date" id="id_expiry_date" required>
+                </div>
+            </div>
+            
+            <div class="col-12 col-md-4">
+                <div class="mb-3">
+                    <label for="id_category" class="form-label custom-form-label">Product Category</label>
+                    <select class="form-select" name="category" id="id_category" required>
+                        <option value="" selected disabled>Select a category...</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_unit" class="form-label custom-form-label">Units</label>
+                    <select class="form-select" name="unit" id="id_unit" required>
+                        <option value="" selected disabled>Select a unit...</option>
+                        {% for value, label in units %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_organic_certification_status" class="form-label custom-form-label">Organic Certification</label>
+                    <select class="form-select" name="organic_certification_status" id="id_organic_certification_status" required>
+                        <option value="NOT_CERTIFIED" selected>Not Certified</option>
+                        <option value="CERTIFIED">Certified Organic</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_stock_quantity" class="form-label custom-form-label">Stock</label>
+                    <input type="number" class="form-control" name="stock_quantity" id="id_stock_quantity" min="0" placeholder="100" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_low_stock_threshold" class="form-label custom-form-label">Low Stock Threshold (Optional)</label>
+                    <input type="number" class="form-control" name="low_stock_threshold" id="id_low_stock_threshold" min="0" value="0">
+                    <small class="text-muted">You will be alerted when stock falls below this number.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_wholesale_price" class="form-label custom-form-label">Wholesale Price (Optional)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">£</span>
+                        <input type="number" class="form-control" name="wholesale_price" id="id_wholesale_price" step="0.01" min="0" placeholder="2.50">
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
@@ -187,73 +263,63 @@
                                   placeholder="e.g. Keep refrigerated..."></textarea>
                     </div>
                 </div>
+                <div class="mb-3">
+                    <label for="id_storage_guidance" class="form-label custom-form-label">Storage Guidance (Optional)</label>
+                    <textarea class="form-control" name="storage_guidance" id="id_storage_guidance" rows="3" placeholder="e.g. Keep refrigerated..."></textarea>
+                </div>            
             </div>
-            <div>
-                <button type="submit" class="btn btn-primary">Add Product</button>
-            </div>
-        </form>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-    <script src="{% static 'js/allergen_select.js' %}"></script>
-    <script src="{% static 'js/expiry_type_select.js' %}"></script>
-    <script>
+            
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-primary">Add Product</button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="{% static 'js/allergen_select.js' %}"></script>
+<script src="{% static 'js/expiry_type_select.js' %}"></script>
+<script>
     document.addEventListener('DOMContentLoaded', function () {
-        // 2. Date Minimums & Maximums
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        
-        const oneMonthAgo = new Date(today);
-        oneMonthAgo.setMonth(today.getMonth() - 1);
-        const oneMonthAgoStr = oneMonthAgo.toISOString().split('T')[0];
-
-        const harvestInput = document.getElementById('id_harvest_date');
-        const expiryInput = document.getElementById('id_expiry_date');
-
-        if (harvestInput) {
-            harvestInput.max = todayStr;
-            harvestInput.min = oneMonthAgoStr;
-        }
-
-        if (expiryInput) {
-            expiryInput.min = todayStr;
-        }
-
-        // 3. Linked Wholesale Fields Logic
+        // Wholesale Validation Logic
         const basePriceInput = document.getElementById('id_price');
-        const wholesalePriceInput = document.getElementById('id_wholesale_price');
-        const wholesaleQtyInput = document.getElementById('id_wholesale_min_quantity');
+        const wholesaleInput = document.getElementById('id_wholesale_price');
 
-        const validateWholesaleLogic = function () {
-            if (!wholesalePriceInput || !wholesaleQtyInput) return;
+        if (basePriceInput && wholesaleInput) {
+            const validateWholesaleVsBase = function () {
+                const base = parseFloat(basePriceInput.value);
+                const wholesaleRaw = wholesaleInput.value;
 
-            const wPrice = wholesalePriceInput.value;
-            const wQty = wholesaleQtyInput.value;
-            const base = parseFloat(basePriceInput.value);
-
-            // Require both if one is filled
-            if (wPrice && !wQty) {
-                wholesaleQtyInput.setCustomValidity('Quantity is required if wholesale price is set.');
-            } else if (!wPrice && wQty) {
-                wholesalePriceInput.setCustomValidity('Price is required if wholesale quantity is set.');
-            } else {
-                wholesaleQtyInput.setCustomValidity('');
-                wholesalePriceInput.setCustomValidity('');
-            }
-
-            // Ensure wholesale price isn't greater than base price
-            if (wPrice && !Number.isNaN(base)) {
-                if (parseFloat(wPrice) > base) {
-                    wholesalePriceInput.setCustomValidity('Wholesale price cannot be higher than the base price.');
-                } else if (wPrice && wQty) {
-                    // Clear errors if both are valid
-                    wholesalePriceInput.setCustomValidity('');
+                if (!wholesaleRaw || Number.isNaN(base)) {
+                    wholesaleInput.setCustomValidity('');
+                    return;
                 }
-            }
-        };
 
-        if (basePriceInput) basePriceInput.addEventListener('input', validateWholesaleLogic);
-        if (wholesalePriceInput) wholesalePriceInput.addEventListener('input', validateWholesaleLogic);
-        if (wholesaleQtyInput) wholesaleQtyInput.addEventListener('input', validateWholesaleLogic);
+                const wholesale = parseFloat(wholesaleRaw);
+                if (!Number.isNaN(wholesale) && wholesale > base) {
+                    wholesaleInput.setCustomValidity('Wholesale price cannot be higher than the base price.');
+                } else {
+                    wholesaleInput.setCustomValidity('');
+                }
+            };
+
+            basePriceInput.addEventListener('input', validateWholesaleVsBase);
+            wholesaleInput.addEventListener('input', validateWholesaleVsBase);
+        }
+
+        // Seasonal Toggle Logic
+        const isSeasonalCheckbox = document.getElementById('is_seasonal');
+        const seasonalContainer = document.getElementById('seasonal_dates_container');
+
+        if (isSeasonalCheckbox && seasonalContainer) {
+            const toggleSeasonalDates = () => {
+                seasonalContainer.style.display = isSeasonalCheckbox.checked ? 'flex' : 'none';
+            };
+            
+            isSeasonalCheckbox.addEventListener('change', toggleSeasonalDates);
+            toggleSeasonalDates(); // Set initial state
+        }
     });
     </script>
 {% endblock %}

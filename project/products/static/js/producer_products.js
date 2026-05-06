@@ -135,7 +135,6 @@ function showProductDetails(productId, rowElement) {
 
     const template = document.getElementById(`details-template-${productId}`);
     if (template) {
-        //document.getElementById('detailsContent').innerHTML = template.innerHTML;
         const clone = template.content.cloneNode(true);
         document.getElementById('detailsContent').innerHTML = "";
         document.getElementById('detailsContent').appendChild(clone);
@@ -181,12 +180,21 @@ function openEditModal() {
     document.getElementById('editWholesalePrice').value = row.getAttribute('data-edit-wholesale-price') || '';
     document.getElementById('editWholesaleMinQty').value = row.getAttribute('data-edit-wholesale-min-qty') || '';
 
+    // Seasonal Fields
+    const isSeasonalEl = document.getElementById('editIsSeasonal');
+    if (isSeasonalEl) {
+        isSeasonalEl.checked = row.getAttribute('data-edit-is-seasonal') === 'true';
+        document.getElementById('editSeasonStart').value = row.getAttribute('data-edit-season-start') || '';
+        document.getElementById('editSeasonEnd').value = row.getAttribute('data-edit-season-end') || '';
+        isSeasonalEl.dispatchEvent(new Event('change')); // Trigger visibility toggle
+    }
+
     // Clear any previous alert
     const alert = document.getElementById('editFormAlert');
     alert.className = 'alert mt-3 d-none';
     alert.textContent = '';
 
-        // Determine product status
+    // Determine product status
     const status = row.getAttribute('data-status');
 
     const sendBtn = document.getElementById('sendForApprovalBtn');
@@ -219,7 +227,6 @@ function disableEditFields() {
         .forEach(el => el.disabled = true);
 }
 
-
 function updateDetailsTemplateAfterEdit(productId, data) {
     const template = document.getElementById(`details-template-${productId}`);
     if (!template) return;
@@ -245,6 +252,7 @@ function updateDetailsTemplateAfterEdit(productId, data) {
 
     setText('.js-detail-name', data.name);
     setText('.js-detail-category', data.category);
+    setText('.js-detail-seasonality', data.season_display_text || 'Available Year-Round');
     setText('.js-detail-price', priceText);
     setText('.js-detail-wholesale', wholesaleText);
     setText('.js-detail-low-stock', data.low_stock_threshold);
@@ -263,6 +271,10 @@ async function submitEditForm() {
     const lowStockThresholdValue = document.getElementById('editLowStock').value.trim();
     const lowStockThreshold = parseInt(lowStockThresholdValue, 10);
 
+    const isSeasonal = document.getElementById('editIsSeasonal') ? document.getElementById('editIsSeasonal').checked : false;
+    const seasonStart = document.getElementById('editSeasonStart') ? document.getElementById('editSeasonStart').value : '';
+    const seasonEnd = document.getElementById('editSeasonEnd') ? document.getElementById('editSeasonEnd').value : '';
+
     const payload = {
         name:                        document.getElementById('editName').value.trim(),
         price:                       document.getElementById('editPrice').value,
@@ -271,9 +283,12 @@ async function submitEditForm() {
         availability_status:         document.getElementById('editAvailability').value,
         organic_certification_status: document.getElementById('editOrganic').value,
         description:                 document.getElementById('editDescription').value,
-        low_stock_threshold: lowStockThreshold,
+        low_stock_threshold:         lowStockThreshold,
         wholesale_price:             document.getElementById('editWholesalePrice').value.trim(),
         wholesale_min_quantity:      document.getElementById('editWholesaleMinQty').value.trim(),
+        is_seasonal:                 isSeasonal,
+        season_start:                seasonStart ? parseInt(seasonStart) : null,
+        season_end:                  seasonEnd ? parseInt(seasonEnd) : null,
     };
 
     if (!payload.name) {
@@ -305,6 +320,12 @@ async function submitEditForm() {
         }
     }
 
+    if (payload.is_seasonal && (!payload.season_start || !payload.season_end)) {
+        alertEl.className = 'alert alert-danger mt-3';
+        alertEl.textContent = 'Please select both start and end months for seasonal products.';
+        return;
+    }
+
     document.getElementById('saveEditBtn').disabled = true;
 
     try {
@@ -333,6 +354,9 @@ async function submitEditForm() {
             row.setAttribute('data-edit-wholesale-price', data.wholesale_price || '');
             row.setAttribute('data-edit-wholesale-min-qty', data.wholesale_min_quantity || '');
             row.setAttribute('data-edit-low-stock', data.low_stock_threshold);
+            row.setAttribute('data-edit-is-seasonal', data.is_seasonal ? 'true' : 'false');
+            row.setAttribute('data-edit-season-start', data.season_start || '');
+            row.setAttribute('data-edit-season-end', data.season_end || '');
             row.setAttribute('data-product-name',       data.name.toLowerCase());
             row.setAttribute('data-category',           data.category.toLowerCase());
             row.setAttribute('data-availability',       data.availability_status);
@@ -526,7 +550,6 @@ async function submitBatchForm() {
                 sortBatchItems();
                 sortHiddenTemplateBatches();
                 toggleBatchVisibility();
-                //showProductDetails(selectedProductId, document.getElementById(`row-${selectedProductId}`));
             }
 
             showGlobalSuccess("New batch added successfully!");
@@ -892,13 +915,6 @@ function updateBatchUI(data) {
     if (visibleContainer) {
         visibleContainer.innerHTML = data.updated_batches_html;
     }
-
-    // Extract deleted batches
-    // const newDeleted = temp.querySelector("#deletedItemsContainer");
-    // const deletedContainer = document.querySelector("#detailsContent #deletedItemsContainer");
-    // if (newDeleted && deletedContainer) {
-    //     deletedContainer.innerHTML = newDeleted.innerHTML;
-    // }
 
     // Re-run visibility logic
     toggleBatchVisibility();

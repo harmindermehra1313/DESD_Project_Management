@@ -11,7 +11,7 @@ from accounts.models import Producer
 from products.models import Inventory
 from django.views.generic import DetailView, ListView
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Sum, Prefetch, Case, When, Value, IntegerField
+from django.db.models import Q, Sum, Prefetch, Case, When, Value, IntegerField, F
 from BRFN.decorators import admin_required, producer_required
 import json
 from notifications.services.notifications import NotificationService
@@ -131,31 +131,140 @@ def is_producer_or_admin(user):
 @user_passes_test(is_producer_or_admin, login_url="/accounts/login/")
 def add_product(request):
     if request.method == "POST":
-        # Combine POST data and FILES for the serializer
-        data = request.POST.copy()
+        name = request.POST.get("name")
+        price = request.POST.get("price")
+        availability_status = request.POST.get("availability_status")
+        harvest_date = request.POST.get("harvest_date")
+        expiry_date = request.POST.get("expiry_date")
+        expiry_type = request.POST.get("expiry_type", Inventory.ExpiryType.BEST_BEFORE)
+        organic_certification_status = request.POST.get(
+            "organic_certification_status",
+            Product.OrganicStatus.NOT_CERTIFIED,
+        )
+        unit_code = request.POST.get("unit")
+        stock_quantity = request.POST.get("stock_quantity")
+        wholesale_price_raw = (request.POST.get("wholesale_price") or "").strip()
+        wholesale_min_qty_raw = (
+            request.POST.get("wholesale_min_quantity") or ""
+        ).strip()
+        description = request.POST.get("description")
+        uploaded_image = request.FILES.get("image")
 
-        # Format arrays for the serializer
-        data.setlist('allergen', request.POST.getlist('allergen'))
+        try:
+            base_price_value = Decimal(str(price))
+        except (TypeError, ValueError, InvalidOperation):
+            return render(
+                request,
+                "products/add_product.html",
+                _build_add_product_context("Please enter a valid base price."),
+            )
 
-        # Handle empty optional number fields before serialization
-        if not data.get('wholesale_price'): data['wholesale_price'] = None
-        if not data.get('wholesale_min_quantity'): data['wholesale_min_quantity'] = None
+        try:
+            stock_quantity_value = int(stock_quantity)
+        except (TypeError, ValueError):
+            return render(
+                request,
+                "products/add_product.html",
+                _build_add_product_context("Please enter a valid stock quantity."),
+            )
 
-        serializer = ProductCreateSerializer(data=data)
+        if stock_quantity_value < 0:
+            return render(
+                request,
+                "products/add_product.html",
+                _build_add_product_context("Stock quantity cannot be negative."),
+            )
 
-        # Combine with file uploads
-        if request.FILES:
-            serializer.initial_data['image'] = request.FILES.get('image')
+        wholesale_price = None
+        wholesale_min_quantity = 1
+        if wholesale_price_raw:
+            try:
+                wholesale_price = Decimal(wholesale_price_raw)
+            except (TypeError, ValueError, InvalidOperation):
+                return render(
+                    request,
+                    "products/add_product.html",
+                    _build_add_product_context("Please enter a valid wholesale price."),
+                )
 
-        if not serializer.is_valid():
-            # Extract first error message for the UI
-            error_msg = next(iter(serializer.errors.values()))[0]
-            return render(request, "products/add_product.html", _build_add_product_context(error_msg))
+            if wholesale_price <= 0:
+                return render(
+                    request,
+                    "products/add_product.html",
+                    _build_add_product_context(
+                        "Wholesale price must be greater than 0."
+                    ),
+                )
 
-        validated_data = serializer.validated_data
+            if wholesale_price > base_price_value:
+                return render(
+                    request,
+                    "products/add_product.html",
+                    _build_add_product_context(
+                        "Wholesale price cannot be higher than the base price."
+                    ),
+                )
 
-        # Process Category (Single category)
-        category_id = validated_data['category']
+            if wholesale_min_qty_raw:
+                try:
+                    wholesale_min_quantity = int(wholesale_min_qty_raw)
+                except (TypeError, ValueError):
+                    return render(
+                        request,
+                        "products/add_product.html",
+                        _build_add_product_context(
+                            "Please enter a valid minimum wholesale quantity."
+                        ),
+                    )
+                if wholesale_min_quantity < 1:
+                    return render(
+                        request,
+                        "products/add_product.html",
+                        _build_add_product_context(
+                            "Minimum wholesale quantity must be at least 1."
+                        ),
+                    )
+
+            if stock_quantity_value < wholesale_min_quantity:
+                return render(
+                    request,
+                    "products/add_product.html",
+                    _build_add_product_context(
+                        f"At least {wholesale_min_quantity} items in stock are required to set a wholesale price."
+                    ),
+                )
+
+        valid_expiry_types = {choice[0] for choice in Inventory.ExpiryType.choices}
+        if expiry_type not in valid_expiry_types:
+            expiry_type = Inventory.ExpiryType.BEST_BEFORE
+
+        valid_organic_statuses = {choice[0] for choice in Product.OrganicStatus.choices}
+        if organic_certification_status not in valid_organic_statuses:
+            organic_certification_status = Product.OrganicStatus.NOT_CERTIFIED
+
+        try:
+            harvest_dt = datetime.strptime(harvest_date, "%Y-%m-%dT%H:%M")
+            expiry_dt = datetime.strptime(expiry_date, "%Y-%m-%dT%H:%M")
+        except (TypeError, ValueError):
+            return render(
+                request,
+                "products/add_product.html",
+                _build_add_product_context(
+                    "Please enter valid harvest and expiry dates."
+                ),
+            )
+
+        if harvest_dt > expiry_dt:
+            return render(
+                request,
+                "products/add_product.html",
+                _build_add_product_context("Harvest date cannot be after expiry date."),
+            )
+
+        # expiry_date=expiry_date
+
+        category_id = request.POST.get("category")
+
         category_obj = get_object_or_404(Category, id=category_id)
 
         product_type = get_or_create_inferred_product_type(
@@ -182,6 +291,9 @@ def add_product(request):
             storage_guidance=validated_data.get('storage_guidance', ''),
             farm_origin=farm_origin,
             status=Product.Status.PENDING,
+            is_seasonal=is_seasonal,
+            season_start=season_start_val,
+            season_end=season_end_val,
         )
 
         if not validated_data.get('image'):
@@ -256,7 +368,6 @@ def producer_products(request):
         .order_by("-created_at")
     )
 
-    # Attach latest rejection log manually
     for p in products:
         p.latest_rejection = (
             ModerationLog.objects.filter(
@@ -403,7 +514,6 @@ def edit_producer_product(request, pk):
             #         }
             #     )
 
-        # Low stock threshold
         low_stock_raw = data.get("low_stock_threshold")
 
         try:
@@ -418,6 +528,15 @@ def edit_producer_product(request, pk):
                 }
             )
 
+        # Seasonal Fields Parsing
+        is_seasonal = data.get("is_seasonal", product.is_seasonal)
+        try:
+            season_start = int(data.get("season_start")) if data.get("season_start") else None
+            season_end = int(data.get("season_end")) if data.get("season_end") else None
+        except (ValueError, TypeError):
+            season_start = product.season_start
+            season_end = product.season_end
+
         product.name = name
         product.price = price
         product.unit = unit
@@ -427,6 +546,11 @@ def edit_producer_product(request, pk):
         product.description = data.get("description", product.description)
         product.category = category
         product.product_type = product_type
+        
+        product.is_seasonal = is_seasonal
+        product.season_start = season_start
+        product.season_end = season_end
+        
         product.save()
 
         if wholesale_price is not None:
@@ -439,7 +563,6 @@ def edit_producer_product(request, pk):
         else:
             product.product_wholesale.all().delete()
 
-        # Check stock vs threshold for notification
         stock_total = (
             product.inventory_batches.aggregate(total=Sum("remaining_quantity")).get(
                 "total"
@@ -485,6 +608,10 @@ def edit_producer_product(request, pk):
                     wholesale_min_quantity if wholesale_price is not None else ""
                 ),
                 "low_stock_threshold": product.low_stock_threshold,
+                "is_seasonal": product.is_seasonal,
+                "season_start": product.season_start,
+                "season_end": product.season_end,
+                "season_display_text": product.season_display_text,
             }
         )
 
@@ -519,20 +646,6 @@ def add_to_cart(request, product_id):
     return redirect("product_view", category_id=0)
 
 
-# products/views.py
-
-
-# class ProductListView(ListView):
-#     template_name = "products/index.html"
-#     context_object_name = "products"
-#     paginate_by = 24
-
-#     def get_queryset(self):
-#         return Product.objects.filter(status=Product.Status.PUBLISHED).order_by(
-#             "-created_at"
-#         )
-
-
 class ProductDetailView(DetailView):
     model = Product
     template_name = "products/product_detail.html"
@@ -556,12 +669,10 @@ class ProductDetailView(DetailView):
         ctx = super().get_context_data(**kwargs)
         p = self.object
 
-        # Expiry label (Use by vs Best before) - purely for display
         use_by_groups = {"MT", "DAE"}
         food_group = getattr(getattr(p, "category", None), "food_groups", None)
         ctx["expiry_label"] = "Use by" if food_group in use_by_groups else "Best before"
 
-        # Wholesale tiers for JS
         tiers = list(
             p.product_wholesale.order_by("min_quantity").values(
                 "min_quantity", "unit_price"
@@ -588,7 +699,6 @@ def send_for_approval(request, pk):
 
     product = Product.objects.get(pk=pk)
 
-    # Only FLAGGED products can be sent for approval
     if product.status != Product.Status.FLAGGED:
         return JsonResponse(
             {"error": "Only flagged products can be sent for approval"}, status=400
@@ -766,12 +876,6 @@ def send_for_approval(request, pk):
 
 
 def _can_view_wholesale_prices(user):
-    """
-    Return True when the logged-in customer is allowed to see wholesale pricing.
-
-    User.role is usually CUSTOMER for all customer accounts. The business or
-    community-group distinction is stored on Customer.organisation_type.
-    """
     if not user.is_authenticated:
         return False
 
@@ -812,16 +916,45 @@ def product_view(request, category_id):
         "inventory_batches__expiry_date__gte": today,
     }
 
+    # 1. Database-Level Seasonality Filter (Hide out-of-season products)
+    current_month = today.month
+    
+    # Condition 1: Not seasonal at all
+    is_not_seasonal = Q(is_seasonal=False) | Q(season_start__isnull=True) | Q(season_end__isnull=True)
+    
+    # Condition 2: Standard season (e.g., May to September -> 5 <= current <= 9)
+    # Fixed SyntaxError here by splitting the Q objects with an &
+    standard_season = Q(
+        is_seasonal=True,
+        season_start__lte=F('season_end')
+    ) & Q(
+        season_start__lte=current_month,
+        season_end__gte=current_month
+    )
+    
+    # Condition 3: Wrap-around season (e.g., Nov to Feb -> 11 <= current OR current <= 2)
+    wrap_season = Q(
+        is_seasonal=True,
+        season_start__gt=F('season_end')
+    ) & (Q(season_start__lte=current_month) | Q(season_end__gte=current_month))
+    
+    in_season_condition = is_not_seasonal | standard_season | wrap_season
+
+    # Base QuerySet with active filters + seasonality applied
+    base_qs = Product.objects.filter(**live_product_filters).filter(in_season_condition).distinct()
+
+    # 2. Handle Initial Category Page Selection
     if category_id == 0:
         selected_category = None
-        products_qs = Product.objects.filter(**live_product_filters).distinct()
+        products_qs = base_qs
         show_filters = True
     else:
         selected_category = get_object_or_404(Category, id=category_id)
-        products_qs = Product.objects.filter(
-            **live_product_filters,
-            category=selected_category,
-        ).distinct()
+        if selected_category.name.lower() == "seasonal produce":
+            # Show items explicitly in this category OR any seasonal item
+            products_qs = base_qs.filter(Q(category=selected_category) | Q(is_seasonal=True))
+        else:
+            products_qs = base_qs.filter(category=selected_category)
         show_filters = False
 
     producers = (
@@ -856,8 +989,12 @@ def product_view(request, category_id):
             )
         )
 
+    # 3. Handle Dropdown Category Filter Selection
     if show_filters and category_filter:
-        products_qs = products_qs.filter(category__name=category_filter)
+        if category_filter.lower() == "seasonal produce":
+            products_qs = products_qs.filter(Q(category__name=category_filter) | Q(is_seasonal=True))
+        else:
+            products_qs = products_qs.filter(category__name=category_filter)
 
     if show_filters and producer_filter:
         products_qs = products_qs.filter(producer__farm_name=producer_filter)
@@ -965,13 +1102,20 @@ def product_view(request, category_id):
 
         original_price = float(p.price)
 
-        if is_surplus_active:
-            discounted_price = float(surplus_batch.get_discounted_price())
-            discount_percent = float(surplus_batch.surplus_discount_percentage)
+        # Unified Discount Logic
+        discount_pct = float(earliest_live_batch.current_discount_percentage) if hasattr(earliest_live_batch, "current_discount_percentage") else 0.0
+
+        if discount_pct > 0:
+            is_surplus_active = True
+            discounted_price = float(earliest_live_batch.get_discounted_price())
+            discount_percent = discount_pct
+            discount_reason = earliest_live_batch.current_discount_reason
             has_discount = True
         else:
+            is_surplus_active = False
             discounted_price = original_price
             discount_percent = 0
+            discount_reason = None
             has_discount = False
 
         organic = p.organic_certification_status == Product.OrganicStatus.CERTIFIED
@@ -1000,6 +1144,7 @@ def product_view(request, category_id):
                 "original_price": original_price,
                 "has_discount": has_discount,
                 "discount_percent": discount_percent,
+                "discount_reason": discount_reason,
                 "organic": organic,
                 "local": local,
                 "fresh_today": fresh_today,
@@ -1010,8 +1155,11 @@ def product_view(request, category_id):
                     active_wholesale_tier.min_quantity if is_wholesale_active else None
                 ),
                 "allergens": allergen_names,
-                "is_disabled": False,
-                "disabled_reason": "",
+                "is_disabled": not p.is_currently_in_season,
+                "disabled_reason": "Out of Season" if (p.is_seasonal and not p.is_currently_in_season) else "",
+                "is_seasonal": p.is_seasonal,
+                "in_season": p.is_currently_in_season,
+                "season_text": p.season_display_text,
                 "image": p.image.url if p.image else "",
                 "producer": producer_name,
                 "category": p.category.name,

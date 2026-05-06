@@ -435,9 +435,17 @@ def producer_dashboard(request):
                 }
             )
 
+    # 3. Fetch Status History
+    history_records = ProducerOrderStatusHistory.objects.filter(
+        producer_order_summary__producer=producer
+    ).select_related(
+        "producer_order_summary__order"
+    ).order_by("-changed_at")
+
     context = {
         "summaries": summaries,
         "all_subscriptions": all_subscriptions,
+        "history_records": history_records,
         "order_search": order_search,
     }
 
@@ -616,6 +624,9 @@ def update_order_status(request, summary_id):
     try:
         data = json.loads(request.body)
         new_status = data.get("status")
+        # Extract note from request, use default if empty or not provided
+        custom_note = data.get("note", "").strip()
+        final_note = custom_note if custom_note else "Status updated via Producer Dashboard"
 
         valid_statuses = [
             ProducerOrderSummary.Status.PENDING,
@@ -634,7 +645,7 @@ def update_order_status(request, summary_id):
             producer=request.user.producer_profile,
             updated_by=request.user,
             new_status=new_status,
-            note="Status updated via Producer Dashboard",
+            note=final_note,
         )
 
         summary = result["summary"]

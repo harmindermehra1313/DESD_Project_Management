@@ -13,6 +13,7 @@ let pendingReloadSummaryId = null;
 // Pagination variables
 let currentPage = 1;
 let subCurrentPage = 1;
+let historyCurrentPage = 1;
 const rowsPerPage = 10;
 
 const STATUS_CONFIRMATION_HELP = {
@@ -106,10 +107,9 @@ function ensureModalElement(id, html) {
 }
 
 function getModalInstance(modalElement, options = {}) {
-  if (!modalElement || !window.bootstrap) {
+  if (!modalElement || typeof bootstrap === "undefined") {
     return null;
   }
-
   return bootstrap.Modal.getOrCreateInstance(modalElement, options);
 }
 
@@ -138,6 +138,7 @@ function renderDetailLines(container, details = []) {
     container.appendChild(row);
   });
 }
+
 function normaliseOrderSearchValue(value) {
   return String(value || "")
     .trim()
@@ -751,20 +752,7 @@ function parseAllowedStatuses(rowElement) {
   }
 }
 
-function createStatusActionButton(status, options = {}) {
-  const button = document.createElement("button");
-  const actionLabel = getStatusActionText(status.value, status.label);
-
-  button.type = "button";
-  button.className = options.className || "btn btn-primary fw-bold";
-  button.textContent = actionLabel;
-  button.addEventListener("click", () => {
-    openStatusConfirmModal(status.value, status.label);
-  });
-
-  return button;
-}
-
+// Reverted to original method to ensure HTML dropdowns work reliably
 function renderTopStatusActionMenu(allowedStatuses) {
   const menu = document.getElementById("statusActionMenu");
   const updateBtn = document.getElementById("updateStatusBtn");
@@ -781,17 +769,19 @@ function renderTopStatusActionMenu(allowedStatuses) {
     return;
   }
 
-  menu.innerHTML = "";
-
-  allowedStatuses.forEach((status) => {
-    const item = document.createElement("li");
-    const button = createStatusActionButton(status, {
-      className: "dropdown-item fw-bold",
-    });
-
-    item.appendChild(button);
-    menu.appendChild(item);
-  });
+  menu.innerHTML = allowedStatuses
+    .map(
+      (status) => `
+        <li>
+          <button class="dropdown-item fw-bold"
+                  type="button"
+                  onclick="openStatusConfirmModal('${status.value}', '${status.label}')">
+            ${getStatusActionText(status.value, status.label)}
+          </button>
+        </li>
+      `,
+    )
+    .join("");
 
   updateBtn.disabled = false;
 }
@@ -831,8 +821,12 @@ function renderDetailStatusActionArea(allowedStatuses) {
     help.className = "small text-muted mb-2";
     help.textContent = helpText;
 
-    const button = createStatusActionButton(status, {
-      className: "btn btn-primary fw-bold detail-status-action-button",
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-primary fw-bold detail-status-action-button";
+    button.textContent = getStatusActionText(status.value, status.label);
+    button.addEventListener("click", () => {
+      openStatusConfirmModal(status.value, status.label);
     });
 
     wrapper.appendChild(help);
@@ -853,8 +847,12 @@ function renderDetailStatusActionArea(allowedStatuses) {
     const actionCard = document.createElement("div");
     actionCard.className = "detail-status-action-card";
 
-    const button = createStatusActionButton(status, {
-      className: "btn btn-outline-primary fw-bold detail-status-action-button",
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-outline-primary fw-bold detail-status-action-button";
+    button.textContent = getStatusActionText(status.value, status.label);
+    button.addEventListener("click", () => {
+      openStatusConfirmModal(status.value, status.label);
     });
 
     const help = document.createElement("div");
@@ -876,6 +874,7 @@ function renderStatusActionMenu(allowedStatuses) {
   renderTopStatusActionMenu(allowedStatuses);
   renderDetailStatusActionArea(allowedStatuses);
 }
+
 function applyAllFilters(resetPage = true, resetDetails = true) {
   if (resetPage) {
     currentPage = 1;
@@ -1308,35 +1307,45 @@ function getStatusActionText(statusValue, fallbackLabel) {
   return actionText[statusValue] || `Mark as ${fallbackLabel}`;
 }
 
+// Reverted to original precise modal call to prevent DOM assignment errors
 function openStatusConfirmModal(statusValue, statusLabel) {
   pendingStatusValue = statusValue;
   pendingStatusLabel = statusLabel;
 
-  setElementText("confirmStatusName", statusLabel);
-  setElementText(
-    "confirmStatusHelp",
-    STATUS_CONFIRMATION_HELP[statusValue] ||
-      "Only continue if this status is correct.",
-  );
+  const statusName = document.getElementById("confirmStatusName");
+  const statusHelp = document.getElementById("confirmStatusHelp");
+  const noteField = document.getElementById("statusUpdateNote");
+
+  if (statusName) {
+    statusName.textContent = statusLabel;
+  }
+
+  if (statusHelp) {
+    statusHelp.textContent =
+      STATUS_CONFIRMATION_HELP[statusValue] ||
+      "Only continue if this status is correct.";
+  }
+
+  if (noteField) {
+    noteField.value = ""; // Clear previous notes
+  }
 
   const modalElement = document.getElementById("statusConfirmModal");
-  const modal = getModalInstance(modalElement);
+  if (!modalElement) return;
 
-  if (modal) {
-    modal.show();
-  }
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.show();
 }
 
 function closeStatusConfirmModal() {
   const modalElement = document.getElementById("statusConfirmModal");
-  const modal = getModalInstance(modalElement);
+  if (!modalElement) return;
 
-  if (modal) {
-    modal.hide();
-  }
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.hide();
 }
 
-async function changeStatus(newStatus) {
+async function changeStatus(newStatus, note = "") {
   if (!selectedSummaryId) {
     await showMessageModal({
       title: "No order selected",
@@ -1367,7 +1376,7 @@ async function changeStatus(newStatus) {
           "X-CSRFToken": csrfToken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, note: note }),
       },
     );
 
@@ -1508,11 +1517,69 @@ function clearSubFilters() {
   applySubFilters(true);
 }
 
+// 9.5 History Table Pagination
+function applyHistoryPagination() {
+  const rows = Array.from(document.querySelectorAll(".history-row"));
+  const totalRows = rows.length;
+  const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+  if (historyCurrentPage > totalPages) historyCurrentPage = totalPages;
+
+  const startIndex = (historyCurrentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+
+  rows.forEach((row, index) => {
+    row.style.display = index >= startIndex && index < endIndex ? "" : "none";
+  });
+
+  renderHistoryPagination(totalPages);
+}
+
+function renderHistoryPagination(totalPages) {
+  const container = document.getElementById("historyPaginationContainer");
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = '<ul class="pagination mb-0 shadow-sm">';
+
+  html += `<li class="page-item ${historyCurrentPage === 1 ? "disabled" : ""}">
+                <button class="page-link" onclick="goToHistoryPage(${historyCurrentPage - 1})" style="color: var(--brand);">Previous</button>
+             </li>`;
+
+  for (let i = 1; i <= totalPages; i++) {
+    const activeClass = historyCurrentPage === i ? "active" : "";
+    const activeStyle =
+      historyCurrentPage === i
+        ? "background-color: #3a4b53; border-color: #3a4b53; color: #fff;"
+        : "color: var(--brand);";
+    html += `<li class="page-item ${activeClass}">
+                    <button class="page-link" onclick="goToHistoryPage(${i})" style="${activeStyle}">${i}</button>
+                 </li>`;
+  }
+
+  html += `<li class="page-item ${historyCurrentPage === totalPages ? "disabled" : ""}">
+                <button class="page-link" onclick="goToHistoryPage(${historyCurrentPage + 1})" style="color: var(--brand);">Next</button>
+             </li>`;
+
+  html += "</ul>";
+  container.innerHTML = html;
+}
+
+function goToHistoryPage(pageNumber) {
+  historyCurrentPage = pageNumber;
+  applyHistoryPagination();
+}
+
+// 10. Pause / Resume Subscription
+
 async function cancelSubscription(subId) {
   const confirmed = await showConfirmModal({
     title: "Cancel subscription",
-    message:
-      "This will stop future orders from being generated for this subscription.",
+    message: "This will stop future orders from being generated for this subscription.",
     details: [
       "The nearest existing physical order may still remain active depending on the subscription rules.",
       "Only continue if the customer subscription should be cancelled.",
@@ -1530,8 +1597,7 @@ async function cancelSubscription(subId) {
   if (!csrfToken) {
     await showMessageModal({
       title: "Security check failed",
-      message:
-        "The page security token was not found. Refresh the page and try again.",
+      message: "The page security token was not found. Refresh the page and try again.",
       variant: "danger",
     });
     return;
@@ -1557,9 +1623,7 @@ async function cancelSubscription(subId) {
     if (!response.ok) {
       await showMessageModal({
         title: "Subscription could not be cancelled",
-        message:
-          data.error ||
-          "The subscription could not be cancelled. Please try again.",
+        message: data.error || "The subscription could not be cancelled. Please try again.",
         variant: "danger",
       });
       return;
@@ -1567,8 +1631,7 @@ async function cancelSubscription(subId) {
 
     await showMessageModal({
       title: "Subscription cancelled",
-      message:
-        "The subscription has been cancelled. Future orders will no longer be generated for this subscription.",
+      message: "The subscription has been cancelled. Future orders will no longer be generated for this subscription.",
       variant: "success",
       buttonText: "Refresh page",
     });
@@ -1579,8 +1642,7 @@ async function cancelSubscription(subId) {
 
     await showMessageModal({
       title: "Network problem",
-      message:
-        "The subscription cancellation could not be sent. Check the connection and try again.",
+      message: "The subscription cancellation could not be sent. Check the connection and try again.",
       variant: "danger",
     });
   }
@@ -2044,25 +2106,6 @@ async function confirmCancelQuantity() {
 /* ============================================================
    Page initialisation
 ============================================================ */
-function normaliseOrderSearchValue(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^#+/, "")
-    .toLowerCase()
-    .replace(/\s+/g, "");
-}
-
-function getRowOrderSearchText(row) {
-  return [
-    row.getAttribute("data-order-id") || "",
-    row.getAttribute("data-order-reference") || "",
-    row.getAttribute("data-order-db-id") || "",
-  ]
-    .join(" ")
-    .toLowerCase()
-    .replace(/^#+/, "")
-    .replace(/\s+/g, "");
-}
 
 document.addEventListener("DOMContentLoaded", () => {
   const resetAndFilter = () => applyAllFilters(true);
@@ -2090,6 +2133,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   applyAllFilters(false);
   applySubFilters(true);
+  applyHistoryPagination();
 
   const confirmStatusUpdateButton = document.getElementById(
     "confirmStatusUpdateBtn",
@@ -2099,6 +2143,9 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmStatusUpdateButton.addEventListener("click", async () => {
       if (!pendingStatusValue) return;
 
+      const noteField = document.getElementById("statusUpdateNote");
+      const noteValue = noteField ? noteField.value.trim() : "";
+
       setButtonLoading(
         confirmStatusUpdateButton,
         true,
@@ -2106,7 +2153,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "Confirm update",
       );
 
-      await changeStatus(pendingStatusValue);
+      await changeStatus(pendingStatusValue, noteValue);
 
       setButtonLoading(
         confirmStatusUpdateButton,
@@ -2122,6 +2169,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Moved these out of the if block so they always fire properly
   const confirmCancelQuantityButton = document.getElementById(
     "confirmCancelQuantityBtn",
   );
