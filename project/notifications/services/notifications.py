@@ -358,3 +358,125 @@ class NotificationService:
             user=user,
             read_at__isnull=True,
         ).update(read_at=timezone.now())
+
+    @staticmethod
+    def _get_producer_user(producer):
+        """
+        Returns the user attached to a producer profile.
+
+        Supports common project structures:
+        - producer.user
+        - producer.owner
+        - producer.account
+        - producer.profile.user
+        """
+        if not producer:
+            return None
+
+        user = getattr(producer, "user", None)
+        if user:
+            return user
+
+        owner = getattr(producer, "owner", None)
+        if owner:
+            return owner
+
+        account = getattr(producer, "account", None)
+        if account:
+            return account
+
+        profile = getattr(producer, "profile", None)
+        if profile:
+            return getattr(profile, "user", None)
+
+        return None
+
+    @staticmethod
+    def _get_producer_display_name(producer):
+        """
+        Returns a readable producer name for notifications.
+        """
+        if not producer:
+            return "this producer"
+
+        return (
+            getattr(producer, "business_name", None)
+            or getattr(producer, "name", None)
+            or str(producer)
+            or "this producer"
+        )
+
+    @staticmethod
+    def notify_producer_order_cancelled_by_customer(*, order, producer_summary):
+        """
+        Notifies a producer that the customer cancelled the full order,
+        or the producer's section of the order is now cancelled.
+        """
+        producer = getattr(producer_summary, "producer", None)
+        user = NotificationService._get_producer_user(producer)
+
+        if not user:
+            return None
+
+        order_reference = NotificationService._get_order_reference(order)
+        producer_name = NotificationService._get_producer_display_name(producer)
+
+        return NotificationService.create(
+            user=user,
+            type=Notification.Type.ORDER_CANCELLED,
+            order=order,
+            message=(
+                f"Customer cancelled Order #{order_reference}. "
+                f"The order section for {producer_name} is now cancelled. "
+                f"No preparation is required."
+            ),
+        )
+
+    @staticmethod
+    def notify_producer_order_item_cancelled_by_customer(
+        *,
+        order,
+        item,
+        cancelled_quantity,
+        producer_summary=None,
+    ):
+        """
+        Notifies a producer that the customer cancelled one item from an order.
+        """
+        producer = getattr(item, "producer", None)
+
+        if producer is None and producer_summary is not None:
+            producer = getattr(producer_summary, "producer", None)
+
+        user = NotificationService._get_producer_user(producer)
+
+        if not user:
+            return None
+
+        order_reference = NotificationService._get_order_reference(order)
+        product = getattr(item, "product", None)
+        product_name = getattr(product, "name", "an item")
+
+        message = (
+            f"Customer cancelled {cancelled_quantity} × {product_name} "
+            f"from Order #{order_reference}."
+        )
+
+        if (
+            producer_summary is not None
+            and producer_summary.status == ProducerOrderSummary.Status.CANCELLED
+        ):
+            message += (
+                " This producer order section is now cancelled because "
+                "no active items remain."
+            )
+        else:
+            message += " Please update preparation for this order section."
+
+        return NotificationService.create(
+            user=user,
+            type=Notification.Type.ORDER_CANCELLED,
+            order=order,
+            product=product,
+            message=message,
+        )
