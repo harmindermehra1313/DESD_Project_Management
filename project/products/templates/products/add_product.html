@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% load static %}{% block title %}List New Product | Bristol Regional Food Network{% endblock %}
+{% block title %}List New Product | Bristol Regional Food Network{% endblock %}
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/products.css' %}">
@@ -45,7 +46,7 @@
                     </select>
                 </div>
 
-                <!-- NEW SEASONAL FIELDS -->
+                <!-- SEASONAL FIELDS -->
                 <div class="mb-3 p-3 border rounded bg-light">
                     <div class="form-check mb-2">
                         <input type="checkbox" class="form-check-input" id="is_seasonal" name="is_seasonal">
@@ -95,7 +96,7 @@
 
                 <div class="mb-3">
                     <label for="id_harvest_date" class="form-label custom-form-label">Harvest Date</label>
-                    <input type="date" class="form-control" name="harvest_date" id="id_harvest_date" required>
+                    <input type="datetime-local" class="form-control" name="harvest_date" id="id_harvest_date" required>
                 </div>
 
                 <div class="mb-3">
@@ -108,7 +109,7 @@
             
                 <div class="mb-3">
                     <label for="id_expiry_date" class="form-label custom-form-label" id="id_expiry_date_label">Best Before Date</label>
-                    <input type="date" class="form-control" name="expiry_date" id="id_expiry_date" required>
+                    <input type="datetime-local" class="form-control" name="expiry_date" id="id_expiry_date" required>
                 </div>
             </div>
             
@@ -197,12 +198,13 @@
                 <div class="mb-3">
                     <label for="id_storage_guidance" class="form-label custom-form-label">Storage Guidance (Optional)</label>
                     <textarea class="form-control" name="storage_guidance" id="id_storage_guidance" rows="3" placeholder="e.g. Keep refrigerated..."></textarea>
-                </div>            </div>
+                </div>            
+            </div>
             
         </div>
 
         <div>
-            <button type="submit" class="btn btn-primary">ADD PRODUCT</button>
+            <button type="submit" class="btn btn-primary">Add Product</button>
         </div>
     </form>
 </div>
@@ -212,33 +214,44 @@
 <script src="{% static 'js/expiry_type_select.js' %}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Wholesale Validation Logic
         const basePriceInput = document.getElementById('id_price');
-        const wholesalePriceInput = document.getElementById('id_wholesale_price');
-        const wholesaleQtyInput = document.getElementById('id_wholesale_min_quantity');
+        const wholesaleInput = document.getElementById('id_wholesale_price');
 
-        if (!basePriceInput || !wholesaleInput) {
-            return;
+        if (basePriceInput && wholesaleInput) {
+            const validateWholesaleVsBase = function () {
+                const base = parseFloat(basePriceInput.value);
+                const wholesaleRaw = wholesaleInput.value;
+
+                if (!wholesaleRaw || Number.isNaN(base)) {
+                    wholesaleInput.setCustomValidity('');
+                    return;
+                }
+
+                const wholesale = parseFloat(wholesaleRaw);
+                if (!Number.isNaN(wholesale) && wholesale > base) {
+                    wholesaleInput.setCustomValidity('Wholesale price cannot be higher than the base price.');
+                } else {
+                    wholesaleInput.setCustomValidity('');
+                }
+            };
+
+            basePriceInput.addEventListener('input', validateWholesaleVsBase);
+            wholesaleInput.addEventListener('input', validateWholesaleVsBase);
         }
 
-        const validateWholesaleVsBase = function () {
-            const base = parseFloat(basePriceInput.value);
-            const wholesaleRaw = wholesaleInput.value;
+        // Seasonal Toggle Logic
+        const isSeasonalCheckbox = document.getElementById('is_seasonal');
+        const seasonalContainer = document.getElementById('seasonal_dates_container');
 
-            if (!wholesaleRaw || Number.isNaN(base)) {
-                wholesaleInput.setCustomValidity('');
-                return;
-            }
-
-            const wholesale = parseFloat(wholesaleRaw);
-            if (!Number.isNaN(wholesale) && wholesale > base) {
-                wholesaleInput.setCustomValidity('Wholesale price cannot be higher than the base price.');
-            } else {
-                wholesaleInput.setCustomValidity('');
-            }
-        };
-
-        basePriceInput.addEventListener('input', validateWholesaleVsBase);
-        wholesaleInput.addEventListener('input', validateWholesaleVsBase);
+        if (isSeasonalCheckbox && seasonalContainer) {
+            const toggleSeasonalDates = () => {
+                seasonalContainer.style.display = isSeasonalCheckbox.checked ? 'flex' : 'none';
+            };
+            
+            isSeasonalCheckbox.addEventListener('change', toggleSeasonalDates);
+            toggleSeasonalDates(); // Set initial state
+        }
     });
 </script>
 {% endblock %}

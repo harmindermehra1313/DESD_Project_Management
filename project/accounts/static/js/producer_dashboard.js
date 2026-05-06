@@ -13,6 +13,7 @@ let pendingReloadSummaryId = null;
 // Pagination variables
 let currentPage = 1;
 let subCurrentPage = 1;
+let historyCurrentPage = 1;
 const rowsPerPage = 10;
 
 const STATUS_CONFIRMATION_HELP = {
@@ -22,12 +23,6 @@ const STATUS_CONFIRMATION_HELP = {
   SHP: "Use this only when a delivery order has left the producer for delivery.",
   COM: "Use this only when the producer section has been fully fulfilled.",
 };
-
-// Pagination variables
-let currentPage = 1;
-let subCurrentPage = 1;
-let historyCurrentPage = 1;
-const rowsPerPage = 10;
 
 const PRODUCER_STATUS_MAP = {
   PEN: { text: "Pending", cls: "status-pending" },
@@ -112,10 +107,9 @@ function ensureModalElement(id, html) {
 }
 
 function getModalInstance(modalElement, options = {}) {
-  if (!modalElement || !window.bootstrap) {
+  if (!modalElement || typeof bootstrap === "undefined") {
     return null;
   }
-
   return bootstrap.Modal.getOrCreateInstance(modalElement, options);
 }
 
@@ -144,6 +138,7 @@ function renderDetailLines(container, details = []) {
     container.appendChild(row);
   });
 }
+
 function normaliseOrderSearchValue(value) {
   return String(value || "")
     .trim()
@@ -757,20 +752,7 @@ function parseAllowedStatuses(rowElement) {
   }
 }
 
-function createStatusActionButton(status, options = {}) {
-  const button = document.createElement("button");
-  const actionLabel = getStatusActionText(status.value, status.label);
-
-  button.type = "button";
-  button.className = options.className || "btn btn-primary fw-bold";
-  button.textContent = actionLabel;
-  button.addEventListener("click", () => {
-    openStatusConfirmModal(status.value, status.label);
-  });
-
-  return button;
-}
-
+// Reverted to original method to ensure HTML dropdowns work reliably
 function renderTopStatusActionMenu(allowedStatuses) {
   const menu = document.getElementById("statusActionMenu");
   const updateBtn = document.getElementById("updateStatusBtn");
@@ -787,17 +769,19 @@ function renderTopStatusActionMenu(allowedStatuses) {
     return;
   }
 
-  menu.innerHTML = "";
-
-  allowedStatuses.forEach((status) => {
-    const item = document.createElement("li");
-    const button = createStatusActionButton(status, {
-      className: "dropdown-item fw-bold",
-    });
-
-    item.appendChild(button);
-    menu.appendChild(item);
-  });
+  menu.innerHTML = allowedStatuses
+    .map(
+      (status) => `
+        <li>
+          <button class="dropdown-item fw-bold"
+                  type="button"
+                  onclick="openStatusConfirmModal('${status.value}', '${status.label}')">
+            ${getStatusActionText(status.value, status.label)}
+          </button>
+        </li>
+      `,
+    )
+    .join("");
 
   updateBtn.disabled = false;
 }
@@ -837,8 +821,12 @@ function renderDetailStatusActionArea(allowedStatuses) {
     help.className = "small text-muted mb-2";
     help.textContent = helpText;
 
-    const button = createStatusActionButton(status, {
-      className: "btn btn-primary fw-bold detail-status-action-button",
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-primary fw-bold detail-status-action-button";
+    button.textContent = getStatusActionText(status.value, status.label);
+    button.addEventListener("click", () => {
+      openStatusConfirmModal(status.value, status.label);
     });
 
     wrapper.appendChild(help);
@@ -859,8 +847,12 @@ function renderDetailStatusActionArea(allowedStatuses) {
     const actionCard = document.createElement("div");
     actionCard.className = "detail-status-action-card";
 
-    const button = createStatusActionButton(status, {
-      className: "btn btn-outline-primary fw-bold detail-status-action-button",
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-outline-primary fw-bold detail-status-action-button";
+    button.textContent = getStatusActionText(status.value, status.label);
+    button.addEventListener("click", () => {
+      openStatusConfirmModal(status.value, status.label);
     });
 
     const help = document.createElement("div");
@@ -882,6 +874,7 @@ function renderStatusActionMenu(allowedStatuses) {
   renderTopStatusActionMenu(allowedStatuses);
   renderDetailStatusActionArea(allowedStatuses);
 }
+
 function applyAllFilters(resetPage = true, resetDetails = true) {
   if (resetPage) {
     currentPage = 1;
@@ -1314,6 +1307,7 @@ function getStatusActionText(statusValue, fallbackLabel) {
   return actionText[statusValue] || `Mark as ${fallbackLabel}`;
 }
 
+// Reverted to original precise modal call to prevent DOM assignment errors
 function openStatusConfirmModal(statusValue, statusLabel) {
   pendingStatusValue = statusValue;
   pendingStatusLabel = statusLabel;
@@ -1337,23 +1331,21 @@ function openStatusConfirmModal(statusValue, statusLabel) {
   }
 
   const modalElement = document.getElementById("statusConfirmModal");
-  const modal = getModalInstance(modalElement);
+  if (!modalElement) return;
 
-  if (modal) {
-    modal.show();
-  }
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.show();
 }
 
 function closeStatusConfirmModal() {
   const modalElement = document.getElementById("statusConfirmModal");
-  const modal = getModalInstance(modalElement);
+  if (!modalElement) return;
 
-  if (modal) {
-    modal.hide();
-  }
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.hide();
 }
 
-async function changeStatus(newStatus) {
+async function changeStatus(newStatus, note = "") {
   if (!selectedSummaryId) {
     await showMessageModal({
       title: "No order selected",
@@ -1582,11 +1574,6 @@ function goToHistoryPage(pageNumber) {
   applyHistoryPagination();
 }
 
-function goToHistoryPage(pageNumber) {
-  historyCurrentPage = pageNumber;
-  applyHistoryPagination();
-}
-
 // 10. Pause / Resume Subscription
 
 async function cancelSubscription(subId) {
@@ -1660,6 +1647,7 @@ async function cancelSubscription(subId) {
     });
   }
 }
+
 async function toggleSubscription(subId) {
   const csrfToken = getCsrfToken();
 
@@ -2118,25 +2106,6 @@ async function confirmCancelQuantity() {
 /* ============================================================
    Page initialisation
 ============================================================ */
-function normaliseOrderSearchValue(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^#+/, "")
-    .toLowerCase()
-    .replace(/\s+/g, "");
-}
-
-function getRowOrderSearchText(row) {
-  return [
-    row.getAttribute("data-order-id") || "",
-    row.getAttribute("data-order-reference") || "",
-    row.getAttribute("data-order-db-id") || "",
-  ]
-    .join(" ")
-    .toLowerCase()
-    .replace(/^#+/, "")
-    .replace(/\s+/g, "");
-}
 
 document.addEventListener("DOMContentLoaded", () => {
   const resetAndFilter = () => applyAllFilters(true);
@@ -2174,6 +2143,9 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmStatusUpdateButton.addEventListener("click", async () => {
       if (!pendingStatusValue) return;
 
+      const noteField = document.getElementById("statusUpdateNote");
+      const noteValue = noteField ? noteField.value.trim() : "";
+
       setButtonLoading(
         confirmStatusUpdateButton,
         true,
@@ -2195,14 +2167,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       closeStatusConfirmModal();
     });
-    
-    applyAllFilters(true);
-    applySubFilters(true);
+  }
 
-    // Auto-open order from notification
-    const params = new URLSearchParams(window.location.search);
-    const openOrderId = params.get("open_order");
-
+  // Moved these out of the if block so they always fire properly
   const confirmCancelQuantityButton = document.getElementById(
     "confirmCancelQuantityBtn",
   );
@@ -2223,16 +2190,16 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmCancelQuantity,
   );
 
-    if (openOrderId) {
-        // Delay to ensure rows are rendered + filters applied
-        setTimeout(() => {
-            applyAllFilters(false, false);
+  if (openOrderId) {
+    // Delay to ensure rows are rendered + filters applied
+    setTimeout(() => {
+      applyAllFilters(false, false);
 
-            const row = document.getElementById(`row-${openOrderId}`);
-            if (row) {
-                row.scrollIntoView({ behavior: "smooth", block: "center" });
-                showOrderDetails(openOrderId, row);
-            }
-        }, 50);
-    }    
-}});
+      const row = document.getElementById(`row-${openOrderId}`);
+      if (row) {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        showOrderDetails(openOrderId, row);
+      }
+    }, 50);
+  }
+});
