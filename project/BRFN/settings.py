@@ -208,6 +208,8 @@ STORAGES = {
 
 MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
 
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Default Firebase/GCS object path used when a product is created without an uploaded image.
 # This should exist in the bucket, e.g. gs://<bucket>/products/img/default-product.png
 DEFAULT_PRODUCT_IMAGE = os.getenv(

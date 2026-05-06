@@ -1,7 +1,8 @@
 from django.db import models
 from django.conf import settings
-from django.utils import timezone
+from django.core.files.storage import FileSystemStorage
 
+local_storage = FileSystemStorage(location=settings.MEDIA_ROOT)
 
 class AIUsage(models.Model):
 
@@ -41,7 +42,7 @@ class AIUsage(models.Model):
 class ClassifierModel(models.Model):
     name = models.CharField(max_length=100)
     version = models.CharField(max_length=50)
-    file = models.FileField(upload_to="classifier_models/")
+    file = models.FileField(upload_to="classifier_models/", storage=local_storage)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=False)
 
