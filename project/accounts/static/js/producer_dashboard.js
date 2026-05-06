@@ -2120,7 +2120,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       closeStatusConfirmModal();
     });
-  }
+    
+    applyAllFilters(true);
+    applySubFilters(true);
+
+    // Auto-open order from notification
+    const params = new URLSearchParams(window.location.search);
+    const openOrderId = params.get("open_order");
 
   const confirmCancelQuantityButton = document.getElementById(
     "confirmCancelQuantityBtn",
@@ -2142,9 +2148,16 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmCancelQuantity,
   );
 
-  if (openOrderId) {
-    setTimeout(() => {
-      openSummaryDetails(openOrderId, true);
-    }, 80);
-  }
-});
+    if (openOrderId) {
+        // Delay to ensure rows are rendered + filters applied
+        setTimeout(() => {
+            applyAllFilters(false, false);
+
+            const row = document.getElementById(`row-${openOrderId}`);
+            if (row) {
+                row.scrollIntoView({ behavior: "smooth", block: "center" });
+                showOrderDetails(openOrderId, row);
+            }
+        }, 50);
+    }    
+}});

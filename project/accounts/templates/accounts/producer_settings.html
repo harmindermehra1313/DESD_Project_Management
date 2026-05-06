@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <!-- Page Title -->
+    <div class="mb-4">
+        <h2 class="fw-bold">Manual Payout Settings</h2>
+        <p class="text-muted">
+            Update your Bank Transfer, PayPal, or Cheque payout details.
+            These details are used only if Stripe payouts are not active.
+        </p>
+    </div>
+
+    <!-- Settings Card -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <form id="payoutForm"
+                  data-api-url="{% url 'accounts:update_payout_api' %}">
+
+                {% csrf_token %}
+
+                <!-- Payout Method -->
+                <div class="mb-3">
+                    <label for="payout_method" class="form-label fw-semibold">Payout Method</label>
+                    <select name="payout_method"
+                            id="payout_method"
+                            class="form-select">
+                        <option value="BT" {% if producer.payout_method == "BT" %}selected{% endif %}>
+                            Bank Transfer
+                        </option>
+                        <option value="PP" {% if producer.payout_method == "PP" %}selected{% endif %}>
+                            PayPal
+                        </option>
+                        <!-- <option value="CHQ" {% if producer.payout_method == "CHQ" %}selected{% endif %}>
+                            Cheque
+                        </option> -->
+                    </select>
+                </div>
+
+                <!-- ========================= -->
+                <!-- BANK TRANSFER FIELDS -->
+                <!-- ========================= -->
+                <div id="bankFields">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Bank Account Name</label>
+                        <input class="form-control"
+                               id="bank_account_name"
+                               name="bank_account_name"
+                               placeholder="John Smith"
+                               value="{% if producer.bank_account_name == 'None' or producer.bank_account_name is None %}{% else %}{{ producer.bank_account_name }}{% endif %}">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Sort Code</label>
+                        <input class="form-control"
+                               id="bank_sort_code"
+                               name="bank_sort_code"
+                               placeholder="00-00-00"
+                               value="{% if producer.bank_sort_code == 'None' or producer.bank_sort_code is None %}{% else %}{{ producer.bank_sort_code }}{% endif %}">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Account Number</label>
+                        <input class="form-control"
+                               id="bank_account_number"
+                               name="bank_account_number"
+                               placeholder="01234567"
+                               value="{% if producer.bank_account_number == 'None' or producer.bank_account_number is None %}{% else %}{{ producer.bank_account_number }}{% endif %}">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                </div>
+
+                <!-- ========================= -->
+                <!-- PAYPAL FIELDS -->
+                <!-- ========================= -->
+                <div id="paypalFields">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">PayPal Email</label>
+                        <input class="form-control"
+                               id="paypal_email"
+                               name="paypal_email"
+                               placeholder="johnsmith@gmail.com"
+                               value="{% if producer.paypal_email == 'None' or producer.paypal_email is None %}{% else %}{{ producer.paypal_email }}{% endif %}">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                </div>
+
+                <!-- Submit Button -->
+                <button class="btn btn-primary mt-3 px-4">
+                    Save Changes
+                </button>
+
+            </form>
+
+            <!-- Result Message -->
+            <div id="result" class="mt-3"></div>
+
+            <a href="{% url 'accounts:producer_stripe_dashboard' %}"
+               class="btn btn-outline-secondary mt-4">
+                Back to Payout Dashboard
+            </a>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Load JS validator -->
+<script src="{% static 'js/update_payment.js' %}"></script>
+
+{% endblock %}
