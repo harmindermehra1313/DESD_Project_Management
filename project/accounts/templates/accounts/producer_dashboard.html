@@ -7,9 +7,9 @@
 {% block content %}
     <div class="container py-4 dashboard-container">
         <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">Order Management</h2>
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3 dashboard-page-header">
             <h5 id="pageTitle" class="mb-0">Orders</h5>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 dashboard-actions">
                 <button class="btn btn-outline-secondary"
                         type="button"
                         data-bs-toggle="modal"
@@ -128,9 +128,7 @@
                 </div>
             </div>
         </div>
-        <div class="table-responsive mb-4 shadow-sm"
-             style="border-radius: var(--radius);
-                    overflow: hidden">
+        <div class="table-responsive order-table-responsive mb-4 shadow-sm">
             <table class="table table-hover mb-0 order-table align-middle text-center">
                 <thead>
                     <tr>
@@ -155,14 +153,14 @@
                             data-customer-name="{% if summary.order.user %}{{ summary.order.user.name|lower }}{% else %}{{ summary.order.guest_name|default:''|lower }}{% endif %}"
                             data-due-date="{{ summary.delivery_date|date:'Y-m-d' }}"
                             onclick="showOrderDetails('{{ summary.id }}', this)">
-                            <td>
+                            <td data-label="Order ID">
                                 {{ summary.order.unique_reference }}
                                 {% if summary.order.recurring_order %}
                                     <br>
                                     <span class="badge bg-info text-dark" style="font-size: 0.7rem;">Recurring</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Customer Name">
                                 {% if summary.order.user %}
                                     {{ summary.order.user.name }}
                                 {% elif summary.order.guest_name %}
@@ -171,10 +169,10 @@
                                     Guest customer
                                 {% endif %}
                             </td>
-                            <td>{{ summary.order.order_date|date:"d/m/Y" }}</td>
-                            <td>{{ summary.delivery_date|date:"d/m/Y" }}</td>
-                            <td>{{ summary.get_delivery_or_collection_display }}</td>
-                            <td>
+                            <td data-label="Order Date">{{ summary.order.order_date|date:"d/m/Y" }}</td>
+                            <td data-label="Due Date">{{ summary.delivery_date|date:"d/m/Y" }}</td>
+                            <td data-label="Type">{{ summary.get_delivery_or_collection_display }}</td>
+                            <td data-label="Items">
                                 {% if summary.dashboard_is_fully_cancelled %}
                                     <div class="fw-bold text-danger">{{ summary.dashboard_item_status_label }}</div>
                                 {% else %}
@@ -182,7 +180,7 @@
                                 {% endif %}
                                 <div class="text-muted small">{{ summary.dashboard_item_status_help }}</div>
                             </td>
-                            <td>
+                            <td data-label="Current Value">
                                 <div class="fw-bold">£{{ summary.display_subtotal|floatformat:2 }}</div>
                                 {% if summary.dashboard_is_fully_cancelled %}
                                     <div class="text-muted small">Original: £{{ summary.original_subtotal|floatformat:2 }}</div>
@@ -190,7 +188,7 @@
                                     <div class="text-muted small">{{ summary.dashboard_value_help }}</div>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Current Payout">
                                 <div class="fw-bold">£{{ summary.display_payout_amount|floatformat:2 }}</div>
                                 {% if summary.dashboard_is_fully_cancelled %}
                                     <div class="text-danger small">No payout due</div>
@@ -198,7 +196,7 @@
                                     <div class="text-muted small">{{ summary.dashboard_payout_help }}</div>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 <span class="status-badge {% if summary.status == 'PEN' %}status-pending{% elif summary.status == 'PRE' %}status-preparing{% elif summary.status == 'PAC' %}status-packaged{% elif summary.status == 'RFC' %}status-ready{% elif summary.status == 'SHP' %}status-shipped{% elif summary.status == 'COM' %}status-completed{% elif summary.status == 'CAN' %}status-cancelled{% endif %}">
                                     {{ summary.get_status_display }}
                                 </span>
@@ -222,7 +220,7 @@
         </nav>
         {% if all_subscriptions %}
             <div class="mt-5 mb-5">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 dashboard-page-header">
                     <div>
                         <h5 class="mb-0" style="color: var(--brand); font-weight: bold;">Recurring Subscriptions</h5>
                         <p class="text-muted small mb-0 mt-1">
@@ -270,9 +268,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive shadow-sm"
-                     style="border-radius: var(--radius);
-                            overflow: hidden">
+                <div class="table-responsive order-table-responsive shadow-sm">
                     <table class="table table-hover mb-0 align-middle text-center order-table">
                         <thead>
                             <tr>
@@ -293,14 +289,14 @@
                                     data-sub-status="{{ sub.status }}"
                                     onclick="showSubscriptionDetails('{{ sub.id }}', this)"
                                     style="cursor: pointer">
-                                    <td class="fw-bold text-muted">#SUB-{{ sub.id }}</td>
-                                    <td>{{ sub.customer_name }}</td>
-                                    <td>{{ sub.recurrence_pattern }}</td>
-                                    <td>Every {{ sub.recurrence_day }}</td>
-                                    <td>{{ sub.delivery_day }}</td>
-                                    <td>{{ sub.items|length }} items</td>
-                                    <td class="text-muted">{{ sub.created_at|date:"d/m/Y" }}</td>
-                                    <td>
+                                    <td class="fw-bold text-muted" data-label="Sub ID">#SUB-{{ sub.id }}</td>
+                                    <td data-label="Restaurant / Customer">{{ sub.customer_name }}</td>
+                                    <td data-label="Frequency">{{ sub.recurrence_pattern }}</td>
+                                    <td data-label="Repeats On">Every {{ sub.recurrence_day }}</td>
+                                    <td data-label="Initial Delivery Day">{{ sub.delivery_day }}</td>
+                                    <td data-label="Items Reserved">{{ sub.items|length }} items</td>
+                                    <td class="text-muted" data-label="Started">{{ sub.created_at|date:"d/m/Y" }}</td>
+                                    <td data-label="Status">
                                         <span class="status-badge sub-status-badge {% if sub.status == 'ACTIVE' %}status-packaged{% elif sub.status == 'PAUSED' %}status-pending{% else %}status-cancelled{% endif %}">
                                             {{ sub.status_display }}
                                         </span>
