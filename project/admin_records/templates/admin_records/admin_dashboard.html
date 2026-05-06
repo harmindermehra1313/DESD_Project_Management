@@ -21,7 +21,7 @@
     <!-- KPI CARDS -->
     <div class="row g-4 mb-5">
         {% for card in kpi_cards %}
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card shadow-sm border-0 kpi-card">
                 <div class="card-body">
                     <h6 class="text-muted">{{ card.label }}</h6>
@@ -32,24 +32,13 @@
         {% endfor %}
     </div>
 
-    <!-- FILTER BUTTONS -->
-    <div class="d-flex gap-3 mb-4">
-        <button class="btn btn-outline-primary chart-filter" data-range="15">Last 15 Days</button>
-        <button class="btn btn-outline-primary chart-filter" data-range="30">Last 30 Days</button>
-        <button class="btn btn-outline-primary chart-filter" data-range="365">Last 12 Months</button>
-    </div>
-
     <!-- CHARTS ROW 1 -->
     <div class="row g-4 mb-5">
         <div class="col-lg-6">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <h5 id="growthTitle" class="mb-3">User Growth (Last 30 Days)</h5>
-                    <div class="chart-container">
-                      <div class="chart-box1">
-                        <canvas id="userGrowthChart"></canvas>
-                      </div>
-                    </div>
+                    <h5 class="mb-3">User Growth (Last 30 Days)</h5>
+                    <canvas id="userGrowthChart"></canvas>
                 </div>
             </div>
         </div>
@@ -57,12 +46,8 @@
         <div class="col-lg-6">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                     <h5 class="mb-3">Product Status</h5>
-                    <div class="chart-container">
-                      <div class="chart-box1">
-                        <canvas id="productStatusChart"></canvas>
-                      </div>
-                    </div>
+                    <h5 class="mb-3">Account Type Breakdown</h5>
+                    <canvas id="accountTypeChart"></canvas>
                 </div>
             </div>
         </div>
@@ -74,11 +59,7 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <h5 class="mb-3">Account Status</h5>
-                    <div class="chart-container">
-                      <div class="chart-box2">
-                        <canvas id="accountStatusChart"></canvas>
-                      </div>
-                    </div>
+                    <canvas id="accountStatusChart"></canvas>
                 </div>
             </div>
         </div>
@@ -86,14 +67,8 @@
         <div class="col-lg-6">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                  <h5 class="mb-3">Account Type Breakdown</h5>
-                    <div class="chart-container">
-                      <div class="d-flex justify-content-center">
-                        <div class="chart-box2">
-                          <canvas id="accountTypeChart"></canvas>
-                        </div>
-                      </div>
-                    </div>
+                    <h5 class="mb-3">Product Status</h5>
+                    <canvas id="productStatusChart"></canvas>
                 </div>
             </div>
         </div>
@@ -105,17 +80,13 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <h5 class="mb-3">Review Sentiment</h5>
-                    <div class="chart-container">
-                      <div class="chart-box2">
-                        <canvas id="reviewSentimentChart"></canvas>
-                      </div>
-                    </div>
+                    <canvas id="reviewSentimentChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- RECENT USERS -->
+    <!-- RECENT ACTIVITY -->
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-body p-4">
             <h4 class="mb-3">Recent User Signups</h4>
@@ -128,7 +99,7 @@
                     <tr>
                         <td>{{ u.name }}</td>
                         <td>{{ u.email }}</td>
-                        <td>{{ u.created_at|date:"d M Y" }}</td>
+                        <td>{{ u.date_joined|date:"d M Y" }}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="3" class="text-muted text-center">No recent users.</td></tr>
@@ -140,21 +111,19 @@
 
 </div>
 
-<!-- DATA PASSED TO JS -->
 <script>
-window.adminDashboardData = {
-    growth_15: {{ growth_15|safe }},
-    growth_30: {{ growth_30|safe }},
-    growth_365: {{ growth_365|safe }},
-    accountTypeLabels: {{ account_type_labels|safe }},
-    accountTypeValues: {{ account_type_values|safe }},
-    accountStatusLabels: {{ account_status_labels|safe }},
-    accountStatusValues: {{ account_status_values|safe }},
-    productStatusLabels: {{ product_status_labels|safe }},
-    productStatusValues: {{ product_status_values|safe }},
-    reviewSentimentLabels: {{ review_sentiment_labels|safe }},
-    reviewSentimentValues: {{ review_sentiment_values|safe }},
-};
+    window.adminDashboardData = {
+        userGrowthLabels: {{ user_growth_labels|safe }},
+        userGrowthValues: {{ user_growth_values|safe }},
+        accountTypeLabels: {{ account_type_labels|safe }},
+        accountTypeValues: {{ account_type_values|safe }},
+        accountStatusLabels: {{ account_status_labels|safe }},
+        accountStatusValues: {{ account_status_values|safe }},
+        productStatusLabels: {{ product_status_labels|safe }},
+        productStatusValues: {{ product_status_values|safe }},
+        reviewSentimentLabels: {{ review_sentiment_labels|safe }},
+        reviewSentimentValues: {{ review_sentiment_values|safe }},
+    };
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

@@ -32,6 +32,9 @@ from products.models import Product
 from notifications.models import Notification
 from django_q.tasks import async_task
 from admin_records.tasks import send_action_required_email, send_rejection_email
+from payments.models import Payment, PaymentRefund
+
+from admin_records.models import ModerationLog
 
 COMMISSION_RATE = Decimal("0.05")
 PRODUCER_RATE = Decimal("0.95")
@@ -96,50 +99,136 @@ def _build_financial_context(request):
     total_commission_calc = Decimal("0.00")
     total_commission_recorded = Decimal("0.00")
     total_producer_payout = Decimal("0.00")
+    total_refunds = Decimal("0.00")
 
     for order in orders:
-        order_total = order.final_total_price
-        commission_calc = (order_total * COMMISSION_RATE).quantize(Decimal("0.01"))
-        commission_recorded = order.total_commission.quantize(Decimal("0.01"))
-        producer_payout_total = (order_total - commission_calc).quantize(Decimal("0.01"))
 
-        total_order_value += order_total
+        # Always define this
+        order_total = order.final_total_price
+
+        # -----------------------------------------
+        # NEW LOGIC: Determine payment + refund info
+        # -----------------------------------------
+        payment = order.payments.order_by("-created_at").first()
+
+        if payment:
+            refunds = PaymentRefund.objects.filter(payment=payment)
+            successful_refunds = refunds.filter(status="SUC")
+            pending_refunds = refunds.filter(status="PEN")
+            refund_total = sum((r.amount for r in successful_refunds), Decimal("0.00"))
+        else:
+            refunds = PaymentRefund.objects.none()
+            successful_refunds = []
+            pending_refunds = []
+            refund_total = Decimal("0.00")
+
+        refund_total = sum((r.amount for r in successful_refunds), Decimal("0.00"))
+
+        if payment:
+            payment_method = payment.payment_method
+            payment_status = payment.payment_status
+        else:
+            payment_method = None
+            payment_status = None
+
+        # -----------------------------------------
+        # NEW LOGIC: Determine active vs cancelled producers
+        # -----------------------------------------
+        producer_summaries = order.producer_summaries.all()
+
+        active_summaries = producer_summaries.exclude(status="CAN")
+        cancelled_summaries = producer_summaries.filter(status="CAN")
+
+        active_subtotal = sum((ps.subtotal for ps in active_summaries), Decimal("0.00"))
+        cancelled_subtotal = sum((ps.subtotal for ps in cancelled_summaries), Decimal("0.00"))
+
+        # -----------------------------------------
+        # NEW LOGIC: Commission + payout rules
+        # -----------------------------------------
+
+        # CASE 1 — FULL ORDER CANCELLED
+        if order.status == Order.Status.CANCELLED:
+            commission_calc = Decimal("0.00")
+            commission_recorded = Decimal("0.00")
+            producer_payout_total = Decimal("0.00")
+
+        # CASE 2 — PARTIAL CANCELLATION
+        elif cancelled_summaries.exists():
+            commission_calc = (active_subtotal * COMMISSION_RATE).quantize(Decimal("0.01"))
+            commission_recorded = commission_calc
+            producer_payout_total = (active_subtotal - commission_calc).quantize(Decimal("0.01"))
+
+        # CASE 3 — NORMAL ORDER
+        else:
+            commission_calc = (order_total * COMMISSION_RATE).quantize(Decimal("0.01"))
+            commission_recorded = order.total_commission.quantize(Decimal("0.01"))
+            producer_payout_total = (order_total - commission_calc).quantize(Decimal("0.01"))
+
+        # Update totals
+        # CASE 1 — Cancelled cash order → company never received money
+        if order.status == Order.Status.CANCELLED and payment_method == "CSH":
+            gross_total_add = Decimal("0.00")
+
+        # CASE 2 — All other orders → include in gross total
+        else:
+            gross_total_add = order_total
+
+        total_order_value += gross_total_add
         total_commission_calc += commission_calc
         total_commission_recorded += commission_recorded
         total_producer_payout += producer_payout_total
+        total_refunds += refund_total
 
-        producer_summaries = order.producer_summaries.all()
-        if producer_id:
-            producer_summaries = producer_summaries.filter(producer_id=producer_id)
+        # -----------------------------------------
+        # NEW LOGIC: Build producer breakdown lists
+        # -----------------------------------------
 
-        producer_breakdown = [
-            {
+        producer_breakdown_active = []
+        producer_breakdown_cancelled = []
+        
+        # ACTIVE PRODUCERS
+        for ps in active_summaries:
+            active_commission = (ps.subtotal * COMMISSION_RATE).quantize(Decimal("0.01"))
+            active_payout = (ps.subtotal - active_commission).quantize(Decimal("0.01"))
+
+            producer_breakdown_active.append({
                 "producer_name": ps.producer.farm_name,
                 "subtotal": ps.subtotal,
-                "commission_total": ps.commission_total,
-                "payout_amount": ps.payout_amount,
-            }
-            for ps in producer_summaries
-        ]
+                "commission": active_commission,
+                "payout": active_payout,
+                "status": "ACTIVE",
+            })
+
+        # CANCELLED PRODUCERS
+        for ps in cancelled_summaries:
+            producer_breakdown_cancelled.append({
+                "producer_name": ps.producer.farm_name,
+                "subtotal": ps.subtotal,
+                "refund": refund_total,
+                "status": "CANCELLED",
+            })
 
         order_rows.append(
-            {
-                "order": order,
-                "order_total": order_total,
-                "commission_calc": commission_calc,
-                "commission_recorded": commission_recorded,
-                "producer_payout_total": producer_payout_total,
-                "producer_breakdown": producer_breakdown,
-            }
-        )
+    {
+        "order": order,
+        "order_total": order_total,
+        "commission_calc": commission_calc,
+        "commission_recorded": commission_recorded,
+        "producer_payout_total": producer_payout_total,
 
-    today = date.today()
-    ytd_orders = Order.objects.filter(order_date__year=today.year)
-    ytd_total = (
-        ytd_orders.aggregate(s=Sum("final_total_price"))["s"] or Decimal("0.00")
+        # NEW REFUND FIELDS
+        "refund_total": refund_total,
+        "payment_method": payment_method,
+        "payment_status": payment_status,
+        "refund_pending": pending_refunds.exists(),
+
+        # NEW PRODUCER BREAKDOWN
+        "active_producers": producer_breakdown_active,
+        "cancelled_producers": producer_breakdown_cancelled,
+    }
     )
-    ytd_commission_calc = (ytd_total * COMMISSION_RATE).quantize(Decimal("0.01"))
 
+    net_sales = total_order_value - total_refunds
     producers = Producer.objects.all()
 
     context = {
@@ -148,8 +237,9 @@ def _build_financial_context(request):
         "total_commission_calc": total_commission_calc.quantize(Decimal("0.01")),
         "total_commission_recorded": total_commission_recorded.quantize(Decimal("0.01")),
         "total_producer_payout": total_producer_payout.quantize(Decimal("0.01")),
-        "ytd_total": ytd_total.quantize(Decimal("0.01")),
-        "ytd_commission_calc": ytd_commission_calc,
+        "gross_total": total_order_value.quantize(Decimal("0.01")),
+        "refund_total": total_refunds.quantize(Decimal("0.01")),
+        "net_sales": net_sales.quantize(Decimal("0.01")),
         "producers": producers,
         "selected_producer": producer_id,
         "start_date": start_date,
@@ -193,64 +283,93 @@ def financial_reports_csv(request):
     response["Content-Disposition"] = 'attachment; filename="commission_report.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(
-        [
-            "Order ID",
-            "Reference",
-            "Date",
-            "Status",
-            "Order Total",
-            "Commission (5%)",
-            "Commission Recorded",
-            "Producer",
-            "Subtotal",
-            "Producer Commission",
-            "Producer Payout",
-        ]
-    )
+    writer.writerow([
+        "Order ID",
+        "Reference",
+        "Date",
+        "Status",
+        "Order Total",
+        "Commission (5% Calculated)",
+        "Commission (Recorded)",
+        "Producer Payout Total",
+        "Refund Total",
+        "Refund Status",
+        "Payment Method",
+        "Active Producers",
+        "Cancelled Producers",
+    ])
+
 
     for order in orders:
+
+        # Rebuild the same logic used in _build_financial_context()
+
         order_total = order.final_total_price
-        commission_calc = (order_total * COMMISSION_RATE).quantize(Decimal("0.01"))
-        commission_recorded = order.total_commission.quantize(Decimal("0.01"))
+
+        payment = order.payments.order_by("-created_at").first()
+        refunds = order.payment_refunds.all()
+        successful_refunds = refunds.filter(status="SUC")
+        pending_refunds = refunds.filter(status="PEN")
+
+        refund_total = sum((r.amount for r in successful_refunds), Decimal("0.00"))
+        refund_status = (
+            "Pending" if pending_refunds.exists()
+            else "Succeeded" if refund_total > 0
+            else "N/A"
+        )
+        payment_method = payment.payment_method if payment else "N/A"
 
         producer_summaries = order.producer_summaries.all()
-        if producer_id:
-            producer_summaries = producer_summaries.filter(producer_id=producer_id)
+        active_summaries = producer_summaries.exclude(status="CAN")
+        cancelled_summaries = producer_summaries.filter(status="CAN")
 
-        if not producer_summaries.exists():
-            writer.writerow(
-                [
-                    order.id,
-                    order.unique_reference,
-                    order.order_date,
-                    order.status,
-                    order_total,
-                    commission_calc,
-                    commission_recorded,
-                    "",
-                    "",
-                    "",
-                    "",
-                ]
-            )
+        active_subtotal = sum((ps.subtotal for ps in active_summaries), Decimal("0.00"))
+
+        # Commission + payout logic
+        if order.status == Order.Status.CANCELLED:
+            commission_calc = Decimal("0.00")
+            commission_recorded = Decimal("0.00")
+            producer_payout_total = Decimal("0.00")
+
+        elif cancelled_summaries.exists():
+            commission_calc = (active_subtotal * COMMISSION_RATE).quantize(Decimal("0.01"))
+            commission_recorded = commission_calc
+            producer_payout_total = (active_subtotal - commission_calc).quantize(Decimal("0.01"))
+
         else:
-            for ps in producer_summaries:
-                writer.writerow(
-                    [
-                        order.id,
-                        order.unique_reference,
-                        order.order_date,
-                        order.status,
-                        order_total,
-                        commission_calc,
-                        commission_recorded,
-                        ps.producer.farm_name,
-                        ps.subtotal,
-                        ps.commission_total,
-                        ps.payout_amount,
-                    ]
-                )
+            commission_calc = (order_total * COMMISSION_RATE).quantize(Decimal("0.01"))
+            commission_recorded = order.total_commission.quantize(Decimal("0.01"))
+            producer_payout_total = (order_total - commission_calc).quantize(Decimal("0.01"))
+
+        # Flatten active producers
+        active_list = ", ".join(
+            f"{ps.producer.farm_name} (£{ps.subtotal} → payout £{(ps.subtotal - (ps.subtotal * COMMISSION_RATE))})"
+            for ps in active_summaries
+        )
+
+        # Flatten cancelled producers
+        cancelled_list = ", ".join(
+            f"{ps.producer.farm_name} (cancelled → refund £{ps.subtotal})"
+            for ps in cancelled_summaries
+        )
+
+        writer.writerow([
+            order.id,
+            order.unique_reference,
+            order.order_date,
+            order.get_status_display(),
+            order_total,
+            commission_calc,
+            commission_recorded,
+            producer_payout_total,
+            refund_total,
+            refund_status,
+            payment_method,
+            active_list,
+            cancelled_list,
+        ])
+
+
 
     return response
 
@@ -362,19 +481,6 @@ def approve_product(request, product_id):
     return redirect("admin_records:approval_request")
 
 
-# def reject_product(request, product_id):
-#     product = get_object_or_404(Product, id=product_id)
-
-#     admin_obj = Admin.objects.get(user=request.user)
-
-#     product.status = Product.Status.REMOVED
-#     product.moderated_at = timezone.now()
-#     product.moderated_by_admin = admin_obj
-#     product.save()
-
-#     return redirect("admin_records:approval_request")
-from admin_records.models import ModerationLog
-
 def reject_product(request, product_id):
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "Invalid request method."}, status=400)
@@ -415,24 +521,6 @@ def reject_product(request, product_id):
     # SEND REJECTION EMAIL
     # -----------------------------
     producer_user = product.producer.user
-
-    # html_content = render_to_string(
-    #     "admin_records/emails/product_reject.html",
-    #     {
-    #         "producer_name": producer_user.name,
-    #         "product_name": product.name,
-    #         "reason": reason,
-    #         "admin_name": admin_obj.user.name,
-    #     }
-    # )
-
-    # email = EmailMultiAlternatives(
-    #     subject=f"Your product '{product.name}' has been rejected",
-    #     body="Your email client does not support HTML emails.",
-    #     from_email=settings.DEFAULT_FROM_EMAIL,
-    #     to=[producer_user.email],
-    # )
-    # email.attach_alternative(html_content, "text/html")
     async_task(
         "admin_records.tasks.send_rejection_email",
         product.id,
@@ -484,3 +572,6 @@ def action_required(request, product_id):
     )
 
     return JsonResponse({"success": True})
+
+#
+
