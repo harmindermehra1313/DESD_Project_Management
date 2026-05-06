@@ -240,29 +240,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
     surplusNoticeEl.innerHTML = "";
 
-    if (!productData.surplus_active) {
+    // If there is no active discount of any kind, do nothing
+    if (!productData.surplus_active && !productData.discount_reason) {
       return;
     }
 
+    const isExpiringSoon = productData.discount_reason === "Expires soon";
+    const title = isExpiringSoon ? "Expires soon" : M.surplusReductionTitle;
+    
     if (wholesaleActive) {
       surplusNoticeEl.innerHTML = `
       <div class="alert alert-danger py-2 mb-0" role="status">
-        <div class="fw-semibold">${M.surplusReductionTitle}</div>
+        <div class="fw-semibold">${escapeHtml(title)}</div>
         <div class="small">${M.surplusWholesaleAppliedNote}</div>
       </div>
     `;
       return;
     }
 
-    const surplusNote =
-      productData.surplus_note?.trim() || M.surplusDiscountAppliedNote;
+    // Use the specific expiry text if expiring soon, otherwise use the surplus note
+    const note = isExpiringSoon 
+        ? "This item expires soon and has been reduced by 25%."
+        : (productData.surplus_note?.trim() || M.surplusDiscountAppliedNote);
 
     surplusNoticeEl.innerHTML = `
-  <div class="alert alert-danger py-2 mb-0" role="status">
-    <div class="fw-semibold">${M.surplusReductionTitle}</div>
-    <div class="small">${escapeHtml(surplusNote)}</div>
-  </div>
-`;
+      <div class="alert alert-danger py-2 mb-0" role="status">
+        <div class="fw-semibold">${escapeHtml(title)}</div>
+        <div class="small">${escapeHtml(note)}</div>
+      </div>
+    `;
   }
 
   function renderPrice(qtyOverride = null) {

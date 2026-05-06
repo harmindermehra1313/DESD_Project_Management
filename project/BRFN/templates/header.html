@@ -116,10 +116,6 @@
                 {% endfor %}
               </ul>
             </li>
-            <!-- Producers -->
-            <li class="nav-item mx-2">
-              <a class="nav-link custom-nav-link" href="/producers/">Producers</a>
-            </li>
             <!-- More Dropdown -->
             <li class="nav-item dropdown mx-2">
               <a class="nav-link dropdown-toggle custom-nav-link"
@@ -127,13 +123,10 @@
                  data-bs-toggle="dropdown">More</a>
               <ul class="dropdown-menu custom-dropdown">
                 <li>
-                  <a class="dropdown-item" href="/about/">About Us</a>
+                  <a class="dropdown-item" href="{% url 'community:about' %}">About Us</a>
                 </li>
                 <li>
                   <a class="dropdown-item" href="{% url 'community:contact_us' %}">Contact Us</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/sustainability/">Food Miles</a>
                 </li>
                 <li>
                   <a class="dropdown-item" href="/community/">Community Projects</a>

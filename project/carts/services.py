@@ -247,7 +247,7 @@ def _get_effective_unit_price(
     """
     Final pricing logic:
     1. Start from base price
-    2. Apply surplus discount if active
+    2. Apply surplus or expiry discount if active
     3. Apply wholesale tier only if eligible
     """
 
@@ -256,11 +256,10 @@ def _get_effective_unit_price(
 
     base_price = Decimal(str(product.price))
 
-    # Surplus discount (batch-level)
-    if inventory.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
-        discount_factor = (
-            Decimal("100") - inventory.surplus_discount_percentage
-        ) / Decimal("100")
+    # Surplus / Expires Soon discount (batch-level)
+    discount_pct = inventory.current_discount_percentage
+    if discount_pct > 0:
+        discount_factor = (Decimal("100") - discount_pct) / Decimal("100")
         base_price = base_price * discount_factor
 
     if not wholesale_allowed:
@@ -847,14 +846,13 @@ def get_cart_summary(cart) -> dict:
                     "id": product.id,
                     "name": product.name,
                     "unit": getattr(product, "unit", "") or "",
-                    # "producer_name": product.producer.farm_name,
                     "producer_name": getattr(product.producer, "farm_name", None),
                     "image": _safe_image_url(product),
                     "stock_quantity": inventory.remaining_quantity,
-                    # for professional UI
                     "base_unit_price": base_unit_price,
-                    "surplus_status": inventory.surplus_status,
-                    "surplus_discount_percentage": inventory.surplus_discount_percentage,
+                    # Provide the unified discount properties
+                    "discount_percentage": inventory.current_discount_percentage,
+                    "discount_reason": inventory.current_discount_reason,
                     "surplus_note": inventory.surplus_note,
                 },
                 "quantity": qty,

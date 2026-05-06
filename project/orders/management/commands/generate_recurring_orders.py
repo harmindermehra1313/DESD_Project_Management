@@ -193,18 +193,17 @@ class Command(BaseCommand):
             # Find the best available inventory batch
             inventory = (
                 product.inventory_batches
-                .filter(remaining_quantity__gte=quantity)
+                .filter(
+                    remaining_quantity__gte=quantity,
+                    expiry_date__gte=delivery_date
+                )
                 .order_by("expiry_date")
                 .first()
             )
 
             if inventory is None:
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"    Product '{product.name}' out of stock – skipping item."
-                    )
-                )
-                continue
+                # Strict fulfillment: abort the entire order if any item is out of stock
+                raise ValueError(f"Strict fulfillment failed: '{product.name}' is out of stock.")
 
             unit_price = inventory.get_discounted_price()
             original_unit_price = product.price

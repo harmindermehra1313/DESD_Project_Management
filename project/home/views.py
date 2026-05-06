@@ -9,9 +9,19 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from datetime import timedelta
 
+from django.utils import timezone
+from django.db.models import Count
+from datetime import timedelta
+from accounts.models import User
+from products.models import Product
+from reviews.models import Review
+
+from django.shortcuts import render
+from reviews.models import Review
+from admin_records.dashboard_notification_views import get_review_notification_context
+
 def home(request):
     return render(request, "home/home.html")
-
 
 
 @producer_required
@@ -178,12 +188,6 @@ def mark_notification_read(request, pk):
 
 
 
-from django.utils import timezone
-from django.db.models import Count
-from datetime import timedelta
-from accounts.models import User
-from products.models import Product
-from reviews.models import Review
 
 
 # @admin_required
@@ -300,12 +304,7 @@ from reviews.models import Review
 #         "review_sentiment_values": review_sentiment_values,
 #         "recent_users": recent_users,
 #     })
-from django.utils import timezone
-from django.db.models import Count
-from datetime import timedelta
-from django.shortcuts import render
-from reviews.models import Review
-from admin_records.dashboard_notification_views import get_review_notification_context
+
 
 @admin_required
 def dashboard(request):

@@ -1,75 +1,93 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}Home | Bristol Regional Food Network{% endblock %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'home.css' %}">
+    <link rel="stylesheet" href="{% static 'home.css' %}">
 {% endblock %}
-
 {% block content %}
-<div class="text-center hero-section" style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2Fsuspension_bridge.jpg?alt=media&token=b5b5ee92-e2d4-41bf-9daa-700da0cd20ce');">
-    <div class="hero-content-wrapper"> <h1 class="hero-title">Local Produce, Delivered to You.</h1>
-        <a href="/producers/" class="btn btn-browse">Our Producers</a>
-    </div>
-</div>
-
-<div class="how-it-works-section text-center py-5">
-    <div class="container"> 
-        <h2 class="section-title">How it Works</h2>
-        <div class="row mt-5 px-md-4">
-            
-            <div class="col-md-4 how-it-works-col px-lg-3">
-                <div class="how-it-works-box mb-5 mb-md-0 p-4"> 
-                    <h4>Add Items to<br>Basket</h4>
-                    <p>Browse fresh produce from over 40 local farms and artisans within 20 miles of Bristol. Mix and match seasonal veg, dairy, and bakery goods from multiple vendors in one simple shop.</p>
-                </div>
-                </div>
-            
-            <div class="col-md-4 how-it-works-col px-lg-3">
-                <div class="how-it-works-box mb-5 mb-md-0 p-4">
-                    <h4>Pay Online, or In<br>Person</h4>
-                    <p>Choose the way you pay, whether it's a secure digital checkout or a manual payment upon collection. Our system automatically splits the total to ensure every local producer is paid fairly and accurately.</p>
-                </div>
-            </div>
-            
-            <div class="col-md-4 how-it-works-col px-lg-3">
-                <div class="how-it-works-box mb-md-0 p-4"> <h4>Receive Your<br>Order</h4>
-                    <p>Get your harvest exactly how you want it, with options for direct home delivery or convenient farm collection. Once ordered, our producers have 48 hours to harvest or bake your items at peak freshness.</p>
-                </div>
-            </div>
-            
+    <div class="text-center hero-section"
+         style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2Fsuspension_bridge.jpg?alt=media&token=b5b5ee92-e2d4-41bf-9daa-700da0cd20ce')">
+        <div class="hero-content-wrapper">
+            <h1 class="hero-title">Local Produce, Delivered to You.</h1>
+            <a href="{% url 'products:product_view' 0 %}" class="btn btn-browse">View Products</a>
         </div>
     </div>
-</div>
-
-<div class="container pb-5">
-
-    <div class="text-center pt-5 pb-5">
-        <h2 class="section-title">Popular Categories</h2>
-        <div class="row mt-5">
-            <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/products/category/5/" class="category-card" style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg?alt=media&token=aeb1f3de-5ced-44dd-bd50-9dd19d7b3554');">
-                    Vegetables
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/products/category/3/" class="category-card" style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg?alt=media&token=94167be4-30dd-4687-a9a9-a1a8e527271a');">
-                    Eggs
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/products/category/1/" class="category-card" style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_MEAT.jpg?alt=media&token=776bf899-7621-4e15-bd20-e5a611688f2d');">
-                    Meat
-                </a>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <a href="/products/category/6/" class="category-card" style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_SEASONAL.jpg?alt=media&token=34e901af-2a75-4f69-a1bf-bdcf0384b364');">
-                    Seasonal
-                </a>
+    <div class="how-it-works-section text-center py-5">
+        <div class="container">
+            <h2 class="section-title">How it Works</h2>
+            <div class="row mt-5 px-md-4">
+                <div class="col-md-4 how-it-works-col px-lg-3">
+                    <div class="how-it-works-box mb-5 mb-md-0 p-4">
+                        <h4>
+                            Add Items to
+                            <br>
+                            Basket
+                        </h4>
+                        <p>
+                            Browse fresh produce from over 40 local farms and artisans within 20 miles of Bristol. Mix and match seasonal veg, dairy, and bakery goods from multiple vendors in one simple shop.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4 how-it-works-col px-lg-3">
+                    <div class="how-it-works-box mb-5 mb-md-0 p-4">
+                        <h4>
+                            Pay Online, or In
+                            <br>
+                            Person
+                        </h4>
+                        <p>
+                            Choose the way you pay, whether it's a secure digital checkout or a manual payment upon collection. Our system automatically splits the total to ensure every local producer is paid fairly and accurately.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4 how-it-works-col px-lg-3">
+                    <div class="how-it-works-box mb-md-0 p-4">
+                        <h4>
+                            Receive Your
+                            <br>
+                            Order
+                        </h4>
+                        <p>
+                            Get your harvest exactly how you want it, with options for direct home delivery or convenient farm collection. Once ordered, our producers have 48 hours to harvest or bake your items at peak freshness.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-</div>
+    <div class="container pb-5">
+        <div class="text-center pt-5 pb-5">
+            <h2 class="section-title">Popular Categories</h2>
+            <div class="row mt-5">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="/products/category/5/"
+                       class="category-card"
+                       style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_VEGETABLES.jpg?alt=media&token=aeb1f3de-5ced-44dd-bd50-9dd19d7b3554')">
+                        Vegetables
+                    </a>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="/products/category/3/"
+                       class="category-card"
+                       style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_DAIRY_AND_EGGS.jpg?alt=media&token=94167be4-30dd-4687-a9a9-a1a8e527271a')">
+                        Eggs
+                    </a>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="/products/category/1/"
+                       class="category-card"
+                       style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_MEAT.jpg?alt=media&token=776bf899-7621-4e15-bd20-e5a611688f2d')">
+                        Meat
+                    </a>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="/products/category/6/"
+                       class="category-card"
+                       style="background-image: url('https://firebasestorage.googleapis.com/v0/b/desd-6af1a.firebasestorage.app/o/products%2Fimg%2FDEFAULT_PRODUCT_IMAGE_SEASONAL.jpg?alt=media&token=34e901af-2a75-4f69-a1bf-bdcf0384b364')">
+                        Seasonal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
