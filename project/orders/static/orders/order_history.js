@@ -803,11 +803,7 @@ function renderOrdersTable(orders) {
             ${M.viewDetailsButton}
           </button>
 
-          ${getReorderButtonHtml(
-            order.id,
-            order.order_status,
-            "btn-sm order-history-action-btn",
-          )}
+          ${getReorderButtonHtml(order, "btn-sm order-history-action-btn")}
         </div>
       </td>
     </tr>
@@ -2664,7 +2660,12 @@ function setReorderSubmittingState() {
   }
 }
 
-
+/* =========================
+   REORDER RESULT RENDERING
+   ========================= */
+/* =========================
+   REORDER RESULT RENDERING
+   ========================= */
 
 function getResultCounts(result) {
   return {
