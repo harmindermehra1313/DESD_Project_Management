@@ -29,30 +29,28 @@
           <span class="welcome-text me-3">Welcome, Guest</span>
         {% endif %}
         {% if user.is_authenticated %}
-          <!-- <div class="dropdown"> -->
-          <!-- <a class="custom-account-icon dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-person-circle"></i>
-            </a> -->
-          <div class="dropdown account-dropdown">
+          <div class="dropdown account-dropdown"
+               data-notifications-header
+               data-notifications-url="{% url 'notifications:notification_panel_json' %}"
+               data-notifications-interval="10000">
             <a class="custom-account-icon dropdown-toggle position-relative"
                href="#"
                role="button"
                data-bs-toggle="dropdown"
                aria-expanded="false">
               <i class="bi bi-person-circle"></i>
-              {% if unread_notifications > 0 %}<span class="notification-dot"></span>{% endif %}
+              <span class="notification-dot {% if unread_notifications == 0 %}d-none{% endif %}"
+                    data-notifications-dot></span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end custom-dropdown">
-              <!-- <li>
-                <a class="dropdown-item" href="/accounts/profile/">Profile</a>
-              </li> -->
               <li>
                 <a class="dropdown-item d-flex justify-content-between align-items-center"
                    href="/accounts/profile/">
                   Profile
-                  {% if unread_notifications > 0 %}
-                    <span class="badge bg-danger rounded-pill">{{ unread_notifications }}</span>
-                  {% endif %}
+                  <span class="badge bg-danger rounded-pill {% if unread_notifications == 0 %}d-none{% endif %}"
+                        data-notifications-count-badge>
+                    <span data-notifications-count>{{ unread_notifications }}</span>
+                  </span>
                 </a>
               </li>
               <li>

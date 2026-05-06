@@ -88,7 +88,12 @@
                     {% if not is_producer_profile %}
                         <div class="card border-0 shadow-sm mb-4"
                              style="border-radius: var(--radius)">
-                            <div class="card-body p-3 p-md-4">
+                            {% comment %} Auto Notification {% endcomment %}
+                            <div class="card-body p-3 p-md-4"
+                                 data-notifications-auto-panel
+                                 data-notifications-url="{% url 'notifications:notification_panel_json' %}"
+                                 data-notifications-page="{{ notifications.number|default:1 }}"
+                                 data-notifications-interval="10000">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h4 class="mb-0 d-flex align-items-center"
                                         style="color: var(--prussian-blue);
