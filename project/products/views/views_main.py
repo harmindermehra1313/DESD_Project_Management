@@ -799,6 +799,7 @@ def product_view(request, category_id):
     search_query = (request.GET.get("q") or "").strip()
     category_filter = (request.GET.get("category") or "").strip()
     producer_filter = (request.GET.get("producer") or "").strip()
+    allergen_filter = (request.GET.get("allergen") or "").strip()
     min_price = (request.GET.get("min_price") or "").strip()
     max_price = (request.GET.get("max_price") or "").strip()
     sort = (request.GET.get("sort") or "").strip()
