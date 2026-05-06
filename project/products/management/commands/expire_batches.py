@@ -4,6 +4,8 @@ from products.models import Inventory, InventoryUpdateHistory
 from datetime import timedelta, datetime, time
 from django.utils.timezone import make_aware
 
+from project.products.views import batch
+
 class Command(BaseCommand):
     help = "Mark inventory batches expiring within 48 hours as EXP and update surplus flags."
 
@@ -13,7 +15,7 @@ class Command(BaseCommand):
 
         # Active batches expiring within 48 hours
         expiring_batches = Inventory.objects.filter(
-            status=Inventory.BatchStatus.ACTIVE,
+            # status=Inventory.BatchStatus.ACTIVE,
             expiry_date__lte=cutoff,
         )
 
@@ -24,7 +26,7 @@ class Command(BaseCommand):
             if batch.surplus_status == Inventory.SurplusStatus.SURPLUS_ACTIVE:
                 InventoryUpdateHistory.objects.create(
                     inventory=batch,
-                    user=None,  # system action
+                    user=None, # system action
                     event_type="reduction_ended",
                     snapshot_discount=batch.surplus_discount_percentage,
                     snapshot_expiry=batch.surplus_expiry,
@@ -38,8 +40,10 @@ class Command(BaseCommand):
                 batch.surplus_expiry = None
                 batch.surplus_note = None
 
-            # Mark the batch itself as expired
-            batch.status = Inventory.BatchStatus.EXPIRED
+            # Mark the batch itself as expired if not deleted
+            if batch.status != Inventory.BatchStatus.DELETED:
+                batch.status = Inventory.BatchStatus.EXPIRED
+
             batch.save()
 
             count += 1
