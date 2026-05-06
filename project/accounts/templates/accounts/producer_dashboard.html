@@ -78,8 +78,7 @@
                                 <input class="form-check-input status-filter"
                                        type="checkbox"
                                        value="CAN"
-                                       id="filterCan"
-                                       checked>
+                                       id="filterCan">
                                 <label class="form-check-label" for="filterCan">Cancelled</label>
                             </div>
                         </div>
@@ -258,7 +257,7 @@
                         <thead>
                             <tr>
                                 <th>Sub ID</th>
-                                <th>Restaurant / Customer</th>
+                                <th>Customer</th>
                                 <th>Frequency</th>
                                 <th>Repeats On</th>
                                 <th>Initial Delivery Day</th>
@@ -275,7 +274,7 @@
                                     onclick="showSubscriptionDetails('{{ sub.id }}', this)"
                                     style="cursor: pointer">
                                     <td class="fw-bold text-muted" data-label="Sub ID">#SUB-{{ sub.id }}</td>
-                                    <td data-label="Restaurant / Customer">{{ sub.customer_name }}</td>
+                                    <td data-label="Customer">{{ sub.customer_name }}</td>
                                     <td data-label="Frequency">{{ sub.recurrence_pattern }}</td>
                                     <td data-label="Repeats On">Every {{ sub.recurrence_day }}</td>
                                     <td data-label="Initial Delivery Day">{{ sub.delivery_day }}</td>
@@ -407,19 +406,33 @@
                                 {% endfor %}
                             </ul>
                             {% if summary.cancelled_items %}
-                                <strong>Cancelled items:</strong>
-                                <ul class="list-unstyled mb-3 text-muted">
-                                    {% for item in summary.cancelled_items %}
-                                        <li>
-                                            <s>
-                                                {{ item.dashboard_cancelled_quantity }}x {{ item.product.name }}
-                                                ({{ item.product.get_unit_display }})
-                                            </s>
-                                            <span class="badge bg-secondary ms-1">Cancelled</span>
-                                            <span class="text-muted small ms-1">{{ item.dashboard_quantity_summary }}</span>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
+                                <div class="mt-2 mb-3">
+                                    <button class="btn btn-outline-secondary btn-sm"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#cancelledItems-{{ summary.id }}"
+                                            aria-expanded="false"
+                                            aria-controls="cancelledItems-{{ summary.id }}">
+                                        Show cancelled items
+                                    </button>
+                                    <div class="collapse mt-3" id="cancelledItems-{{ summary.id }}">
+                                        <div class="producer-cancelled-items-box">
+                                            <strong>Cancelled items:</strong>
+                                            <ul class="list-unstyled mb-0 text-muted mt-2">
+                                                {% for item in summary.cancelled_items %}
+                                                    <li class="mb-1">
+                                                        <s>
+                                                            {{ item.dashboard_cancelled_quantity }}x {{ item.product.name }}
+                                                            ({{ item.product.get_unit_display }})
+                                                        </s>
+                                                        <span class="badge bg-secondary ms-1">Cancelled</span>
+                                                        <span class="text-muted small ms-1">{{ item.dashboard_quantity_summary }}</span>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             {% endif %}
                             <strong>Special Instructions:</strong>
                             <br>
@@ -835,6 +848,7 @@
             </div>
         </div>
         {% csrf_token %}
-        <script src="{% static 'js/producer_dashboard.js' %}?v=3.9"></script>
+        <script src="{% static 'js/producer_dashboard.js' %}?v=4.0"></script>
+        <script src="{% static 'js/producer_dashboard_validation.js' %}?v=1.2"></script>
     </div>
 {% endblock %}
