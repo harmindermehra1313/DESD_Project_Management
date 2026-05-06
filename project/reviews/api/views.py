@@ -3,6 +3,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from notifications.services.notifications import NotificationService
 
 from products.models import Product
 from reviews.api.serializers import (
@@ -34,9 +35,14 @@ class ReviewCreateAPIView(generics.CreateAPIView):
         if review.status == Review.Status.PUBLISHED:
             code = "review_submitted"
             message = "Review submitted successfully."
+            NotificationService.notify_review_published_after_submission(review)
         else:
             code = "review_submitted_for_moderation"
             message = "Review submitted and sent for moderation."
+
+            if review.status == Review.Status.FLAGGED:
+                NotificationService.notify_review_flagged_after_submission(review)
+                NotificationService.notify_admin_review_flagged(review)
 
         return Response(
             {
@@ -79,6 +85,7 @@ class ProductReviewListAPIView(APIView):
                 "results": serializer.data,
             }
         )
+
 
 class ProducerReviewListAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -153,14 +160,34 @@ class ProducerReviewResponseAPIView(APIView):
             },
         )
         serializer.is_valid(raise_exception=True)
+        existing_response = ReviewProducerResponse.objects.filter(
+            review=review,
+        ).first()
+
+        old_response_status = (
+            existing_response.status if existing_response is not None else None
+        )
         response = serializer.save()
 
         if response.status == ReviewProducerResponse.Status.PUBLISHED:
             code = "producer_response_saved"
             message = "Response saved successfully."
+
+            NotificationService.notify_producer_response_published_after_submission(
+                response
+            )
+
         else:
             code = "producer_response_sent_for_moderation"
             message = "Response saved and sent for moderation."
+
+            if response.status == ReviewProducerResponse.Status.FLAGGED:
+                NotificationService.notify_producer_response_flagged_after_submission(
+                    response
+                )
+
+                if old_response_status != ReviewProducerResponse.Status.FLAGGED:
+                    NotificationService.notify_admin_producer_response_flagged(response)
 
         return Response(
             {

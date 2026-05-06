@@ -19,9 +19,6 @@ import logging
 from dataclasses import dataclass
 from threading import Lock
 
-from detoxify import Detoxify
-
-
 logger = logging.getLogger(__name__)
 
 # Reduce noisy model-download/network logs.
@@ -53,12 +50,29 @@ _model = None
 _model_lock = Lock()
 
 
+def _flagged_moderation_error() -> ModerationResult:
+    """
+    Safe fallback.
+
+    If Detoxify cannot import, load, download, warm up, or predict,
+    the content must not be published automatically.
+    It is sent to flagged moderation instead.
+    """
+    return ModerationResult(
+        flagged=True,
+        categories={
+            "moderation_error": True,
+        },
+        category_scores={},
+    )
+
+
 def get_model():
     """
     Load and cache the Detoxify model once per Python process.
 
-    The warm-up prediction prevents the first real review moderation request
-    from paying the full model initialisation cost.
+    Detoxify is imported inside this function so that a missing or broken
+    Detoxify installation does not crash Django during module import.
     """
     global _model
 
@@ -66,7 +80,12 @@ def get_model():
         return _model
 
     with _model_lock:
-        if _model is None:
+        if _model is not None:
+            return _model
+
+        try:
+            from detoxify import Detoxify
+
             model = Detoxify("unbiased-small")
 
             # Warm-up prediction.
@@ -76,6 +95,13 @@ def get_model():
             _model = model
             logger.info("Review moderation model loaded successfully.")
 
+        except Exception:
+            logger.exception(
+                "Review moderation model could not be loaded. "
+                "Affected content will be sent to flagged moderation."
+            )
+            raise
+
     return _model
 
 
@@ -83,8 +109,8 @@ def moderate_review_content(*, title: str, text: str) -> ModerationResult:
     """
     Moderate review title and body text using Detoxify.
 
-    The highest score from either the title or body is used per moderation
-    category. A review is flagged if any score meets or exceeds its threshold.
+    If Detoxify is unavailable or fails, return a flagged moderation result
+    so the review/response goes to manual moderation instead of being published.
     """
     try:
         model = get_model()
@@ -104,12 +130,11 @@ def moderate_review_content(*, title: str, text: str) -> ModerationResult:
         }
 
     except Exception:
-        logger.exception("Error during review content moderation")
-        return ModerationResult(
-            flagged=True,
-            categories={"moderation_error": True},
-            category_scores={},
+        logger.exception(
+            "Error during review content moderation. "
+            "Content will be sent to flagged moderation."
         )
+        return _flagged_moderation_error()
 
     flagged_categories = {
         category: float(scores.get(category, 0)) >= threshold

@@ -19,11 +19,23 @@
                 <div class="order-filter-header">
                     <div>
                         <h3 class="order-filter-title">Filter orders</h3>
-                        <p class="order-filter-subtitle mb-0">Narrow the order history by status, order date, or fulfilment method.</p>
+                        <p class="order-filter-subtitle mb-0">
+                            Narrow the order history by order reference, status, order date, or fulfilment method.
+                        </p>
                     </div>
                 </div>
                 <form id="orderFiltersForm" class="order-filter-form">
                     <div class="order-filter-grid">
+                        <div class="order-filter-field">
+                            <label for="order_reference" class="form-label">Order reference</label>
+                            <input id="order_reference"
+                                   name="order_reference"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="Example: 7x2bM9jaqHJUrJq3PYvfaE"
+                                   autocomplete="off">
+                            <div class="form-text">Search by the order reference shown in the order history.</div>
+                        </div>
                         <div class="order-filter-field">
                             <label for="status" class="form-label">Status</label>
                             <select id="status" class="form-select">

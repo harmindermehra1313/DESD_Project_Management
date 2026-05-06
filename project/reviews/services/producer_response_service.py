@@ -2,7 +2,14 @@ from django.utils import timezone
 
 from reviews.models import ReviewProducerResponse
 from reviews.services.moderation_service import moderate_review_content
-from reviews.services.spam_detection_service import detect_review_spam
+from reviews.services.spam_detection_service import (
+    SPAM_MODERATION_NOTE,
+    detect_review_spam,
+)
+
+
+TOXIC_MODERATION_NOTE = "Toxic or inappropriate content detected."
+MODERATION_ERROR_NOTE = "Automatic moderation could not be completed. Manual review required."
 
 
 class ProducerResponseError(Exception):
@@ -26,6 +33,15 @@ class ProducerResponseError(Exception):
         super().__init__(message)
 
 
+def _moderation_note_for_result(moderation_result) -> str:
+    categories = moderation_result.categories or {}
+
+    if categories.get("moderation_error"):
+        return MODERATION_ERROR_NOTE
+
+    return TOXIC_MODERATION_NOTE
+
+
 def create_or_update_producer_response(*, review, responder, text: str):
     cleaned_text = (text or "").strip()
 
@@ -45,25 +61,6 @@ def create_or_update_producer_response(*, review, responder, text: str):
             },
         )
 
-    spam_result = detect_review_spam(
-        title="",
-        review_text=cleaned_text,
-    )
-
-    if spam_result.is_spam:
-        raise ProducerResponseError(
-            code="producer_response_spam_detected",
-            message="This response appears to contain spam or promotional content.",
-            data={
-                "reasons": spam_result.reasons,
-            },
-        )
-
-    moderation_result = moderate_review_content(
-        title="",
-        text=cleaned_text,
-    )
-
     response, _created = ReviewProducerResponse.objects.get_or_create(
         review=review,
         defaults={
@@ -75,16 +72,27 @@ def create_or_update_producer_response(*, review, responder, text: str):
     response.text = cleaned_text
     response.moderated_at = timezone.now()
 
-    notes = []
+    spam_result = detect_review_spam(
+        title="",
+        review_text=cleaned_text,
+    )
 
-    if moderation_result.flagged:
+    if spam_result.is_spam:
         response.status = ReviewProducerResponse.Status.FLAGGED
-        notes.append("Toxic or inappropriate content detected.")
-        notes.extend(moderation_result.categories.keys())
+        response.moderation_notes = SPAM_MODERATION_NOTE
     else:
-        response.status = ReviewProducerResponse.Status.PUBLISHED
+        moderation_result = moderate_review_content(
+            title="",
+            text=cleaned_text,
+        )
 
-    response.moderation_notes = "\n".join(notes)
+        if moderation_result.flagged:
+            response.status = ReviewProducerResponse.Status.FLAGGED
+            response.moderation_notes = _moderation_note_for_result(moderation_result)
+        else:
+            response.status = ReviewProducerResponse.Status.PUBLISHED
+            response.moderation_notes = ""
+
     response.full_clean()
     response.save()
 

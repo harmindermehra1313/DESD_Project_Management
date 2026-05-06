@@ -83,8 +83,26 @@ def _all_product_batches_deleted(*, product) -> bool:
     )
 
 
+def _active_order_item_quantity(item) -> int:
+    """
+    Return the quantity that should still be reorderable.
+
+    Example:
+    - ordered quantity: 3
+    - cancelled quantity: 1
+    - active reorderable quantity: 2
+    """
+    original_quantity = int(getattr(item, "quantity", 0) or 0)
+    cancelled_quantity = int(getattr(item, "cancelled_quantity", 0) or 0)
+
+    return max(original_quantity - cancelled_quantity, 0)
+
+
 def _is_cancelled_order_item(item) -> bool:
-    return item.status == OrderItem.Status.CANCELLED
+    return (
+        item.status == OrderItem.Status.CANCELLED
+        or _active_order_item_quantity(item) <= 0
+    )
 
 
 def _structured_validation_error(
@@ -488,6 +506,34 @@ def _build_selection_map(*, order, selections: list[dict] | None) -> dict[int, d
     return selection_map
 
 
+def _normalise_reorder_quantity(
+    *,
+    selected_quantity,
+    default_quantity: int,
+) -> tuple[int | None, str | None]:
+    """
+    Validate and clamp the selected reorder quantity.
+
+    The maximum allowed reorder quantity is the active historical quantity,
+    not the original ordered quantity.
+
+    This protects the backend even if the frontend sends the old full quantity
+    for a partially cancelled item.
+    """
+    if selected_quantity is None:
+        return default_quantity, None
+
+    try:
+        quantity = int(selected_quantity)
+    except (TypeError, ValueError):
+        return None, "Selected reorder quantity must be a whole number."
+
+    if quantity <= 0:
+        return None, "Selected reorder quantity must be at least 1."
+
+    return min(quantity, default_quantity), None
+
+
 def _resolve_candidate_for_item(
     *,
     item,
@@ -505,6 +551,14 @@ def _resolve_candidate_for_item(
 
     if action == "skip":
         return None, "skipped", None
+
+    selected_quantity, quantity_error = _normalise_reorder_quantity(
+        selected_quantity=selection.get("quantity"),
+        default_quantity=default_quantity,
+    )
+
+    if quantity_error:
+        return None, quantity_error, None
 
     if action == "keep":
         if original_candidate is None:
@@ -537,7 +591,7 @@ def _resolve_candidate_for_item(
                 None,
             )
 
-        return original_candidate, None, selection["quantity"]
+        return original_candidate, None, selected_quantity
 
     if action == "replace":
         selected_product_id = selection.get("selected_product_id")
@@ -548,7 +602,7 @@ def _resolve_candidate_for_item(
                 candidate["product"].pk == selected_product_id
                 and candidate["inventory"].pk == selected_inventory_id
             ):
-                return candidate, None, selection["quantity"]
+                return candidate, None, selected_quantity
 
         return (
             None,
@@ -683,6 +737,7 @@ def reorder_order(
     }
 
     for item in order.items.all():
+        active_quantity = _active_order_item_quantity(item)
         if _is_cancelled_order_item(item):
             skipped_count += 1
             continue
@@ -691,7 +746,7 @@ def reorder_order(
             user=user,
             product=item.product,
             original_producer_id=item.producer_id,
-            requested_quantity=item.quantity,
+            requested_quantity=active_quantity,
             excluded_product_ids=order_product_ids,
         )
         suggested_items = _serialise_suggested_items_from_candidates(
@@ -708,7 +763,7 @@ def reorder_order(
                 result=result,
                 item=item,
                 reason=original_unavailable_reason or "Product cannot be reordered.",
-                requested_quantity=item.quantity,
+                requested_quantity=active_quantity,
                 suggested_items=suggested_items,
             )
             continue
@@ -719,7 +774,7 @@ def reorder_order(
                 selection=selection,
                 original_candidate=original_candidate,
                 suggestion_candidates=suggestion_candidates,
-                default_quantity=item.quantity,
+                default_quantity=active_quantity,
             )
         )
 
@@ -734,14 +789,14 @@ def reorder_order(
                 reason=rejection_reason
                 or original_unavailable_reason
                 or "Product cannot be reordered.",
-                requested_quantity=selected_quantity or item.quantity,
+                requested_quantity=selected_quantity or active_quantity,
                 suggested_items=suggested_items,
             )
             continue
 
         selected_product = selected_candidate["product"]
         selected_inventory = selected_candidate["inventory"]
-        requested_quantity = selected_quantity or item.quantity
+        requested_quantity = selected_quantity or active_quantity
         available_quantity = selected_candidate["available_quantity"]
         quantity_to_add = min(requested_quantity, available_quantity)
 

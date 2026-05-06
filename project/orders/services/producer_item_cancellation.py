@@ -133,6 +133,7 @@ def cancel_producer_order_item_as_producer(
     order_item_id,
     producer,
     cancelled_by,
+    quantity_to_cancel=None,
     reason="Producer cancelled this item",
 ):
     reason = (reason or "").strip() or "Producer cancelled this item"
@@ -191,19 +192,43 @@ def cancel_producer_order_item_as_producer(
                 "This item cannot be cancelled automatically at the current producer order status."
             )
 
-        quantity_to_cancel = _active_quantity(item)
+        active_quantity = _active_quantity(item)
+
+        if active_quantity <= 0:
+            raise ProducerItemCancellationError(
+                "This item has already been cancelled."
+            )
+
+        if quantity_to_cancel is None:
+            quantity_to_cancel = active_quantity
+
+        try:
+            quantity_to_cancel = int(quantity_to_cancel)
+        except (TypeError, ValueError):
+            raise ProducerItemCancellationError(
+                "Cancellation quantity must be a whole number."
+            )
 
         if quantity_to_cancel <= 0:
             raise ProducerItemCancellationError(
-                "This item has already been cancelled."
+                "Cancellation quantity must be at least 1."
+            )
+
+        if quantity_to_cancel > active_quantity:
+            raise ProducerItemCancellationError(
+                f"Cannot cancel {quantity_to_cancel}. Only {active_quantity} active item(s) remain."
             )
 
         Inventory.objects.filter(pk=item.inventory_id).update(
             remaining_quantity=F("remaining_quantity") + quantity_to_cancel
         )
 
-        item.cancelled_quantity = item.quantity
-        item.status = OrderItem.Status.CANCELLED
+        item.cancelled_quantity += quantity_to_cancel
+
+        if item.cancelled_quantity >= item.quantity:
+            item.status = OrderItem.Status.CANCELLED
+        else:
+            item.status = OrderItem.Status.PARTIALLY_CANCELLED
 
         if item.cancelled_at is None:
             item.cancelled_at = timezone.now()
@@ -236,6 +261,7 @@ def cancel_producer_order_item_as_producer(
             item=item,
             cancelled_quantity=quantity_to_cancel,
             reason=reason,
+            cancellation_marker=f"cancelled-total-{item.cancelled_quantity}",
         )
 
         NotificationService.notify_order_item_cancelled(

@@ -262,6 +262,13 @@ def cancel_order_item_as_customer(
             cancelled_quantity=quantity_to_cancel,
         )
 
+        NotificationService.notify_producer_order_item_cancelled_by_customer(
+            order=order,
+            item=item,
+            cancelled_quantity=quantity_to_cancel,
+            producer_summary=producer_summary,
+        )
+
         if refund_result.get("refunded"):
             NotificationService.notify_refund_processed(
                 order=order,

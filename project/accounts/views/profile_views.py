@@ -1,8 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
 from django.core.paginator import Paginator
+from django.shortcuts import redirect, render
+from django.urls import reverse
+
 from notifications.models import Notification
 from notifications.services.notifications import NotificationService
 
@@ -13,6 +15,10 @@ from ..forms import (
     ProfilePasswordChangeForm,
 )
 from ..models import Address
+
+
+NOTIFICATIONS_PER_PAGE = 5
+NOTIFICATION_PAGE_PARAM = "notifications_page"
 
 
 def get_profile_account_type_label(user):
@@ -41,6 +47,25 @@ def get_profile_account_type_label(user):
         )
 
     return user.get_role_display() or user.role
+
+
+def normalise_notification_page(page_number):
+    try:
+        page_number = int(page_number)
+    except (TypeError, ValueError):
+        return 1
+
+    return max(page_number, 1)
+
+
+def redirect_to_profile_notifications(page_number=None):
+    page_number = normalise_notification_page(page_number)
+
+    return redirect(
+        f"{reverse('accounts:profile')}?"
+        f"{NOTIFICATION_PAGE_PARAM}={page_number}"
+        f"#profile-notifications"
+    )
 
 
 @login_required
@@ -160,19 +185,28 @@ def profile(request):
         else:
             messages.error(request, "Invalid profile update request.")
 
-
-    # Get notifications for customers, but not producers (producers have a separate notifications dashboard)
     notifications = None
+    notification_page_range = []
+    notification_page_ellipsis = ""
     unread_count = 0
 
     if not is_producer:
         notifications_qs = Notification.objects.filter(
-            user=user
+            user=user,
         ).order_by("-created_at")
 
-        paginator = Paginator(notifications_qs, 5)  # 5 per page
-        page_number = request.GET.get("page")
+        paginator = Paginator(notifications_qs, NOTIFICATIONS_PER_PAGE)
+        page_number = request.GET.get(NOTIFICATION_PAGE_PARAM)
         notifications = paginator.get_page(page_number)
+
+        notification_page_range = list(
+            paginator.get_elided_page_range(
+                number=notifications.number,
+                on_each_side=1,
+                on_ends=1,
+            )
+        )
+        notification_page_ellipsis = paginator.ELLIPSIS
 
         unread_count = notifications_qs.filter(read_at__isnull=True).count()
 
@@ -184,24 +218,41 @@ def profile(request):
         "profile_account_type": get_profile_account_type_label(user),
         "is_producer_profile": is_producer,
         "notifications": notifications,
+        "notification_page_range": notification_page_range,
+        "notification_page_ellipsis": notification_page_ellipsis,
+        "notification_page_param": NOTIFICATION_PAGE_PARAM,
         "unread_count": unread_count,
     }
 
     return render(request, "accounts/profile.html", context)
 
+
 @login_required
 def customer_mark_notification_read(request, pk):
-    note = Notification.objects.filter(pk=pk, user=request.user).first()
-    if note:
-        NotificationService.mark_read(note)
+    page = (
+        request.POST.get(NOTIFICATION_PAGE_PARAM)
+        or request.GET.get(NOTIFICATION_PAGE_PARAM)
+        or 1
+    )
 
-    # Stay on same page
-    page = request.POST.get("page", 1)
-    return redirect(f"/accounts/profile/?page={page}")
+    if request.method == "POST":
+        note = Notification.objects.filter(pk=pk, user=request.user).first()
+
+        if note:
+            NotificationService.mark_read(note)
+
+    return redirect_to_profile_notifications(page)
+
 
 @login_required
 def customer_mark_all_notifications_read(request):
-    NotificationService.mark_all_read(request.user)
+    page = (
+        request.POST.get(NOTIFICATION_PAGE_PARAM)
+        or request.GET.get(NOTIFICATION_PAGE_PARAM)
+        or 1
+    )
 
-    page = request.POST.get("page", 1)
-    return redirect(f"/accounts/profile/?page={page}")
+    if request.method == "POST":
+        NotificationService.mark_all_read(request.user)
+
+    return redirect_to_profile_notifications(page)
