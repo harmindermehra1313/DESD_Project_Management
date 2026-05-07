@@ -149,6 +149,9 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
             items_by_producer = {}
             commission_per = Decimal("0.05")
 
+            total_food_miles = Decimal("0.00")
+            counted_producers = set()
+
             for entry in items:
                 product = entry.inventory.product
                 quantity = entry.quantity
@@ -199,6 +202,11 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
                     delivery_address.postcode
                 )
 
+                # Add to order-level food miles (count once per producer)
+                if food_miles_value is not None and producer.id not in counted_producers:
+                    counted_producers.add(producer.id)
+                    total_food_miles += Decimal(str(food_miles_value))
+
                 item = OrderItem.objects.create(
                     order=order,
                     inventory=inventory,
@@ -247,6 +255,7 @@ def create_order_from_session(request, validated_data, payment_method, payment_i
             order.total_discount = total_discount
             order.total_commission = commission_total
             order.final_total_price = total_excl_vat + total_vat
+            order.food_miles_total = total_food_miles
             order.save()
 
             # -----------------------------
