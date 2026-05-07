@@ -18,11 +18,10 @@
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="mb-1">My Subscriptions</h2>
+                <h2 class="mb-1 title">My Subscriptions</h2>
                 <p class="text-muted mb-0">View and manage your recurring orders.</p>
             </div>
         </div>
-
         <!-- Filters -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
@@ -31,27 +30,21 @@
                         <label for="recurring_status" class="form-label">Status</label>
                         <select id="recurring_status" class="form-select">
                             <option value="">All</option>
-                            {% for value, label in status_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
+                            {% for value, label in status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label for="recurring_frequency" class="form-label">Frequency</label>
                         <select id="recurring_frequency" class="form-select">
                             <option value="">All</option>
-                            {% for value, label in frequency_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
+                            {% for value, label in frequency_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label for="recurring_day" class="form-label">Day</label>
                         <select id="recurring_day" class="form-select">
                             <option value="">All</option>
-                            {% for value, label in day_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
+                            {% for value, label in day_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="col-12 d-flex gap-2">
@@ -61,7 +54,6 @@
                 </form>
             </div>
         </div>
-
         <!-- Recurring Orders Table -->
         <div class="card shadow-sm">
             <div class="card-header bg-white">
@@ -84,35 +76,30 @@
                             </thead>
                             <tbody id="recurringTableBody">
                                 {% for sub in customer_subscriptions %}
-                                <tr class="recurring-row"
-                                    data-recurring-status="{{ sub.status }}"
-                                    data-recurring-frequency="{{ sub.recurrence_pattern_code }}"
-                                    data-recurring-day="{{ sub.recurrence_day_code }}">
-                                    <td><strong>#{{ sub.id }}</strong></td>
-                                    <td>{{ sub.recurrence_pattern }}</td>
-                                    <td>{{ sub.recurrence_day }}</td>
-                                    <td>{{ sub.items|length }} item{{ sub.items|length|pluralize }}</td>
-                                    <td>
-                                        {% for p in sub.producers %}
-                                            <span class="badge rounded-pill text-bg-light border me-1 mb-1">{{ p }}</span>
-                                        {% endfor %}
-                                    </td>
-                                    <td>
-                                        <span class="badge
-                                            {% if sub.status == 'ACTIVE' %}bg-success
-                                            {% elif sub.status == 'PAUSED' %}bg-warning text-dark
-                                            {% else %}bg-danger{% endif %}">
-                                            {{ sub.status_display }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary"
-                                                onclick="openRecurringDetails({{ sub.id }})">
-                                            View Details
-                                        </button>
-                                    </td>
-                                </tr>
+                                    <tr class="recurring-row"
+                                        data-recurring-status="{{ sub.status }}"
+                                        data-recurring-frequency="{{ sub.recurrence_pattern_code }}"
+                                        data-recurring-day="{{ sub.recurrence_day_code }}">
+                                        <td>
+                                            <strong>#{{ sub.id }}</strong>
+                                        </td>
+                                        <td>{{ sub.recurrence_pattern }}</td>
+                                        <td>{{ sub.recurrence_day }}</td>
+                                        <td>{{ sub.items|length }} item{{ sub.items|length|pluralize }}</td>
+                                        <td>
+                                            {% for p in sub.producers %}<span class="badge rounded-pill text-bg-light border me-1 mb-1">{{ p }}</span>{% endfor %}
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if sub.status == 'ACTIVE' %}bg-success {% elif sub.status == 'PAUSED' %}bg-warning text-dark {% else %}bg-danger{% endif %}">
+                                                {{ sub.status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-primary"
+                                                    onclick="openRecurringDetails({{ sub.id }})">View Details</button>
+                                        </td>
+                                    </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -120,8 +107,12 @@
                     <div class="d-flex justify-content-between align-items-center mt-3">
                         <small id="recurringPaginationInfo" class="text-muted"></small>
                         <div class="d-flex gap-2">
-                            <button id="recurringPrevBtn" class="btn btn-primary" onclick="goToRecurringPage(-1)">Previous</button>
-                            <button id="recurringNextBtn" class="btn btn-primary" onclick="goToRecurringPage(1)">Next</button>
+                            <button id="recurringPrevBtn"
+                                    class="btn btn-primary"
+                                    onclick="goToRecurringPage(-1)">Previous</button>
+                            <button id="recurringNextBtn"
+                                    class="btn btn-primary"
+                                    onclick="goToRecurringPage(1)">Next</button>
                         </div>
                     </div>
                 {% else %}
@@ -130,10 +121,8 @@
             </div>
         </div>
     </div>
-
     <!-- Subscription data for JS -->
     {{ customer_subscriptions|json_script:"subscriptionData" }}
-
     <!-- Recurring order detail modal -->
     <div class="modal fade"
          id="recurringDetailModal"

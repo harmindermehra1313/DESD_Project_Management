@@ -8,7 +8,7 @@
 {% endblock %}
 {% block content %}
     <div class="container my-5">
-        <h1 class="page-title mb-5">List New Product</h1>
+        <h1 class="title mb-5">List New Product</h1>
         {% if error_message %}<div class="alert alert-danger" role="alert">{{ error_message }}</div>{% endif %}
         <form method="POST"
               action="{% url 'products:add_product' %}"

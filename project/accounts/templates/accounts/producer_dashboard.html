@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
     <div class="container py-4 dashboard-container">
-        <h2 class="mb-4" style="color: var(--brand); font-weight: bold;">Order Management</h2>
+        <h1 class="title  mb-4">Order Management</h1>
         <div class="d-flex justify-content-between align-items-center mb-3 dashboard-page-header">
             <h5 id="pageTitle" class="mb-0">Orders</h5>
             <div class="d-flex gap-2 dashboard-actions">
@@ -299,14 +299,11 @@
                 </nav>
             </div>
         {% endif %}
-        
         <div class="mt-5 mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="mb-0" style="color: var(--brand); font-weight: bold;">Status History</h5>
-                    <p class="text-muted small mb-0 mt-1">
-                        A log of recent status changes made to your orders.
-                    </p>
+                    <p class="text-muted small mb-0 mt-1">A log of recent status changes made to your orders.</p>
                 </div>
             </div>
             <div class="table-responsive shadow-sm"
@@ -352,7 +349,6 @@
                  aria-label="History pagination">
             </nav>
         </div>
-
         <div class="details-card bg-white mb-5" id="producerDetailsCard">
             <div class="details-header">
                 Further Details:
@@ -644,10 +640,13 @@
                             This action tells the customer and the system that the order has moved to this stage.
                         </div>
                         <div id="confirmStatusHelp" class="small text-muted mb-3">Only continue if this status is correct.</div>
-                        
                         <div class="mb-2">
-                            <label for="statusUpdateNote" class="form-label small fw-bold text-muted mb-1">Status Note (Optional)</label>
-                            <textarea id="statusUpdateNote" class="form-control" rows="2" placeholder="Add a note to this status update..."></textarea>
+                            <label for="statusUpdateNote"
+                                   class="form-label small fw-bold text-muted mb-1">Status Note (Optional)</label>
+                            <textarea id="statusUpdateNote"
+                                      class="form-control"
+                                      rows="2"
+                                      placeholder="Add a note to this status update..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
