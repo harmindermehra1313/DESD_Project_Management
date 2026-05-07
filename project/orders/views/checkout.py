@@ -19,6 +19,7 @@ from django.urls import reverse
 from orders.services.food_miles import calculate_food_miles
 
 Product = apps.get_model('products', 'Product')
+RecurringOrder = apps.get_model('orders', 'RecurringOrder')
 Order = apps.get_model('orders', 'Order')
 OrderItem = apps.get_model('orders', 'OrderItem')
 User = apps.get_model('accounts', 'User')
@@ -467,6 +468,17 @@ def order_success(request, reference):
         item.line_total = item.final_unit_price * item.quantity
         items_by_producer.setdefault(item.producer_id, []).append(item)
 
+    # Get recurring order details
+    recurring_templates = RecurringOrder.objects.filter(
+        generated_orders=order
+    ).prefetch_related("items__product__producer")
+
+    recurring_by_producer = {}
+    for template in recurring_templates:
+        producers = {item.product.producer_id for item in template.items.all()}
+        for producer_id in producers:
+            recurring_by_producer[producer_id] = template
+    
     # Recalc monetary values from items
     for summary in producer_summaries:
         items = items_by_producer.get(summary.producer_id, [])
@@ -500,6 +512,9 @@ def order_success(request, reference):
 
         # What the producer receives
         summary.payout_amount = summary.discounted_subtotal - summary.commission_total
+
+        # Recurring order template (if any)
+        summary.recurring_template = recurring_by_producer.get(summary.producer_id)
 
     # Show producer contact details for bulk
     show_producer_contact = False
