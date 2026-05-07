@@ -68,6 +68,7 @@ function renderRecipes(recipes) {
             <td>${r.title}</td>
             <td>${r.season}</td>
             <td>${r.status_display}</td>
+            <td>${r.favourite_count || 0}</td>
             <td>${r.created_at}</td>
         `;
 
@@ -102,14 +103,14 @@ function renderStories(stories) {
 
     table.innerHTML = "";
 
-    stories.forEach(s => {
+    pageItems.forEach(s => {
         const row = document.createElement("tr");
         row.classList.add("dp-row");
         row.dataset.type = "story";
         row.dataset.id = s.id;
 
         row.innerHTML = `
-            <td><img src="${s.image}" class="dp-thumb-sm"></td>
+            <td><img src="${s.image || '/static/img/default-product.png'}" class="dp-thumb-sm"></td>
             <td>${s.title}</td>
             <td>${s.status_display}</td>
             <td>${s.created_at}</td>
@@ -118,19 +119,17 @@ function renderStories(stories) {
         table.appendChild(row);
     });
 
-    // Render pagination
     renderPagination(
         document.getElementById("dpStoryPagination"),
         stories.length,
         storyPage,
         (newPage) => {
-            recipePage = newPage;
-            renderstoies(recipes);
+            storyPage = newPage;
+            renderStories(stories);
             attachRowClickEvents();
         }
     );
 }
-
 
 /* ---------------------------
    CLICK EVENTS FOR PREVIEW

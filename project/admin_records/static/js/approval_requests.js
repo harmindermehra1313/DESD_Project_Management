@@ -27,7 +27,7 @@ function submitActionRequired() {
     })
     .then(response => {
         if (response.ok) {
-            location.reload();
+            window.location.href = "/admin_records/approval-requests/?status=action_required";
         } else {
             alert("Error sending action required message.");
         }
@@ -129,7 +129,8 @@ async function submitRejectReason() {
 
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('rejectReasonModal')).hide();
-            window.location.reload();
+            // window.location.reload();
+            window.location.href = "/admin_records/approval-requests/?status=rejected";
         } else {
             errorEl.textContent = data.error || "Error rejecting product.";
             errorEl.classList.remove("d-none");

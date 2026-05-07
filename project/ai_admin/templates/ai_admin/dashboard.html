@@ -92,6 +92,49 @@
 
             <h4 class="mb-3">Classifier Model Management</h4>
 
+            <h5 class="text-muted">Available Models</h5>
+
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Version</th>
+                        <th>Uploaded</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in all_models %}
+                    <tr>
+                        <td>{{ m.name }}</td>
+                        <td>{{ m.version }}</td>
+                        <td>{{ m.uploaded_at|date:"d M Y, H:i" }}</td>
+                        <td>
+                            {% if m.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not m.is_active %}
+                                <a href="{% url 'ai_admin:activate_model' m.id %}"
+                                class="btn btn-sm btn-outline-primary">
+                                    Make Active
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No models uploaded yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <br>
+
             <div class="row">
                 <div class="col-md-6">
 

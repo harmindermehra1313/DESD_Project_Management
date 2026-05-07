@@ -60,6 +60,9 @@
                 <a class="dropdown-item" href="{% url 'orders:list-recurring-page' %}">View Subscriptions</a>
               </li>
               <li>
+                <a class="dropdown-item" href="{% url 'community:favourite_recipes' %}">Favourite Recipes</a>
+              </li>
+              <li>
                 <a class="dropdown-item text-danger" href="/accounts/logout/">Logout</a>
               </li>
             </ul>
@@ -109,30 +112,23 @@
                 <li>
                   <hr class="dropdown-divider">
                 </li>
-                {% for org in organic %}
-                  <li>
-                    <a class="dropdown-item" href="{% url 'products:product_view' org.id %}">{{ org.name }}</a>
-                  </li>
-                {% endfor %}
+                <li>
+                  <a class="dropdown-item"
+                     href="{% url 'products:product_view' 0 %}?category=Seasonal">Seasonal</a>
+                </li>
               </ul>
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link" href="{% url 'community:hub' %}">Community Projects</a>
+              </li>
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link"
+                   href="{% url 'community:contact_us' %}">Contact Us</a>
+              </li>
+              <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link" href="{% url 'community:about' %}">About Us</a>
+              </li>
             </li>
             <!-- More Dropdown -->
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle custom-nav-link"
-                 href="#"
-                 data-bs-toggle="dropdown">More</a>
-              <ul class="dropdown-menu custom-dropdown">
-                <li>
-                  <a class="dropdown-item" href="{% url 'community:about' %}">About Us</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="{% url 'community:contact_us' %}">Contact Us</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/community/">Community Projects</a>
-                </li>
-              </ul>
-            </li>
           </ul>
         </div>
         <!-- RIGHT COLUMN: SEARCH BAR -->

@@ -28,75 +28,97 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
-            <!-- Title -->
             <div class="rp-field">
                 <label class="rp-label">Title</label>
                 {{ form.title }}
             </div>
 
-            <!-- Description -->
             <div class="rp-field">
                 <label class="rp-label">Short description</label>
                 {{ form.description }}
             </div>
 
-            <!-- Seasonal Tag -->
             <div class="rp-field">
                 <label class="rp-label">Seasonal tag</label>
                 {{ form.seasonal_tag }}
             </div>
 
-            <!-- Ingredients + Instructions -->
             <div class="rp-grid">
                 <div class="rp-col">
                     <label class="rp-label">Ingredients</label>
+
                     {{ form.ingredients_text }}
+
+                    {% if form.ingredients_text.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.ingredients_text.errors.0 }}
+                        </div>
+                    {% endif %}
                 </div>
 
-                <div class="rp-col">
+              <div class="rp-col">
                     <label class="rp-label">Instructions</label>
+
                     {{ form.instructions_text }}
+
+                    {% if form.instructions_text.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.instructions_text.errors.0 }}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- Status + Image -->
-            <div class="rp-grid">
-                <div class="rp-col-small">
-                    <label class="rp-label">Status</label>
-                    {{ form.status }}
-                </div>
+            <div class="rp-field">
+                <label class="rp-label">Upload image</label>
+                {{ form.image }}
 
-                <div class="rp-col-large">
-                    <label class="rp-label">Upload image</label>
-                    {{ form.image }}
-
-                    {% if form.instance.image %}
-                        <img id="previewImage" class="rp-preview" src="{{ form.instance.image.url }}">
-                    {% else %}
-                        <img id="previewImage" class="rp-preview" src="">
-                    {% endif %}
-                </div>
+                {% if form.instance.image %}
+                    <img id="previewImage"
+                         class="rp-preview"
+                         src="{{ form.instance.image.url }}"
+                         alt="{{ form.instance.title }}">
+                {% else %}
+                    <img id="previewImage"
+                         class="rp-preview"
+                         src=""
+                         alt="Recipe image preview">
+                {% endif %}
             </div>
 
             <!-- Linked Products -->
             <div class="rp-field">
                 <label class="rp-label">Link products</label>
 
-                <div class="rp-product-box">
+                <div class="rp-product-box
+                    {% if form.linked_products.errors %}
+                        border border-danger rounded p-2
+                    {% endif %}
+                ">
+
                     {% if form.linked_products.field.queryset %}
                         {{ form.linked_products }}
                     {% else %}
                         <p class="rp-no-products">No products available.</p>
                     {% endif %}
                 </div>
+
+                {% if form.linked_products.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ form.linked_products.errors.0 }}
+                    </div>
+                {% endif %}
             </div>
 
-            <!-- Buttons -->
             <div class="rp-buttons">
                 {% if form.instance.pk %}
-                    <button type="submit" name="action" value="publish" class="rp-btn-primary">Update recipe</button>
+                    <button type="submit" name="action" value="publish" class="rp-btn-primary">
+                        Update recipe
+                    </button>
                 {% else %}
-                <button type="submit" name="action" value="publish" class="rp-btn-primary">Publish recipe</button>
+                    <button type="submit" name="action" value="publish" class="rp-btn-primary">
+                        Publish recipe
+                    </button>
                 {% endif %}
             </div>
 
@@ -104,6 +126,7 @@
     </div>
 
 </div>
+
 
 <script src="{% static 'js/recipe_preview.js' %}"></script>
 {% endblock %}

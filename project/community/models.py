@@ -61,7 +61,8 @@ class Recipe(models.Model):
     status = models.CharField(
         max_length = 20, 
         choices = Status_choices, 
-        default = "PUBLISHED"
+        default = Status_choices.PUBLISHED
+
     )
 
     moderated_at = models.DateTimeField(

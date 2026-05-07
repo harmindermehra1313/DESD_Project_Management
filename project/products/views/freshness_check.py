@@ -26,6 +26,9 @@ import torchvision.transforms as T
 
 from torchvision.models.efficientnet import MBConv
 
+from ai_admin.services import AITracker, load_active_classifier
+import time
+
 def _patched_mbconv_forward(self, input: torch.Tensor) -> torch.Tensor:
     result = self.block(input)
     if self.use_res_connect:
@@ -93,7 +96,7 @@ _model_lock = threading.Lock()
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def _load_model() -> nn.Module:
+def _load_model(model_path: str) -> nn.Module:
     """
     Load the PyTorch freshness model once and cache it.
 
@@ -115,7 +118,7 @@ def _load_model() -> nn.Module:
         if _model is not None:          # double-checked locking
             return _model
 
-        model_path = getattr(settings, "FRESHNESS_MODEL_PATH", None)
+        #model_path = getattr(settings, "FRESHNESS_MODEL_PATH", None)
         if not model_path or not Path(model_path).exists():
             raise FileNotFoundError(
                 "Freshness model not found. Set FRESHNESS_MODEL_PATH in settings.py "
@@ -400,6 +403,7 @@ def freshness_check_api(request):
     Accepts: multipart/form-data with field 'image'
     Returns: JSON with scores, label, recommendation, and 4 base64 explainability images.
     """
+    start_time = time.time()
     # ── Validate upload ──────────────────────────────────────
     uploaded = request.FILES.get("image")
     if not uploaded:
@@ -421,7 +425,8 @@ def freshness_check_api(request):
 
     # ── Load model ───────────────────────────────────────────
     try:
-        model = _load_model()
+        model_path, model_version = load_active_classifier()
+        model = _load_model(model_path)
     except FileNotFoundError as exc:
         logger.error("Model not found: %s", exc, exc_info=True)
         return JsonResponse({"error": str(exc)}, status=503)
@@ -470,6 +475,26 @@ def freshness_check_api(request):
     except Exception as exc:
         logger.error("SHAP failed: %s", exc, exc_info=True)
         shap_b64 = _placeholder_b64(pil_img, f"SHAP error:\n{exc}")
+
+    # AI Usage Logging
+    try:
+        AITracker.log_classifier(
+            user=request.user if request.user.is_authenticated else None,
+            input_data={
+                "filename": uploaded.name,
+                "content_type": uploaded.content_type,
+                "size_bytes": uploaded.size,
+            },
+            output_data={
+                "label": label,
+                "scores": scores,
+                "freshness_pct": freshness_pct,
+            },
+            start_time=start_time,
+            version=model_version,
+        )
+    except Exception as exc:
+        logger.error("Failed to log classifier usage: %s", exc, exc_info=True)
 
     return JsonResponse({
         "label": label,
