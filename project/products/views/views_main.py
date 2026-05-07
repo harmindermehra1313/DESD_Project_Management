@@ -182,6 +182,9 @@ def add_product(request):
             storage_guidance=validated_data.get('storage_guidance', ''),
             farm_origin=farm_origin,
             status=Product.Status.PENDING,
+            is_seasonal=validated_data.get('is_seasonal', False),
+            season_start=validated_data.get('season_start'),
+            season_end=validated_data.get('season_end'),
         )
 
         if not validated_data.get('image'):
@@ -879,8 +882,8 @@ def product_view(request, category_id):
 
     # 3. Handle Dropdown Category Filter Selection
     if show_filters and category_filter:
-        if category_filter.lower() == "seasonal produce":
-            products_qs = products_qs.filter(Q(category__name=category_filter) | Q(is_seasonal=True))
+        if category_filter == "Seasonal":
+            products_qs = products_qs.filter(is_seasonal=True)
         else:
             products_qs = products_qs.filter(category__name=category_filter)
 
