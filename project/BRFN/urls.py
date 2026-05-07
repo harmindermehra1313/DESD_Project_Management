@@ -20,7 +20,7 @@ from django.urls import path, include
 from admin_records import views as admin_views
 from django.views.generic import TemplateView
 from admin_records.dashboard_notification_views import admin_records_dashboard
-
+from BRFN import view
 
     
 handler400 = "BRFN.view.custom_400"
@@ -47,9 +47,10 @@ urlpatterns = [
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # Cart Endpoint
     path("cart/", include(("carts.urls", "carts"), namespace="carts")),
-    path("search/", admin_views.global_search, name="global_search"),
+    
     # AI Recommendations Endpoint
     path("ai-recommendations/", include("ai_recommendations.urls")),
     path("ai-admin/", include("ai_admin.urls")),
     path("cookie-policy/", TemplateView.as_view(template_name="cookie_policy.html"), name="cookie_policy"),
+    path("search/", view.global_search, name="global_search"),
 ]

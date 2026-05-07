@@ -271,7 +271,7 @@ def _build_financial_context(request):
         "refund_total": refund_total,
         "payment_method": payment_method,
         "payment_status": payment_status,
-        "refund_pending": pending_refunds.exists(),
+        "refund_pending": bool(pending_refunds),
 
         # NEW PRODUCER BREAKDOWN
         "active_producers": producer_breakdown_active,

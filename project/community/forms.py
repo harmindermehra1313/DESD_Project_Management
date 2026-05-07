@@ -252,7 +252,7 @@ class RecipeForm(forms.ModelForm):
 class FarmStoryForm(forms.ModelForm):
     class Meta:
         model = FarmStory
-        fields = ["title", "body", "image", "status"]
+        fields = ["title", "body", "image"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control"}),
             "body": forms.Textarea(attrs={"class": "form-control", "rows": 8}),
@@ -260,7 +260,6 @@ class FarmStoryForm(forms.ModelForm):
                 "class": "form-control",
                 "id": "imageInput",
             }),
-            "status": forms.Select(attrs={"class": "form-select"}),
         }
 
     def clean_body(self):
