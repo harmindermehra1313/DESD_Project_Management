@@ -73,4 +73,5 @@ urlpatterns = [
     views.reject_producer,
     name="reject_producer",
     ),
+    path("search/", views.global_search, name="global_search"),
 ]

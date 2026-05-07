@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+Search Results
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/customer.css' %}">
+
+<style>
+.search-page {
+    padding: 50px 0;
+}
+
+.search-heading {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.search-subtitle {
+    color: #666;
+    margin-bottom: 40px;
+}
+
+.search-section {
+    margin-bottom: 50px;
+}
+
+.search-section h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    border-left: 5px solid #198754;
+    padding-left: 12px;
+}
+
+.search-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+}
+
+.search-card {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: 0.25s ease;
+}
+
+.search-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.search-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.search-card-body {
+    padding: 18px;
+}
+
+.search-card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.search-card-meta {
+    color: #777;
+    font-size: 0.95rem;
+}
+
+.no-results {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    color: #666;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="container py-5">
+
+    <h1 class="mb-2">Search Results</h1>
+    <p class="text-muted mb-4">
+        Showing results for "<strong>{{ query }}</strong>"
+    </p>
+
+    {% if role == "ADMIN" %}
+
+        <h3 class="mt-4">Producers</h3>
+        {% for producer in producers %}
+            <div class="card p-3 mb-2">
+                {{ producer.farm_name }} — {{ producer.contact_email }}
+            </div>
+        {% empty %}
+            <p class="text-muted">No producers found.</p>
+        {% endfor %}
+
+        <h3 class="mt-4">Users</h3>
+        {% for u in users %}
+            <div class="card p-3 mb-2">
+                {{ u.name }} — {{ u.email }}
+            </div>
+        {% empty %}
+            <p class="text-muted">No users found.</p>
+        {% endfor %}
+
+        <h3 class="mt-4">Orders</h3>
+        {% for order in orders %}
+            <div class="card p-3 mb-2">
+                {{ order.unique_reference }} — {{ order.user.name }}
+            </div>
+        {% empty %}
+            <p class="text-muted">No orders found.</p>
+        {% endfor %}
+
+    {% else %}
+
+        <h3>Products</h3>
+        {% for product in products %}
+            <div class="card p-3 mb-2">
+                <a href="{% url 'products:product-detail' product.id %}">
+                    {{ product.name }}
+                </a>
+                <small>{{ product.producer.farm_name }}</small>
+            </div>
+        {% empty %}
+            <p class="text-muted">No matching products found.</p>
+        {% endfor %}
+
+        <h3 class="mt-4">Recipes</h3>
+        {% for recipe in recipes %}
+            <div class="card p-3 mb-2">
+                <a href="{% url 'community:recipe_detail' recipe.id %}">
+                    {{ recipe.title }}
+                </a>
+                <small>By {{ recipe.producer.farm_name }}</small>
+            </div>
+        {% empty %}
+            <p class="text-muted">No matching recipes found.</p>
+        {% endfor %}
+
+        <h3 class="mt-4">Farm Stories</h3>
+        {% for story in stories %}
+            <div class="card p-3 mb-2">
+                <a href="{% url 'community:story_detail' story.id %}">
+                    {{ story.title }}
+                </a>
+                <small>By {{ story.producer.farm_name }}</small>
+            </div>
+        {% empty %}
+            <p class="text-muted">No matching farm stories found.</p>
+        {% endfor %}
+
+    {% endif %}
+
+</div>
+{% endblock %}

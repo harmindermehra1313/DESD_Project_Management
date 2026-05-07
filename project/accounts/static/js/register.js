@@ -556,9 +556,10 @@ password.addEventListener("input", () => {
 
   if (postcode && postcodeFeedback) {
 
+      // const ukPostcodeRegex =
+      //     /^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$/;
       const ukPostcodeRegex =
-          /^([Gg][Ii][Rr] 0[Aa]{2}|(?!.*[CIKMOV])[A-Za-z]{1,2}[0-9][0-9A-Za-z]?\s?[0-9][A-Za-z]{2})$/;
-
+            /^([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}|GIR\s?0AA)$/i;
       postcode.addEventListener('input', () => {
           let value = postcode.value.toUpperCase().replace(/\s+/g, '');
 
