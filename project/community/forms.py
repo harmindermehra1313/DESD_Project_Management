@@ -114,14 +114,17 @@ from products.models import Product
 
 class RecipeForm(forms.ModelForm):
     ingredients_text = forms.CharField(
-        widget=forms.Textarea(attrs={
-            "rows": 4,
-            "class": "form-control",
-            "placeholder": "One ingredient per line",
-        }),
-        required=True,
-        label="Ingredients",
-    )
+    widget=forms.Textarea(attrs={
+        "rows": 4,
+        "class": "form-control",
+        "placeholder": "One ingredient per line",
+    }),
+    required=True,
+    label="Ingredients",
+    error_messages={
+        "required": "Please add at least one ingredient."
+    },
+)
 
     instructions_text = forms.CharField(
         widget=forms.Textarea(attrs={
@@ -131,13 +134,19 @@ class RecipeForm(forms.ModelForm):
         }),
         required=True,
         label="Instructions",
+        error_messages={
+            "required": "Please add at least one instruction step."
+        },
     )
 
     linked_products = forms.ModelMultipleChoiceField(
         queryset=Product.objects.none(),
         widget=forms.CheckboxSelectMultiple,
-        required=False,
+        required=True,
         label="Link products",
+        error_messages={
+            "required": "Please select at least one product."
+        },
     )
 
     class Meta:
@@ -187,12 +196,33 @@ class RecipeForm(forms.ModelForm):
 
         ingredients_text = cleaned.get("ingredients_text", "").strip()
         instructions_text = cleaned.get("instructions_text", "").strip()
+        linked_products = cleaned.get("linked_products")
 
         if not ingredients_text:
             self.add_error("ingredients_text", "At least one ingredient is required.")
 
         if not instructions_text:
             self.add_error("instructions_text", "At least one instruction step is required.")
+
+        if not linked_products:
+            self.add_error(
+                "linked_products",
+                "Please select at least one product for this recipe."
+            )
+        
+        title = cleaned.get("title", "").strip()
+
+        if title:
+            qs = Recipe.objects.filter(title__iexact=title)
+
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                self.add_error(
+                    "title",
+                    "A recipe with this title already exists. Please use a more specific title."
+                )
 
         return cleaned
 
