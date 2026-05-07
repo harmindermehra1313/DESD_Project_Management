@@ -88,7 +88,7 @@ def process_recurring_orders():
             OrderItem.objects.create(
                 order=order,
                 product=ri.product,
-                inventory=ri.product.inventories.first(),
+                inventory=ri.product.inventory_batches.first(),
                 producer=ri.product.producer,
                 quantity=ri.quantity,
                 original_unit_price=ri.product.price,
