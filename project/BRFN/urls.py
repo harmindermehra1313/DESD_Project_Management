@@ -30,7 +30,7 @@ handler500 = "BRFN.view.custom_500"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("dashboard/", admin_records_dashboard, name="dashboard"),
+    # path("dashboard/", admin_records_dashboard, name="dashboard"),
     # path("dashboard/", admin_records_dashboard, name="dashboard"),
 
     path("", include("home.urls", namespace="home")),

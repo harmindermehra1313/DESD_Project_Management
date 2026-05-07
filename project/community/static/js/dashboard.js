@@ -68,6 +68,7 @@ function renderRecipes(recipes) {
             <td>${r.title}</td>
             <td>${r.season}</td>
             <td>${r.status_display}</td>
+            <td>${r.favourite_count || 0}</td>
             <td>${r.created_at}</td>
         `;
 

@@ -16,7 +16,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db.models import Prefetch, Q
 from django.views.decorators.csrf import csrf_exempt
-
+from BRFN.decorators import admin_required, customer_required, community_required, producer_required
 # ---------------------------------------
 # Django Models
 # ---------------------------------------
@@ -791,9 +791,13 @@ def toggle_subscription(request, sub_id):
         return JsonResponse({"error": "Subscription not found"}, status=404)
 
 
+
 # ---------------------------------------
 # API Endpoint URL
 # ---------------------------------------
+# @producer_required
+# @admin_required
+# @login_required
 class UnifiedRegistrationView(APIView):
     def post(self, request):
         role = request.data.get("role", "").lower()

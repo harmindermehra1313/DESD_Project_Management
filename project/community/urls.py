@@ -65,4 +65,5 @@ urlpatterns = [
     ),
     path("api/recipe/<int:pk>/", views.recipe_api, name="recipe_api"),
     path("api/story/<int:pk>/", views.story_api, name="story_api"),
+    path("recipes/favourites/", views.favourite_recipes, name="favourite_recipes"),
 ]

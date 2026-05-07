@@ -67,10 +67,14 @@
           <div class="col-12 col-xl-8 mb-3 mb-xl-0">
             <ul class="navbar-nav flex-wrap align-items-center">
               <!-- Admin Dashboard -->
+               <li class="nav-item mx-2">
+                <a class="nav-link custom-nav-link"
+                   href="/dashboard/">Dashboard</a>
+              </li>
               <li class="nav-item mx-2">
                 <a class="nav-link custom-nav-link d-flex align-items-center gap-1"
-                   href="/dashboard/">
-                  Dashboard
+                   href="{% url 'admin_records:index' %}">
+                  Notifications
                   <span class="badge bg-danger text-white rounded-pill {% if not unread_notifications %}d-none{% endif %}"
                         style="font-size: 0.65rem;
                                padding: 0.25em 0.45em"
@@ -97,16 +101,11 @@
                 <a class="nav-link custom-nav-link"
                    href="{% url 'ai_admin:dashboard' %}">AI</a>
               </li>
-              {% comment %} review moderations {% endcomment %}
-              <li class="nav-item mx-2">
-                <a class="nav-link custom-nav-link"
-                   href="{% url 'reviews:admin_review_moderation' %}">Review Moderation</a>
-              </li>
               <!-- More Dropdown -->
               <li class="nav-item dropdown mx-2">
                 <a class="nav-link dropdown-toggle custom-nav-link"
                    href="#"
-                   data-bs-toggle="dropdown">View</a>
+                   data-bs-toggle="dropdown">More</a>
                 <ul class="dropdown-menu custom-dropdown">
                   <li>
                     <a class="dropdown-item" href="{% url 'admin_records:user_list' %}">Current User List</a>
@@ -114,9 +113,11 @@
                   <li>
                     <a class="dropdown-item" href="{% url 'admin_records:producer_list' %}">Producer List</a>
                   </li>
+                  {% comment %} review moderations {% endcomment %}
                   <li>
-                    <a class="dropdown-item" href="/contact_messages/">Contact Messages</a>
+                    <a class="dropdown-item" href="{% url 'reviews:admin_review_moderation' %}">Review Moderation</a>
                   </li>
+
                 </ul>
               </li>
             </ul>

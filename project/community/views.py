@@ -328,6 +328,7 @@ def api_producer_content(request):
             "season": recipe.get_seasonal_tag_display(),
             "status_display": recipe.get_status_display(),
             "created_at": recipe.created_at.strftime("%d %b %Y"),
+            "favourite_count": recipe.favourited_by.count(),
         }
         for recipe in recipes_qs
     ]
@@ -496,37 +497,6 @@ def about(request):
     )
 
 
-# def community_hub(request):
-#     featured_recipes = (
-#         Recipe.objects
-#         .filter(
-#             status=Recipe.Status_choices.PUBLISHED,
-#             producer__is_approved=True,
-#             producer__user__is_active=True,
-#         )
-#         .select_related("producer")
-#         .order_by("-created_at")[:3]
-#     )
-
-#     featured_stories = (
-#         FarmStory.objects
-#         .filter(
-#             status=FarmStory.Status_choices.PUBLISHED,
-#             producer__is_approved=True,
-#             producer__user__is_active=True,
-#         )
-#         .select_related("producer")
-#         .order_by("-created_at")[:3]
-#     )
-
-#     return render(
-#         request,
-#         "community/index.html",
-#         {
-#             "featured_recipes": featured_recipes,
-#             "featured_stories": featured_stories,
-#         },
-#     )
 def community_hub(request):
     recipes = Recipe.objects.filter(
         status=Recipe.Status_choices.PUBLISHED,
@@ -567,16 +537,30 @@ def community_hub(request):
     paginator = Paginator(recipes, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    featured_stories = (
-        FarmStory.objects.filter(
-            status=FarmStory.Status_choices.PUBLISHED,
-            producer__is_approved=True,
-            producer__user__is_active=True,
-        )
-        .select_related("producer")
-        .order_by("-created_at")[:3]
+    story_producer_id = request.GET.get("story_producer", "")
+    story_search = request.GET.get("story_search", "").strip()
+
+    stories = FarmStory.objects.filter(
+        status=FarmStory.Status_choices.PUBLISHED,
+        producer__is_approved=True,
+        producer__user__is_active=True,
     )
 
+    if story_producer_id:
+        stories = stories.filter(producer_id=story_producer_id)
+
+    if story_search:
+        stories = stories.filter(
+            title__icontains=story_search
+        )
+
+    stories = stories.select_related("producer").order_by("-created_at")
+
+    story_paginator = Paginator(stories, 6)
+
+    story_page_number = request.GET.get("story_page")
+
+    story_page_obj = story_paginator.get_page(story_page_number)
     producers = Producer.objects.filter(
         is_approved=True,
         user__is_active=True,
@@ -590,7 +574,8 @@ def community_hub(request):
 
     return render(request, "community/index.html", {
         "featured_recipes": page_obj.object_list,
-        "featured_stories": featured_stories,
+        "featured_stories": story_page_obj.object_list,
+        "story_page_obj": story_page_obj,   
         "page_obj": page_obj,
         "producers": producers,
         "products": products,
@@ -599,46 +584,10 @@ def community_hub(request):
         "selected_product": product_id,
         "search": search,
         "sort": sort,
+        "story_producer": story_producer_id,
+        "story_search": story_search,
     })
 
-# def recipe_list(request):
-#     recipes = Recipe.objects.filter(
-#         status=Recipe.Status_choices.PUBLISHED,
-#         producer__is_approved=True,
-#         producer__user__is_active=True,
-#     )
-
-#     season = request.GET.get("season")
-#     producer_id = request.GET.get("producer")
-#     search = request.GET.get("search")
-
-#     if season:
-#         recipes = recipes.filter(seasonal_tag=season)
-
-#     if producer_id:
-#         recipes = recipes.filter(producer_id=producer_id)
-
-#     if search:
-#         recipes = recipes.filter(title__icontains=search)
-
-#     recipes = recipes.select_related("producer").order_by("-created_at")
-
-#     producers = Producer.objects.filter(
-#         is_approved=True,
-#         user__is_active=True,
-#     ).order_by("farm_name")
-
-#     return render(
-#         request,
-#         "community/recipes.html",
-#         {
-#             "recipes": recipes,
-#             "producers": producers,
-#             "selected_season": season,
-#             "selected_producer": producer_id,
-#             "search": search,
-#         },
-#     )
 
 def recipe_list(request):
     recipes = Recipe.objects.filter(
@@ -755,3 +704,17 @@ def toggle_recipe_favourite(request, pk):
         favourite.delete()
 
     return redirect(request.META.get("HTTP_REFERER", "community:recipe_detail"))
+
+
+@login_required
+def favourite_recipes(request):
+    favourites = (
+        FavouriteRecipe.objects
+        .filter(user=request.user, recipe__status=Recipe.Status_choices.PUBLISHED)
+        .select_related("recipe", "recipe__producer")
+        .order_by("-created_at")
+    )
+
+    return render(request, "community/favourite_recipes.html", {
+        "favourites": favourites,
+    })
