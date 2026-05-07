@@ -599,25 +599,6 @@
                             <br>
                             <span class="fst-italic">{{ sub.special_instructions|default:"None provided." }}</span>
                         </div>
-                        {% if sub.status != 'CANCELLED' %}
-                            <div class="col-12 mt-3 pt-3 border-top text-end">
-                                {% if sub.status == 'ACTIVE' %}
-                                    <button type="button"
-                                            class="btn btn-sm fw-bold me-2"
-                                            style="background-color: var(--dusk-blue);
-                                                   color: #fff;
-                                                   border-color: var(--dusk-blue)"
-                                            onclick="toggleSubscription('{{ sub.id }}')">Pause Subscription</button>
-                                {% elif sub.status == 'PAUSED' %}
-                                    <button type="button"
-                                            class="btn btn-success btn-sm fw-bold me-2"
-                                            onclick="toggleSubscription('{{ sub.id }}')">Resume Subscription</button>
-                                {% endif %}
-                                <button type="button"
-                                        class="btn btn-danger btn-sm fw-bold"
-                                        onclick="cancelSubscription('{{ sub.id }}')">Cancel Subscription</button>
-                            </div>
-                        {% endif %}
                     </div>
                 </template>
             {% endfor %}
