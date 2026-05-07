@@ -43,6 +43,7 @@
                                     name="category"
                                     class="form-select product-filter-control">
                                 <option value="">All Categories</option>
+                                <option value="Seasonal" {% if filters.category == 'Seasonal' %}selected{% endif %}>Seasonal</option>
                                 {% for c in categories %}
                                     <option value="{{ c.name }}"
                                             {% if filters.category == c.name %}selected{% endif %}>
