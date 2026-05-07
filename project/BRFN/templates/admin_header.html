@@ -93,7 +93,10 @@
                 <a class="nav-link custom-nav-link"
                    href="{% url 'admin_records:approval_request' %}">
                   Approval Request
-                  {% if pending_count > 0 %}<span class="badge bg-danger">{{ pending_count }}</span>{% endif %}
+                  {% if pending_count > 0 %}<span class="badge bg-danger text-white rounded-pill {% if not unread_notifications %}d-none{% endif %}"
+                        style="font-size: 0.65rem;
+                               padding: 0.25em 0.45em"
+                        data-notifications-count-badge>{{ pending_count }}</span>{% endif %}
                 </a>
               </li>
               <!-- AI Dashboard -->

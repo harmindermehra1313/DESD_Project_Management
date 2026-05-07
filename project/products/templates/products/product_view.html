@@ -12,13 +12,22 @@
             <div class="product-list-header mb-4">
                 <div>
                     <h1 class="product-list-heading mb-1">
-                        {% if selected_category %}
+                        {% if filters.category == "Seasonal" %}
+                            Seasonal Products
+                        {% elif selected_category %}
                             {{ selected_category.name }}
                         {% else %}
                             All Products
                         {% endif %}
                     </h1>
-                    <p class="product-list-subtitle mb-0">Browse available local products from BRFN producers.</p>
+
+                    <p class="product-list-subtitle mb-0">
+                        {% if filters.category == "Seasonal" %}
+                            Browse seasonal local products currently available from BRFN producers.
+                        {% else %}
+                            Browse available local products from BRFN producers.
+                        {% endif %}
+                    </p>
                 </div>
                 {% if page_obj %}
                     <div class="product-list-page-count">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</div>

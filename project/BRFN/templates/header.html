@@ -112,11 +112,11 @@
                 <li>
                   <hr class="dropdown-divider">
                 </li>
-                {% for org in organic %}
-                  <li>
-                    <a class="dropdown-item" href="{% url 'products:product_view' org.id %}">{{ org.name }}</a>
-                  </li>
-                {% endfor %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'products:product_view' 0 %}?category=Seasonal">
+                      Seasonal
+                  </a>
+              </li>
               </ul>
               <li class="nav-item mx-2">
                 <a class="nav-link custom-nav-link" href="{% url 'community:hub' %}">Community Projects</a>
