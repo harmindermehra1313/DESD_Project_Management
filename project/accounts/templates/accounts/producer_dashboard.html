@@ -299,14 +299,11 @@
                 </nav>
             </div>
         {% endif %}
-        
         <div class="mt-5 mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="mb-0" style="color: var(--brand); font-weight: bold;">Status History</h5>
-                    <p class="text-muted small mb-0 mt-1">
-                        A log of recent status changes made to your orders.
-                    </p>
+                    <p class="text-muted small mb-0 mt-1">A log of recent status changes made to your orders.</p>
                 </div>
             </div>
             <div class="table-responsive shadow-sm"
@@ -352,7 +349,6 @@
                  aria-label="History pagination">
             </nav>
         </div>
-
         <div class="details-card bg-white mb-5" id="producerDetailsCard">
             <div class="details-header">
                 Further Details:
@@ -599,25 +595,16 @@
                             <br>
                             <span class="fst-italic">{{ sub.special_instructions|default:"None provided." }}</span>
                         </div>
-                        {% if sub.status != 'CANCELLED' %}
+                        {% comment %} {% if sub.status != 'CANCELLED' %}
                             <div class="col-12 mt-3 pt-3 border-top text-end">
                                 {% if sub.status == 'ACTIVE' %}
-                                    <button type="button"
-                                            class="btn btn-sm fw-bold me-2"
-                                            style="background-color: var(--dusk-blue);
-                                                   color: #fff;
-                                                   border-color: var(--dusk-blue)"
-                                            onclick="toggleSubscription('{{ sub.id }}')">Pause Subscription</button>
+                                    <button type="button" class="btn btn-sm fw-bold me-2" style="background-color: var(--dusk-blue); color: #fff; border-color: var(--dusk-blue)" onclick="toggleSubscription('{{ sub.id }}')">Pause Subscription</button>
                                 {% elif sub.status == 'PAUSED' %}
-                                    <button type="button"
-                                            class="btn btn-success btn-sm fw-bold me-2"
-                                            onclick="toggleSubscription('{{ sub.id }}')">Resume Subscription</button>
+                                    <button type="button" class="btn btn-success btn-sm fw-bold me-2" onclick="toggleSubscription('{{ sub.id }}')">Resume Subscription</button>
                                 {% endif %}
-                                <button type="button"
-                                        class="btn btn-danger btn-sm fw-bold"
-                                        onclick="cancelSubscription('{{ sub.id }}')">Cancel Subscription</button>
+                                <button type="button" class="btn btn-danger btn-sm fw-bold" onclick="cancelSubscription('{{ sub.id }}')">Cancel Subscription</button>
                             </div>
-                        {% endif %}
+                        {% endif %} {% endcomment %}
                     </div>
                 </template>
             {% endfor %}
@@ -644,10 +631,13 @@
                             This action tells the customer and the system that the order has moved to this stage.
                         </div>
                         <div id="confirmStatusHelp" class="small text-muted mb-3">Only continue if this status is correct.</div>
-                        
                         <div class="mb-2">
-                            <label for="statusUpdateNote" class="form-label small fw-bold text-muted mb-1">Status Note (Optional)</label>
-                            <textarea id="statusUpdateNote" class="form-control" rows="2" placeholder="Add a note to this status update..."></textarea>
+                            <label for="statusUpdateNote"
+                                   class="form-label small fw-bold text-muted mb-1">Status Note (Optional)</label>
+                            <textarea id="statusUpdateNote"
+                                      class="form-control"
+                                      rows="2"
+                                      placeholder="Add a note to this status update..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
