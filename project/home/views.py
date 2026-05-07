@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from BRFN.decorators import admin_required, producer_required
 from notifications.models import Notification
 from products.models import Product
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderItem, ProducerOrderSummary
 from notifications.services.notifications import NotificationService
 from django.db.models import Sum
 from django.utils import timezone
@@ -28,15 +28,6 @@ def home(request):
 def producer(request):
     producer = request.user.producer_profile
 
-    # notifications = Notification.objects.filter(
-    #     user=request.user
-    # ).order_by('-created_at')[:10] # latest 10
-
-    # unread_count = Notification.objects.filter(
-    #     user=request.user,
-    #     read_at__isnull=True
-    # ).count()
-
     # Notifications with pagination
     notifications_qs = Notification.objects.filter(
         user=request.user
@@ -49,22 +40,26 @@ def producer(request):
     unread_count = notifications_qs.filter(read_at__isnull=True).count()
 
     # Sales stats
-    last_30_orders = Order.objects.filter(
-        items__product__producer=producer,
-        order_date__gte=timezone.now() - timedelta(days=30)
-    ).distinct()
+    valid_statuses = ["PEN", "PRE", "PAC", "RFC", "SHP", "COM", "CMP"]
 
-    total_revenue = sum(o.total_price for o in last_30_orders)
-    total_orders = last_30_orders.count()
+    last_30_summaries = ProducerOrderSummary.objects.filter(
+        producer=producer,
+        order__status__in=valid_statuses,
+        order__order_date__gte=timezone.now() - timedelta(days=30)
+    )
+
+    total_revenue = sum(s.subtotal + s.vat_total for s in last_30_summaries)
+    total_orders = last_30_summaries.count()
     avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
-    
-    # All-time stats
-    all_time_orders = Order.objects.filter(
-        items__product__producer=producer
-    ).distinct()
 
-    all_time_revenue = sum(o.total_price for o in all_time_orders)
-    all_time_order_count = all_time_orders.count()
+    # All-time stats
+    all_time_summaries = ProducerOrderSummary.objects.filter(
+        producer=producer,
+        order__status__in=valid_statuses
+    )
+
+    all_time_revenue = sum(s.subtotal + s.vat_total for s in all_time_summaries)
+    all_time_order_count = all_time_summaries.count()
     all_time_avg_order_value = (
         all_time_revenue / all_time_order_count if all_time_order_count > 0 else 0
     )
@@ -72,33 +67,42 @@ def producer(request):
     # Best-selling products
     best_sellers = (
         OrderItem.objects
-        .filter(product__producer=producer)
-        .values('product__name')
-        .annotate(total_sold=Sum('quantity'))
-        .order_by('-total_sold')[:5]
+            .filter(
+                product__producer=producer,
+                order__producer_summaries__producer=producer,
+                order__producer_summaries__status__in=["PEN", "PRE", "PAC", "RFC", "SHP", "COM", "CMP"]
+            )
+            .values('product__name')
+            .annotate(total_sold=Sum('quantity'))
+            .order_by('-total_sold')[:5]
     )
 
     # Low stock products
-    products = Product.objects.filter(producer=producer)
+    products = Product.objects.filter(
+        producer=producer,
+        status=Product.Status.PUBLISHED
+    )
     low_stock = [p for p in products if p.computed_total_stock <= p.low_stock_threshold]
 
     # Order statistics
-    producer_orders = Order.objects.filter(
-        items__product__producer=producer
-    ).distinct()
+    producer_orders = ProducerOrderSummary.objects.filter(
+        producer=producer
+    )
 
-    pending_orders = producer_orders.filter(status="PEN")
-    completed_orders = producer_orders.filter(status="CMP")
+    pending_orders = producer_orders.filter(
+        status__in=["PEN", "PRE", "PAC", "RFC", "SHP"]
+    )
+    completed_orders = producer_orders.filter(status__in=["COM", "CMP"])
     cancelled_orders = producer_orders.filter(status="CAN")
 
     # Upcoming orders (future recurring orders)
     upcoming_orders = producer_orders.filter(
-        order_date__gte=timezone.now()
-    ).order_by("order_date")[:5]
+        order__order_date__gte=timezone.now()
+    ).order_by("order__order_date")[:5]
 
-    producer_orders = Order.objects.filter(
-        items__product__producer=producer
-    ).distinct()
+    producer_orders = ProducerOrderSummary.objects.filter(
+        producer=producer
+    )
 
     producer_orders_count = producer_orders.count() or 0
 
@@ -110,18 +114,18 @@ def producer(request):
     thirty_days_ago = timezone.now() - timedelta(days=30)
 
     pending_30 = producer_orders.filter(
-        status="PEN",
-        order_date__gte=thirty_days_ago
+        status__in=["PEN", "PRE", "PAC", "RFC", "SHP"],
+        order__order_date__gte=thirty_days_ago
     ).count()
 
     completed_30 = producer_orders.filter(
-        status="CMP",
-        order_date__gte=thirty_days_ago
+        status__in=["COM", "CMP"],
+        order__order_date__gte=thirty_days_ago
     ).count()
 
     cancelled_30 = producer_orders.filter(
         status="CAN",
-        order_date__gte=thirty_days_ago
+        order__order_date__gte=thirty_days_ago
     ).count()
 
     return render(request, "home/producer.html", {
