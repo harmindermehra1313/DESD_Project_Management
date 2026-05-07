@@ -56,6 +56,19 @@
                 </div>
             {% endif %}
 
+            {% if summary.recurring_template %}
+                <div class="recurring-box">
+                    <h5>Recurring Order</h5>
+                    <p>
+                        <strong>Frequency:</strong>
+                        {{ summary.recurring_template.get_recurrence_pattern_display }}<br>
+
+                        <strong>Repeats on:</strong>
+                        {{ summary.recurring_template.get_recurrence_day_display }}
+                    </p>
+                </div>
+            {% endif %}
+
             <h5>Items from this producer</h5>
 
             <!-- <table class="item-table"> -->
@@ -125,6 +138,7 @@
                     </p>
             </div> -->
             <hr>
+
         </div>
     {% endfor %}
     <a href="/" class="btn btn-primary order-confirm-btn">Back to Home</a>

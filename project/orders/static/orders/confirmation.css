@@ -210,3 +210,11 @@
     color: var(--brand);
     margin-bottom: 0.6rem;
 }
+
+.recurring-box {
+    background: #f8f9fa;
+    border-left: 4px solid var(--prussian-blue);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+}
