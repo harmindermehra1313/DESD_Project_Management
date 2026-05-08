@@ -192,28 +192,32 @@ def _build_financial_context(request):
 
         active_subtotal = sum((ps.subtotal for ps in active_summaries), Decimal("0.00"))
         cancelled_subtotal = sum((ps.subtotal for ps in cancelled_summaries), Decimal("0.00"))
-
         # -----------------------------------------
-        # NEW LOGIC: Commission + payout rules
+        # Commission + payout rules
         # -----------------------------------------
 
         # CASE 1 — FULL ORDER CANCELLED
         if order.status == Order.Status.CANCELLED:
+            payable_total = Decimal("0.00")
             commission_calc = Decimal("0.00")
             commission_recorded = Decimal("0.00")
             producer_payout_total = Decimal("0.00")
 
         # CASE 2 — PARTIAL CANCELLATION
         elif cancelled_summaries.exists():
-            commission_calc = (active_subtotal * COMMISSION_RATE).quantize(Decimal("0.01"))
-            commission_recorded = commission_calc
-            producer_payout_total = (active_subtotal - commission_calc).quantize(Decimal("0.01"))
+            payable_total = active_subtotal
 
-        # CASE 3 — NORMAL ORDER
+            commission_calc = (payable_total * COMMISSION_RATE).quantize(Decimal("0.01"))
+            commission_recorded = commission_calc
+            producer_payout_total = (payable_total - commission_calc).quantize(Decimal("0.01"))
+
+        # CASE 3 — NORMAL ORDER WITH POSSIBLE REFUND
         else:
-            commission_calc = (order_total * COMMISSION_RATE).quantize(Decimal("0.01"))
-            commission_recorded = order.total_commission.quantize(Decimal("0.01"))
-            producer_payout_total = (order_total - commission_calc).quantize(Decimal("0.01"))
+            payable_total = max(order_total - refund_total, Decimal("0.00"))
+
+            commission_calc = (payable_total * COMMISSION_RATE).quantize(Decimal("0.01"))
+            commission_recorded = commission_calc
+            producer_payout_total = (payable_total - commission_calc).quantize(Decimal("0.01"))
 
         # Update totals
         # CASE 1 — Cancelled cash order → company never received money
