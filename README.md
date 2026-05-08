@@ -1179,8 +1179,7 @@ The project was completed as a group development project. Each team member contr
 - Git and integration work helped combine individual branches and maintain a working shared project version.
 - Documentation work helped explain the system clearly for developers.
 
-<<<<<<< HEAD
+
 Overall, the team contributed across project management, planning, development, testing, Git integration, and documentation to deliver the Bristol Regional Food Network Digital Marketplace.
-=======
-Overall, the team contributed across project management, planning, development, testing, Git integration, and documentation to deliver the Bristol Regional Food Network Digital Marketplace.
->>>>>>> origin/main
+
+
