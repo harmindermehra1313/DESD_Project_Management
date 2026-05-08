@@ -1,81 +1,45 @@
 {% extends "base.html" %}
 {% load static %}
 {% block content %}
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/favourite_recipes.css' %}">
-{% endblock %}
-<div class="container fav-page">
-
-    <h1 class="fav-title">My Favourite Recipes</h1>
-
-    {% if favourites %}
-        <div class="fav-grid">
-
-            {% for fav in favourites %}
-                <a href="{% url 'community:recipe_detail' fav.recipe.id %}" class="fav-card">
-
-                    <div class="fav-image-wrap">
-
-                        {% if fav.recipe.image %}
-                            <img src="{{ fav.recipe.image.url }}"
-                                 class="fav-image"
-                                 alt="{{ fav.recipe.title }}">
-                        {% else %}
-                            <img src="{% static 'img/default-product.png' %}"
-                                 class="fav-image"
-                                 alt="Default recipe image">
-                        {% endif %}
-
-                        <div class="fav-badge">
-                            ♥ Favourite
+    {% block extra_css %}
+        <link rel="stylesheet" href="{% static 'css/favourite_recipes.css' %}">
+    {% endblock %}
+    <div class="container fav-page">
+        <h1 class="fav-title">My Favourite Recipes</h1>
+        {% if favourites %}
+            <div class="fav-grid">
+                {% for fav in favourites %}
+                    <a href="{% url 'community:recipe_detail' fav.recipe.id %}"
+                       class="fav-card">
+                        <div class="fav-image-wrap">
+                            {% if fav.recipe.image %}
+                                <img src="{{ fav.recipe.image.url }}"
+                                     class="fav-image"
+                                     alt="{{ fav.recipe.title }}">
+                            {% else %}
+                                <img src="{% static 'img/default-product.png' %}"
+                                     class="fav-image"
+                                     alt="Default recipe image">
+                            {% endif %}
+                            <div class="fav-badge">♥ Favourite</div>
                         </div>
-                    </div>
-
-                    <div class="fav-content">
-
-                        <h3 class="fav-recipe-title">
-                            {{ fav.recipe.title }}
-                        </h3>
-
-                        <p class="fav-producer">
-                            By {{ fav.recipe.producer.farm_name }}
-                        </p>
-
-                        <div class="fav-footer">
-                            <span class="fav-date">
-                                Saved {{ fav.created_at|date:"d M Y" }}
-                            </span>
-
-                            <span class="fav-view">
-                                View Recipe
-                            </span>
+                        <div class="fav-content">
+                            <h3 class="fav-recipe-title">{{ fav.recipe.title }}</h3>
+                            <p class="fav-producer">By {{ fav.recipe.producer.farm_name }}</p>
+                            <div class="fav-footer">
+                                <span class="fav-date">Saved {{ fav.created_at|date:"d M Y" }}</span>
+                                <span class="fav-view">View Recipe</span>
+                            </div>
                         </div>
-
-                    </div>
-
-                </a>
-            {% endfor %}
-
-        </div>
-
-    {% else %}
-
-        <div class="empty-fav">
-
-            <h3>No Favourite Recipes Yet</h3>
-
-            <p>
-                Save recipes you love and they will appear here.
-            </p>
-
-            <a href="{% url 'community:index' %}">
-                Browse Recipes
-            </a>
-
-        </div>
-
-    {% endif %}
-
-</div>
-
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-fav">
+                <h3>No Favourite Recipes Yet</h3>
+                <p>Save recipes you love and they will appear here.</p>
+                <a href="{% url 'community:hub' %}">Browse Recipes</a>
+            </div>
+        {% endif %}
+    </div>
 {% endblock %}

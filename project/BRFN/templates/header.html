@@ -134,23 +134,16 @@
         <!-- RIGHT COLUMN: SEARCH BAR -->
         <div class="col-12 col-xl-4 d-flex justify-content-xl-end justify-content-start">
           <form method="GET"
-            action="{% url 'global_search' %}"
-            class="d-flex custom-search w-100">
-
-          <input
-              id="globalSearchInput"
-              class="form-control custom-search-input"
-              name="q"
-              placeholder="Search..."
-              autocomplete="off"
-              value="{{ request.GET.q|default:'' }}"
-          >
-
-          <button class="btn custom-search-btn" type="submit">
-              Search
-          </button>
-
-      </form>
+                action="{% url 'global_search' %}"
+                class="d-flex custom-search w-100">
+            <input id="globalSearchInput"
+                   class="form-control custom-search-input"
+                   name="q"
+                   placeholder="Search..."
+                   autocomplete="off"
+                   value="{{ request.GET.q|default:'' }}">
+            <button class="btn custom-search-btn" type="submit">Search</button>
+          </form>
         </div>
       </div>
     </div>
